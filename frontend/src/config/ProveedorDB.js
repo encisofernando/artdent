@@ -59,3 +59,14 @@ export const deleteProveedor = async (id) => {
         throw error; // Lanza el error para manejarlo en el componente
     }
 };
+
+export const toggleProveedor = async (id) => {
+    try {
+        // Llama a la API para cambiar el estado de la proveedor
+        const response = await axios.patch(`${API_URL}/${id}/toggle`);
+        return response.data; // Devuelve la respuesta de la API
+    } catch (error) {
+        console.error("Error al cambiar el estado de la proveedor:", error);
+        throw error; // Lanza el error para que pueda ser manejado en el componente
+    }
+};

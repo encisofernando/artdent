@@ -2,8 +2,8 @@ const db = require('../config/db');
 
 // Modelo para Articulos
 const Articulo = {
-    getAll: (callback) => {
-        db.query('SELECT * FROM Articulos', (err, results) => {
+    getAll: (idBase, callback) => {
+        db.query('SELECT * FROM Articulos WHERE idBase = ?', [idBase], (err, results) => {
             if (err) {
                 return callback(err);
             }
@@ -11,9 +11,10 @@ const Articulo = {
         });
     },
     
+    
 
-    getById: (id, callback) => {
-        db.query('SELECT * FROM Articulos WHERE idArticulo = ?', [id], (err, result) => {
+    getById: (id, idBase, callback) => {
+        db.query('SELECT * FROM Articulos WHERE idArticulo = ? AND idBase = ?', [id, idBase], (err, result) => {
             if (err) {
                 return callback(err);
             }
@@ -23,6 +24,7 @@ const Articulo = {
             callback(null, result[0]); // Devuelve solo un artículo
         });
     },
+    
 
     create: (newArticulo, callback) => {
         const { 
@@ -54,7 +56,8 @@ const Articulo = {
             HabCostoDolar,
             CostoDolar,
             Codigo,
-            Imagen
+            Imagen,
+            idBase
         } = newArticulo;
     
         // Verificar si la categoría existe
@@ -120,8 +123,8 @@ const Articulo = {
                                                StockMin, Ganancia, Lote, Descripcion, activo, HabPrecioManual, 
                                                NoAplicaStock, NoAplicarDescuento, EmailPorBajoStock, 
                                                HabNroSerie, AplicaElab, FechaElab, AplicaVto, FechaVto, HabCostoDolar,
-                                               CostoDolar, Codigo, Imagen) 
-                                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                               CostoDolar, Codigo, Imagen, idBase) 
+                                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                                             [
                                               CodigoBarra, 
                                               Nombre, 
@@ -151,7 +154,8 @@ const Articulo = {
                                               HabCostoDolar,
                                               CostoDolar,
                                               Codigo,
-                                              Imagen
+                                              Imagen,
+                                              idBase
                                             ],
                                             (err, result) => {
                                                 if (err) {
@@ -172,7 +176,7 @@ const Articulo = {
     },
     
 
-    update: (id, updatedArticulo, callback) => {
+    update: (id, idBase, updatedArticulo, callback) => {
         const { 
           CodigoBarra, 
           Nombre, 
@@ -236,7 +240,7 @@ const Articulo = {
               CostoDolar = ?, 
               Codigo = ?,
               Imagen = ?
-          WHERE idArticulo = ?`,
+         WHERE idArticulo = ? AND idBase = ?`,
           [
             CodigoBarra, 
             Nombre, 
@@ -267,7 +271,8 @@ const Articulo = {
             CostoDolar,
             Codigo,
             Imagen, 
-            id // No olvides agregar el id para la cláusula WHERE
+            id,
+            idBase
           ],
           (err, result) => {
             if (err) {

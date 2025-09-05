@@ -43,6 +43,7 @@ const Cliente = {
             ActividadComercial,
             Profesion,
             FechaNac,
+            FechaInicioAct,
             Activo,
             CC,
             CC_Bloq,
@@ -52,9 +53,9 @@ const Cliente = {
         // Inserción en Clientes
         db.query(
             `INSERT INTO Clientes 
-              (Nom1, Nom2, NroDoc, TpDoc, CUIT, Tel1, Email1, Celular, Direccion, CodPostal, Barrio, Localidad, CondIVA, idProvincia, Provincia, ActividadComercial, Profesion, FechaNac, Activo, CC, CC_Bloq, Comentarios) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [Nombre, Apellido, NroDoc, TpDoc, CUIT, Tel1, Email1, Celular, Direccion , CodPostal, Barrio, Localidad, CondIVA, idProvincia, Provincia, ActividadComercial, Profesion, FechaNac, Activo, CC, CC_Bloq, Comentarios],
+              (Nom1, Nom2, NroDoc, TpDoc, CUIT, Tel1, Email1, Celular, Direccion, CodPostal, Barrio, Localidad, CondIVA, idProvincia, Provincia, ActividadComercial, Profesion, FechaNac, FechaInicioAct, Activo, CC, CC_Bloq, Comentarios) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [Nombre, Apellido, NroDoc, TpDoc, CUIT, Tel1, Email1, Celular, Direccion , CodPostal, Barrio, Localidad, CondIVA, idProvincia, Provincia, ActividadComercial, Profesion, FechaNac, FechaInicioAct, Activo, CC, CC_Bloq, Comentarios],
             (err, result) => {
                 if (err) {
                     console.error('Error al insertar en la base de datos:', err);
@@ -67,8 +68,8 @@ const Cliente = {
 
     update: (id, updatedCliente, callback) => {
         const { 
-            Nombre, 
-            Apellido,
+            Nom1, 
+            Nom2,
             NroDoc,
             TpDoc,
             CUIT,
@@ -85,6 +86,7 @@ const Cliente = {
             ActividadComercial,
             Profesion,
             FechaNac,
+            FechaInicioAct,
             Activo,
             CC,
             CC_Bloq,
@@ -111,12 +113,13 @@ const Cliente = {
                 ActividadComercial = ?, 
                 Profesion = ?, 
                 FechaNac = ?, 
+                FechaInicioAct = ?,
                 Activo = ?,
                 CC = ?,
                 CC_Bloq = ?,
                 Comentarios = ?
             WHERE idCliente = ?`,
-            [Nombre, Apellido, NroDoc, TpDoc, CUIT, Tel1, Email1, Celular, Direccion, CodPostal, Barrio, Localidad, CondIVA, idProvincia, Provincia, ActividadComercial, Profesion, FechaNac, Activo, CC, CC_Bloq, Comentarios, id],
+            [Nom1, Nom2, NroDoc, TpDoc, CUIT, Tel1, Email1, Celular, Direccion, CodPostal, Barrio, Localidad, CondIVA, idProvincia, Provincia, ActividadComercial, Profesion, FechaNac,  FechaInicioAct, Activo, CC, CC_Bloq, Comentarios, id],
             (err, result) => {
                 if (err) {
                     return callback(err);

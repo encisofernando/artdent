@@ -9,6 +9,7 @@ import {
   import { getAllIvas } from "../../config/IvaDB";
   import { getAllProveedores } from "../../config/ProveedorDB";
   import Modal from "../../components/ModalError";
+
   
   const CrearArticulo = ({ open, onClose, onArticuloCreado }) => {
     const theme = useTheme();
@@ -25,6 +26,7 @@ import {
     
     // Estado para imagen
     const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null); // Para la vista previa de la imagen
     
     // Estado para el nuevo artículo
     const [nuevoArticulo, setNuevoArticulo] = useState({
@@ -58,7 +60,8 @@ import {
       CostoDolar: '',
       permitirModificarPrecio: 0,
       Imagen: '',
-      ImagenUrl: ''
+      ImagenUrl: '',
+      
     });
 
      // Obtener categorías, IVAs, promociones y proveedores cuando el diálogo se abre
@@ -94,9 +97,10 @@ import {
    const handleImageChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setImage(file); // Guarda el objeto de archivo directamente
+        setImage(file); // Guarda el objeto de archivo directamente
+        setImagePreview(URL.createObjectURL(file)); // Genera una URL para la vista previa
     }
-  };
+};
   
 
 
@@ -177,104 +181,104 @@ import {
   const handleSubmit = async () => {
     // Reinicia el estado de error
     setError(null);
-  
+   
     // Validación de datos
     if (
-      !nuevoArticulo.idCategoria ||
-      nuevoArticulo.idPromocionCantidad === '' || 
-      !nuevoArticulo.idProveedor1 ||
-      !nuevoArticulo.idProveedor2 ||
-      !nuevoArticulo.CodigoBarra ||
-      !nuevoArticulo.Nombre ||
-      !nuevoArticulo.Lote ||
-      !nuevoArticulo.Ubicacion ||
-      isNaN(nuevoArticulo.Stock) ||
-      isNaN(nuevoArticulo.StockMin) ||
-      (nuevoArticulo.SKU !== undefined && isNaN(nuevoArticulo.SKU)) ||
-      isNaN(nuevoArticulo.Costo) ||
-      isNaN(nuevoArticulo.Ganancia) ||
-      !nuevoArticulo.Iva ||
-      isNaN(nuevoArticulo.PrecioPublico)
+        !nuevoArticulo.idCategoria ||
+        nuevoArticulo.idPromocionCantidad === '' || 
+        !nuevoArticulo.idProveedor1 ||
+        !nuevoArticulo.idProveedor2 ||
+        !nuevoArticulo.CodigoBarra ||
+        !nuevoArticulo.Nombre ||
+        !nuevoArticulo.Lote ||
+        !nuevoArticulo.Ubicacion ||
+        isNaN(nuevoArticulo.Stock) ||
+        isNaN(nuevoArticulo.StockMin) ||
+        (nuevoArticulo.SKU !== undefined && isNaN(nuevoArticulo.SKU)) ||
+        isNaN(nuevoArticulo.Costo) ||
+        isNaN(nuevoArticulo.Ganancia) ||
+        !nuevoArticulo.Iva ||
+        isNaN(nuevoArticulo.PrecioPublico)
     ) {
-      setError('Por favor, completa todos los campos requeridos.');
-      setModalVisible(true);
-      return;
+        setError('Por favor, completa todos los campos requeridos.');
+        setModalVisible(true);
+        return;
     }
-  
+
     // Validación adicional para fechas y costo dólar
     if (nuevoArticulo.AplicaElab === 1 && !nuevoArticulo.FechaElab) {
-      setError('Por favor, proporciona la Fecha de Elaboración.');
-      setModalVisible(true);
-      return;
+        setError('Por favor, proporciona la Fecha de Elaboración.');
+        setModalVisible(true);
+        return;
     }
-  
+
     if (nuevoArticulo.AplicaVto === 1 && !nuevoArticulo.FechaVto) {
-      setError('Por favor, proporciona la Fecha de Vencimiento.');
-      setModalVisible(true);
-      return;
+        setError('Por favor, proporciona la Fecha de Vencimiento.');
+        setModalVisible(true);
+        return;
     }
-  
+
     if (nuevoArticulo.HabCostoDolar === 1 && !nuevoArticulo.CostoDolar) {
-      setError('Por favor, proporciona el Costo en Dólar.');
-      setModalVisible(true);
-      return;
+        setError('Por favor, proporciona el Costo en Dólar.');
+        setModalVisible(true);
+        return;
     }
-  
+
     setLoading(true); // Activa el loading
     try {
-      const formData = new FormData();
-      formData.append('CodigoBarra', nuevoArticulo.CodigoBarra);
-      formData.append('Nombre', nuevoArticulo.Nombre);
-      formData.append('Lote', nuevoArticulo.Lote);
-      formData.append('Ubicacion', nuevoArticulo.Ubicacion);
-      formData.append('Stock', nuevoArticulo.Stock);
-      formData.append('Codigo', Number(nuevoArticulo.SKU));
-      formData.append('Costo', nuevoArticulo.Costo);
-      formData.append('PrecioPublico', nuevoArticulo.PrecioPublico);
-      formData.append('Iva', parseFloat(nuevoArticulo.Iva));
-      formData.append('idCategoria', nuevoArticulo.idCategoria);
-      formData.append('idPromocionCantidad', Number(nuevoArticulo.idPromocionCantidad));
-      formData.append('idProveedor1', nuevoArticulo.idProveedor1);
-      formData.append('idProveedor2', nuevoArticulo.idProveedor2 || '');
-      formData.append('StockMin', nuevoArticulo.StockMin);
-      formData.append('Ganancia', nuevoArticulo.Ganancia);
-      formData.append('Descripcion', nuevoArticulo.Descripcion);
-      formData.append('activo', nuevoArticulo.activo);
-      formData.append('HabPrecioManual', nuevoArticulo.HabPrecioManual);
-      formData.append('NoAplicaStock', nuevoArticulo.NoAplicaStock);
-      formData.append('NoAplicarDescuento', nuevoArticulo.NoAplicarDescuento);
-      formData.append('EmailPorBajoStock', nuevoArticulo.EmailPorBajoStock);
-      formData.append('HabNroSerie', nuevoArticulo.HabNroSerie);
-      formData.append('AplicaElab', nuevoArticulo.AplicaElab);
-      formData.append('FechaElab', nuevoArticulo.AplicaElab === 1 ? nuevoArticulo.FechaElab : null);
-      formData.append('AplicaVto', nuevoArticulo.AplicaVto);
-      formData.append('FechaVto', nuevoArticulo.AplicaVto === 1 ? nuevoArticulo.FechaVto : null);
-      formData.append('HabCostoDolar', nuevoArticulo.HabCostoDolar);
-      formData.append('CostoDolar', nuevoArticulo.HabCostoDolar === 1 ? nuevoArticulo.CostoDolar : null);
-      formData.append('permitirModificarPrecio', nuevoArticulo.permitirModificarPrecio);
-  
-      // Agregar la imagen si existe
-      if (image) {
-        formData.append('Imagen', image);
-      } else if (nuevoArticulo.ImagenUrl) {
-        formData.append('Imagen', nuevoArticulo.ImagenUrl); // La imagen actual ya existente
-      }
+        const formData = new FormData();
+        formData.append('CodigoBarra', nuevoArticulo.CodigoBarra);
+        formData.append('Nombre', nuevoArticulo.Nombre);
+        formData.append('Lote', nuevoArticulo.Lote);
+        formData.append('Ubicacion', nuevoArticulo.Ubicacion);
+        formData.append('Stock', nuevoArticulo.Stock);
+        formData.append('Codigo', Number(nuevoArticulo.SKU));
+        formData.append('Costo', nuevoArticulo.Costo);
+        formData.append('PrecioPublico', nuevoArticulo.PrecioPublico);
+        formData.append('Iva', parseFloat(nuevoArticulo.Iva));
+        formData.append('idCategoria', nuevoArticulo.idCategoria);
+        formData.append('idPromocionCantidad', Number(nuevoArticulo.idPromocionCantidad));
+        formData.append('idProveedor1', nuevoArticulo.idProveedor1);
+        formData.append('idProveedor2', nuevoArticulo.idProveedor2 || '');
+        formData.append('StockMin', nuevoArticulo.StockMin);
+        formData.append('Ganancia', nuevoArticulo.Ganancia);
+        formData.append('Descripcion', nuevoArticulo.Descripcion);
+        formData.append('activo', nuevoArticulo.activo);
+        formData.append('HabPrecioManual', nuevoArticulo.HabPrecioManual);
+        formData.append('NoAplicaStock', nuevoArticulo.NoAplicaStock);
+        formData.append('NoAplicarDescuento', nuevoArticulo.NoAplicarDescuento);
+        formData.append('EmailPorBajoStock', nuevoArticulo.EmailPorBajoStock);
+        formData.append('HabNroSerie', nuevoArticulo.HabNroSerie);
+        formData.append('AplicaElab', nuevoArticulo.AplicaElab);
+        formData.append('FechaElab', nuevoArticulo.AplicaElab === 1 ? nuevoArticulo.FechaElab : null);
+        formData.append('AplicaVto', nuevoArticulo.AplicaVto);
+        formData.append('FechaVto', nuevoArticulo.AplicaVto === 1 ? nuevoArticulo.FechaVto : null);
+        formData.append('HabCostoDolar', nuevoArticulo.HabCostoDolar);
+        formData.append('CostoDolar', nuevoArticulo.HabCostoDolar === 1 ? nuevoArticulo.CostoDolar : null);
+        formData.append('permitirModificarPrecio', nuevoArticulo.permitirModificarPrecio);
 
+        // Agregar la imagen si existe
+        if (image) {
+            formData.append('Imagen', image);
+        } else if (nuevoArticulo.ImagenUrl) {
+            formData.append('Imagen', nuevoArticulo.ImagenUrl); // La imagen actual ya existente
+        }
 
-      console.log('FormData para crear artículo:', nuevoArticulo);
-      await createArticulo(formData); // Asegúrate de que createArticulo acepte FormData
-  
-      alert('Artículo creado con éxito');
-      onArticuloCreado();
-      resetForm();
-      onClose();
+        console.log('FormData para crear artículo:', nuevoArticulo);
+        await createArticulo(formData); // Asegúrate de que createArticulo acepte FormData
+
+        alert('Artículo creado con éxito');
+        onArticuloCreado();
+        resetForm();
+        onClose();
     } catch (error) {
-      console.error('Error al crear artículo:', error);
-      setError('Error al crear el artículo: ' + (error.response?.data?.error || 'Error desconocido'));
+        console.error('Error al crear artículo:', error);
+        setError('Error al crear el artículo: ' + (error.response?.data?.error || 'Error desconocido'));
     } finally {
-      setLoading(false); // Desactiva el loading
+        setLoading(false); // Desactiva el loading
     }
-  };
+};
+
 
   const resetForm = () => {
     setNuevoArticulo({
@@ -315,9 +319,10 @@ import {
     setModalVisible(false); // Cierra el modal
     setError(null); // Reinicia el estado de error al cerrar
   };
-
+  
   const handleImageRemove = () => {
     setImage(null);
+    setImagePreview(null); // Limpia la vista previa
   };
 
 
@@ -713,8 +718,8 @@ import {
                 />
               </Grid>
 
-              {/* Foto del artículo */}
-              <Grid item xs={12} sm={3} sx={{ mt: -3 }}>
+               {/* Foto del artículo */}
+               <Grid item xs={12} sm={3} sx={{ mt: 1, marginLeft: "50px" }}>
                 <Typography variant="h6">Foto del Artículo</Typography>
                 <Box display="flex" alignItems="center">
                   <Button variant="contained" component="label">
@@ -725,10 +730,11 @@ import {
                     Quitar Foto
                   </Button>
                 </Box>
-                {image && (
-                  <Box mt={2}>
-                    <img src={image} alt="Vista previa" style={{ maxWidth: "200px", height: "auto" }} />
-                  </Box>
+                {imagePreview && (
+        <Box mt={2}>
+            <Typography variant="subtitle1">Vista previa:</Typography>
+            <img src={imagePreview} alt="Vista previa" style={{ maxWidth: '50%', maxHeight: '500px' }} />
+        </Box>
                 )}
               </Grid>
 

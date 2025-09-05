@@ -6,7 +6,8 @@ const moment = require('moment');
 
 // Controlador para obtener todos los artículos
 const getAllArticulos = (req, res) => {
-    Articulo.getAll((err, articulos) => {
+    const idBase = req.idBase; // Obtén idBase del token
+    Articulo.getAll(idBase, (err, articulos) => {
         if (err) {
             return res.status(500).json({ error: 'Error al obtener los artículos' });
         }
@@ -17,12 +18,13 @@ const getAllArticulos = (req, res) => {
 
 // Controlador para obtener un artículo por ID
 const getArticuloById = (req, res) => {
+    const idBase = req.idBase; // Obtener idBase del token
     const id = req.params.id;
     if (!id) {
         return res.status(400).json({ error: 'ID de artículo es requerido' });
     }
 
-    Articulo.getById(id, (err, result) => {
+    Articulo.getById(id, idBase, (err, result) => {
         if (err) {
             return res.status(404).json({ error: 'Artículo no encontrado' });
         }
@@ -31,56 +33,62 @@ const getArticuloById = (req, res) => {
 };
 
 // Controlador para crear un artículo
-const createArticulo = (req, res) => {
-    // Crear una copia del objeto del nuevo artículo con los datos recibidos
-    const newArticulo = { ...req.body };
+    const createArticulo = (req, res) => {
+        console.log('idBase desde el request:', req.idBase); // Esto debería mostrar el idBase
 
-    // Validación de datos
-    if (
-        !newArticulo.CodigoBarra || 
-        !newArticulo.Nombre || 
-        !newArticulo.Ubicacion
-    ) {
-        return res.status(400).json({ error: 'Faltan datos requeridos o son inválidos' });
-    }
+        const newArticulo = { ...req.body, idBase: req.idBase }; // Añadir idBase aquí
 
-    // Si hay un archivo de imagen subido, generar la URL de la imagen
-    if (req.file) {
-        newArticulo.Imagen = `http://localhost:3000/uploads/${req.file.filename}`;
-    }
-    
+        console.log("Datos recibidos:", req.body);
 
-      // Función auxiliar para convertir valores vacíos o 'null' a null
-      const parseNull = (value) => {
-        if (!value || value.toLowerCase() === 'null' || value.trim() === '') {
-            return null;
+        console.log(newArticulo)
+        // Validación de datos
+        if (
+            !newArticulo.CodigoBarra || 
+            !newArticulo.Nombre || 
+            !newArticulo.Ubicacion
+        ) {
+            return res.status(400).json({ error: 'Faltan datos requeridos o son inválidos' });
         }
-        return value;
+
+        // Si hay un archivo de imagen subido, generar la URL de la imagen
+        if (req.file) {
+            newArticulo.Imagen = `http://localhost:3000/uploads/${req.file.filename}`;
+        }
+        
+
+        // Función auxiliar para convertir valores vacíos o 'null' a null
+        const parseNull = (value) => {
+            if (!value || value.toLowerCase() === 'null' || value.trim() === '') {
+                return null;
+            }
+            return value;
+        };
+
+        // Convertir las fechas vacías o 'null' string a null
+        newArticulo.FechaElab = parseNull(newArticulo.FechaElab);
+        newArticulo.FechaVto = parseNull(newArticulo.FechaVto);
+        newArticulo.CostoDolar = parseNull(newArticulo.CostoDolar)
+
+
+        // Llamada al modelo para crear el artículo en la base de datos
+        Articulo.create(newArticulo, (err, result) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Error al crear artículo' });
+            }
+
+            // Respuesta con el artículo creado
+            res.status(201).json(result);
+        });
     };
 
-    // Convertir las fechas vacías o 'null' string a null
-    newArticulo.FechaElab = parseNull(newArticulo.FechaElab);
-    newArticulo.FechaVto = parseNull(newArticulo.FechaVto);
-    newArticulo.CostoDolar = parseNull(newArticulo.CostoDolar)
-
-
-    // Llamada al modelo para crear el artículo en la base de datos
-    Articulo.create(newArticulo, (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Error al crear artículo' });
-        }
-
-        // Respuesta con el artículo creado
-        res.status(201).json(result);
-    });
-};
-
 // Controlador para actualizar un artículo
-const updateArticulo = (req, res) => {
+const updateArticulo = async (req, res) => {
     const id = req.params.id;
     const updatedArticulo = req.body;
-    console.log('Articulo para editar lo que se trae: ', updatedArticulo);
+    const idBase = req.idBase; // Obtén idBase del token
+
+    console.log('Artículo para editar lo que se trae: ', updatedArticulo);
 
     // Convertir los valores a número si son cadenas
     updatedArticulo.Stock = parseFloat(updatedArticulo.Stock);
@@ -106,13 +114,9 @@ const updateArticulo = (req, res) => {
     const fechaElabInput = updatedArticulo.FechaElab;
     const fechaVtoInput = updatedArticulo.FechaVto;
 
-    // Imprimir para depuración
-    console.log("Fecha de elaboración (input):", fechaElabInput);
-    console.log("Fecha de vencimiento (input):", fechaVtoInput);
-
     // Validar la fecha de elaboración
     if (updatedArticulo.AplicaElab === '1') {
-        const fechaElab = moment(fechaElabInput, 'YYYY-MM-DD', true); // Modo estricto con formato YYYY-MM-DD
+        const fechaElab = moment(fechaElabInput, 'YYYY-MM-DD', true);
         if (!fechaElab.isValid()) {
             return res.status(400).json({ error: 'Fecha de elaboración no es válida' });
         }
@@ -123,7 +127,7 @@ const updateArticulo = (req, res) => {
 
     // Validar la fecha de vencimiento
     if (updatedArticulo.AplicaVto === '1') {
-        const fechaVto = moment(fechaVtoInput, 'YYYY-MM-DD', true); // Modo estricto con formato YYYY-MM-DD
+        const fechaVto = moment(fechaVtoInput, 'YYYY-MM-DD', true);
         if (!fechaVto.isValid()) {
             return res.status(400).json({ error: 'Fecha de vencimiento no es válida' });
         }
@@ -132,11 +136,21 @@ const updateArticulo = (req, res) => {
         updatedArticulo.FechaVto = null; 
     }
 
-    // Obtener el artículo actual para manejar la imagen
-    Articulo.getById(id, (err, articuloActual) => {
-        if (err || !articuloActual) {
-            return res.status(404).json({ error: 'Artículo no encontrado' });
+    try {
+        // Verifica si el artículo existe y pertenece al idBase del usuario
+        const result = await new Promise((resolve, reject) => {
+            Articulo.getById(id, idBase, (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+            });
+        });
+
+        console.log('Resultado de getById:', result); // Log para verificar resultados
+
+        if (!result || result.length === 0) {
+            return res.status(404).json({ error: 'Artículo no encontrado o no autorizado' });
         }
+        const articuloActual = result[0]; // Accede al primer artículo
 
         // Función para eliminar la imagen del servidor
         const deleteImage = (imagePath) => {
@@ -158,7 +172,6 @@ const updateArticulo = (req, res) => {
         if (req.file) {
             const PORT = process.env.PORT || 3000;
             updatedArticulo.Imagen = `http://localhost:${PORT}/uploads/${req.file.filename}`;
-            
             // Eliminar la imagen antigua
             deleteImage(articuloActual.Imagen);
         } else if (updatedArticulo.removeImagen === 'true') {
@@ -171,15 +184,23 @@ const updateArticulo = (req, res) => {
         delete updatedArticulo.removeImagen;
 
         // Actualizar el artículo en la base de datos
-        Articulo.update(id, updatedArticulo, (err, result) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'Error al actualizar artículo' });
-            }
-
-            res.status(200).json(result);
+        await new Promise((resolve, reject) => {
+            Articulo.update(id, idBase, updatedArticulo, (err, result) => {
+                if (err) {
+                    return reject(err); // Rechaza la promesa si hay un error
+                }
+                resolve(result); // Resuelve la promesa con el resultado
+            });
         });
-    });
+
+        // Responde con el artículo actualizado
+        res.json({ message: 'Artículo actualizado exitosamente', updatedArticulo });
+
+    } catch (err) {
+        // Maneja el error
+        console.error(err);
+        res.status(500).json({ error: 'Error al actualizar el artículo' });
+    }
 };
 
 

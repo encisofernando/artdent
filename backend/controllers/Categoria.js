@@ -83,10 +83,26 @@ const deleteCategoria = (req, res) => {
     });
 };
 
+const toggleCategoria = (req, res) => {
+    const id = req.params.id;
+
+    if (!id) {
+        return res.status(400).json({ error: 'ID de categoría es requerido' });
+    }
+
+    Categoria.toggle(id, (err, result) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al cambiar el estado de la categoría' });
+        }
+        res.status(200).json(result);
+    });
+};
+
 module.exports = {
     getAllCategorias,
     getCategoriaById,
     createCategoria,
     updateCategoria,
-    deleteCategoria
+    deleteCategoria,
+    toggleCategoria
 };

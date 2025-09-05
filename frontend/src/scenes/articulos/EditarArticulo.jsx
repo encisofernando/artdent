@@ -190,6 +190,20 @@ const EditarArticulo = ({ open, onClose, articuloEditando, onArticuloEditado }) 
         }));
       }
     };
+
+    // sx={{
+    //   '& input[type=number]::-webkit-outer-spin-button': {
+    //     WebkitAppearance: 'none', // Corrected
+    //     margin: 0,
+    //   },
+    //   '& input[type=number]::-webkit-inner-spin-button': {
+    //     WebkitAppearance: 'none', // Corrected
+    //     margin: 0,
+    //   },
+    //   '& input[type=number]': {
+    //     MozAppearance: 'textfield',  // Corrected for Firefox
+    //   },
+    // }}
   
   
 const handleCancel = () => {
@@ -224,22 +238,18 @@ const handleCostoChange = (value) => {
   });
 };
 
-const handleIvaChange = (idIva) => {
-  const ivaSeleccionado = ivas.find(iva => iva.idIva === idIva); // Encuentra el IVA seleccionado
-
-  if (ivaSeleccionado) {
-      const ivaParsed = parseFloat(ivaSeleccionado.Porcentaje).toFixed(4); // Obtener el porcentaje
-      setArticuloModificado(prevState => {
-          const costo = prevState.Costo;
-          const ganancia = prevState.Ganancia;
-          const precioVentaCalculado = calcularPrecioVenta(costo, ganancia, parseFloat(ivaParsed));
-          return {
-              ...prevState,
-              Iva: ivaParsed, // Guardar el idIva en el estado
-              PrecioPublico: precioVentaCalculado,
-          };
-      });
-  }
+const handleIvaChange = (value) => {
+  const ivaParsed = parseFloat(value).toFixed(4); // Asegúrate de mantener 4 decimales
+  setArticuloModificado(prevState => {
+    const costo = prevState.Costo;
+    const ganancia = prevState.Ganancia;
+    const precioVentaCalculado = calcularPrecioVenta(costo, ganancia, parseFloat(ivaParsed));
+    return {
+      ...prevState,
+      Iva: ivaParsed, // Guardar IVA en el mismo formato de 4 decimales
+      PrecioPublico: precioVentaCalculado,
+    };
+  });
 };
 
 
@@ -638,21 +648,21 @@ return (
             </Grid>
 
             <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-              <TextField
-                select
-                label="IVA"
-                value={articuloModificado.Iva || ''}
-                onChange={(e) => handleIvaChange(e.target.value)}
-                fullWidth
-                margin="normal"
-              >
-                {ivas.map((iva) => (
-                  <MenuItem key={iva.idIva} value={iva.Porcentaje}>
-                    {iva.Nombre} ({iva.Porcentaje}%)
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+                <TextField
+                  select
+                  label="IVA"
+                  value={articuloModificado.Iva}
+                  onChange={(e) => handleIvaChange(e.target.value)}
+                  fullWidth
+                  margin="normal"
+                >
+                  {ivas.map((iva) => (
+                    <MenuItem key={iva.idIva} value={iva.Porcentaje}>
+                      {iva.Nombre} ({iva.Porcentaje}%)
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
 
             <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
               <TextField

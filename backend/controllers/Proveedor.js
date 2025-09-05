@@ -83,10 +83,28 @@ const deleteProveedor = (req, res) => {
     });
 };
 
+
+const toggleProveedor = (req, res) => {
+    const id = req.params.id;
+
+    if (!id) {
+        return res.status(400).json({ error: 'ID de proveedor es requerido' });
+    }
+
+    Proveedor.toggle(id, (err, result) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al cambiar el estado de la proveedor' });
+        }
+        res.status(200).json(result);
+    });
+};
+
+
 module.exports = {
     getAllProveedores,
     getProveedorById,
     createProveedor,
     updateProveedor,
-    deleteProveedor
+    deleteProveedor,
+    toggleProveedor
 };

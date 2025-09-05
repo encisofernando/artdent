@@ -1,12 +1,19 @@
 // src/pages/Articulos.js
-import { Box, Typography, useTheme, Button } from "@mui/material";
+import { Box, Typography, useTheme, Button, Tooltip, IconButton } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
-import { getAllArticulos, getArticuloById, deleteArticulo } from '../../config/LlamadaDB';
+import { getAllArticulos, getArticuloById, deleteArticulo, toggleArticulo } from '../../config/LlamadaDB';
 import { useEffect, useState } from "react";
 import CrearArticulo from './CrearArticulo';
 import EditarArticulo from './EditarArticulo';
+import { getIdBaseFromToken } from '../../auth/auth'; // Asegúrate de importar getIdBaseFromToken
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import FlashOffIcon from '@mui/icons-material/FlashOff';
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 
 const Articulos = () => {
   const theme = useTheme();
@@ -16,35 +23,53 @@ const Articulos = () => {
   const [openEditar, setOpenEditar] = useState(false);
   const [articuloEditando, setArticuloEditando] = useState(null);
 
+  const handleToggle = async (id) => {
+    try {
+        await toggleArticulo(id);
+        fetchArticulos();
+    } catch (error) {
+        console.error("Error al cambiar el estado de la categoría:", error.message);
+    }
+};
+
   const columns = [
+  
+   
+    { field: "Nombre", headerName: "Nombre",  minWidth: 280, cellClassName: "name-column--cell" },
+    { field: "Stock", headerName: "Stock",  minWidth: 40 },
+    { field: "PrecioPublico", headerName: "Precio Venta", minWidth: 280, renderCell: (params) => <Typography color={colors.greenAccent[500]}>${params.row.PrecioPublico}</Typography> },
+    { field: "Descripcion", headerName: "Descripcion", flex: 1 },
     {
-        field: "Imagen",
-        headerName: "Imagen",
-        flex: 1,
+        field: "acciones", headerName: "Acciones", minWidth: 250,
         renderCell: (params) => (
-            <img 
-                src={params.value} 
-                alt={params.row.Nombre} // O cualquier otro texto alternativo
-                style={{ width: '50px', height: '50px', objectFit: 'cover' }} 
-            />
-        ),
-    },
-    { field: "CodigoBarra", headerName: "Código de Barra", flex: 1 },
-    { field: "Nombre", headerName: "Nombre", flex: 1, cellClassName: "name-column--cell" },
-    { field: "Stock", headerName: "Stock", flex: 1 },
-    { field: "Costo", headerName: "Precio Costo", flex: 1, renderCell: (params) => <Typography color={colors.greenAccent[500]}>${params.row.Costo}</Typography> },
-    { field: "PrecioPublico", headerName: "Precio Venta", flex: 1, renderCell: (params) => <Typography color={colors.greenAccent[500]}>${params.row.PrecioPublico}</Typography> },
-    { field: "Iva", headerName: "IVA (%)", flex: 1 },
-    {
-        field: "acciones", headerName: "Acciones", flex: 1,
-        renderCell: (params) => (
-            <>
-                <Button variant="contained" color="secondary" onClick={() => handleOpenEditar(params.row)} sx={{ mr: 1 }}>
-                    Modificar
+            <> 
+            <Button
+                  color="info"
+                  sx={{ mr: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 48 }}
+                  startIcon={<VisibilityIcon />}
+                />
+                 <Button  
+                  color="secondary"
+                  sx={{ mr: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 48 }}
+                  onClick={() => handleOpenEditar(params.row)} 
+                >
+                  <EditIcon />
                 </Button>
-                <Button variant="contained" color="error" onClick={() => handleDelete(params.row.idArticulo)}>
-                    Eliminar
-                </Button>
+                <Button
+                color="error"
+                sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 48 }}
+                onClick={() => handleDelete(params.row.idArticulo)}
+              >
+                <DeleteIcon/>
+              </Button>
+                <Tooltip title={params.row.Activo ? "Desactivar" : "Activar"}>
+                    <IconButton
+                        sx={{ color: colors.primary[100] }}
+                        onClick={() => handleToggle(params.row.idArticulo)}
+                    >
+                        {params.row.Activo ? <FlashOnIcon /> : <FlashOffIcon />}
+                    </IconButton>
+                </Tooltip>
             </>
         ),
     },
@@ -85,7 +110,9 @@ const Articulos = () => {
 
   const fetchArticulos = async () => {
     try {
-      const articulos = await getAllArticulos();
+      const idBase = getIdBaseFromToken(); // Obtener el idBase del token
+      const articulos = await getAllArticulos(idBase); // Pasar idBase a tu función
+
       const rowsWithIds = articulos.map(articulo => ({
         ...articulo,
         id: articulo.idArticulo
@@ -149,6 +176,7 @@ const Articulos = () => {
           pageSize={10}
           rowsPerPageOptions={[5, 10, 20]}
           getRowId={(row) => row.id}
+          checkboxSelection 
         />
       </Box>
 

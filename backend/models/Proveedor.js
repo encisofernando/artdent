@@ -4,7 +4,7 @@ const db = require('../config/db');
 const Proveedor = {
     
     getAll: (callback) => {
-        db.query('SELECT idProveedor, RazonSocial FROM Proveedores', (err, results) => {
+        db.query('SELECT * FROM Proveedores', (err, results) => {
             if (err) {
                 return callback(err);
             }
@@ -59,7 +59,22 @@ const Proveedor = {
             }
             callback(null, { message: 'Proveedor eliminado', id });
         });
-    }
+    },
+
+
+
+    toggle: (id, callback) => {
+        // Cambiar el estado de 'Activo' de la Proveedor
+        db.query('UPDATE Proveedores SET Activo = NOT Activo WHERE idProveedor = ?', [id], (err, result) => {
+            if (err) {
+                return callback(err);
+            }
+            if (result.affectedRows === 0) {
+                return callback(new Error('Proveedor no encontrada'));
+            }
+            callback(null, { message: 'Estado de Proveedor cambiado', id });
+        });
+    },
 };
 
 module.exports = Proveedor;

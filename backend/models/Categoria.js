@@ -60,7 +60,20 @@ const Categoria = {
             }
             callback(null, { message: 'Categoría eliminada', id });
         });
-    }
+    },
+
+    toggle: (id, callback) => {
+        // Cambiar el estado de 'Activo' de la categoría
+        db.query('UPDATE Categorias SET Activo = NOT Activo WHERE idCategoria = ?', [id], (err, result) => {
+            if (err) {
+                return callback(err);
+            }
+            if (result.affectedRows === 0) {
+                return callback(new Error('Categoría no encontrada'));
+            }
+            callback(null, { message: 'Estado de categoría cambiado', id });
+        });
+    },
 };
 
 module.exports = Categoria;

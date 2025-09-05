@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap");
 
 html,
 body,
@@ -7,29 +7,67 @@ body,
 .content {
   height: 100%;
   width: 100%;
-  font-family: "Source Sans Pro", sans-serif;
+  font-family: "Montserrat", sans-serif;
+  flex: 1;
+  overflow-y: auto;
+  color: #141414; /* Texto base (manual sugiere negro/gris) */
+  background-color: #DAE6F0; /* Celeste claro de la paleta */
 }
 
 .app {
   display: flex;
   position: relative;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #DAEEE3; /* Verde muy claro (terciario) */
 }
 
+.sidebar {
+  position: fixed;
+  height: 100vh;
+  width: 250px; /* Ajusta el ancho según tu preferencia */
+  z-index: 1000;
+  background-color: #397B9C; /* Azul corporativo */
+  color: #fff;
+  font-weight: 600;
+}
+
+.sidebar a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sidebar a:hover {
+  color: #ACD6CE; /* Verde menta (secundario) */
+}
+
+.content {
+  margin-left: 250px; /* Igual que el ancho del sidebar */
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: #F5F6FA; /* Fondo claro neutro */
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
 }
 
 /* Track */
 ::-webkit-scrollbar-track {
-  background: #e0e0e0;
+  background: #DAE6F0; /* Celeste claro */
 }
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #5AAD9C; /* Verde corporativo */
+  border-radius: 6px;
 }
 
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #49949C; /* Verde Teal (secundario) */
 }

@@ -23,7 +23,6 @@ import { tokens } from '../../theme'; // Asegúrate de que la ruta sea correcta
 import { getAllClientes, createCliente } from '../../config/ClienteDB';
 import { getAllTipoDoc } from '../../config/TipoDocDB';
 import { getAllCondicionIva } from '../../config/CondicionIVADB';
-
 import { getAllProvincias } from '../../config/ProvinciaDB';
 
 const initialFormData = {
@@ -45,6 +44,7 @@ const initialFormData = {
   ActividadComercial: '',
   Profesion: '',
   FechaNac: '', // Asegúrate de enviar la fecha en el formato correcto
+  FechaInicioAct: '',
   Activo: false, // Cambiado a mayúscula
   CC: false,
   CC_Bloq: false,
@@ -137,20 +137,17 @@ const ClienteForm = ({ open, onClose, onCreate }) => {
   }, [open]);
 
   const handleSubmit = async () => {
-    
     setLoading(true);
-
-      
-   
     try {
-      
       const clienteCreado = await createCliente(formData);
+      console.log(clienteCreado); // Agrega esto para depurar
       onCreate(clienteCreado);
       setSnackbarMessage('Cliente creado exitosamente');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-      setFormData(initialFormData); // Reinicia el formulario
+      setFormData(initialFormData);
     } catch (error) {
+      console.error('Error al crear el cliente:', error); // Esto también puede ayudar a depurar
       setSnackbarMessage(error.response?.data?.message || 'Error al crear el cliente');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
@@ -159,6 +156,7 @@ const ClienteForm = ({ open, onClose, onCreate }) => {
       onClose();
     }
   };
+  
 
   
 
@@ -169,7 +167,7 @@ const ClienteForm = ({ open, onClose, onCreate }) => {
   
   return (
     <>
-        <Dialog open={open} onClose={onClose}>
+         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
           <DialogTitle sx={{ backgroundColor: colors.primary[400], textAlign: "center", fontSize: "1.5rem"}}>Alta de Cliente</DialogTitle>
           <DialogContent sx={{ backgroundColor: colors.primary[400] }}>
             <Box p={3} borderRadius={2}>
@@ -377,38 +375,57 @@ const ClienteForm = ({ open, onClose, onCreate }) => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
-              <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={formData.CC === 1}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              CC: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="Habilitar Cuenta Corriente"
-                    />
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="FechaInicioAct"
+                  label="Fecha de inicio de actividad"
+                  type="date"
+                  fullWidth
+                  margin="normal"
+                  value={formData.FechaInicioAct}
+                  onChange={handleChange}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                />
               </Grid>
               <Grid item xs={12}>
-              <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={formData.CC_Bloq === 1}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              CC_Bloq: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="Sin Cuenta Corriente"
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.CC}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormData({
+                          ...formData,
+                          CC: checked, // Establece a true si está marcado
+                          CC_Bloq: !checked ? formData.CC_Bloq : false, // Desmarcar el otro checkbox
+                        });
+                      }}
                     />
+                  }
+                  label="Habilitar Cuenta Corriente"
+                />
               </Grid>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.CC_Bloq}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormData({
+                          ...formData,
+                          CC_Bloq: checked, // Establece a true si está marcado
+                          CC: !checked ? formData.CC : false, // Desmarcar el otro checkbox
+                        });
+                      }}
+                    />
+                  }
+                  label="Sin Cuenta Corriente"
+                />
+              </Grid>
+
               <Grid item xs={12}>
               <FormControlLabel
                       control={
