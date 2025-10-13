@@ -1,0 +1,4 @@
+// Add inside the auth:sanctum group (routes/api.php):
+use App\Http\Controllers\InvoicesController;
+
+Route::post('invoices/authorize', [InvoicesController::class,'authorize']);

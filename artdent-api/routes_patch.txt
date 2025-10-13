@@ -1,0 +1,10 @@
+// Add to routes/api.php inside auth:sanctum group:
+
+use App\Http\Controllers\WarehousesController;
+use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\PurchasesController;
+
+Route::apiResource('warehouses', WarehousesController::class);
+Route::apiResource('customers', CustomersController::class);
+Route::post('purchases', [PurchasesController::class,'store']);
+Route::get('purchases/{purchase}', [PurchasesController::class,'show']);

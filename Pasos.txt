@@ -1,0 +1,31 @@
+Token: "2|58lMI2iBYTvD0vd10UtSbcYiFIz41NHIQtpkIKUUc913c5f1"
+
+curl -i -X POST http://127.0.0.1:8000/api/invoices \
+ -H "Authorization: Bearer 2|58lMI2iBYTvD0vd10UtSbcYiFIz41NHIQtpkIKUUc913c5f1" \
+ -H "Content-Type: application/json" \
+ -d '{"sale_id":123,"invoice_type_code":"C","pos_number":1}'
+
+
+
+
+
+1) Levantar el server
+
+En tu proyecto (artdent-api):
+
+php artisan serve --host=127.0.0.1 --port=8000
+
+API=http://127.0.0.1:8000/api
+
+LOGIN_JSON='{"email":"admin@artdent.com.ar","password":"secret123"}'
+
+TOKEN=$(curl -s -X POST "$API/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "$LOGIN_JSON" \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+echo "TOKEN=$TOKEN"
+
+curl -i "$API/auth/me" \
+ -H "Authorization: Bearer $TOKEN" \
+ -H "Accept: application/json"

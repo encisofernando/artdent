@@ -1,0 +1,54 @@
+{
+  "login": {
+    "email": "admin@artdent.com.ar",
+    "password": "secret123"
+  },
+
+  "warehouse": {
+    "name": "Depósito Central",
+    "code": "DC1"
+  },
+
+  "product": {
+    "name": "Resina Nanohibrida",
+    "sku": "RES-001",
+    "price": 15000,
+    "tax_rate": 21
+  },
+
+  "customer": {
+    "name": "Clínica Odonto SA",
+    "email": "compras@clinica.com",
+    "tax_id": "30-12345678-9"
+  },
+
+  "purchase": {
+    "warehouse_id": 1,
+    "invoice_number": "F-0001-00000001",
+    "items": [
+      {
+        "product_id": 1,
+        "qty": 10,
+        "unit_cost": 10000
+      }
+    ]
+  },
+
+  "sale": {
+    "warehouse_id": 1,
+    "customer_id": 1,
+    "items": [
+      {
+        "product_id": 1,
+        "qty": 2,
+        "unit_price": 15000
+      }
+    ]
+  },
+
+  "invoice": {
+    "sale_id": 1,
+    "invoice_type_code": "C",
+    "pos_number": 1
+  }
+}
