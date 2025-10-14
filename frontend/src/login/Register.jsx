@@ -17,13 +17,14 @@ const Register = () => {
     e.preventDefault();
     if (Password !== confirmPassword) { alert('Las contraseñas no coinciden'); return; }
 
-    const formData = new FormData();
-    // 👉 nombres de campos alineados al backend actual
+  const formData = new FormData();
     formData.append('email', Email);
     formData.append('password', Password);
+    formData.append('password_confirmation', confirmPassword);
     formData.append('name', Nombre);
     formData.append('idRol', '1');
-    if (Imagen) formData.append('image', Imagen);
+  if (Imagen) formData.append('image', Imagen);
+
 
     try {
       await Auth.register(formData);
