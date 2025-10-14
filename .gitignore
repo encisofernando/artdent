@@ -6,8 +6,6 @@ frontend/.DS_Store
 frontend/npm-debug.log*
 frontend/yarn-error.log*
 frontend/pnpm-lock.yaml
-frontend/.env
-frontend/.env.*
 
 # --- Backend (Laravel) ---
 artdent-api/vendor/
@@ -17,8 +15,6 @@ artdent-api/storage/logs/
 artdent-api/storage/framework/cache/*
 artdent-api/storage/framework/sessions/*
 artdent-api/storage/framework/views/*
-artdent-api/.env
-artdent-api/.env.*
 artdent-api/public/storage
 artdent-api/phpunit.xml.cache
 
