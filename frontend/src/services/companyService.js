@@ -1,20 +1,34 @@
-// 📁 src/services/companyService.js
 import api from "./api";
-import { unwrap } from "./utils";
+
+/** Intenta un GET y devuelve null si es 404; relanza otros errores */
+const safeGet = async (url) => {
+  try {
+    const { data } = await api.get(url);
+    return data ?? null;
+  } catch (err) {
+    if (err?.response?.status === 404) return null;
+    throw err;
+  }
+};
 
 export const getMyCompany = async () => {
-  try { return unwrap(await api.get("/company")); }
-  catch {
-    try { return unwrap(await api.get("/empresa")); }
-    catch { return null; }
-  }
+  // orden de prueba hasta que exista el endpoint real en Laravel
+  return (
+    (await safeGet("/company")) ??
+    (await safeGet("/empresa")) ??
+    (await safeGet("/companies/me")) ??
+    null
+  );
 };
 
 export const getCompanyById = async (id) => {
-  if (!id) return await getMyCompany();
-  const paths = [`/companies/${id}`, `/company/${id}`, `/empresas/${id}`, `/empresa/${id}`];
-  for (const p of paths) {
-    try { return unwrap(await api.get(p)); } catch {}
-  }
-  return null;
+  if (!id) return null;
+  return (
+    (await safeGet(`/companies/${id}`)) ??
+    (await safeGet(`/company/${id}`)) ??
+    (await safeGet(`/empresa/${id}`)) ??
+    null
+  );
 };
+
+export default { getMyCompany, getCompanyById };

@@ -1,120 +1,119 @@
 import {
+  AppBar,
+  Toolbar,
   Box,
   IconButton,
+  InputBase,
   useTheme,
-  Menu,
-  MenuItem,
-  Typography,
   useMediaQuery,
 } from "@mui/material";
-import { useContext, useState } from "react";
-import { ColorModeContext, tokens } from "../../theme";
-import InputBase from "@mui/material/InputBase";
+import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import NotificationsOutlinedIcon from "@mui/icons-material/NotificationsOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
-import SearchIcon from "@mui/icons-material/Search";
-import ExitToAppIcon from "@mui/icons-material/ExitToApp";
-import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
+import { useContext } from "react";
+import { ColorModeContext } from "../../theme";
 import { useNavigate } from "react-router-dom";
 
-const Topbar = ({ setIsAuthenticated, onOpenSidebar, onLogout }) => {
+const TOPBAR_HEIGHT = 64;
+
+export default function Topbar({ setIsAuthenticated, onOpenSidebar, onLogout }) {
   const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
   const colorMode = useContext(ColorModeContext);
-  const navigate = useNavigate();
   const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+  const navigate = useNavigate();
 
-  const [anchorEl, setAnchorEl] = useState(null);
-  const isMenuOpen = Boolean(anchorEl);
-
-  const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
-  const handleProfileClick = () => { handleMenuClose(); navigate("/profile"); };
-  const handleLogout = () => {
-    if (onLogout) onLogout();                // usa el callback centralizado
+  const logout = () => {
+    if (onLogout) onLogout();
     else {
-      localStorage.removeItem('token');      // fallback
+      localStorage.removeItem("token");
       setIsAuthenticated?.(false);
     }
-    navigate('/');
+    navigate("/");
   };
 
   return (
-    <Box
-      display="flex"
-      alignItems="center"
-      justifyContent="space-between"
-      p={1.5}
+    <AppBar
+      position="sticky"
+      color="transparent"
+      elevation={0}
       sx={{
-        position: "sticky",
         top: 0,
-        zIndex: 1100,
-        bgcolor: "background.default",
-        borderBottom: `1px solid ${colors.grey[800]}20`,
+        backdropFilter: "saturate(180%) blur(8px)",
+        background:
+          theme.palette.mode === "dark"
+            ? "rgba(15, 23, 42, .6)"
+            : "rgba(255,255,255,.6)",
+        borderBottom:
+          theme.palette.mode === "dark"
+            ? "1px solid rgba(148,163,184,.12)"
+            : "1px solid rgba(0,0,0,.06)",
+        height: TOPBAR_HEIGHT,
       }}
     >
-      {/* Izquierda: hamburguesa (móvil) + búsqueda (md+) */}
-      <Box display="flex" alignItems="center" gap={1}>
-        {mdDown && (
-          <IconButton onClick={onOpenSidebar} aria-label="Abrir menú">
-            <MenuOutlinedIcon />
-          </IconButton>
-        )}
+      <Toolbar sx={{ minHeight: TOPBAR_HEIGHT }}>
+        {/* Hamburguesa en móvil */}
+        <IconButton
+          onClick={onOpenSidebar}
+          sx={{ mr: 1, display: { xs: "inline-flex", md: "none" } }}
+          aria-label="abrir menú"
+        >
+          <MenuOutlinedIcon />
+        </IconButton>
 
+        {/* Buscador */}
         <Box
-          display={{ xs: "none", sm: "none", md: "flex" }}
-          alignItems="center"
           sx={{
-            backgroundColor: colors.primary[400],
-            borderRadius: "8px",
-            pl: 1,
-            width: { md: 280, lg: 360 },
+            ml: { xs: 0, md: 1 },
+            px: 1.5,
+            py: 0.5,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            borderRadius: 2,
+            bgcolor:
+              theme.palette.mode === "dark" ? "rgba(148,163,184,.12)" : "#ffffff",
+            border:
+              theme.palette.mode === "dark"
+                ? "1px solid rgba(148,163,184,.18)"
+                : "1px solid rgba(0,0,0,.06)",
+            width: { xs: "100%", sm: 360 },
           }}
         >
-          <InputBase sx={{ ml: 1, flex: 1 }} placeholder="Buscar" />
-          <IconButton type="button" sx={{ p: 1 }}>
-            <SearchIcon />
-          </IconButton>
+          <SearchIcon fontSize="small" />
+          <InputBase placeholder="Buscar" fullWidth />
         </Box>
-      </Box>
 
-      {/* Derecha: acciones */}
-      <Box display="flex" alignItems="center">
+        <Box sx={{ flexGrow: 1 }} />
+
+        {/* Acciones */}
         <IconButton onClick={colorMode.toggleColorMode}>
-          {theme.palette.mode === "dark" ? <DarkModeOutlinedIcon /> : <LightModeOutlinedIcon />}
+          {theme.palette.mode === "dark" ? (
+            <DarkModeOutlinedIcon />
+          ) : (
+            <LightModeOutlinedIcon />
+          )}
         </IconButton>
+
         <IconButton>
           <NotificationsOutlinedIcon />
         </IconButton>
+
         <IconButton onClick={() => navigate("/settings")}>
           <SettingsOutlinedIcon />
         </IconButton>
-        <IconButton onClick={handleMenuOpen}>
+
+        <IconButton onClick={() => navigate("/profile")}>
           <PersonOutlinedIcon />
         </IconButton>
 
-        <Menu
-          anchorEl={anchorEl}
-          open={isMenuOpen}
-          onClose={handleMenuClose}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
-        >
-          <MenuItem onClick={handleProfileClick} sx={{ "&:hover": { backgroundColor: colors.primary[100] } }}>
-            <PersonOutlinedIcon sx={{ mr: 1 }} />
-            <Typography variant="body1">Profile</Typography>
-          </MenuItem>
-          <MenuItem onClick={handleLogout} sx={{ "&:hover": { backgroundColor: colors.primary[100] } }}>
-            <ExitToAppIcon sx={{ mr: 1 }} />
-            <Typography variant="body1">Logout</Typography>
-          </MenuItem>
-        </Menu>
-      </Box>
-    </Box>
+        <IconButton onClick={logout} title="Salir">
+          <SettingsOutlinedIcon sx={{ transform: "rotate(90deg)" }} />
+        </IconButton>
+      </Toolbar>
+    </AppBar>
   );
-};
-
-export default Topbar;
+}

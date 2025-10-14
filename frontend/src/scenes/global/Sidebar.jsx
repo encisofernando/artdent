@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+// src/scenes/global/Sidebar.jsx
+import { useEffect, useState, useMemo, useRef } from "react";
 import { ProSidebar, Menu, MenuItem, SubMenu } from "react-pro-sidebar";
 import {
   Box,
@@ -12,6 +13,7 @@ import { Link, useLocation } from "react-router-dom";
 import "react-pro-sidebar/dist/css/styles.css";
 import { tokens } from "../../theme";
 
+// ICONOS
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
 import ReceiptOutlinedIcon from "@mui/icons-material/ReceiptOutlined";
@@ -29,27 +31,30 @@ import PersonIcon from "@mui/icons-material/Person";
 import GroupsIcon from "@mui/icons-material/Groups";
 import ArticleIcon from "@mui/icons-material/Article";
 import CategoryIcon from "@mui/icons-material/Category";
-
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import SearchIcon from "@mui/icons-material/Search";
 
+// Servicios / auth
 import { getUserIdFromToken, getIdEmpleadoFromToken } from "../../auth/auth";
 import { Users, Employees, Companies } from "../../services";
 
-const SIDEBAR_WIDTH = 260;
-const COLLAPSED_WIDTH = 80;
+export const SIDEBAR_WIDTH = 260;
+export const COLLAPSED_WIDTH = 80;
 
 const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+  const location = useLocation();
+
   const [userData, setUserData] = useState(null);
   const [empresa, setEmpresa] = useState(null);
   const [openMainSubMenu, setOpenMainSubMenu] = useState(null);
   const [openInnerSubMenu, setOpenInnerSubMenu] = useState(null);
-  const location = useLocation();
+  const didFetch = useRef(false); // evita doble carga en StrictMode
 
+  // Paleta de la UI del sidebar
   const ui = useMemo(
     () => ({
       base: colors.azul?.[500] || colors.primary?.[500] || "#397B9C",
@@ -66,42 +71,48 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     [colors]
   );
 
+  // Permisos
   const permisosUsuario = JSON.parse(localStorage.getItem("userPermissions") || "[]");
   const esAdmin = userData && (userData.idRol === 1 || userData.role_id === 1);
-
   const tienePermiso = (nombrePermiso) => {
     if (esAdmin) return true;
     const p = permisosUsuario.find((x) => x?.Nombre === nombrePermiso);
     return !!p && ((p.PermisoActivo === 1) || (p.active === 1));
   };
 
+  // Cargar usuario/empleado y empresa (best-effort)
   useEffect(() => {
-    const fetchUserData = async () => {
+    if (didFetch.current) return;
+    didFetch.current = true;
+
+    (async () => {
       try {
         const userId = getUserIdFromToken();
-        const EmpleadoId = getIdEmpleadoFromToken();
-        let u = null, e = null;
+        const empId = getIdEmpleadoFromToken();
 
-        if (userId) { try { u = await Users.getUser(userId); } catch {} }
-        if (!u && EmpleadoId) { try { e = await Employees.getEmployee(EmpleadoId); } catch {} }
+        let principal = null;
+        if (userId) principal = await Users.getUser(userId).catch(() => null);
+        if (!principal && empId)
+          principal = await Employees.getEmployee(empId).catch(() => null);
 
-        const principal = u || e;
-        setUserData(principal);
+        if (principal) setUserData(principal);
 
         if (principal?.idEmpresa || principal?.company_id) {
-          const emp = await Companies.getCompanyById(principal.idEmpresa || principal.company_id);
-          setEmpresa(emp);
+          const comp = await Companies.getCompanyById(
+            principal.idEmpresa || principal.company_id
+          );
+          setEmpresa(comp);
         } else {
-          const emp = await Companies.getMyCompany();
-          setEmpresa(emp);
+          const comp = await Companies.getMyCompany().catch(() => null);
+          setEmpresa(comp);
         }
-      } catch (err) {
-        console.error("Error fetching user/employee/company data:", err);
+      } catch {
+        /* silencioso */
       }
-    };
-    fetchUserData();
+    })();
   }, []);
 
+  // Helpers
   const isActive = (to) => location.pathname === to;
 
   useEffect(() => {
@@ -115,6 +126,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
       location.pathname.startsWith("/proveedores")
     ) setOpenMainSubMenu("Administración");
     else if (location.pathname.startsWith("/trabajos")) setOpenMainSubMenu("Trabajos");
+    else setOpenMainSubMenu(null);
 
     if (mdDown && onClose) onClose(); // cerrar en móvil al navegar
   }, [location.pathname, mdDown, onClose]);
@@ -127,6 +139,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     setOpenInnerSubMenu((prev) => (prev === submenu ? null : submenu));
   };
 
+  // Estilos del pro-sidebar
   const sidebarStyles = {
     "& .pro-sidebar-inner": {
       background: `${ui.base} !important`,
@@ -140,7 +153,8 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
       padding: "10px 14px !important",
       margin: "6px 8px",
       borderRadius: "12px",
-      transition: "background-color .18s ease, color .18s ease, transform .1s ease",
+      transition:
+        "background-color .18s ease, color .18s ease, transform .1s ease",
     },
     "& .pro-inner-item:hover": {
       backgroundColor: `${ui.hover} !important`,
@@ -168,38 +182,81 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     },
   };
 
+  // Contenido del sidebar (tu menú completo)
   const content = (
     <Box sx={sidebarStyles}>
-      <ProSidebar collapsed={isCollapsed} breakPoint="md" width={SIDEBAR_WIDTH} collapsedWidth={COLLAPSED_WIDTH}>
+      <ProSidebar
+        collapsed={isCollapsed}
+        breakPoint="md"
+        width={SIDEBAR_WIDTH}
+        collapsedWidth={COLLAPSED_WIDTH}
+      >
         <Menu iconShape="square">
-          <MenuItem onClick={() => setIsCollapsed(!isCollapsed)} icon={isCollapsed ? <MenuOutlinedIcon /> : undefined}>
+          {/* CABECERA */}
+          <MenuItem
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            icon={isCollapsed ? <MenuOutlinedIcon /> : undefined}
+          >
             {!isCollapsed && (
               <Box display="flex" alignItems="center" ml="10px">
                 <Typography variant="h6" sx={{ color: ui.activeText }}>
-                  {empresa ? (empresa.NomComercial || empresa.name || empresa.trade_name || "Mi Empresa") : "Cargando empresa..."}
+                  {empresa
+                    ? (empresa.NomComercial ||
+                        empresa.name ||
+                        empresa.trade_name ||
+                        "Mi Empresa")
+                    : "Cargando empresa..."}
                 </Typography>
-                <IconButton onClick={() => setIsCollapsed(!isCollapsed)} sx={{ ml: "auto", color: ui.activeText }}>
+                <IconButton
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  sx={{ ml: "auto", color: ui.activeText }}
+                >
                   <MenuOutlinedIcon />
                 </IconButton>
               </Box>
             )}
           </MenuItem>
 
+          {/* TARJETA USUARIO */}
           {!isCollapsed && (
-            <Box sx={{ p: 2, display: "flex", mb: 1.5, alignItems: "center", background: ui.baseSoft, borderRadius: "12px", mx: 1 }}>
+            <Box
+              sx={{
+                p: 2,
+                display: "flex",
+                mb: 1.5,
+                alignItems: "center",
+                background: ui.baseSoft,
+                borderRadius: "12px",
+                mx: 1,
+              }}
+            >
               {userData && (
                 <>
                   <img
                     src={userData.Imagen || userData.image_url}
                     alt="User"
-                    style={{ width: 48, height: 48, borderRadius: "50%", marginRight: 12, objectFit: "cover" }}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      marginRight: 12,
+                      objectFit: "cover",
+                    }}
                   />
                   <Box>
-                    <Typography variant="subtitle1" sx={{ color: ui.activeText, lineHeight: 1.2 }}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ color: ui.activeText, lineHeight: 1.2 }}
+                    >
                       {userData.Nombre || userData.name}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: ui.activeText, opacity: 0.85 }}>
-                      {(userData.idRol === 1 || userData.role_id === 1) ? "Administrador" : userData.Rol || userData.role_name || "Usuario"}
+                    <Typography
+                      variant="caption"
+                      sx={{ color: ui.activeText, opacity: 0.85 }}
+                    >
+                      {esAdmin
+                        ? "Administrador"
+                        : userData.Rol || userData.role_name || "Usuario"}
                     </Typography>
                   </Box>
                 </>
@@ -207,8 +264,14 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             </Box>
           )}
 
-          <MenuItem className={isActive("/dashboard") ? "active" : ""} icon={<HomeOutlinedIcon />}>
-            <Link to="/dashboard" style={{ textDecoration: "none", color: "inherit" }}>Panel General</Link>
+          {/* Inicio */}
+          <MenuItem
+            className={isActive("/dashboard") ? "active" : ""}
+            icon={<HomeOutlinedIcon />}
+          >
+            <Link to="/dashboard" style={{ textDecoration: "none", color: "inherit" }}>
+              Panel General
+            </Link>
           </MenuItem>
 
           {/* === Trabajos === */}
@@ -219,23 +282,55 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             title={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "inherit" }}>
                 <span>Trabajos</span>
-                <Box component="span" sx={{ ml: 0.5, px: 1, py: "2px", fontSize: 11, fontWeight: 700, lineHeight: 1, borderRadius: "999px", bgcolor: ui.tagBlue, color: "#fff" }}>
+                <Box
+                  component="span"
+                  sx={{
+                    ml: 0.5,
+                    px: 1,
+                    py: "2px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    borderRadius: "999px",
+                    bgcolor: ui.tagBlue,
+                    color: "#fff",
+                  }}
+                >
                   Ingreso Trabajo
                 </Box>
               </Box>
             }
           >
-            <MenuItem icon={<AddCircleOutlineIcon fontSize="small" />} className={isActive("/trabajos/ingresar") ? "active" : ""}>
-              <Link to="/trabajos/ingresar" style={{ textDecoration: "none", color: "inherit" }}>Ingresar Trabajo</Link>
+            <MenuItem
+              icon={<AddCircleOutlineIcon fontSize="small" />}
+              className={isActive("/trabajos/ingresar") ? "active" : ""}
+            >
+              <Link to="/trabajos/ingresar" style={{ textDecoration: "none", color: "inherit" }}>
+                Ingresar Trabajo
+              </Link>
             </MenuItem>
-            <MenuItem icon={<SearchIcon fontSize="small" />} className={isActive("/trabajos/consultar") ? "active" : ""}>
-              <Link to="/trabajos/consultar" style={{ textDecoration: "none", color: "inherit" }}>Consulta y Modificación</Link>
+            <MenuItem
+              icon={<SearchIcon fontSize="small" />}
+              className={isActive("/trabajos/consultar") ? "active" : ""}
+            >
+              <Link to="/trabajos/consultar" style={{ textDecoration: "none", color: "inherit" }}>
+                Consulta y Modificación
+              </Link>
             </MenuItem>
           </SubMenu>
 
           {/* Ventas */}
-          <SubMenu title="Ventas" icon={<ReceiptOutlinedIcon />} open={openMainSubMenu === "Ventas"} onClick={() => handleMainSubMenuToggle("Ventas")}>
-            <MenuItem><Link to="/facturacion" style={{ textDecoration: "none", color: "inherit" }}>Nueva Venta (F12 o Ctrl+N)</Link></MenuItem>
+          <SubMenu
+            title="Ventas"
+            icon={<ReceiptOutlinedIcon />}
+            open={openMainSubMenu === "Ventas"}
+            onClick={() => handleMainSubMenuToggle("Ventas")}
+          >
+            <MenuItem>
+              <Link to="/facturacion" style={{ textDecoration: "none", color: "inherit" }}>
+                Nueva Venta (F12 o Ctrl+N)
+              </Link>
+            </MenuItem>
             <MenuItem>Buscar Comprobante</MenuItem>
             <MenuItem>Anular Comprobante</MenuItem>
             <MenuItem>Comprobante Asociado</MenuItem>
@@ -243,11 +338,19 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           </SubMenu>
 
           {/* Caja */}
-          <SubMenu title="Caja" icon={<LocalAtmIcon />} open={openMainSubMenu === "Caja"} onClick={() => handleMainSubMenuToggle("Caja")}>
+          <SubMenu
+            title="Caja"
+            icon={<LocalAtmIcon />}
+            open={openMainSubMenu === "Caja"}
+            onClick={() => handleMainSubMenuToggle("Caja")}
+          >
             <SubMenu
               title="Extracciones e Ingresos"
               open={openInnerSubMenu === "Extracciones e Ingresos"}
-              onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Extracciones e Ingresos"); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Extracciones e Ingresos");
+              }}
             >
               <MenuItem>Extracción de Caja</MenuItem>
               <MenuItem>Ingreso de Caja</MenuItem>
@@ -259,34 +362,73 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           </SubMenu>
 
           {/* Clientes */}
-          <SubMenu title="Clientes" icon={<PeopleOutlinedIcon />} open={openMainSubMenu === "Clientes"} onClick={() => handleMainSubMenuToggle("Clientes")}>
-            <MenuItem icon={<AccessibilityIcon fontSize="small" />} className={isActive("/clientes") ? "active" : ""}>
-              <Link to="/clientes" style={{ textDecoration: "none", color: "inherit" }}>Lista de Clientes</Link>
+          <SubMenu
+            title="Clientes"
+            icon={<PeopleOutlinedIcon />}
+            open={openMainSubMenu === "Clientes"}
+            onClick={() => handleMainSubMenuToggle("Clientes")}
+          >
+            <MenuItem
+              icon={<AccessibilityIcon fontSize="small" />}
+              className={isActive("/clientes") ? "active" : ""}
+            >
+              <Link to="/clientes" style={{ textDecoration: "none", color: "inherit" }}>
+                Lista de Clientes
+              </Link>
             </MenuItem>
             <MenuItem>Clientes de Cuentas Corrientes (Ctrl+K)</MenuItem>
             <MenuItem>Alta de Cliente (Ctrl+E)</MenuItem>
           </SubMenu>
 
           {/* Proveedores */}
-          <SubMenu icon={<AddBusinessIcon />} title="Proveedores" open={openMainSubMenu === "Proveedores"} onClick={() => handleMainSubMenuToggle("Proveedores")}>
+          <SubMenu
+            icon={<AddBusinessIcon />}
+            title="Proveedores"
+            open={openMainSubMenu === "Proveedores"}
+            onClick={() => handleMainSubMenuToggle("Proveedores")}
+          >
             <MenuItem>Alta de Entrada de Mercadería</MenuItem>
             <MenuItem>Buscar Entrada de Mercadería</MenuItem>
           </SubMenu>
 
           {/* Estadísticas */}
-          <SubMenu icon={<SignalCellularAltIcon />} title="Estadísticas" open={openMainSubMenu === "Estadísticas"} onClick={() => handleMainSubMenuToggle("Estadísticas")}>
+          <SubMenu
+            icon={<SignalCellularAltIcon />}
+            title="Estadísticas"
+            open={openMainSubMenu === "Estadísticas"}
+            onClick={() => handleMainSubMenuToggle("Estadísticas")}
+          >
             <MenuItem>Ventas por Usuarios</MenuItem>
             <MenuItem>Artículos Vendidos</MenuItem>
           </SubMenu>
 
           {/* Reportes/Listados */}
-          <SubMenu icon={<AnalyticsIcon />} title="Reportes/Listados" open={openMainSubMenu === "Reportes/Listados"} onClick={() => handleMainSubMenuToggle("Reportes/Listados")}>
-            <SubMenu title="Precio" open={openInnerSubMenu === "Precio"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Precio"); }}>
+          <SubMenu
+            icon={<AnalyticsIcon />}
+            title="Reportes/Listados"
+            open={openMainSubMenu === "Reportes/Listados"}
+            onClick={() => handleMainSubMenuToggle("Reportes/Listados")}
+          >
+            <SubMenu
+              title="Precio"
+              open={openInnerSubMenu === "Precio"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Precio");
+              }}
+            >
               <MenuItem>Precio General</MenuItem>
               <MenuItem>Precio por Categoría</MenuItem>
             </SubMenu>
 
-            <SubMenu title="Ventas" open={openInnerSubMenu === "Ventas"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Ventas"); }}>
+            <SubMenu
+              title="Ventas"
+              open={openInnerSubMenu === "Ventas"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Ventas");
+              }}
+            >
               <MenuItem>Venta Detallada</MenuItem>
               <MenuItem>Ventas por Categoría</MenuItem>
               <MenuItem>Ventas Diarias</MenuItem>
@@ -295,11 +437,25 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
               <MenuItem>Costos/Ganancias</MenuItem>
             </SubMenu>
 
-            <SubMenu title="Compras" open={openInnerSubMenu === "Compras"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Compras"); }}>
+            <SubMenu
+              title="Compras"
+              open={openInnerSubMenu === "Compras"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Compras");
+              }}
+            >
               <MenuItem>Compras por Proveedor</MenuItem>
             </SubMenu>
 
-            <SubMenu title="Fiscales" open={openInnerSubMenu === "Fiscales"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Fiscales"); }}>
+            <SubMenu
+              title="Fiscales"
+              open={openInnerSubMenu === "Fiscales"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Fiscales");
+              }}
+            >
               <MenuItem>Libro de IVA Ventas</MenuItem>
               <MenuItem>Libro de IVA Compras</MenuItem>
               <MenuItem>Ventas por Jurisdicción</MenuItem>
@@ -307,7 +463,14 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
 
             <MenuItem>Artículos a Reponer Stock</MenuItem>
 
-            <SubMenu title="Artículos" open={openInnerSubMenu === "Artículos"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Artículos"); }}>
+            <SubMenu
+              title="Artículos"
+              open={openInnerSubMenu === "Artículos"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Artículos");
+              }}
+            >
               <MenuItem>Por Categoría</MenuItem>
               <MenuItem>Por Proveedor</MenuItem>
               <MenuItem>A Vencer</MenuItem>
@@ -315,7 +478,14 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
               <MenuItem>Inventario por Costo</MenuItem>
             </SubMenu>
 
-            <SubMenu title="Clientes" open={openInnerSubMenu === "Clientes"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Clientes"); }}>
+            <SubMenu
+              title="Clientes"
+              open={openInnerSubMenu === "Clientes"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Clientes");
+              }}
+            >
               <MenuItem>Clientes</MenuItem>
               <MenuItem>Cuentas Corrientes</MenuItem>
               <MenuItem>Cuentas Corrientes por Vencer</MenuItem>
@@ -323,20 +493,44 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           </SubMenu>
 
           {/* Artículos */}
-          <SubMenu icon={<InventoryIcon />} title="Artículos" open={openMainSubMenu === "Artículos"} onClick={() => handleMainSubMenuToggle("Artículos")}>
+          <SubMenu
+            icon={<InventoryIcon />}
+            title="Artículos"
+            open={openMainSubMenu === "Artículos"}
+            onClick={() => handleMainSubMenuToggle("Artículos")}
+          >
             <MenuItem>Consulta de Precios (F9)</MenuItem>
-            <MenuItem icon={<ArticleIcon />} className={isActive("/articulos") ? "active" : ""}>
-              <Link to="/articulos" style={{ textDecoration: "none", color: "inherit" }}>Buscar Artículos (Ctrl + S)</Link>
+            <MenuItem
+              icon={<ArticleIcon />}
+              className={isActive("/articulos") ? "active" : ""}
+            >
+              <Link to="/articulos" style={{ textDecoration: "none", color: "inherit" }}>
+                Buscar Artículos (Ctrl + S)
+              </Link>
             </MenuItem>
-            {tienePermiso("Articulos: Permite dar de alta artículos") && <MenuItem>Alta de Artículos (Ctrl + A)</MenuItem>}
+            {tienePermiso("Articulos: Permite dar de alta artículos") && (
+              <MenuItem>Alta de Artículos (Ctrl + A)</MenuItem>
+            )}
             <MenuItem>Promociones</MenuItem>
             <MenuItem>Actualización Masiva de Precios</MenuItem>
             <MenuItem>Impresión de Código de Barras</MenuItem>
           </SubMenu>
 
           {/* Operaciones */}
-          <SubMenu icon={<ManageSearchIcon />} title="Operaciones" open={openMainSubMenu === "Operaciones"} onClick={() => handleMainSubMenuToggle("Operaciones")}>
-            <SubMenu title="Factura Electrónica" open={openInnerSubMenu === "Factura Electrónica"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Factura Electrónica"); }}>
+          <SubMenu
+            icon={<ManageSearchIcon />}
+            title="Operaciones"
+            open={openMainSubMenu === "Operaciones"}
+            onClick={() => handleMainSubMenuToggle("Operaciones")}
+          >
+            <SubMenu
+              title="Factura Electrónica"
+              open={openInnerSubMenu === "Factura Electrónica"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Factura Electrónica");
+              }}
+            >
               <MenuItem>Reproceso de Factura Electrónica</MenuItem>
             </SubMenu>
             <MenuItem>Régimen de Información de Ventas RG3685</MenuItem>
@@ -344,18 +538,38 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           </SubMenu>
 
           {/* Administración */}
-          <SubMenu icon={<TuneIcon />} title="Administración" open={openMainSubMenu === "Administración"} onClick={() => handleMainSubMenuToggle("Administración")}>
-            <MenuItem icon={<CategoryIcon fontSize="small" />} className={isActive("/categorias") ? "active" : ""}>
-              <Link to="/categorias" style={{ textDecoration: "none", color: "inherit" }}>Categorías</Link>
+          <SubMenu
+            icon={<TuneIcon />}
+            title="Administración"
+            open={openMainSubMenu === "Administración"}
+            onClick={() => handleMainSubMenuToggle("Administración")}
+          >
+            <MenuItem
+              icon={<CategoryIcon fontSize="small" />}
+              className={isActive("/categorias") ? "active" : ""}
+            >
+              <Link to="/categorias" style={{ textDecoration: "none", color: "inherit" }}>
+                Categorías
+              </Link>
             </MenuItem>
 
-            <MenuItem icon={<GroupsIcon fontSize="small" />} className={isActive("/proveedores") ? "active" : ""}>
-              <Link to="/proveedores" style={{ textDecoration: "none", color: "inherit" }}>Proveedores</Link>
+            <MenuItem
+              icon={<GroupsIcon fontSize="small" />}
+              className={isActive("/proveedores") ? "active" : ""}
+            >
+              <Link to="/proveedores" style={{ textDecoration: "none", color: "inherit" }}>
+                Proveedores
+              </Link>
             </MenuItem>
 
-            {((userData?.idRol === 1) || (userData?.role_id === 1)) && (
-              <MenuItem icon={<PersonIcon fontSize="small" />} className={isActive("/team") ? "active" : ""}>
-                <Link to="/team" style={{ textDecoration: "none", color: "inherit" }}>Usuarios</Link>
+            {esAdmin && (
+              <MenuItem
+                icon={<PersonIcon fontSize="small" />}
+                className={isActive("/team") ? "active" : ""}
+              >
+                <Link to="/team" style={{ textDecoration: "none", color: "inherit" }}>
+                  Usuarios
+                </Link>
               </MenuItem>
             )}
 
@@ -363,19 +577,42 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             <MenuItem>Descuentos</MenuItem>
             <MenuItem>Tipos de Mov. de Caja</MenuItem>
 
-            <SubMenu title="Importación de Datos (Excel)" open={openInnerSubMenu === "Importación de Datos (Excel)"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Importación de Datos (Excel)"); }}>
+            <SubMenu
+              title="Importación de Datos (Excel)"
+              open={openInnerSubMenu === "Importación de Datos (Excel)"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Importación de Datos (Excel)");
+              }}
+            >
               <MenuItem>Artículos CSV</MenuItem>
               <MenuItem>Clientes CSV</MenuItem>
               <MenuItem>Categorías CSV</MenuItem>
             </SubMenu>
 
-            <SubMenu title="Exportación de Datos (Excel)" open={openInnerSubMenu === "Exportación de Datos (Excel)"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Exportación de Datos (Excel)"); }}>
+            <SubMenu
+              title="Exportación de Datos (Excel)"
+              open={openInnerSubMenu === "Exportación de Datos (Excel)"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Exportación de Datos (Excel)");
+              }}
+            >
               <MenuItem>Artículos CSV</MenuItem>
             </SubMenu>
 
-            <SubMenu title="Configuración del Sistema" open={openInnerSubMenu === "Configuración del Sistema"} onClick={(e) => { e.stopPropagation(); handleInnerSubMenuToggle("Configuración del Sistema)"); }}>
+            <SubMenu
+              title="Configuración del Sistema"
+              open={openInnerSubMenu === "Configuración del Sistema"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInnerSubMenuToggle("Configuración del Sistema");
+              }}
+            >
               <MenuItem icon={<ApartmentIcon fontSize="small" />}>
-                <Link to="/settings" style={{ textDecoration: "none", color: "inherit" }}>Empresa</Link>
+                <Link to="/settings" style={{ textDecoration: "none", color: "inherit" }}>
+                  Empresa
+                </Link>
               </MenuItem>
               <MenuItem>Comprobantes</MenuItem>
               <MenuItem>Impresoras</MenuItem>
@@ -394,6 +631,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     </Box>
   );
 
+  // Drawer en móvil
   if (mdDown) {
     return (
       <Drawer
@@ -408,8 +646,18 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     );
   }
 
+  // Fijo en desktop
   return (
-    <Box sx={{ position: "fixed", left: 0, top: 0, height: "100vh", width: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH, zIndex: 1200 }}>
+    <Box
+      sx={{
+        position: "fixed",
+        left: 0,
+        top: 0,
+        height: "100vh",
+        width: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH,
+        zIndex: 1200,
+      }}
+    >
       {content}
     </Box>
   );

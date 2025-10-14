@@ -1,19 +1,13 @@
+// src/pages/Login.jsx (o donde lo tengas)
 import React, { useState, useEffect } from "react";
 import {
-  Container,
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Checkbox,
-  FormControlLabel,
-  Link,
+  Container, Box, TextField, Button, Typography,
+  Checkbox, FormControlLabel, Link,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
 import { useNavigate } from "react-router-dom";
-import { Auth } from "../services";
+import { Auth } from "../services"; // ← ahora existe y tiene login(email, password)
 
-// 🎨 Si usás theme/tokens (queda idéntico visualmente)
 import { useTheme } from "@mui/material/styles";
 import { tokens } from "../theme";
 
@@ -23,7 +17,6 @@ const Login = ({ setIsAuthenticated }) => {
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
 
-  // Paleta ARTDENT (con fallback por si no hay theme/tokens)
   const theme = useTheme();
   const t = tokens?.(theme.palette?.mode || "light") || {};
   const brand = t?.brand || {};
@@ -47,28 +40,25 @@ const Login = ({ setIsAuthenticated }) => {
     setErrorMessage("");
 
     try {
-      // Tu backend actual: Auth.login(email, password) -> { token, user }
       const { token, user } = await Auth.login(Email, Password);
-
       if (!token) {
         setErrorMessage("Usuario o contraseña incorrectos");
         return;
       }
-
       localStorage.setItem("token", token);
       if (user) localStorage.setItem("user", JSON.stringify(user));
-
-      // si tenés un /auth/me para permisos, podés cargarlos después del login:
-      // const me = await Auth.me(); localStorage.setItem("userPermissions", JSON.stringify(me.permissions || []));
-
       if (typeof setIsAuthenticated === "function") setIsAuthenticated(true);
       navigate("/dashboard");
     } catch (error) {
+      // Mensaje amable según tipo de error
+      const data = error?.response?.data;
       const msg =
-        error?.response?.data?.message ||
+        (Array.isArray(data?.errors?.email) && data.errors.email[0]) ||
+        data?.message ||
         error?.message ||
-        "No se pudo conectar al servidor.";
+        "No se pudo iniciar sesión.";
       setErrorMessage(msg);
+      console.error(error);
     }
   };
 
@@ -265,10 +255,7 @@ const Login = ({ setIsAuthenticated }) => {
               fontSize: "0.9rem",
               fontWeight: 700,
               borderRadius: "30px",
-              "&:hover": {
-                borderColor: c.teal,
-                backgroundColor: `${c.ice}80`,
-              },
+              "&:hover": { borderColor: c.teal, backgroundColor: `${c.ice}80` },
             }}
             startIcon={<GoogleIcon />}
           >

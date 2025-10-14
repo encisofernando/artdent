@@ -1,22 +1,28 @@
-
+// src/services/authService.js
 import api from "./api";
-import { unwrap } from "./utils";
 
-export const login = async (email, password) => {
-  const res = await api.post("/auth/login", { email, password });
-  const { token, user } = res.data;
-  if (token) localStorage.setItem("token", token);
-  return { token, user };
+const register = async ({ name, email, password, password_confirmation }) => {
+  const { data } = await api.post("/auth/register", {
+    name, email, password, password_confirmation,
+  });
+  if (data?.token) localStorage.setItem("token", data.token);
+  return data;
 };
 
-export const me = async () => unwrap(await api.get("/auth/me"));
+const login = async ({ email, password }) => {
+  const { data } = await api.post("/auth/login", { email, password });
+  if (data?.token) localStorage.setItem("token", data.token);
+  return data;
+};
 
-export const logout = async () => {
-  try { await api.post("/auth/logout"); } catch (_) {}
+const me = async () => {
+  const { data } = await api.get("/auth/me");
+  return data;
+};
+
+const logout = async () => {
+  try { await api.post("/auth/logout"); } catch {}
   localStorage.removeItem("token");
 };
 
-export const register = async (payload) => unwrap(await api.post("/auth/register", payload));
-
-export const createPassword = async ({ token, password }) =>
-  unwrap(await api.post("/auth/create-password", { token, password }));
+export default { register, login, me, logout };

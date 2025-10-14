@@ -12,9 +12,9 @@ use App\Http\Controllers\WarehousesController;
 
 // ── Público (sin token)
 Route::prefix('auth')->group(function () {
-    Route::post('login',        [AuthController::class, 'login']);
-    Route::post('register',     [AuthController::class, 'register']);      // opcional
-    Route::post('create-password', [AuthController::class, 'createPassword']); // para el flujo de CrearContraseña.jsx
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/create-password', [AuthController::class, 'createPassword']); // para el flujo de CrearContraseña.jsx
 });
 
 // ── Protegido (con token Bearer)
