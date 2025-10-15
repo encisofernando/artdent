@@ -19,7 +19,7 @@ import Pie from "./scenes/pie";
 import FAQ from "./scenes/faq";
 import Geography from "./scenes/geography";
 import Calendar from "./scenes/calendar/calendar";
-import Ventas from "./scenes/facturacion/Facturacion2";
+import Ventas from "./scenes/facturacion/FacturarPOS";
 import Articulos from "./scenes/articulos";
 import Pruebas from "./scenes/pruebas/indexfacturacion";
 import Settings from "./scenes/settings/Settings";

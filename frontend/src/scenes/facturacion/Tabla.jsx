@@ -1,13 +1,19 @@
+// src/scenes/facturacion/Tabla.jsx
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Typography, useTheme, Modal, FormControl, InputLabel, Select, MenuItem, TextField, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import {
+  Box, Button, Typography, useTheme, Modal, FormControl, InputLabel,
+  Select, MenuItem, TextField, Tooltip, IconButton, Dialog, DialogTitle,
+  DialogContent, DialogActions
+} from "@mui/material";
 import InfoIcon from '@mui/icons-material/Info';
-import { tokens } from '../../theme';
 import { DataGrid, GridFooterContainer, GridPagination } from '@mui/x-data-grid';
 import BotonesFactura from './BotonesFactura';
 
-const Tabla = ({ productos, setProductosAgregados, tipoComprobante, getInitialDateTime, numeroComprobante, setFormData, clienteSeleccionado }) => {
+const Tabla = ({
+  productos, setProductosAgregados, tipoComprobante,
+  getInitialDateTime, numeroComprobante, setFormData, clienteSeleccionado
+}) => {
   const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
   const [open, setOpen] = useState(false);
   const [openInfoImpuestos, setOpenInfoImpuestos] = useState(false);
   const [rows, setRows] = useState(productos);
@@ -32,21 +38,27 @@ const Tabla = ({ productos, setProductosAgregados, tipoComprobante, getInitialDa
   ];
 
   const columns = [
-    { field: "CodigoBarra", headerName: "Código de Barra", flex: 1 },
-    { field: "Nombre", headerName: "Nombre", flex: 1 },
-    { field: "PrecioPublico", headerName: "Precio Unitario $", flex: 1 },
-    { field: "cantidad", headerName: "Cantidad", flex: 1 },
-    { field: "subtotal", headerName: "Subtotal $", flex: 1 },
+    { field: "CodigoBarra", headerName: "Código de Barra", flex: 1, minWidth: 130 },
+    { field: "Nombre", headerName: "Nombre", flex: 1.4, minWidth: 160 },
+    {
+      field: "PrecioPublico", headerName: "Precio Unitario $", flex: 0.9, minWidth: 140,
+      valueFormatter: ({ value }) => Number(value || 0).toFixed(2)
+    },
+    { field: "cantidad", headerName: "Cant.", flex: 0.6, minWidth: 90 },
+    {
+      field: "subtotal", headerName: "Subtotal $", flex: 0.9, minWidth: 120,
+      valueFormatter: ({ value }) => Number(value || 0).toFixed(2)
+    },
     {
       field: "Acciones",
       headerName: "Acciones",
-      flex: 1,
+      flex: 1, minWidth: 220,
       renderCell: (params) => (
         <>
-          <Button variant="contained" color="secondary" onClick={() => handleOpenEditar(params.row)} sx={{ mr: 1 }}>
+          <Button variant="outlined" color="secondary" onClick={() => handleOpenEditar(params.row)} sx={{ mr: 1 }}>
             Modificar
           </Button>
-          <Button variant="contained" color="error" onClick={() => handleDelete(params.row.idArticulo)}>
+          <Button variant="outlined" color="error" onClick={() => handleDelete(params.row.idArticulo)}>
             Eliminar
           </Button>
         </>
@@ -72,7 +84,10 @@ const Tabla = ({ productos, setProductosAgregados, tipoComprobante, getInitialDa
   const limpiarFilas = () => {
     setRows([]);
     setProductosAgregados([]);
-    setFormData({ cliente: '', tipoComprobante: '', numeroComprobante: '', fechaEmision: getInitialDateTime(), observaciones: '', cantidadProducto: 0, selectedProduct: null });
+    setFormData?.({
+      cliente: '', tipoComprobante: '', numeroComprobante: '',
+      fechaEmision: getInitialDateTime(), observaciones: '', cantidadProducto: 0, selectedProduct: null
+    });
     setValues({ recargo: 0, percepcion: '', impuesto: 0 });
     setSelectedDescuento(0);
   };
@@ -88,39 +103,52 @@ const Tabla = ({ productos, setProductosAgregados, tipoComprobante, getInitialDa
   const CustomFooter = () => {
     const totalFinal = calcularTotalFinal(rows);
     return (
-      <GridFooterContainer>
-        <Box display="flex" alignItems="center" pl={2}>
-          <Box ml={2} display="flex" alignItems="center">
-            <Typography variant="h6" mr={1}>Recargo:</Typography>
-            <TextField type="number" name="recargo" value={values.recargo} onChange={handleChange} inputProps={{ min: 0, step: "0.01" }} size="small" sx={{ width: "100px" }} />
+      <GridFooterContainer sx={{ px: 1.5, borderTop: `1px solid ${theme.palette.divider}` }}>
+        <Box display="flex" alignItems="center" flexWrap="wrap" gap={1.5} py={1}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="subtitle2">Recargo:</Typography>
+            <TextField type="number" name="recargo" value={values.recargo}
+              onChange={handleChange} inputProps={{ min: 0, step: "0.01" }} size="small" sx={{ width: 110 }} />
           </Box>
-          <Box ml={2} display="flex" alignItems="center">
-            <Typography variant="h6" mr={1}>Descuento:</Typography>
-            <FormControl fullWidth size="small" sx={{ minWidth: 150 }}>
+
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="subtitle2">Descuento:</Typography>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel id="descuento-label">Descuento</InputLabel>
-              <Select labelId="descuento-label" id="descuento" name="descuento" value={selectedDescuento} label="Descuento" onChange={handleDescuentoChange}>
+              <Select labelId="descuento-label" id="descuento" name="descuento"
+                value={selectedDescuento} label="Descuento" onChange={handleDescuentoChange}>
                 {descuentos.map((d) => (<MenuItem key={d.value} value={d.value}>{d.label}</MenuItem>))}
               </Select>
             </FormControl>
           </Box>
-          <Box ml={2} display="flex" alignItems="center">
-            <Typography variant="h6" mr={1}>Percepción:</Typography>
-            <FormControl fullWidth size="small" sx={{ minWidth: 150 }}>
+
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="subtitle2">Percepción:</Typography>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel id="percepcion-label">Percepción</InputLabel>
-              <Select labelId="percepcion-label" id="percepcion" name="percepcion" value={values.percepcion} label="Percepción" onChange={handleChange}>
-                {percepciones.map((p) => (<MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>))}
+              <Select labelId="percepcion-label" id="percepcion" name="percepcion"
+                value={values.percepcion} label="Percepción" onChange={handleChange}>
+                {[
+                  { value: 0, label: "Sin Percepción" },
+                  { value: 1, label: "1%" },
+                  { value: 1.5, label: "1.5%" },
+                  { value: 2, label: "2%" },
+                ].map((p) => (<MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>))}
               </Select>
             </FormControl>
           </Box>
-          <Box ml={2} display="flex" alignItems="center">
-            <Typography variant="h6" mr={1}>Impuestos:</Typography>
+
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="subtitle2">Impuestos:</Typography>
             <Tooltip title="Información sobre impuestos">
-              <IconButton onClick={() => setOpenInfoImpuestos(true)}><InfoIcon /></IconButton>
+              <IconButton onClick={() => setOpenInfoImpuestos(true)} size="small"><InfoIcon /></IconButton>
             </Tooltip>
           </Box>
-          <Box ml={25} display="flex" alignItems="center">
-            <Typography variant="h6" mr={1}>Total Final:</Typography>
-            <Typography variant="h6" component="div">${totalFinal.toFixed(2)}</Typography>
+
+          <Box sx={{ flex: 1 }} />
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="h6">Total:</Typography>
+            <Typography variant="h6" fontWeight={800}>${totalFinal.toFixed(2)}</Typography>
           </Box>
         </Box>
         <GridPagination />
@@ -129,27 +157,37 @@ const Tabla = ({ productos, setProductosAgregados, tipoComprobante, getInitialDa
   };
 
   return (
-    <Box m="20px">
-      <Typography variant="h4" component="div" gutterBottom sx={{ textAlign: 'center' }}>
-        Detalles de la factura
-      </Typography>
-
-      <Box m="20px 0 0 0" height="33vh" maxWidth="100%"
+    <Box>
+      {/* DataGrid */}
+      <Box
         sx={{
-          "& .MuiDataGrid-root": { border: "none" },
-          "& .MuiDataGrid-cell": { borderBottom: "none" },
-          "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700], borderBottom: "none" },
-          "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400], overflowY: 'auto' },
-          "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700] },
+          mt: 1,
+          "& .MuiDataGrid-root": { border: `1px solid ${theme.palette.divider}`, borderRadius: 2 },
+          "& .MuiDataGrid-columnHeaders": { backgroundColor: theme.palette.background.default },
+          "& .MuiDataGrid-virtualScroller": { backgroundColor: theme.palette.background.paper },
+          "& .MuiDataGrid-footerContainer": { backgroundColor: theme.palette.background.default },
+          maxHeight: 340,
         }}
       >
-        <DataGrid rows={rows} columns={columns} pageSize={10} rowsPerPageOptions={[5, 10, 20]} getRowId={(row) => row.idArticulo} autoHeight={false} components={{ Footer: CustomFooter }} />
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          pageSize={5}
+          rowsPerPageOptions={[5, 10, 20]}
+          getRowId={(row) => row.idArticulo}
+          autoHeight={false}
+          components={{ Footer: CustomFooter }}
+        />
       </Box>
 
-      <Modal open={open} onClose={handleClose} aria-labelledby="modal-modal-title" aria-describedby="modal-modal-description">
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', border: '2px solid #000', boxShadow: 24, p: 4 }}>
-          <Typography id="modal-modal-title" variant="h6" component="h2">{modalMessage}</Typography>
-          <Button onClick={handleClose}>Cerrar</Button>
+      {/* Modales y diálogos */}
+      <Modal open={open} onClose={handleClose}>
+        <Box sx={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, boxShadow: 24, p: 3, borderRadius: 2
+        }}>
+          <Typography variant="h6">{modalMessage}</Typography>
+          <Button onClick={handleClose} sx={{ mt: 1 }}>Cerrar</Button>
         </Box>
       </Modal>
 
@@ -164,7 +202,17 @@ const Tabla = ({ productos, setProductosAgregados, tipoComprobante, getInitialDa
         <DialogActions><Button onClick={() => setOpenInfoImpuestos(false)} color="primary">Cerrar</Button></DialogActions>
       </Dialog>
 
-      <BotonesFactura clienteSeleccionado={clienteSeleccionado} tipoComprobante={tipoComprobante} numeroComprobante={numeroComprobante} limpiarProductos={limpiarFilas} calcularTotalFinal={calcularTotalFinal} rows={rows} />
+      {/* Botonera por si usás Tabla sola (si la usás dentro de FacturarPOS ya mandamos estos props) */}
+      {!clienteSeleccionado && (
+        <BotonesFactura
+          clienteSeleccionado={clienteSeleccionado}
+          tipoComprobante={tipoComprobante}
+          numeroComprobante={numeroComprobante}
+          limpiarProductos={limpiarFilas}
+          calcularTotalFinal={calcularTotalFinal}
+          rows={rows}
+        />
+      )}
     </Box>
   );
 };

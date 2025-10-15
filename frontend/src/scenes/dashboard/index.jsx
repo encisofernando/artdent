@@ -25,15 +25,25 @@ const Dashboard = () => {
 
         <Box>
           <Button
+            variant="contained"
+            color="secondary"             // usa la paleta del tema (verde ARTDENT)
+            startIcon={<DownloadOutlinedIcon />}
             sx={{
-              backgroundColor: colors.blueAccent[700],
-              color: colors.grey[100],
-              fontSize: "14px",
-              fontWeight: "bold",
-              padding: "10px 20px",
+              px: 2.25,
+              py: 1.25,
+              borderRadius: 2,
+              boxShadow: "none",
+              fontWeight: 700,
+              // borde sutil para ambos temas:
+              border: `1px solid ${theme.palette.divider}`,
+              // mantener legibilidad sin “salto” de sombra
+              "&:hover": {
+                boxShadow: "none",
+                filter: "brightness(0.98)",
+              },
+              "&:active": { transform: "translateY(1px)" },
             }}
           >
-            <DownloadOutlinedIcon sx={{ mr: "10px" }} />
             Descargar Informes
           </Button>
         </Box>
@@ -49,7 +59,7 @@ const Dashboard = () => {
         {/* FILA 1 */}
         <Box
           gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -68,7 +78,7 @@ const Dashboard = () => {
         </Box>
         <Box
           gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -87,7 +97,7 @@ const Dashboard = () => {
         </Box>
         <Box
           gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -106,7 +116,7 @@ const Dashboard = () => {
         </Box>
         <Box
           gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -128,7 +138,7 @@ const Dashboard = () => {
         <Box
           gridColumn="span 8"
           gridRow="span 2"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
         >
           <Box
             mt="25px"
@@ -168,14 +178,14 @@ const Dashboard = () => {
         <Box
           gridColumn="span 4"
           gridRow="span 2"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
           overflow="auto"
         >
           <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
-            borderBottom={`4px solid ${colors.primary[500]}`}
+            borderBottom={`1px solid ${theme.palette.divider}`}
             colors={colors.grey[100]}
             p="15px"
           >
@@ -189,7 +199,7 @@ const Dashboard = () => {
               display="flex"
               justifyContent="space-between"
               alignItems="center"
-              borderBottom={`4px solid ${colors.primary[500]}`}
+              borderBottom={`1px solid ${theme.palette.divider}`}
               p="15px"
             >
               <Box>
@@ -220,7 +230,7 @@ const Dashboard = () => {
         <Box
           gridColumn="span 4"
           gridRow="span 2"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
           p="30px"
         >
           <Typography variant="h5" fontWeight="600">
@@ -246,7 +256,7 @@ const Dashboard = () => {
         <Box
           gridColumn="span 4"
           gridRow="span 2"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
         >
           <Typography
             variant="h5"
@@ -262,7 +272,7 @@ const Dashboard = () => {
         <Box
           gridColumn="span 4"
           gridRow="span 2"
-          backgroundColor={colors.primary[400]}
+          backgroundColor={theme.palette.background.paper}
           padding="30px"
         >
           <Typography

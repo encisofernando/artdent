@@ -45,6 +45,7 @@ export const COLLAPSED_WIDTH = 80;
 const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const isDark = theme.palette.mode === "dark";
   const mdDown = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
 
@@ -54,21 +55,24 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
   const [openInnerSubMenu, setOpenInnerSubMenu] = useState(null);
   const didFetch = useRef(false); // evita doble carga en StrictMode
 
-  // Paleta de la UI del sidebar
+  // Paleta de la UI del sidebar (mode-aware)
   const ui = useMemo(
     () => ({
-      base: colors.azul?.[500] || colors.primary?.[500] || "#397B9C",
-      baseDeep: colors.primary?.[700] || "#274F65",
-      baseSoft: colors.azul?.[600] || "#2F6782",
-      hover: colors.hovermenu?.[500] || colors.blueAccent?.[800] || "#2F6782",
-      text: colors.sidebartext?.[500] || colors.grey?.[100] || "#DAE6F0",
-      activeBg: colors.primary?.[600] || "#2F6782",
-      activeText: "#FFFFFF",
-      divider: "rgba(0,0,0,.18)",
-      tagBg: colors.greenAccent?.[500] || "#5AAD9C",
-      tagBlue: colors.blueAccent?.[400] || "#7CA5C3",
+      base: colors.azul?.[500] || (isDark ? "#1D3B4C" : "#F4F8FB"),
+      baseDeep: isDark ? (colors.primary?.[700] || "#274F65") : "#FFFFFF",
+      baseSoft: isDark
+        ? (colors.azul?.[600] || "#2F6782")
+        : (colors.hovermenu?.[500] || "#E9F2F7"),
+      hover: colors.hovermenu?.[500] || (isDark ? "#2F6782" : "#E9F2F7"),
+      text: isDark
+        ? (colors.sidebartext?.[500] || "#DAE6F0")
+        : (colors.sidebartext?.[500] || "#274F65"),
+      activeBg: isDark ? (colors.primary?.[600] || "#2F6782") : "#E6EEF5",
+      activeText: isDark ? "#FFFFFF" : (colors.sidebartext?.[500] || "#274F65"),
+      divider: isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.08)",
+      tagBg: colors.blueAccent?.[400] || "#7CA5C3",
     }),
-    [colors]
+    [colors, isDark]
   );
 
   // Permisos
@@ -139,57 +143,70 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     setOpenInnerSubMenu((prev) => (prev === submenu ? null : submenu));
   };
 
-  // === Estilos del pro-sidebar (con fixes de altura y scroll) ===
+  // === Estilos del pro-sidebar (altura + scroll + colores por tema) ===
   const sidebarStyles = {
     "& .pro-sidebar-inner": {
       background: `${ui.base} !important`,
-      boxShadow: "0 6px 18px rgba(0,0,0,.35)",
+      boxShadow: "0 6px 18px rgba(0,0,0,.20)",
       borderRight: `1px solid ${ui.divider}`,
-      height: "100vh",            // ocupa toda la pantalla
-      display: "flex",            // columna: cabecera + menú
+      height: "100vh",
+      display: "flex",
       flexDirection: "column",
     },
-    // el contenedor del menú debe crecer y scrollear
+
+    // Menú scrollable
     "& .pro-menu": {
       paddingTop: "4px",
       flex: 1,
-      minHeight: 0,               // necesario para que el overflow funcione
+      minHeight: 0,
       overflowY: "auto",
       paddingBottom: "16px",
+      color: `${ui.text} !important`,
     },
 
     "& .pro-sidebar": { color: ui.text },
+
+    // Ítems
     "& .pro-inner-item": {
       color: `${ui.text} !important`,
       padding: "10px 14px !important",
       margin: "6px 8px",
       borderRadius: "12px",
-      transition:
-        "background-color .18s ease, color .18s ease, transform .1s ease",
+      transition: "background-color .18s ease, color .18s ease, transform .1s ease",
     },
     "& .pro-inner-item:hover": {
       backgroundColor: `${ui.hover} !important`,
       color: `${ui.text} !important`,
     },
+
+    // Contenedor interno de SubMenu (lista expandida)
     "& .pro-sidebar .pro-menu > ul > .pro-sub-menu > .pro-inner-list-item": {
       backgroundColor: `${ui.baseSoft} !important`,
       borderRadius: "12px",
       margin: "4px 8px 8px",
       padding: "6px 6px 8px !important",
+      border: `1px solid ${ui.divider}`,
+      color: `${ui.text} !important`,
     },
+
+    // Estado activo
     "& .pro-menu-item.active > .pro-inner-item, & .pro-inner-item.active": {
       backgroundColor: `${ui.activeBg} !important`,
       color: `${ui.activeText} !important`,
-      boxShadow: "inset 0 0 0 2px rgba(255,255,255,.10)",
+      boxShadow: isDark ? "inset 0 0 0 2px rgba(255,255,255,.08)" : "inset 0 0 0 1px rgba(0,0,0,.06)",
     },
+
     "& .pro-icon-wrapper": {
       backgroundColor: "transparent !important",
       color: `${ui.text} !important`,
     },
+
+    // Popper cuando está colapsado
     "& .pro-sidebar.collapsed .pro-menu > ul > .pro-menu-item.pro-sub-menu > .pro-inner-list-item > .popper-inner": {
       backgroundColor: `${ui.baseSoft} !important`,
       borderRadius: "10px",
       border: `1px solid ${ui.divider}`,
+      color: `${ui.text} !important`,
     },
   };
 
@@ -210,7 +227,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           >
             {!isCollapsed && (
               <Box display="flex" alignItems="center" ml="10px">
-                <Typography variant="h6" sx={{ color: ui.activeText }}>
+                <Typography variant="h6" sx={{ color: ui.text }}>
                   {empresa
                     ? (empresa.NomComercial ||
                         empresa.name ||
@@ -220,7 +237,8 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
                 </Typography>
                 <IconButton
                   onClick={() => setIsCollapsed(!isCollapsed)}
-                  sx={{ ml: "auto", color: ui.activeText }}
+                  sx={{ ml: "auto", color: ui.text }}
+                  size="small"
                 >
                   <MenuOutlinedIcon />
                 </IconButton>
@@ -239,6 +257,8 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
                 background: ui.baseSoft,
                 borderRadius: "12px",
                 mx: 1,
+                border: `1px solid ${ui.divider}`,
+                color: ui.text,
               }}
             >
               {userData && (
@@ -257,13 +277,13 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
                   <Box>
                     <Typography
                       variant="subtitle1"
-                      sx={{ color: ui.activeText, lineHeight: 1.2 }}
+                      sx={{ color: ui.text, lineHeight: 1.2 }}
                     >
                       {userData.Nombre || userData.name}
                     </Typography>
                     <Typography
                       variant="caption"
-                      sx={{ color: ui.activeText, opacity: 0.85 }}
+                      sx={{ color: ui.text, opacity: 0.85 }}
                     >
                       {esAdmin
                         ? "Administrador"
@@ -291,24 +311,22 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             open={openMainSubMenu === "Trabajos"}
             onClick={() => handleMainSubMenuToggle("Trabajos")}
             title={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "inherit" }}>
-                <span>Trabajos</span>
-                <Box
-                  component="span"
-                  sx={{
-                    ml: 0.5,
-                    px: 1,
-                    py: "2px",
+              <Box style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: ui.text }}>Trabajos</span>
+                <span
+                  style={{
+                    marginLeft: 6,
+                    padding: "2px 8px",
                     fontSize: 11,
                     fontWeight: 700,
-                    lineHeight: 1,
-                    borderRadius: "999px",
-                    bgcolor: ui.tagBlue,
+                    borderRadius: 999,
+                    background: ui.tagBg,
                     color: "#fff",
+                    lineHeight: 1,
                   }}
                 >
                   Ingreso Trabajo
-                </Box>
+                </span>
               </Box>
             }
           >
@@ -332,7 +350,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
 
           {/* Ventas */}
           <SubMenu
-            title="Ventas"
+            title={<span style={{ color: ui.text }}>Ventas</span>}
             icon={<ReceiptOutlinedIcon />}
             open={openMainSubMenu === "Ventas"}
             onClick={() => handleMainSubMenuToggle("Ventas")}
@@ -350,7 +368,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
 
           {/* Caja */}
           <SubMenu
-            title="Caja"
+            title={<span style={{ color: ui.text }}>Caja</span>}
             icon={<LocalAtmIcon />}
             open={openMainSubMenu === "Caja"}
             onClick={() => handleMainSubMenuToggle("Caja")}
@@ -374,7 +392,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
 
           {/* Clientes */}
           <SubMenu
-            title="Clientes"
+            title={<span style={{ color: ui.text }}>Clientes</span>}
             icon={<PeopleOutlinedIcon />}
             open={openMainSubMenu === "Clientes"}
             onClick={() => handleMainSubMenuToggle("Clientes")}
@@ -394,7 +412,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           {/* Proveedores */}
           <SubMenu
             icon={<AddBusinessIcon />}
-            title="Proveedores"
+            title={<span style={{ color: ui.text }}>Proveedores</span>}
             open={openMainSubMenu === "Proveedores"}
             onClick={() => handleMainSubMenuToggle("Proveedores")}
           >
@@ -405,7 +423,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           {/* Estadísticas */}
           <SubMenu
             icon={<SignalCellularAltIcon />}
-            title="Estadísticas"
+            title={<span style={{ color: ui.text }}>Estadísticas</span>}
             open={openMainSubMenu === "Estadísticas"}
             onClick={() => handleMainSubMenuToggle("Estadísticas")}
           >
@@ -416,7 +434,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           {/* Reportes/Listados */}
           <SubMenu
             icon={<AnalyticsIcon />}
-            title="Reportes/Listados"
+            title={<span style={{ color: ui.text }}>Reportes/Listados</span>}
             open={openMainSubMenu === "Reportes/Listados"}
             onClick={() => handleMainSubMenuToggle("Reportes/Listados")}
           >
@@ -506,7 +524,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           {/* Artículos */}
           <SubMenu
             icon={<InventoryIcon />}
-            title="Artículos"
+            title={<span style={{ color: ui.text }}>Artículos</span>}
             open={openMainSubMenu === "Artículos"}
             onClick={() => handleMainSubMenuToggle("Artículos")}
           >
@@ -530,7 +548,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           {/* Operaciones */}
           <SubMenu
             icon={<ManageSearchIcon />}
-            title="Operaciones"
+            title={<span style={{ color: ui.text }}>Operaciones</span>}
             open={openMainSubMenu === "Operaciones"}
             onClick={() => handleMainSubMenuToggle("Operaciones")}
           >
@@ -551,7 +569,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
           {/* Administración */}
           <SubMenu
             icon={<TuneIcon />}
-            title="Administración"
+            title={<span style={{ color: ui.text }}>Administración</span>}
             open={openMainSubMenu === "Administración"}
             onClick={() => handleMainSubMenuToggle("Administración")}
           >
@@ -655,7 +673,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             width: SIDEBAR_WIDTH,
             bgcolor: "transparent",
             boxShadow: "none",
-            height: "100vh",     // llena alto
+            height: "100vh",
           },
         }}
       >
