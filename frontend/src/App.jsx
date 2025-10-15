@@ -27,6 +27,7 @@ import Profile from "./scenes/profile/Profile";
 import Categorias from "./scenes/categorias";
 import NuevoEmpleado from "./scenes/team/TeamForm";
 import Proveedores from "./scenes/proveedores";
+import Trabajos from "./scenes/jobs";
 
 // Auth
 import Login from "./login/Login";
@@ -110,6 +111,7 @@ export default function App() {
               <Route path="/calendar" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Calendar /></ProtectedRoute>} />
               <Route path="/geography" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Geography /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Profile /></ProtectedRoute>} />
+              <Route path="/trabajos/ingresar" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Trabajos /></ProtectedRoute>} />
             </Routes>
           </Box>
         </Box>

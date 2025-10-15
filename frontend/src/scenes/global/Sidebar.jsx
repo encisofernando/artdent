@@ -139,15 +139,26 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     setOpenInnerSubMenu((prev) => (prev === submenu ? null : submenu));
   };
 
-  // Estilos del pro-sidebar
+  // === Estilos del pro-sidebar (con fixes de altura y scroll) ===
   const sidebarStyles = {
     "& .pro-sidebar-inner": {
       background: `${ui.base} !important`,
       boxShadow: "0 6px 18px rgba(0,0,0,.35)",
       borderRight: `1px solid ${ui.divider}`,
+      height: "100vh",            // ocupa toda la pantalla
+      display: "flex",            // columna: cabecera + menú
+      flexDirection: "column",
     },
+    // el contenedor del menú debe crecer y scrollear
+    "& .pro-menu": {
+      paddingTop: "4px",
+      flex: 1,
+      minHeight: 0,               // necesario para que el overflow funcione
+      overflowY: "auto",
+      paddingBottom: "16px",
+    },
+
     "& .pro-sidebar": { color: ui.text },
-    "& .pro-menu": { paddingTop: "4px" },
     "& .pro-inner-item": {
       color: `${ui.text} !important`,
       padding: "10px 14px !important",
@@ -182,7 +193,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
     },
   };
 
-  // Contenido del sidebar (tu menú completo)
+  // Contenido del sidebar
   const content = (
     <Box sx={sidebarStyles}>
       <ProSidebar
@@ -639,9 +650,16 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
         open={!!mobileOpen}
         onClose={onClose}
         ModalProps={{ keepMounted: true }}
-        PaperProps={{ sx: { width: SIDEBAR_WIDTH, bgcolor: "transparent", boxShadow: "none" } }}
+        PaperProps={{
+          sx: {
+            width: SIDEBAR_WIDTH,
+            bgcolor: "transparent",
+            boxShadow: "none",
+            height: "100vh",     // llena alto
+          },
+        }}
       >
-        {content}
+        <Box sx={{ height: "100%" }}>{content}</Box>
       </Drawer>
     );
   }
@@ -656,6 +674,8 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
         height: "100vh",
         width: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH,
         zIndex: 1200,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {content}
