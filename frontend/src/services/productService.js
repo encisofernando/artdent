@@ -1,101 +1,127 @@
-// 📁 src/services/productService.js
+// src/services/productService.js
 import api from "./api";
-import { unwrap } from "./utils";
 
-/**
- * Mappers entre tu UI y el backend (tabla products)
- */
-const toUI = (p) => ({
-  idArticulo: p.id,
-  id: p.id,                      // por si alguna grilla usa id
-  Nombre: p.name,
-  Descripcion: p.description ?? "",
-  Codigo: p.sku ?? "",
-  CodigoBarra: p.barcode ?? "",
-  PrecioPublico: Number(p.price ?? 0),
-  Costo: Number(p.cost ?? 0),
-  Iva: p.tax_rate ?? 0,
-  idCategoria: p.category_id ?? null,
-  Activo: !!p.is_active,
-  Stock: Number(p.stock ?? 0),      // si el backend expone algún agregado; si no, queda en 0
-  StockMin: Number(p.min_stock ?? 0),
-  track_stock: !!p.track_stock,
-  tax_id: p.tax_id ?? null,
+// Map API → UI (acepta claves ES/EN)
+const toUI = (p = {}) => ({
+  idArticulo: p.idArticulo ?? p.id ?? null,
+  id: p.idArticulo ?? p.id ?? null,
+  Nombre: p.Nombre ?? p.name ?? "",
+  Descripcion: p.Descripcion ?? p.description ?? "",
+  Codigo: p.Codigo ?? p.sku ?? "",
+  CodigoBarra: p.CodigoBarra ?? p.barcode ?? "",
+  PrecioPublico: Number(p.PrecioPublico ?? p.price ?? 0),
+  Costo: Number(p.Costo ?? p.cost ?? 0),
+  Iva: Number(p.Iva ?? p.tax_rate ?? 0),
+  idCategoria: p.idCategoria ?? p.category_id ?? null,
+  Activo: p.Activo != null ? Number(p.Activo) === 1 : !!p.is_active,
+  Stock: Number(p.Stock ?? p.stock ?? 0),
+  StockMin: Number(p.StockMin ?? p.min_stock ?? 0),
+  ImagenUrl: p.ImagenUrl ?? p.image_url ?? "",
 });
 
+const unwrapRows = (res) => {
+  const d = res?.data;
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.data)) return d.data;
+  if (Array.isArray(d?.results)) return d.results;
+  return [];
+};
+const unwrapObj = (res) => res?.data?.data ?? res?.data ?? res;
+
+// Intenta múltiples endpoints hasta que alguno responda 200 OK
+const firstOkGET = async (paths = [], params) => {
+  let lastErr;
+  for (const p of paths) {
+    try {
+      const r = await api.get(p, params ? { params } : undefined);
+      return r;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+};
+const firstOkPOST = async (paths = [], body, cfg) => {
+  let lastErr;
+  for (const p of paths) {
+    try {
+      const r = await api.post(p, body, cfg);
+      return r;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+};
+const firstOkPUT = async (paths = [], body, cfg) => {
+  let lastErr;
+  for (const p of paths) {
+    try {
+      const r = await api.put(p, body, cfg);
+      return r;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+};
+const firstOkDELETE = async (paths = []) => {
+  let lastErr;
+  for (const p of paths) {
+    try {
+      const r = await api.delete(p);
+      return r;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+};
+
+// Rutas posibles
+const LIST_PATHS = ["/api/articulos", "/articulos", "/api/products", "/products"];
+const ONE_PATHS  = (id) => [`/api/articulos/${id}`, `/articulos/${id}`, `/api/products/${id}`, `/products/${id}`];
+
+export const listProducts = async (params = {}) => {
+  const r = await firstOkGET(LIST_PATHS, params);
+  return unwrapRows(r).map(toUI);
+};
+
+export const getProduct = async (id) => {
+  const r = await firstOkGET(ONE_PATHS(id));
+  return toUI(unwrapObj(r));
+};
+
 const toBackend = (payload) => {
-  // payload puede venir como objeto o FormData con nombres de la UI
-  const obj = payload instanceof FormData
-    ? Object.fromEntries(payload.entries())
-    : payload;
-
+  if (payload instanceof FormData) return payload;
   const fd = new FormData();
-
-  // Campos mapeados al esquema backend
-  if (obj.Nombre != null) fd.append("name", obj.Nombre);
-  if (obj.Descripcion != null) fd.append("description", obj.Descripcion);
-  if (obj.Codigo != null) fd.append("sku", obj.Codigo);
-  if (obj.CodigoBarra != null) fd.append("barcode", obj.CodigoBarra);
-  if (obj.PrecioPublico != null) fd.append("price", obj.PrecioPublico);
-  if (obj.Costo != null) fd.append("cost", obj.Costo);
-
-  // IVA: priorizamos tax_id si existe, sino tax_rate (porcentaje)
-  if (obj.idIva != null) fd.append("tax_id", obj.idIva);
-  else if (obj.Iva != null) fd.append("tax_rate", obj.Iva);
-
-  if (obj.idCategoria != null) fd.append("category_id", obj.idCategoria);
-
-  // Activo
-  if (obj.activo != null) fd.append("is_active", Number(obj.activo) ? 1 : 0);
-
-  // Stock
-  if (obj.NoAplicaStock != null) {
-    fd.append("track_stock", Number(obj.NoAplicaStock) ? 0 : 1);
-  }
-  if (obj.StockMin != null) fd.append("min_stock", obj.StockMin);
-
-  // Imagen si la pasaron como 'Imagen' o 'image'
-  if (obj.Imagen instanceof File) fd.append("image", obj.Imagen);
-  else if (obj.image instanceof File) fd.append("image", obj.image);
-
-  // Permitir enviar extras que ya vengan en backend-form
-  // (si payload era FormData con claves backend, las mantenemos)
-  if (payload instanceof FormData) {
-    for (const [k, v] of payload.entries()) {
-      if (!fd.has(k)) fd.append(k, v);
-    }
-  }
-
+  Object.entries(payload || {}).forEach(([k, v]) => {
+    if (k === "Imagen" && v instanceof File) fd.append("Imagen", v);
+    else fd.append(k, v ?? "");
+  });
   return fd;
 };
 
-export const listProducts = async (params = {}) =>
-  unwrap(await api.get("/products", { params })).map(toUI);
+export const createProduct = async (payload) => {
+  const fd = toBackend(payload);
+  const r = await firstOkPOST(LIST_PATHS, fd, { headers: { "Content-Type": "multipart/form-data" } });
+  return toUI(unwrapObj(r));
+};
 
-export const getProduct = async (id) =>
-  toUI(unwrap(await api.get(`/products/${id}`)));
+export const updateProduct = async (id, payload) => {
+  const fd = toBackend(payload);
+  // compat Laravel
+  fd.append("_method", "PUT");
+  const r = await firstOkPOST(ONE_PATHS(id), fd, { headers: { "Content-Type": "multipart/form-data" } });
+  return toUI(unwrapObj(r));
+};
 
-export const createProduct = async (payload) =>
-  toUI(unwrap(await api.post("/products", toBackend(payload), {
-    headers: { "Content-Type": "multipart/form-data" },
-  })));
+export const deleteProduct = async (id) => {
+  const r = await firstOkDELETE(ONE_PATHS(id));
+  return unwrapObj(r);
+};
 
-export const updateProduct = async (id, payload) =>
-  toUI(unwrap(await api.post(`/products/${id}?_method=PUT`, toBackend(payload), {
-    headers: { "Content-Type": "multipart/form-data" },
-  })));
-
-export const deleteProduct = async (id) =>
-  unwrap(await api.delete(`/products/${id}`));
-
-// Toggle de activo: intenta endpoint dedicado y si no existe, degrada a update.
 export const toggleProductActive = async (id) => {
+  // Si existe /toggle-active lo usamos, si no, hacemos fallback con PUT invertido
   try {
-    return toUI(unwrap(await api.post(`/products/${id}/toggle-active`)));
-  } catch (e) {
-    // fallback: leo y actualizo
-    const current = unwrap(await api.get(`/products/${id}`));
-    const next = { ...current, is_active: current?.is_active ? 0 : 1 };
-    return toUI(unwrap(await api.put(`/products/${id}`, next)));
+    const r = await firstOkPOST(ONE_PATHS(id).map(p => `${p}/toggle-active`));
+    return toUI(unwrapObj(r));
+  } catch {
+    const cur = await getProduct(id);
+    const next = { ...cur, activo: cur.Activo ? 0 : 1 };
+    const r = await firstOkPUT(ONE_PATHS(id), next);
+    return toUI(unwrapObj(r));
   }
 };

@@ -1,872 +1,265 @@
+import { useEffect, useState } from "react";
 import {
-    Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, CircularProgress, Box, Typography, useTheme, FormControlLabel, Checkbox, Grid, Divider,
-  } from "@mui/material";
-  import { useEffect, useState } from "react";
-  import { Products, Catalog } from '../../services';
-  
-  
-  import { tokens } from "../../theme";
-  
-  
-  import Modal from "../../components/ModalError";
+  DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem,
+  CircularProgress, Box, Typography, FormControlLabel, Checkbox, Grid, Divider,
+  Snackbar, Alert, Stack
+} from "@mui/material";
 
-  
-  const CrearArticulo = ({ open, onClose, onArticuloCreado }) => {
-    const theme = useTheme();
-    const colors = tokens(theme.palette.mode);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [isModalVisible, setModalVisible] = useState(false);
-    
-    // Estados para datos obtenidos
-    const [categorias, setCategorias] = useState([]);
-    const [promocion, setPromocion] = useState([]);
-    const [proveedores, setProveedores] = useState([]);
-    const [ivas, setIvas] = useState([]);
-    
-    // Estado para imagen
-    const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null); // Para la vista previa de la imagen
-    
-    // Estado para el nuevo artículo
-    const [nuevoArticulo, setNuevoArticulo] = useState({
-      idCategoria: '',
-      idPromocionCantidad: '',
-      idProveedor1: '',
-      idProveedor2: '',
-      CodigoBarra: '',
-      Nombre: '',
-      Lote: '',
-      Ubicacion: '',
-      SKU: 0,
-      Stock: 0,
-      StockMin: 0,
-      Costo: 0,
-      Ganancia: 0,
-      Iva: '',
-      PrecioPublico: 0,
-      Descripcion: '',
-      activo: 0,
-      HabPrecioManual: 0,
-      NoAplicaStock: 0,
-      NoAplicarDescuento: 0,
-      EmailPorBajoStock: 0,
-      HabNroSerie: 0,
-      AplicaElab: 0,
-      FechaElab: '',
-      AplicaVto: 0,
-      FechaVto: '',
-      HabCostoDolar: 0,
-      CostoDolar: '',
-      permitirModificarPrecio: 0,
-      Imagen: '',
-      ImagenUrl: '',
-      
-    });
+import * as Products from "../../services/productService";
+import * as Catalog from "../../services/catalogService";
 
-     // Obtener categorías, IVAs, promociones y proveedores cuando el diálogo se abre
+const initial = {
+  idCategoria: "",
+  idPromocionCantidad: "",
+  idProveedor1: "",
+  idProveedor2: "",
+  CodigoBarra: "",
+  Nombre: "",
+  Lote: "",
+  Ubicacion: "",
+  Codigo: "",
+  Stock: 0,
+  StockMin: 0,
+  Costo: 0,
+  Ganancia: 0,
+  Iva: "",
+  PrecioPublico: 0,
+  Descripcion: "",
+  activo: 1,
+  HabPrecioManual: 0,
+  NoAplicaStock: 0,
+  NoAplicarDescuento: 0,
+  EmailPorBajoStock: 0,
+  HabNroSerie: 0,
+  AplicaElab: 0,
+  FechaElab: "",
+  AplicaVto: 0,
+  FechaVto: "",
+  HabCostoDolar: 0,
+  CostoDolar: "",
+  permitirModificarPrecio: 0,
+};
+
+export default function CrearArticulo({ open, onClose, onArticuloCreado }) {
+  const [loading, setLoading] = useState(false);
+  const [categorias, setCategorias] = useState([]);
+  const [promocion, setPromocion] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
+  const [ivas, setIvas] = useState([]);
+  const [nuevo, setNuevo] = useState(initial);
+
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
+  const [snack, setSnack] = useState({ open: false, msg: "", sev: "success" });
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+    if (!open) return;
+    (async () => {
       try {
-        const [categoriasData, ivasData, promocionesData, proveedoresData] = await Promise.all([
+        const [c, t, p, v] = await Promise.all([
           Catalog.listCategories(),
           Catalog.listTaxes(),
           Catalog.listPromotions(),
-          Catalog.listSuppliers(), // Obtener proveedores
+          Catalog.listSuppliers(),
         ]);
-        setCategorias(categoriasData);
-        setIvas(ivasData);
-        setPromocion(promocionesData);
-        setProveedores(proveedoresData); // Guardar los proveedores obtenidos
-      } catch (error) {
-        console.error('Error al obtener datos:', error);
-        setError('No se pudieron cargar los datos.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (open) {
-      fetchData();
-    }
+        setCategorias(c);
+        setIvas(t);
+        setPromocion(p);
+        setProveedores(v);
+      } catch (e) { console.error(e); }
+    })();
   }, [open]);
 
-   // Manejar cambio de imagen
-   const handleImageChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        setImage(file); // Guarda el objeto de archivo directamente
-        setImagePreview(URL.createObjectURL(file)); // Genera una URL para la vista previa
-    }
-};
-  
-
-
-  const handleCancel = () => {
-    resetForm(); // Reinicia el formulario
-    onClose(); // Cierra el diálogo
-  };
-
-
   const calcularPrecioVenta = (costo, ganancia, iva) => {
-    const ivaDecimal = iva ? iva / 100 : 0;
-    return costo * (1 + (ganancia / 100)) * (1 + ivaDecimal);
+    const ivaDec = iva ? Number(iva) / 100 : 0;
+    return Number(costo) * (1 + (Number(ganancia) / 100)) * (1 + ivaDec);
   };
 
   const handlePrecioPublicoChange = (value) => {
-    const costo = nuevoArticulo.Costo;
-    setNuevoArticulo(prevState => ({
-      ...prevState,
-      PrecioPublico: value,
-      Ganancia: ((value - costo) / costo) * 100,
-    }));
+    const costo = Number(nuevo.Costo || 0);
+    setNuevo((s) => ({ ...s, PrecioPublico: value, Ganancia: costo ? ((value - costo) / costo) * 100 : 0 }));
   };
-
   const handleCostoChange = (value) => {
-    setNuevoArticulo(prevState => {
-      const ganancia = prevState.Ganancia;
-      const iva = prevState.Iva;
-      const precioVentaCalculado = calcularPrecioVenta(value, ganancia, iva);
-      return {
-        ...prevState,
-        Costo: value,
-        PrecioPublico: precioVentaCalculado,
-      };
-    });
+    setNuevo((s) => ({ ...s, Costo: value, PrecioPublico: calcularPrecioVenta(value, s.Ganancia, s.Iva) }));
   };
-  
   const handleIvaChange = (value) => {
-    const ivaParsed = parseFloat(value).toFixed(4); // Asegúrate de mantener 4 decimales
-    setNuevoArticulo(prevState => {
-      const costo = prevState.Costo;
-      const ganancia = prevState.Ganancia;
-      const precioVentaCalculado = calcularPrecioVenta(costo, ganancia, parseFloat(ivaParsed));
-      return {
-        ...prevState,
-        Iva: ivaParsed, // Guardar IVA en el mismo formato de 4 decimales
-        PrecioPublico: precioVentaCalculado,
-      };
-    });
+    const ivaParsed = parseFloat(value || 0).toFixed(4);
+    setNuevo((s) => ({ ...s, Iva: ivaParsed, PrecioPublico: calcularPrecioVenta(s.Costo, s.Ganancia, ivaParsed) }));
   };
 
-  const handleStockChange = (value) => {
-    setNuevoArticulo(prevState => ({
-      ...prevState,
-      Stock: Number(value), // Actualiza el stock
-    }));
+  const handleImageChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setImageFile(f);
+    setImagePreview(URL.createObjectURL(f));
   };
-
-  const handleStockMinChange = (value) => {
-    setNuevoArticulo(prevState => ({
-      ...prevState,
-      StockMin: Number(value), // Actualiza el stock mínimo
-    }));
-  };
-
-  const handleRentabilidadChange = (value) => {
-    setNuevoArticulo(prevState => {
-      const costo = prevState.Costo;
-      const iva = prevState.Iva;
-      const precioVentaCalculado = calcularPrecioVenta(costo, Number(value), iva);
-      return {
-        ...prevState,
-        Ganancia: Number(value), // Cambiado de Rentabilidad a Ganancia
-        PrecioPublico: precioVentaCalculado,
-      };
-    });
-  };
+  const handleImageRemove = () => { setImageFile(null); setImagePreview(null); };
 
   const handleSubmit = async () => {
-    // Reinicia el estado de error
-    setError(null);
-   
-    // Validación de datos
-    if (
-        !nuevoArticulo.idCategoria ||
-        nuevoArticulo.idPromocionCantidad === '' || 
-        !nuevoArticulo.idProveedor1 ||
-        !nuevoArticulo.idProveedor2 ||
-        !nuevoArticulo.CodigoBarra ||
-        !nuevoArticulo.Nombre ||
-        !nuevoArticulo.Lote ||
-        !nuevoArticulo.Ubicacion ||
-        isNaN(nuevoArticulo.Stock) ||
-        isNaN(nuevoArticulo.StockMin) ||
-        (nuevoArticulo.SKU !== undefined && isNaN(nuevoArticulo.SKU)) ||
-        isNaN(nuevoArticulo.Costo) ||
-        isNaN(nuevoArticulo.Ganancia) ||
-        !nuevoArticulo.Iva ||
-        isNaN(nuevoArticulo.PrecioPublico)
-    ) {
-        setError('Por favor, completa todos los campos requeridos.');
-        setModalVisible(true);
-        return;
+    if (!nuevo.Nombre || !nuevo.Iva || isNaN(nuevo.PrecioPublico)) {
+      setSnack({ open: true, msg: "Completá Nombre, IVA y Precio.", sev: "warning" });
+      return;
     }
-
-    // Validación adicional para fechas y costo dólar
-    if (nuevoArticulo.AplicaElab === 1 && !nuevoArticulo.FechaElab) {
-        setError('Por favor, proporciona la Fecha de Elaboración.');
-        setModalVisible(true);
-        return;
-    }
-
-    if (nuevoArticulo.AplicaVto === 1 && !nuevoArticulo.FechaVto) {
-        setError('Por favor, proporciona la Fecha de Vencimiento.');
-        setModalVisible(true);
-        return;
-    }
-
-    if (nuevoArticulo.HabCostoDolar === 1 && !nuevoArticulo.CostoDolar) {
-        setError('Por favor, proporciona el Costo en Dólar.');
-        setModalVisible(true);
-        return;
-    }
-
-    setLoading(true); // Activa el loading
+    setLoading(true);
     try {
-        const formData = new FormData();
-        formData.append('CodigoBarra', nuevoArticulo.CodigoBarra);
-        formData.append('Nombre', nuevoArticulo.Nombre);
-        formData.append('Lote', nuevoArticulo.Lote);
-        formData.append('Ubicacion', nuevoArticulo.Ubicacion);
-        formData.append('Stock', nuevoArticulo.Stock);
-        formData.append('Codigo', Number(nuevoArticulo.SKU));
-        formData.append('Costo', nuevoArticulo.Costo);
-        formData.append('PrecioPublico', nuevoArticulo.PrecioPublico);
-        formData.append('Iva', parseFloat(nuevoArticulo.Iva));
-        formData.append('idCategoria', nuevoArticulo.idCategoria);
-        formData.append('idPromocionCantidad', Number(nuevoArticulo.idPromocionCantidad));
-        formData.append('idProveedor1', nuevoArticulo.idProveedor1);
-        formData.append('idProveedor2', nuevoArticulo.idProveedor2 || '');
-        formData.append('StockMin', nuevoArticulo.StockMin);
-        formData.append('Ganancia', nuevoArticulo.Ganancia);
-        formData.append('Descripcion', nuevoArticulo.Descripcion);
-        formData.append('activo', nuevoArticulo.activo);
-        formData.append('HabPrecioManual', nuevoArticulo.HabPrecioManual);
-        formData.append('NoAplicaStock', nuevoArticulo.NoAplicaStock);
-        formData.append('NoAplicarDescuento', nuevoArticulo.NoAplicarDescuento);
-        formData.append('EmailPorBajoStock', nuevoArticulo.EmailPorBajoStock);
-        formData.append('HabNroSerie', nuevoArticulo.HabNroSerie);
-        formData.append('AplicaElab', nuevoArticulo.AplicaElab);
-        formData.append('FechaElab', nuevoArticulo.AplicaElab === 1 ? nuevoArticulo.FechaElab : null);
-        formData.append('AplicaVto', nuevoArticulo.AplicaVto);
-        formData.append('FechaVto', nuevoArticulo.AplicaVto === 1 ? nuevoArticulo.FechaVto : null);
-        formData.append('HabCostoDolar', nuevoArticulo.HabCostoDolar);
-        formData.append('CostoDolar', nuevoArticulo.HabCostoDolar === 1 ? nuevoArticulo.CostoDolar : null);
-        formData.append('permitirModificarPrecio', nuevoArticulo.permitirModificarPrecio);
+      const fd = new FormData();
+      const payload = {
+        CodigoBarra: nuevo.CodigoBarra,
+        Nombre: nuevo.Nombre,
+        Lote: nuevo.Lote,
+        Ubicacion: nuevo.Ubicacion,
+        Stock: nuevo.Stock,
+        Codigo: nuevo.Codigo,
+        Costo: nuevo.Costo,
+        PrecioPublico: nuevo.PrecioPublico,
+        Iva: parseFloat(nuevo.Iva),
+        idCategoria: nuevo.idCategoria,
+        idPromocionCantidad: Number(nuevo.idPromocionCantidad || 0),
+        idProveedor1: nuevo.idProveedor1,
+        idProveedor2: nuevo.idProveedor2 || "",
+        StockMin: nuevo.StockMin,
+        Ganancia: nuevo.Ganancia,
+        Descripcion: nuevo.Descripcion,
+        activo: nuevo.activo,
+        HabPrecioManual: nuevo.HabPrecioManual,
+        NoAplicaStock: nuevo.NoAplicaStock,
+        NoAplicarDescuento: nuevo.NoAplicarDescuento,
+        EmailPorBajoStock: nuevo.EmailPorBajoStock,
+        HabNroSerie: nuevo.HabNroSerie,
+        AplicaElab: nuevo.AplicaElab,
+        FechaElab: nuevo.AplicaElab ? nuevo.FechaElab : "",
+        AplicaVto: nuevo.AplicaVto,
+        FechaVto: nuevo.AplicaVto ? nuevo.FechaVto : "",
+        HabCostoDolar: nuevo.HabCostoDolar,
+        CostoDolar: nuevo.HabCostoDolar ? nuevo.CostoDolar : "",
+        permitirModificarPrecio: nuevo.permitirModificarPrecio,
+      };
+      Object.entries(payload).forEach(([k, v]) => fd.append(k, v ?? ""));
+      if (imageFile) fd.append("Imagen", imageFile);
 
-        // Agregar la imagen si existe
-        if (image) {
-            formData.append('Imagen', image);
-        } else if (nuevoArticulo.ImagenUrl) {
-            formData.append('Imagen', nuevoArticulo.ImagenUrl); // La imagen actual ya existente
-        }
-
-        console.log('FormData para crear artículo:', nuevoArticulo);
-        await Products.createProduct(formData); // Asegúrate de que createArticulo acepte FormData
-
-        alert('Artículo creado con éxito');
-        onArticuloCreado();
-        resetForm();
-        onClose();
-    } catch (error) {
-        console.error('Error al crear artículo:', error);
-        setError('Error al crear el artículo: ' + (error.response?.data?.error || 'Error desconocido'));
+      await Products.createProduct(fd);
+      setSnack({ open: true, msg: "Artículo creado", sev: "success" });
+      onArticuloCreado?.();
+      setNuevo(initial);
+      setImageFile(null); setImagePreview(null);
+      onClose?.();
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, msg: "Error al crear el artículo", sev: "error" });
     } finally {
-        setLoading(false); // Desactiva el loading
+      setLoading(false);
     }
-};
-
-
-  const resetForm = () => {
-    setNuevoArticulo({
-      idCategoria: '', // Reinicia el id de categoría
-      idPromocionCantidad: '',
-      idProveedor1: '',
-      idProveedor2: '',
-      CodigoBarra: '',
-      Nombre: '',
-      Lote: '',
-      Ubicacion: '',
-      SKU: 0,
-      Stock: 0,
-      StockMin: 0,
-      Costo: 0,
-      Ganancia: 0,
-      Iva: '',
-      PrecioPublico: 0,
-      Descripcion: '',
-      activo: 0,
-      HabPrecioManual: 0,
-      NoAplicaStock: 0,
-      NoAplicarDescuento: 0,
-      EmailPorBajoStock: 0,
-      HabNroSerie: 0,
-      AplicaElab: 0,
-      FechaElab: '',
-      AplicaVto: 0,
-      FechaVto: '',
-      HabCostoDolar: 0,
-      CostoDolar: '',
-      permitirModificarPrecio: 0,
-    });
-    setImage(null); // Reinicia la imagen
   };
-
-  const handleModalClose = () => {
-    setModalVisible(false); // Cierra el modal
-    setError(null); // Reinicia el estado de error al cerrar
-  };
-  
-  const handleImageRemove = () => {
-    setImage(null);
-    setImagePreview(null); // Limpia la vista previa
-  };
-
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ backgroundColor: colors.primary[400], textAlign: "center", fontSize: "1.5rem"}}>
-        Crear Artículo
-      </DialogTitle>
+    <>
+      <DialogTitle>Crear artículo</DialogTitle>
+      <DialogContent dividers>
+        <Box>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={8}>
+              <TextField label="Nombre" value={nuevo.Nombre} onChange={(e)=>setNuevo({...nuevo,Nombre:e.target.value})} fullWidth margin="normal" required />
+              <Stack direction={{ xs: "column", sm: "row" }} gap={2}>
+                <TextField label="SKU" value={nuevo.Codigo} onChange={(e)=>setNuevo({...nuevo,Codigo:e.target.value})} fullWidth />
+                <TextField label="Código de barra" value={nuevo.CodigoBarra} onChange={(e)=>setNuevo({...nuevo,CodigoBarra:e.target.value})} fullWidth />
+              </Stack>
 
-      <DialogContent sx={{ backgroundColor: colors.primary[400],}}>
-        <Box m="10px">
-          <Box m="0px 0" p="20px" borderRadius="8px"
-            sx={{ backgroundColor: colors.primary[400], "& .MuiFormControl-root": { marginBottom: "20px" },}}>
-
-            <Grid container spacing={3}>
-              {/* Sección de Producto / Servicio y Activo */}
-              <Grid item xs={12} sm={6}>
-                <FormControlLabel
-                  control={<Checkbox />}
-                  label="Producto"
-                />
-                <FormControlLabel
-                  control={<Checkbox />}
-                  label="Servicio"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox checked={nuevoArticulo.activo === 1} onChange={(e) =>setNuevoArticulo({...nuevoArticulo, activo: e.target.checked ? 1 : 0, }) } />
-                  }
-                  label="Artículo Activo"
-                />
-              </Grid>
-
-              {/* Campos principales con títulos */}
-              <Grid item xs={12} sm={6}>
+              <Stack direction={{ xs: "column", sm: "row" }} gap={2} sx={{ mt: 2 }}>
                 <TextField
-                  label="Nombre"
-                  value={nuevoArticulo.Nombre}
-                  onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, Nombre: e.target.value })}
-                  fullWidth
-                  margin="normal"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  select
-                  label="Categoría"
-                  value={nuevoArticulo.idCategoria} // Usar idCategoria como valor
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
-                    setNuevoArticulo({
-                      ...nuevoArticulo,
-                      idCategoria: selectedId
-                    });
-                  }}
-                  fullWidth
-                  margin="normal"
+                  select label="Categoría" value={nuevo.idCategoria}
+                  onChange={(e)=>setNuevo({...nuevo,idCategoria:e.target.value})} fullWidth
                 >
-                  {categorias.map((categoria) => (
-                    <MenuItem key={categoria.idCategoria} value={categoria.idCategoria}>
-                      {categoria.Nombre}
-                    </MenuItem>
-                  ))}
+                  {categorias.map((c)=> <MenuItem key={c.idCategoria} value={c.idCategoria}>{c.Nombre}</MenuItem>)}
                 </TextField>
-              </Grid>
-
-              {/* SKU, Ubicación, Stock */}
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
                 <TextField
-                  label="SKU"
-                  type="number"
-                  value={nuevoArticulo.SKU}
-                  onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, SKU: Number(e.target.value) })}
-                  fullWidth
-                  margin="normal"
-                  InputProps={{
-                    sx: {
-                      '& input[type=number]::-webkit-inner-spin-button': {
-                        display: 'none',
-                      },
-                      '& input[type=number]::-webkit-outer-spin-button': {
-                        display: 'none',
-                      },
-                      '& input[type=number]': {
-                        '-moz-appearance': 'textfield', // Oculta las flechas en Firefox
-                      },
-                    },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  label="Ubicación"
-                  value={nuevoArticulo.Ubicacion}
-                  onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, Ubicacion: e.target.value })}
-                  fullWidth
-                  margin="normal"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  label="Stock Inicial"
-                  type="number"
-                  value={nuevoArticulo.Stock || '0'} // Si es 0, muestra placeholder
-                  placeholder="0"
-                  onChange={(e) => handleStockChange(e.target.value)} // Actualiza el stock
-                  fullWidth
-                  margin="normal"
-                  InputLabelProps={{
-                    sx: { fontSize: '1.2rem' } // Ajusta el tamaño del label aquí
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  label="Stock Mínimo"
-                  type="number"
-                  value={nuevoArticulo.StockMin || '0'} // Si es 0, muestra placeholder
-                  placeholder="0"
-                  onChange={(e) => handleStockMinChange(e.target.value)} // Actualiza el stock mínimo
-                  fullWidth
-                  margin="normal"
-                  InputLabelProps={{
-                    sx: { fontSize: '1.2rem' } // Ajusta el tamaño del label aquí
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  label="Código de Barras"
-                  value={nuevoArticulo.CodigoBarra}
-                  onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, CodigoBarra: e.target.value })}
-                  fullWidth
-                  margin="normal"
-                />
-              </Grid>
-
-              {/* Costo y Costo en Dólar alineados */}
-              <Grid item xs={12} sm={6} sx={{ mt: -3 }}>
-                <TextField
-                  label="Precio de Costo"
-                  type="number"
-                  value={nuevoArticulo.Costo} // Si es 0, muestra placeholder
-                  onChange={(e) => handleCostoChange(Number(e.target.value))} // Actualiza el costo
-                  fullWidth
-                  margin="normal"
-                  InputLabelProps={{
-                    sx: { fontSize: '1.2rem' } // Ajusta el tamaño del label aquí
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={nuevoArticulo.HabCostoDolar === 1}
-                      onChange={(e) =>
-                        setNuevoArticulo({
-                          ...nuevoArticulo,
-                          HabCostoDolar: e.target.checked ? 1 : 0,
-                          CostoDolar: e.target.checked ? nuevoArticulo.CostoDolar : '', // Limpiar valor si no aplica
-                        })
-                      }
-                    />
-                  }
-                  label="Costo Dólar"
-                />
-                <TextField
-                  label="Costo Dólar"
-                  type="number"
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  disabled={nuevoArticulo.HabCostoDolar !== 1}
-                  value={nuevoArticulo.CostoDolar}
-                  onChange={(e) =>
-                    setNuevoArticulo({
-                      ...nuevoArticulo,
-                      CostoDolar: Number(e.target.value),
-                    })
-                  }
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  label="Ganancia (%)"
-                  type="number"
-                  value={nuevoArticulo.Ganancia} // Si es 0, muestra placeholder
-                  onChange={(e) => handleRentabilidadChange(Number(e.target.value))} // Actualiza la rentabilidad
-                  fullWidth
-                  margin="normal"
-                  InputLabelProps={{
-                    sx: { fontSize: '1.2rem' } // Ajusta el tamaño del label aquí
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  select
-                  label="IVA"
-                  value={nuevoArticulo.Iva}
-                  onChange={(e) => handleIvaChange(e.target.value)}
-                  fullWidth
-                  margin="normal"
+                  select label="IVA" value={nuevo.Iva}
+                  onChange={(e)=>handleIvaChange(e.target.value)} fullWidth
                 >
-                  {ivas.map((iva) => (
-                    <MenuItem key={iva.idIva} value={iva.Porcentaje}>
-                      {iva.Nombre} ({iva.Porcentaje}%)
-                    </MenuItem>
-                  ))}
+                  {ivas.map((iva)=> <MenuItem key={iva.idIva} value={iva.Porcentaje}>{iva.Nombre} ({iva.Porcentaje}%)</MenuItem>)}
                 </TextField>
-              </Grid>
+              </Stack>
 
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  label="Precio Público"
-                  type="number"
-                  value={nuevoArticulo.PrecioPublico} // Si es 0, muestra placeholder
-                  onChange={(e) => handlePrecioPublicoChange(Number(e.target.value))} // Actualiza el precio público
-                  fullWidth
-                  margin="normal"
-                />
-              </Grid>
+              <Stack direction={{ xs: "column", sm: "row" }} gap={2} sx={{ mt: 2 }}>
+                <TextField label="Costo" type="number" value={nuevo.Costo} onChange={(e)=>handleCostoChange(Number(e.target.value))} fullWidth />
+                <TextField label="Precio público" type="number" value={nuevo.PrecioPublico} onChange={(e)=>handlePrecioPublicoChange(Number(e.target.value))} fullWidth />
+              </Stack>
 
-              {/* Código de barras y otros datos */}
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <TextField
-                  select
-                  label="Asociar a Promoción"
-                  value={nuevoArticulo.idPromocionCantidad} // Usar idPromocionCantidad como valor
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
-                    setNuevoArticulo({
-                      ...nuevoArticulo,
-                      idPromocionCantidad: Number(selectedId)
-                    });
-                  }}
-                  fullWidth
-                  margin="normal"
-                >
-                  {promocion.map((promo) => (
-                    <MenuItem key={promo.idPromocionCantidad} value={promo.idPromocionCantidad}>
-                      {promo.Nombre}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
+              <Stack direction={{ xs: "column", sm: "row" }} gap={2} sx={{ mt: 2 }}>
+                <TextField label="Stock" type="number" value={nuevo.Stock} onChange={(e)=>setNuevo({...nuevo,Stock:Number(e.target.value)})} fullWidth />
+                <TextField label="Stock mínimo" type="number" value={nuevo.StockMin} onChange={(e)=>setNuevo({...nuevo,StockMin:Number(e.target.value)})} fullWidth />
+              </Stack>
 
-              {/* Proveedor Principal */}
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-  <TextField
-    select
-    label="Proveedor Principal"
-    value={nuevoArticulo.idProveedor1}
-    onChange={(e) => {
-      const selectedId = e.target.value;
-      setNuevoArticulo({
-        ...nuevoArticulo,
-        idProveedor1: selectedId,
-      });
-    }}
-    fullWidth
-    margin="normal"
-  >
-    {proveedores.map((proveedor) => {
-      return (
-        <MenuItem key={`principal-${proveedor.idProveedor}`} value={proveedor.idProveedor}>
-          {proveedor.RazonSocial}
-        </MenuItem>
-      );
-    })}
-  </TextField>
-</Grid>
+              <TextField label="Descripción" value={nuevo.Descripcion} onChange={(e)=>setNuevo({...nuevo,Descripcion:e.target.value})} fullWidth multiline rows={3} sx={{ mt: 2 }} />
 
-{/* Proveedor Auxiliar */}
-<Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-  <TextField
-    select
-    label="Proveedor Auxiliar"
-    value={nuevoArticulo.idProveedor2}
-    onChange={(e) => {
-      const selectedId = e.target.value;
-      setNuevoArticulo({
-        ...nuevoArticulo,
-        idProveedor2: selectedId,
-      });
-    }}
-    fullWidth
-    margin="normal"
-  >
-    {proveedores.map((proveedor) => {
-      return (
-        <MenuItem key={`auxiliar-${proveedor.idProveedor}`} value={proveedor.idProveedor}>
-          {proveedor.RazonSocial}
-        </MenuItem>
-      );
-    })}
-  </TextField>
-</Grid>
-
-              {/* Descripción */}
-              <Grid item xs={12} sm={12} sx={{ mt: -5 }}>
-                <TextField
-                  label="Descripción"
-                  value={nuevoArticulo.Descripcion}
-                  onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, Descripcion: e.target.value })}
-                  fullWidth
-                  margin="normal"
-                  multiline
-                  rows={4}
-                />
-              </Grid>
-
-              {/* Perecederos */}
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={nuevoArticulo.AplicaVto === 1}
-                      onChange={(e) =>
-                        setNuevoArticulo({
-                          ...nuevoArticulo,
-                          AplicaVto: e.target.checked ? 1 : 0,
-                          FechaVto: e.target.checked ? nuevoArticulo.FechaVto : '', // Limpiar fecha si no aplica
-                        })
-                      }
-                    />
-                  }
-                  label="Perecederos con vencimiento"
-                />
-                <TextField
-          label="Fecha de Vencimiento"
-          type="date"
-          fullWidth
-          InputLabelProps={{ shrink: true }}
-          disabled={nuevoArticulo.AplicaVto !== 1} // Deshabilitar según la lógica
-          value={nuevoArticulo.FechaVto} // Asigna el valor de la fecha
-          onChange={(e) =>
-            setNuevoArticulo({
-              ...nuevoArticulo,
-              FechaVto: e.target.value, // Actualiza el estado al cambiar
-            })
-          }
-        />
-              </Grid>
-
-              <Grid item xs={12} sm={6} sx={{ mt: -5 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={nuevoArticulo.AplicaElab === 1}
-                      onChange={(e) =>
-                        setNuevoArticulo({
-                          ...nuevoArticulo,
-                          AplicaElab: e.target.checked ? 1 : 0,
-                          FechaElab: e.target.checked ? nuevoArticulo.FechaElab : '', // Limpiar fecha si no aplica
-                        })
-                      }
-                    />
-                  }
-                  label="Elaboración"
-                />
-                <TextField
-                  label="Fecha de Elaboración"
-                  type="date"
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  disabled={nuevoArticulo.AplicaElab !== 1}
-                  value={nuevoArticulo.FechaElab}
-                  onChange={(e) =>
-                    setNuevoArticulo({
-                      ...nuevoArticulo,
-                      FechaElab: e.target.value,
-                    })
-                  }
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={0} sx={{ mt: -3 }}>
-                <TextField
-                  label="Lote"
-                  value={nuevoArticulo.Lote}
-                  onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, Lote: e.target.value })}
-                  fullWidth
-                  margin="normal"
-                />
-              </Grid>
-
-               {/* Foto del artículo */}
-               <Grid item xs={12} sm={3} sx={{ mt: 1, marginLeft: "50px" }}>
-                <Typography variant="h6">Foto del Artículo</Typography>
-                <Box display="flex" alignItems="center">
-                  <Button variant="contained" component="label">
-                    Buscar Foto
-                    <input type="file" hidden accept="image/*" onChange={handleImageChange} />
-                  </Button>
-                  <Button variant="outlined" color="error" onClick={handleImageRemove} sx={{ marginLeft: "10px" }}>
-                    Quitar Foto
-                  </Button>
-                </Box>
-                {imagePreview && (
-        <Box mt={2}>
-            <Typography variant="subtitle1">Vista previa:</Typography>
-            <img src={imagePreview} alt="Vista previa" style={{ maxWidth: '50%', maxHeight: '500px' }} />
-        </Box>
-                )}
-              </Grid>
-
-              {/* Otros checks organizados verticalmente */}
-              <Grid item xs={12} sm={6} sx={{ mt: -2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={nuevoArticulo.HabPrecioManual === 1}
-                          onChange={(e) =>
-                            setNuevoArticulo({
-                              ...nuevoArticulo,
-                              HabPrecioManual: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="El precio se colocará en el momento de la venta"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={nuevoArticulo.NoAplicaStock === 1}
-                          onChange={(e) =>
-                            setNuevoArticulo({
-                              ...nuevoArticulo,
-                              NoAplicaStock: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="Artículo sin control de stock"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={nuevoArticulo.NoAplicarDescuento === 1}
-                          onChange={(e) =>
-                            setNuevoArticulo({
-                              ...nuevoArticulo,
-                              NoAplicarDescuento: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="No aplicar descuento"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={nuevoArticulo.EmailPorBajoStock === 1}
-                          onChange={(e) =>
-                            setNuevoArticulo({
-                              ...nuevoArticulo,
-                              EmailPorBajoStock: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="Enviar alerta de stock bajo por Email"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={nuevoArticulo.permitirModificarPrecio === 1}
-                          onChange={(e) =>
-                            setNuevoArticulo({
-                              ...nuevoArticulo,
-                              permitirModificarPrecio: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="Permitir modificar el precio durante la venta"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={nuevoArticulo.HabNroSerie === 1}
-                          onChange={(e) =>
-                            setNuevoArticulo({
-                              ...nuevoArticulo,
-                              HabNroSerie: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      }
-                      label="Habilitar número de serie"
-                    />
-                  </Grid>
+              <Divider sx={{ my: 2 }} />
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel control={<Checkbox checked={nuevo.HabPrecioManual===1} onChange={(e)=>setNuevo({...nuevo,HabPrecioManual:e.target.checked?1:0})}/>} label="Precio en el momento de la venta" />
+                  <FormControlLabel control={<Checkbox checked={nuevo.NoAplicaStock===1} onChange={(e)=>setNuevo({...nuevo,NoAplicaStock:e.target.checked?1:0})}/>} label="Sin control de stock" />
+                  <FormControlLabel control={<Checkbox checked={nuevo.NoAplicarDescuento===1} onChange={(e)=>setNuevo({...nuevo,NoAplicarDescuento:e.target.checked?1:0})}/>} label="No aplicar descuento" />
+                  <FormControlLabel control={<Checkbox checked={nuevo.EmailPorBajoStock===1} onChange={(e)=>setNuevo({...nuevo,EmailPorBajoStock:e.target.checked?1:0})}/>} label="Alertar stock bajo por Email" />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel control={<Checkbox checked={nuevo.permitirModificarPrecio===1} onChange={(e)=>setNuevo({...nuevo,permitirModificarPrecio:e.target.checked?1:0})}/>} label="Permitir modificar precio" />
+                  <FormControlLabel control={<Checkbox checked={nuevo.HabNroSerie===1} onChange={(e)=>setNuevo({...nuevo,HabNroSerie:e.target.checked?1:0})}/>} label="Habilitar N° de serie" />
                 </Grid>
               </Grid>
 
-              {/* Información de actualización */}
-              <Grid item xs={12}>
-                <Divider sx={{ marginY: 2 }} />
-                <Typography variant="body2">Última Actualización: 12/10/2024 - 14:35</Typography>
-                <Typography variant="body2">Usuario que actualizó: admin</Typography>
+              <Divider sx={{ my: 2 }} />
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel control={<Checkbox checked={nuevo.AplicaVto===1} onChange={(e)=>setNuevo({...nuevo,AplicaVto:e.target.checked?1:0, FechaVto:e.target.checked?(nuevo.FechaVto||""):""})}/>} label="Con vencimiento" />
+                  <TextField label="Fecha de vencimiento" type="date" fullWidth InputLabelProps={{shrink:true}} disabled={nuevo.AplicaVto!==1} value={nuevo.FechaVto} onChange={(e)=>setNuevo({...nuevo,FechaVto:e.target.value})}/>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel control={<Checkbox checked={nuevo.AplicaElab===1} onChange={(e)=>setNuevo({...nuevo,AplicaElab:e.target.checked?1:0, FechaElab:e.target.checked?(nuevo.FechaElab||""):""})}/>} label="Con elaboración" />
+                  <TextField label="Fecha de elaboración" type="date" fullWidth InputLabelProps={{shrink:true}} disabled={nuevo.AplicaElab!==1} value={nuevo.FechaElab} onChange={(e)=>setNuevo({...nuevo,FechaElab:e.target.value})}/>
+                </Grid>
               </Grid>
             </Grid>
-          </Box>
-          {isModalVisible && error && (
-        <Modal message={error} onClose={handleModalClose} />
-      )}
+
+            <Grid item xs={12} md={4}>
+              <Typography variant="h6" gutterBottom>Imagen</Typography>
+              <Box display="flex" gap={1} mb={1}>
+                <Button variant="contained" component="label">
+                  Buscar Foto
+                  <input type="file" hidden accept="image/*" onChange={handleImageChange} />
+                </Button>
+                {imageFile && (
+                  <Button variant="outlined" color="error" onClick={handleImageRemove}>
+                    Quitar
+                  </Button>
+                )}
+              </Box>
+              {imagePreview && (
+                <Box mt={1}><img src={imagePreview} alt="Vista previa" style={{ maxWidth: "100%", borderRadius: 8 }} /></Box>
+              )}
+
+              <Divider sx={{ my: 2 }} />
+              <TextField select label="Asociar a promoción" value={nuevo.idPromocionCantidad} onChange={(e)=>setNuevo({...nuevo,idPromocionCantidad:Number(e.target.value)})} fullWidth>
+                {promocion.map((p)=> <MenuItem key={p.idPromocionCantidad} value={p.idPromocionCantidad}>{p.Nombre}</MenuItem>)}
+              </TextField>
+              <TextField select label="Proveedor principal" value={nuevo.idProveedor1} onChange={(e)=>setNuevo({...nuevo,idProveedor1:e.target.value})} fullWidth sx={{ mt: 2 }}>
+                {proveedores.map((v)=> <MenuItem key={v.idProveedor} value={v.idProveedor}>{v.RazonSocial}</MenuItem>)}
+              </TextField>
+              <TextField select label="Proveedor auxiliar" value={nuevo.idProveedor2} onChange={(e)=>setNuevo({...nuevo,idProveedor2:e.target.value})} fullWidth sx={{ mt: 2 }}>
+                {proveedores.map((v)=> <MenuItem key={v.idProveedor} value={v.idProveedor}>{v.RazonSocial}</MenuItem>)}
+              </TextField>
+            </Grid>
+          </Grid>
         </Box>
       </DialogContent>
-
-      <DialogActions
-        sx={{
-          backgroundColor: colors.primary[400],
-        }}
-      >
-        <Button onClick={handleCancel} color="error">Cancelar</Button>
-    <Button onClick={handleSubmit} color="secondary" disabled={loading}>
- 
-    <CircularProgress size={24} /> Crear Articulo </Button>
-
+      <DialogActions>
+        <Button onClick={onClose} color="error">Cancelar</Button>
+        <Button onClick={handleSubmit} variant="contained" color="secondary" disabled={loading} startIcon={loading ? <CircularProgress size={18}/> : null}>
+          {loading ? "Guardando…" : "Crear artículo"}
+        </Button>
       </DialogActions>
-    </Dialog>
-  );
-};
 
-export default CrearArticulo
+      <Snackbar open={snack.open} autoHideDuration={3000} onClose={() => setSnack({ ...snack, open: false })}>
+        <Alert onClose={() => setSnack({ ...snack, open: false })} severity={snack.sev} variant="filled">{snack.msg}</Alert>
+      </Snackbar>
+    </>
+  );
+}
