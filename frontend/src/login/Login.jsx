@@ -1,4 +1,4 @@
-// src/pages/Login.jsx (o donde lo tengas)
+// src/pages/Login.jsx
 import React, { useState, useEffect } from "react";
 import {
   Container, Box, TextField, Button, Typography,
@@ -6,10 +6,12 @@ import {
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
 import { useNavigate } from "react-router-dom";
-import { Auth } from "../services"; // ← ahora existe y tiene login(email, password)
+import { Auth } from "../services";
 
 import { useTheme } from "@mui/material/styles";
 import { tokens } from "../theme";
+
+const BG = "https://artdent.com.ar/static/lab/25.jpeg";
 
 const Login = ({ setIsAuthenticated }) => {
   const [Email, setEmail] = useState("");
@@ -18,7 +20,7 @@ const Login = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
 
   const theme = useTheme();
-  const t = tokens?.(theme.palette?.mode || "light") || {};
+  const t = tokens?.(theme.palette?.mode || "dark") || {};
   const brand = t?.brand || {};
   const c = {
     blue: brand.primaryBlue || "#397B9C",
@@ -38,25 +40,18 @@ const Login = ({ setIsAuthenticated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-
     try {
       const { token, user } = await Auth.login(Email, Password);
-      if (!token) {
-        setErrorMessage("Usuario o contraseña incorrectos");
-        return;
-      }
+      if (!token) { setErrorMessage("Usuario o contraseña incorrectos"); return; }
       localStorage.setItem("token", token);
       if (user) localStorage.setItem("user", JSON.stringify(user));
       if (typeof setIsAuthenticated === "function") setIsAuthenticated(true);
       navigate("/dashboard");
     } catch (error) {
-      // Mensaje amable según tipo de error
       const data = error?.response?.data;
       const msg =
         (Array.isArray(data?.errors?.email) && data.errors.email[0]) ||
-        data?.message ||
-        error?.message ||
-        "No se pudo iniciar sesión.";
+        data?.message || error?.message || "No se pudo iniciar sesión.";
       setErrorMessage(msg);
       console.error(error);
     }
@@ -65,30 +60,36 @@ const Login = ({ setIsAuthenticated }) => {
   return (
     <Box
       sx={{
+        position: "relative",
         minHeight: "100vh",
-        background: `
-          radial-gradient(1200px 600px at 15% 0%, ${c.ice} 0%, transparent 60%),
-          radial-gradient(1000px 500px at 90% 100%, ${c.mintSoft} 0%, transparent 55%),
-          linear-gradient(135deg, ${c.blue} 0%, ${c.teal} 50%, ${c.green} 100%)
-        `,
+        backgroundImage: `url(${BG})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: "20px",
+        p: 2,
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          bgcolor: "rgba(0,0,0,.45)",
+          zIndex: 0,
+        },
       }}
     >
-      <Container component="main" maxWidth="xs">
+      <Container component="main" maxWidth="xs" sx={{ position: "relative", zIndex: 1 }}>
         <Box
           sx={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            background: `linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.75))`,
-            border: `1px solid ${c.ice}`,
-            backdropFilter: "blur(10px)",
-            padding: "40px 30px",
-            borderRadius: "16px",
-            boxShadow: `0 10px 30px rgba(0,0,0,0.15)`,
+            background: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            backdropFilter: "blur(12px)",
+            p: "40px 30px",
+            borderRadius: "20px",
+            boxShadow: "0 10px 30px rgba(0,0,0,.35)",
             width: "100%",
             transition: "transform .25s ease",
             "&:hover": { transform: "translateY(-2px)" },
@@ -98,7 +99,7 @@ const Login = ({ setIsAuthenticated }) => {
             component="h1"
             variant="h5"
             sx={{
-              color: c.blue,
+              color: "#fff",
               fontWeight: 700,
               fontSize: "1.8rem",
               letterSpacing: "0.02em",
@@ -130,21 +131,23 @@ const Login = ({ setIsAuthenticated }) => {
               placeholder="email@artdent.com.ar"
               InputLabelProps={{ shrink: true }}
               sx={{
-                "& .MuiInputBase-input": { fontSize: "0.95rem" },
+                "& .MuiInputBase-input": { fontSize: "0.95rem", color: "#fff" },
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",
-                  "& fieldset": { borderColor: c.ice },
+                  "& fieldset": { borderColor: "rgba(255,255,255,.35)" },
                   "&:hover fieldset": { borderColor: c.blueSoft },
                   "&.Mui-focused fieldset": { borderColor: c.blue },
+                  backdropFilter: "blur(2px)",
                 },
               }}
             />
 
             <Link
-              href="#"
+              href="/forgot"
               variant="body2"
               sx={{
-                color: c.teal,
+                color: "#fff",
+                opacity: 0.9,
                 fontSize: "0.9rem",
                 mt: 1,
                 display: "block",
@@ -169,12 +172,13 @@ const Login = ({ setIsAuthenticated }) => {
               placeholder="*******"
               InputLabelProps={{ shrink: true }}
               sx={{
-                "& .MuiInputBase-input": { fontSize: "0.95rem" },
+                "& .MuiInputBase-input": { fontSize: "0.95rem", color: "#fff" },
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",
-                  "& fieldset": { borderColor: c.ice },
+                  "& fieldset": { borderColor: "rgba(255,255,255,.35)" },
                   "&:hover fieldset": { borderColor: c.mint },
                   "&.Mui-focused fieldset": { borderColor: c.green },
+                  backdropFilter: "blur(2px)",
                 },
               }}
             />
@@ -186,13 +190,13 @@ const Login = ({ setIsAuthenticated }) => {
                   color="primary"
                   sx={{
                     transform: "scale(1.0)",
-                    color: c.blue,
+                    color: "#fff",
                     "&.Mui-checked": { color: c.green },
                   }}
                 />
               }
-              label={<span style={{ fontSize: "0.9rem" }}>Recordarme</span>}
-              sx={{ color: "#333", mt: 1 }}
+              label={<span style={{ color: "#fff", fontSize: "0.9rem" }}>Recordarme</span>}
+              sx={{ mt: 1 }}
             />
 
             <Button
@@ -207,7 +211,7 @@ const Login = ({ setIsAuthenticated }) => {
                 fontSize: "0.95rem",
                 fontWeight: 700,
                 borderRadius: "30px",
-                boxShadow: `0 6px 16px rgba(0,0,0,0.15)`,
+                boxShadow: `0 6px 16px rgba(0,0,0,0.25)`,
                 "&:hover": { backgroundColor: c.teal },
               }}
             >
@@ -218,7 +222,7 @@ const Login = ({ setIsAuthenticated }) => {
               href="/register"
               variant="body2"
               sx={{
-                color: c.blue,
+                color: "#fff",
                 fontSize: "0.95rem",
                 mt: 2,
                 display: "block",
@@ -233,12 +237,13 @@ const Login = ({ setIsAuthenticated }) => {
           <Typography
             variant="body1"
             sx={{
-              color: "#333",
+              color: "#fff",
               mt: 3,
               mb: 2,
               textAlign: "center",
               fontSize: "1rem",
               letterSpacing: "0.02em",
+              opacity: 0.9,
             }}
           >
             o
@@ -249,13 +254,13 @@ const Login = ({ setIsAuthenticated }) => {
             variant="outlined"
             sx={{
               mb: 1,
-              color: c.blue,
-              borderColor: c.blue,
+              color: "#fff",
+              borderColor: "rgba(255,255,255,.7)",
               padding: "10px 0",
               fontSize: "0.9rem",
               fontWeight: 700,
               borderRadius: "30px",
-              "&:hover": { borderColor: c.teal, backgroundColor: `${c.ice}80` },
+              "&:hover": { borderColor: "#fff", backgroundColor: "rgba(255,255,255,.08)" },
             }}
             startIcon={<GoogleIcon />}
           >

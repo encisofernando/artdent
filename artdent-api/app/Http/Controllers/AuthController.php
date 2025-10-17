@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
+use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -63,5 +64,26 @@ class AuthController extends Controller
     {
         $req->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'OK']);
+    }
+     /**
+     * ✅ Envía el email de restablecimiento de contraseña.
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => ['required','email']]);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'message' => __($status), // "We have emailed your password reset link!"
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => __($status),   // "We can't find a user with that email address."
+        ], 400);
     }
 }

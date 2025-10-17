@@ -23,4 +23,6 @@ export const Auth = {
     authService.register({ name, email, password, password_confirmation }),
   me: () => authService.me(),
   logout: () => authService.logout(),
+  requestPasswordReset: (email) => authService.requestPasswordReset(email),
+  createPassword: ({ token, password }) => authService.createPassword({ token, password }),
 };

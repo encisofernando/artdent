@@ -8,7 +8,7 @@
     "@fontsource/montserrat": "^5.2.6",
     "@mui/icons-material": "^5.10.3",
     "@mui/material": "^5.10.5",
-    "@mui/x-data-grid": "^5.17.2",
+    "@mui/x-data-grid": "^5.17.26",
     "@mui/x-date-pickers": "^7.22.0",
     "@nivo/bar": "^0.87.0",
     "@nivo/core": "^0.87.0",

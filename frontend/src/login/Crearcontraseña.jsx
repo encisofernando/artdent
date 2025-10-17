@@ -1,56 +1,108 @@
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Container, Box, TextField, Button, Typography } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { Auth } from "../services";
+// src/pages/ForgotPassword.jsx
+import React, { useState } from "react";
+import { Container, Box, TextField, Button, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { tokens } from "../theme";
+import { Auth } from "../services"; // debe exponer requestPasswordReset(email)
 
-const CrearContraseña = ({ setIsAuthenticated }) => {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const navigate = useNavigate();
+const BG = "https://artdent.com.ar/static/lab/25.jpeg";
 
-  const { search } = useLocation();
-  const params = new URLSearchParams(search);
-  const token = params.get('token');
+export default function ForgotPassword() {
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
+
+  const theme = useTheme();
+  const t = tokens?.(theme.palette?.mode || "dark") || {};
+  const brand = t?.brand || {};
+  const c = {
+    blue: brand.primaryBlue || "#397B9C",
+    green: brand.primaryGreen || "#5AAD9C",
+    mint: brand.secondaryMint || "#ACD6CE",
+    blueSoft: brand.tertiaryBlue || "#7CA5C3",
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) { setErrorMessage('Las contraseñas no coinciden'); return; }
-
+    setMsg(""); setError("");
     try {
-      // 🔗 backend actual: { token, password }
-      const response = await Auth.createPassword({ token, password });
-      if (response && response.message) {
-        setSuccessMessage(response.message);
-        navigate('/');
-      } else {
-        setErrorMessage('Error al crear la contraseña');
-      }
-    } catch (error) {
-      const msg = error?.response?.data?.message || 'Error al crear la contraseña';
-      setErrorMessage(msg);
+      // Debe devolver { message: "..."} si fue OK
+      const res = await Auth.requestPasswordReset(email);
+      setMsg(res?.message || "Si el correo existe, te enviamos un enlace para restablecer la contraseña.");
+    } catch (err) {
+      const m = err?.response?.data?.message || "No pudimos procesar tu solicitud.";
+      setError(m);
     }
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f1327, #2e3844, #143f52)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-      <Container component="main" maxWidth="xs">
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: 'rgba(6, 21, 41, 0.945)', backdropFilter: 'blur(10px)', padding: '40px 30px', borderRadius: '15px', boxShadow: '0 8px 30px rgb(0, 0, 0)', width: '100%', transition: 'all 0.3s ease-in-out', '&:hover': { transform: 'scale(1.02)' } }}>
-          <Typography component="h1" variant="h5" sx={{ color: '#fff', fontWeight: 'bold', fontSize: '1.8rem', letterSpacing: '0.05em' }}>Crear Contraseña</Typography>
-          {errorMessage && (<Typography color="error" sx={{ mt: 2 }}>{errorMessage}</Typography>)}
-          {successMessage && (<Typography color="success" sx={{ mt: 2 }}>{successMessage}</Typography>)}
+    <Box
+      sx={{
+        position: "relative",
+        minHeight: "100vh",
+        backgroundImage: `url(${BG})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        p: 2,
+        "&::before": {
+          content: '""', position: "absolute", inset: 0, bgcolor: "rgba(0,0,0,.45)", zIndex: 0,
+        },
+      }}
+    >
+      <Container component="main" maxWidth="xs" sx={{ position: "relative", zIndex: 1 }}>
+        <Box
+          sx={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            background: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            backdropFilter: "blur(12px)",
+            p: "40px 30px", borderRadius: "20px",
+            boxShadow: "0 10px 30px rgba(0,0,0,.35)",
+            width: "100%", transition: "transform .25s ease",
+            "&:hover": { transform: "translateY(-2px)" },
+          }}
+        >
+          <Typography component="h1" variant="h5" sx={{ color: "#fff", fontWeight: 700, fontSize: "1.8rem" }}>
+            Recuperar contraseña
+          </Typography>
 
-          <Box component="form" noValidate sx={{ mt: 2, width: '100%' }} onSubmit={handleSubmit}>
-            <TextField margin="normal" required fullWidth name="password" label="Nueva Contraseña" type="password" id="password" autoComplete="new-password" InputLabelProps={{ style: { color: '#fff' }, shrink: true }} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" sx={{ input: { color: '#fff' }, borderRadius: '30px', fieldset: { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover fieldset': { borderColor: '#fff' }, '&.Mui-focused fieldset': { borderColor: '#1976d2' } }} />
-            <TextField margin="normal" required fullWidth name="confirmPassword" label="Confirmar Contraseña" type="password" id="confirmPassword" autoComplete="new-password" InputLabelProps={{ style: { color: '#fff' }, shrink: true }} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="********" sx={{ input: { color: '#fff' }, borderRadius: '30px', fieldset: { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover fieldset': { borderColor: '#fff' }, '&.Mui-focused fieldset': { borderColor: '#1976d2' } }} />
-            <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, color: '#000', backgroundColor: '#ffffff', padding: '6px 0', fontSize: '13px', fontWeight: 'bold', borderRadius: '30px', transition: 'background-color 0.3s ease', '&:hover': { backgroundColor: '#e2dbdb', transform: 'translateY(-2px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)' } }}>Crear Contraseña</Button>
+          {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}
+          {msg && <Typography sx={{ mt: 2, color: "#c8facc" }}>{msg}</Typography>}
+
+          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 2, width: "100%" }}>
+            <TextField
+              margin="normal" required fullWidth id="email" name="email" label="Correo electrónico"
+              value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email"
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                "& .MuiInputBase-input": { color: "#fff" },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "12px",
+                  "& fieldset": { borderColor: "rgba(255,255,255,.35)" },
+                  "&:hover fieldset": { borderColor: c.blueSoft },
+                  "&.Mui-focused fieldset": { borderColor: c.blue },
+                },
+              }}
+            />
+            <Button
+              type="submit" fullWidth variant="contained"
+              sx={{ mt: 3, color: "#fff", backgroundColor: c.blue, py: 1.2, fontWeight: 700, borderRadius: "30px",
+                "&:hover": { backgroundColor: "#3c98a2" } }}
+            >
+              Enviar enlace de recuperación
+            </Button>
+            <Button
+              href="/" fullWidth variant="text"
+              sx={{ mt: 1.5, color: "#fff", textDecoration: "underline" }}
+            >
+              Volver a Iniciar sesión
+            </Button>
           </Box>
         </Box>
       </Container>
     </Box>
   );
-};
-
-export default CrearContraseña;
+}

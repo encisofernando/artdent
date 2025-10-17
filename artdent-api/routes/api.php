@@ -15,6 +15,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/create-password', [AuthController::class, 'createPassword']); // para el flujo de CrearContraseña.jsx
+    // ✅ Recuperar contraseña (envía email con link)
+    Route::post('/auth/password/forgot', [AuthController::class, 'forgotPassword']);
+
 });
 
 // ── Protegido (con token Bearer)
