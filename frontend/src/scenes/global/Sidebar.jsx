@@ -34,6 +34,8 @@ import CategoryIcon from "@mui/icons-material/Category";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import SearchIcon from "@mui/icons-material/Search";
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 
 // Servicios / auth
 import { getUserIdFromToken, getIdEmpleadoFromToken } from "../../auth/auth";
@@ -405,8 +407,22 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
                 Lista de Clientes
               </Link>
             </MenuItem>
-            <MenuItem>Clientes de Cuentas Corrientes (Ctrl+K)</MenuItem>
-            <MenuItem>Alta de Cliente (Ctrl+E)</MenuItem>
+            <MenuItem
+              icon={<AccountBalanceWalletIcon fontSize="small" />}
+              className={isActive("/ctacte") ? "active" : ""}
+            >
+              <Link to="/ctacte" style={{ textDecoration: "none", color: "inherit" }}>
+                Cuentas Corrientes (Ctrol+K)
+              </Link>
+            </MenuItem>
+            <MenuItem
+              icon={<PersonAddAlt1Icon fontSize="small" />}
+              className={isActive("/altacte") ? "active" : ""}
+            >
+              <Link to="/altacte" style={{ textDecoration: "none", color: "inherit" }}>
+                Alta de Cliente (Ctrl+E)
+              </Link>
+            </MenuItem>
           </SubMenu>
 
           {/* Proveedores */}
@@ -416,8 +432,30 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             open={openMainSubMenu === "Proveedores"}
             onClick={() => handleMainSubMenuToggle("Proveedores")}
           >
-            <MenuItem>Alta de Entrada de Mercadería</MenuItem>
-            <MenuItem>Buscar Entrada de Mercadería</MenuItem>
+            <MenuItem
+              icon={<AccountBalanceWalletIcon fontSize="small" />}
+              className={isActive("/proveedores/comprobantes") ? "active" : ""}
+            >
+              <Link to="/proveedores/comprobantes" style={{ textDecoration: "none", color: "inherit" }}>
+                Comprobantes
+              </Link>
+            </MenuItem>
+            <MenuItem
+              icon={<AccountBalanceWalletIcon fontSize="small" />}
+              className={isActive("/proveedores/pagos") ? "active" : ""}
+            >
+              <Link to="/proveedores/pagos" style={{ textDecoration: "none", color: "inherit" }}>
+                Pago/Proveedores
+              </Link>
+            </MenuItem>
+                        <MenuItem
+              icon={<AccountBalanceWalletIcon fontSize="small" />}
+              className={isActive("/proveedores/ctacte") ? "active" : ""}
+            >
+              <Link to="/proveedores/ctacte" style={{ textDecoration: "none", color: "inherit" }}>
+                CtaCte por Proveedor
+              </Link>
+            </MenuItem>
           </SubMenu>
 
           {/* Estadísticas */}

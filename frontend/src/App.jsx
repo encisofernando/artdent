@@ -12,6 +12,7 @@ import Dashboard from "./scenes/dashboard";
 import Team from "./scenes/team";
 import Invoices from "./scenes/invoices";
 import Clientes from "./scenes/clientes";
+import CtaCte from "./scenes/clientes/resumen_cta";
 import Bar from "./scenes/bar";
 import Form from "./scenes/form";
 import Line from "./scenes/line";
@@ -27,6 +28,8 @@ import Profile from "./scenes/profile/Profile";
 import Categorias from "./scenes/categorias";
 import NuevoEmpleado from "./scenes/team/TeamForm";
 import Proveedores from "./scenes/proveedores";
+import ProveedoresPagos from "./scenes/proveedores/pagos";
+import ProveedoresCtaCte from "./scenes/proveedores/ctacte";
 import Trabajos from "./scenes/jobs";
 import TrabajosConsulta from "./scenes/jobs/consulta";
 
@@ -101,8 +104,11 @@ export default function App() {
               <Route path="/pruebas" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Pruebas /></ProtectedRoute>} />
               <Route path="/team" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Team /></ProtectedRoute>} />
               <Route path="/nuevoempleado" element={<ProtectedRoute isAuthenticated={isAuthenticated}><NuevoEmpleado /></ProtectedRoute>} />
-              <Route path="/proveedores" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Proveedores /></ProtectedRoute>} />
+              <Route path="/proveedores/comprobantes" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Proveedores /></ProtectedRoute>} />
+              <Route path="/proveedores/pagos" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProveedoresPagos /></ProtectedRoute>} />
+              <Route path="/proveedores/ctacte" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProveedoresCtaCte /></ProtectedRoute>} />
               <Route path="/clientes" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Clientes /></ProtectedRoute>} />
+              <Route path="/ctacte" element={<ProtectedRoute isAuthenticated={isAuthenticated}><CtaCte /></ProtectedRoute>} />
               <Route path="/invoices" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Invoices /></ProtectedRoute>} />
               <Route path="/form" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Form /></ProtectedRoute>} />
               <Route path="/bar" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Bar /></ProtectedRoute>} />
