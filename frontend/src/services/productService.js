@@ -71,8 +71,8 @@ const firstOkDELETE = async (paths = []) => {
 };
 
 // Rutas posibles
-const LIST_PATHS = ["api/products", "/products"];
-const ONE_PATHS  = (id) => [`api/products/${id}`, `/products/${id}`];
+const LIST_PATHS = ["/products"];
+const ONE_PATHS  = (id) => [`/products/${id}`];
 
 export const listProducts = async (params = {}) => {
   const r = await firstOkGET(LIST_PATHS, params);

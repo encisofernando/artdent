@@ -1,7 +1,9 @@
-// 📁 src/services/utils.js
-export const unwrap = (r) => (r?.data?.data !== undefined ? r.data.data : r?.data ?? r);
-export const toQueryString = (obj = {}) =>
-  Object.entries(obj)
-    .filter(([_, v]) => v !== undefined && v !== null && v !== '')
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-    .join("&");
+export const unwrap = (p) => p.then((r) => r.data);
+
+export const toQueryString = (obj = {}) => {
+  const params = new URLSearchParams();
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") params.append(k, v);
+  });
+  return params.toString();
+};
