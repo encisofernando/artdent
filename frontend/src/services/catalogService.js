@@ -29,7 +29,7 @@ const catToUI = (c = {}) => ({
 });
 export const listCategories = async (params = {}) => {
   const r = await firstOkGET(
-    ["/api/categorias", "/categorias", "/api/categories", "/categories"],
+    ["api/categories", "/categories"],
     params
   );
   return rows(r).map(catToUI);
@@ -44,7 +44,7 @@ const ivaToUI = (t = {}) => ({
 });
 export const listTaxes = async () => {
   const r = await firstOkGET(
-    ["/api/iva", "/iva", "/api/taxes", "/taxes"]
+    ["api/taxes", "/taxes"]
   );
   return rows(r).map(ivaToUI);
 };
@@ -57,7 +57,7 @@ const promoToUI = (p = {}) => ({
 export const listPromotions = async () => {
   try {
     const r = await firstOkGET(
-      ["/api/promociones", "/promociones", "/api/promotions", "/promotions"]
+      ["api/promotions", "/promotions"]
     );
     return rows(r).map(promoToUI);
   } catch {
@@ -74,7 +74,7 @@ const provToUI = (v = {}) => ({
 });
 export const listSuppliers = async () => {
   const r = await firstOkGET(
-    ["/api/proveedores", "/proveedores", "/api/vendors", "/vendors"]
+    ["api/vendors", "/vendors"]
   );
   return rows(r).map(provToUI);
 };

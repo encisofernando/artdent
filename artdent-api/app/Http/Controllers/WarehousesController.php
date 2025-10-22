@@ -44,4 +44,27 @@ class WarehousesController extends Controller
         $cid = $r->user()->company_id;
         abort_unless($w->company_id == $cid, 403, 'Forbidden');
     }
+
+    public function taxes()
+    {
+        // Placeholder simple (ajustá a tu modelo/tabla si ya existe)
+        // Estructura esperada por el frontend: id / name / rate
+        return response()->json([
+            ['id' => 0,  'name' => 'Exento',   'rate' => 0],
+            ['id' => 10, 'name' => 'IVA 10.5', 'rate' => 10.5],
+            ['id' => 21, 'name' => 'IVA 21',   'rate' => 21],
+            ['id' => 27, 'name' => 'IVA 27',   'rate' => 27],
+        ]);
+    }
+
+    public function paymentMethods()
+    {
+        // Placeholder: ajustá a lo que uses realmente
+        return response()->json([
+            ['id' => 'cash',     'name' => 'Efectivo'],
+            ['id' => 'debit',    'name' => 'Débito'],
+            ['id' => 'credit',   'name' => 'Crédito'],
+            ['id' => 'transfer', 'name' => 'Transferencia'],
+        ]);
+    }
 }

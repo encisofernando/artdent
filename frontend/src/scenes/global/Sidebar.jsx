@@ -36,6 +36,8 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import SearchIcon from "@mui/icons-material/Search";
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 
 // Servicios / auth
 import { getUserIdFromToken, getIdEmpleadoFromToken } from "../../auth/auth";
@@ -352,23 +354,38 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
 
           {/* Ventas */}
           <SubMenu
-            title={<span style={{ color: ui.text }}>Ventas</span>}
+            title={<span style={{ color: ui.text }}>Insumos</span>}
             icon={<ReceiptOutlinedIcon />}
             open={openMainSubMenu === "Ventas"}
             onClick={() => handleMainSubMenuToggle("Ventas")}
           >
-            <MenuItem>
+            <MenuItem
+              icon={<AddShoppingCartIcon />}
+              className={isActive("/facturacion") ? "active" : ""}
+            >
               <Link to="/facturacion" style={{ textDecoration: "none", color: "inherit" }}>
-                Nueva Venta (F12 o Ctrl+N)
+                Nueva Venta
               </Link>
             </MenuItem>
-            <MenuItem>Buscar Comprobante</MenuItem>
-            <MenuItem>Anular Comprobante</MenuItem>
-            <MenuItem>Comprobante Asociado</MenuItem>
-            <MenuItem>Reimprimir Comprobante</MenuItem>
+            <MenuItem
+              icon={<ListAltIcon />}
+              className={isActive("/ventas") ? "active" : ""}
+            >
+              <Link to="/ventas" style={{ textDecoration: "none", color: "inherit" }}>
+                Lista de Ventas
+              </Link>
+            </MenuItem>
+            <MenuItem
+              icon={<ArticleIcon />}
+              className={isActive("/articulos") ? "active" : ""}
+            >
+              <Link to="/articulos" style={{ textDecoration: "none", color: "inherit" }}>
+                Articulos
+              </Link>
+            </MenuItem>
           </SubMenu>
 
-          {/* Caja */}
+          {/* Caja 
           <SubMenu
             title={<span style={{ color: ui.text }}>Caja</span>}
             icon={<LocalAtmIcon />}
@@ -390,7 +407,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             <MenuItem>Apertura de Caja</MenuItem>
             <MenuItem>Cierre de Caja</MenuItem>
             <MenuItem>Ver Cajas Cerradas</MenuItem>
-          </SubMenu>
+          </SubMenu> */}
 
           {/* Clientes */}
           <SubMenu
@@ -412,15 +429,15 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
               className={isActive("/ctacte") ? "active" : ""}
             >
               <Link to="/ctacte" style={{ textDecoration: "none", color: "inherit" }}>
-                Cuentas Corrientes (Ctrol+K)
+                Cta Cte
               </Link>
             </MenuItem>
             <MenuItem
               icon={<PersonAddAlt1Icon fontSize="small" />}
               className={isActive("/altacte") ? "active" : ""}
             >
-              <Link to="/altacte" style={{ textDecoration: "none", color: "inherit" }}>
-                Alta de Cliente (Ctrl+E)
+              <Link to="/pagoscte" style={{ textDecoration: "none", color: "inherit" }}>
+                Pagos
               </Link>
             </MenuItem>
           </SubMenu>
@@ -559,7 +576,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             </SubMenu>
           </SubMenu>
 
-          {/* Artículos */}
+          {/* Artículos 
           <SubMenu
             icon={<InventoryIcon />}
             title={<span style={{ color: ui.text }}>Artículos</span>}
@@ -581,7 +598,7 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             <MenuItem>Promociones</MenuItem>
             <MenuItem>Actualización Masiva de Precios</MenuItem>
             <MenuItem>Impresión de Código de Barras</MenuItem>
-          </SubMenu>
+          </SubMenu> */}
 
           {/* Operaciones */}
           <SubMenu
@@ -601,7 +618,6 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
               <MenuItem>Reproceso de Factura Electrónica</MenuItem>
             </SubMenu>
             <MenuItem>Régimen de Información de Ventas RG3685</MenuItem>
-            <MenuItem>Actualizar Cotización Dólar</MenuItem>
           </SubMenu>
 
           {/* Administración */}

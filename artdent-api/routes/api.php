@@ -30,7 +30,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Catálogos y auxiliares
     Route::get('warehouses',        [WarehousesController::class, 'index']);
     Route::get('payment-methods',   [WarehousesController::class, 'paymentMethods']);
-    Route::get('taxes',             [WarehousesController::class, 'taxes']);
+    Route::get('taxes', fn() => response()->json([
+    ['id' => 0,  'name' => 'Exento',    'rate' => 0],
+    ['id' => 10, 'name' => 'IVA 10.5%', 'rate' => 10.5],
+    ['id' => 21, 'name' => 'IVA 21%',   'rate' => 21],
+    ]));
 
     // Productos
     Route::apiResource('products', ProductsController::class);
@@ -52,4 +56,33 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Facturas
     Route::apiResource('invoices', InvoicesController::class)->only(['index','show','store']);
+
+    // routes/api.php
+    Route::get('categories', fn() => response()->json([
+    ['id' => 1, 'name' => 'Insumos'],
+    ['id' => 2, 'name' => 'Equipos'],
+    ]));
+
+    Route::get('vendors', fn() => response()->json([]));
+    Route::get('promotions', fn() => response()->json([]));
+
+    // Si usás "companies/me" ó "empresa"
+    Route::get('companies/me', function (\Illuminate\Http\Request $r) {
+        $user = $r->user();
+        return response()->json([
+            'id' => $user->company_id,
+            'name' => 'Mi Empresa', // ajustar si tenés modelo Company
+        ]);
+    });
+
+Route::get('company', function () {
+    // TODO: si ya tenés companies en DB, cargá desde el modelo.
+    return response()->json([
+        'id' => 1,
+        'name' => 'Laboratorio ArtDent',
+        'tax_id' => '20402155168',
+        'email' => 'admin@artdent.com.ar',
+    ]);
+});
+
 });

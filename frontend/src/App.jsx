@@ -13,6 +13,7 @@ import Team from "./scenes/team";
 import Invoices from "./scenes/invoices";
 import Clientes from "./scenes/clientes";
 import CtaCte from "./scenes/clientes/resumen_cta";
+import PagosCte from "./scenes/clientes/pagos";
 import Bar from "./scenes/bar";
 import Form from "./scenes/form";
 import Line from "./scenes/line";
@@ -108,6 +109,7 @@ export default function App() {
               <Route path="/proveedores/pagos" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProveedoresPagos /></ProtectedRoute>} />
               <Route path="/proveedores/ctacte" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProveedoresCtaCte /></ProtectedRoute>} />
               <Route path="/clientes" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Clientes /></ProtectedRoute>} />
+              <Route path="/pagoscte" element={<ProtectedRoute isAuthenticated={isAuthenticated}><PagosCte /></ProtectedRoute>} />
               <Route path="/ctacte" element={<ProtectedRoute isAuthenticated={isAuthenticated}><CtaCte /></ProtectedRoute>} />
               <Route path="/invoices" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Invoices /></ProtectedRoute>} />
               <Route path="/form" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Form /></ProtectedRoute>} />
