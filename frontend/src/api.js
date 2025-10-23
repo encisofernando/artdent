@@ -7,7 +7,7 @@ const API_URL =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     import.meta.env.VITE_API_URL) ||
-  "http://127.0.0.1:8000/api"; // fallback por si falta la env
+  "https://api.artdent.com.ar/api"; // fallback por si falta la env
 
 const api = axios.create({
   baseURL: API_URL,

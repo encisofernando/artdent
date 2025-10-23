@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       // Todo lo que empiece con /api va a 127.0.0.1:8000 tal cual
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: "https://api.artdent.com.ar",
         changeOrigin: true,
       },
     },

@@ -1,24 +1,23 @@
 import axios from "axios";
 
+// Detecta automáticamente la URL de producción o fallback
+const BASE_URL =
+  (import.meta.env && import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL.replace(/\/+$/, "")
+    : "https://api.artdent.com.ar/api");
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/api",
+  baseURL: BASE_URL,
+  timeout: 15000,
 });
 
+// (Opcional) adjuntar token si tenés login con bearer
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
-
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    // Opcional: logout si 401/419
-    if (err?.response?.status === 401) {
-      // localStorage.removeItem("token"); // si querés: redirigir a login
-    }
-    return Promise.reject(err);
-  }
-);
 
 export default api;
