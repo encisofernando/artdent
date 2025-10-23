@@ -1,5 +1,5 @@
 ### Set your token here
-@token = REPLACE_WITH_BEARER_TOKEN
+@token = 10|bpmL3rvny7AsjRqOlVdzijX9Hm6ickpoaFv5T5tx701c902b
 @base = http://127.0.0.1:8000/api
 
 ### Customers
