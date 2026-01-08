@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Box, Card, CardContent, CardHeader, Chip, Grid, Stack, TextField, Typography,
   ToggleButtonGroup, ToggleButton, Button, InputAdornment,
-  Autocomplete, Select, MenuItem, Paper
+  Autocomplete, Select, MenuItem, Paper,
+  useMediaQuery
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { DataGrid } from "@mui/x-data-grid";
@@ -26,7 +27,9 @@ export default function ConsultasYModificaciones() {
   const theme = useTheme();
   const c = tokens(theme.palette.mode);
 
-  // === Detectar ancho de sidebar (igual a FacturarPOS)
+  
+  const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+// === Detectar ancho de sidebar (igual a FacturarPOS)
   const [sidebarW, setSidebarW] = useState(0);
   const appbarH = TOPBAR_HEIGHT(theme);
   useEffect(() => {
@@ -48,14 +51,21 @@ export default function ConsultasYModificaciones() {
   // ====== Helpers UI (estilo de index.jsx: radius 3 y borde blueAccent[100]) ======
   function SectionCard({ title, action, children }) {
     return (
-      <Card elevation={0} sx={{ borderRadius: 3, border: `1px solid ${c.blueAccent[100]}` }}>
-        <CardHeader
-          sx={{ pb: 0 }}
-          title={<Typography variant="h6" sx={{ color: c.brand.primaryBlue, fontWeight: 700 }}>{title}</Typography>}
-          action={action}
-        />
-        <CardContent sx={{ pt: 2 }}>{children}</CardContent>
-      </Card>
+      <Paper variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          spacing={2}
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="h6" fontWeight={700}>
+            {title}
+          </Typography>
+          {action}
+        </Stack>
+        {children}
+      </Paper>
     );
   }
 
@@ -174,14 +184,15 @@ export default function ConsultasYModificaciones() {
       sx={{
         position: "fixed",
         top: appbarH,
-        left: sidebarW,
+        left: mdDown ? 0 : sidebarW,
         right: 0,
         bottom: 0,
         display: "flex",
         flexDirection: "column",
         gap: 2,
         p: 2,              // padding adaptable como FacturarPOS
-        overflow: "hidden" // bloquea scroll del body
+        overflow: "hidden", // bloquea scroll del body
+        transition: "left .18s ease"
       }}
     >
       {/* FILTROS */}
@@ -237,7 +248,7 @@ export default function ConsultasYModificaciones() {
       </SectionCard>
 
       {/* RESULTADOS — ocupa todo el resto; SOLO acá hay scroll */}
-      <Paper variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${c.blueAccent[100]}`, p: 2, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <Paper variant="outlined" sx={{ borderRadius: 2, p: 2, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <Typography variant="h6" sx={{ color: c.brand.primaryBlue, fontWeight: 700, mb: 1 }}>
           Resultados de Búsqueda
         </Typography>
@@ -255,7 +266,7 @@ export default function ConsultasYModificaciones() {
               height: "100%",
               width: "100%",
               borderRadius: 2,
-              border: `1px solid ${c.blueAccent[100]}`,
+              border: `1px solid ${theme.palette.divider}`,
               "& .MuiDataGrid-columnHeaders": { background: theme.palette.background.paper },
               "& .MuiDataGrid-virtualScroller": { overflowY: "auto", overflowX: "hidden" }, // solo vertical
               "& .MuiDataGrid-main": { overflow: "hidden" },

@@ -4,7 +4,7 @@ import axios from "axios";
 const BASE_URL =
   (import.meta.env && import.meta.env.VITE_API_URL
     ? import.meta.env.VITE_API_URL.replace(/\/+$/, "")
-    : "https://api.artdent.com.ar/api");
+    : "https://api.artdent.com.ar/api","http://localhost:8000/api").trim();
 
 const api = axios.create({
   baseURL: BASE_URL,

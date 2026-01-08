@@ -2,7 +2,8 @@ import React, { useMemo, useState, useEffect } from "react";
 import {
   Box, Card, CardContent, CardHeader, Chip, Grid, IconButton, Stack, TextField, Typography,
   ToggleButtonGroup, ToggleButton, FormControlLabel, Radio, RadioGroup, FormControl, FormLabel,
-  Checkbox, Button, InputAdornment, Paper, Tooltip, Autocomplete
+  Checkbox, Button, InputAdornment, Paper, Tooltip, Autocomplete,
+  useMediaQuery
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import PostAddIcon from "@mui/icons-material/PostAdd";
@@ -32,10 +33,12 @@ const opcionesAdicionales = [
 function SectionCard({ title, children, action }) {
   const theme = useTheme();
   const c = tokens(theme.palette.mode);
-  return (
-    <Card elevation={0} sx={{ borderRadius: 3, border: `1px solid ${c.blueAccent[100]}` }}>
+  
+  const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+return (
+    <Card elevation={0} sx={{ borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}>
       <CardHeader
-        title={<Typography variant="h6" sx={{ color: c.brand.primaryBlue, fontWeight: 700 }}>{title}</Typography>}
+        title={<Typography variant="h6" sx={{ fontWeight: 700 }}>{title}</Typography>}
         action={action}
         sx={{ pb: 0 }}
       />
@@ -48,7 +51,9 @@ export default function TrabajoARTDENT() {
   const theme = useTheme();
   const c = tokens(theme.palette.mode);
 
-  // ====== Fixed layout state ======
+  
+  const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+// ====== Fixed layout state ======
   const appbarH = TOPBAR_HEIGHT(theme);
   const [sidebarW, setSidebarW] = useState(0);
   useEffect(() => {
@@ -119,7 +124,7 @@ export default function TrabajoARTDENT() {
       sx={{
         position: "fixed",
         top: appbarH,
-        left: sidebarW,
+        left: mdDown ? 0 : sidebarW,
         right: 0,
         bottom: 0,
         display: "flex",
@@ -127,6 +132,7 @@ export default function TrabajoARTDENT() {
         gap: 2,
         p: 2,
         overflow: "hidden",
+        transition: "left .18s ease",
       }}
     >
       {/* Scroll interno para el contenido */}

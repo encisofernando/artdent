@@ -2,18 +2,12 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, CircularProgress, Box, Typography, useTheme, FormControlLabel, Checkbox, Grid, Divider,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import { Products, Catalog } from '../../services';
-
-
-import { tokens } from "../../theme";
-import { Products, Catalog } from '../../services';
-
+import { Products, Catalog } from "../../services";
 
 import Modal from "../../components/ModalError";
 
 const AltaArticulo = ({ open, onClose, articuloEditando, onArticuloCreado }) => {
   const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isModalVisible, setModalVisible] = useState(false);
@@ -69,7 +63,6 @@ const AltaArticulo = ({ open, onClose, articuloEditando, onArticuloCreado }) => 
     ImagenUrl: '' // Para la imagen existente
   });
 
-
   useEffect(() => {
     if (error) {
       setModalVisible(true);
@@ -85,7 +78,6 @@ const AltaArticulo = ({ open, onClose, articuloEditando, onArticuloCreado }) => 
   useEffect(() => {
     if (articuloEditando) {  // Verificar si articuloEditando no es null
       console.log("Valor de FechaVto:", articuloEditando.FechaVto);
-
 
       const fechaVto = articuloEditando.FechaVto ? new Date(articuloEditando.FechaVto) : null;
       const formattedFechaVto = fechaVto ? fechaVto.toISOString().split("T")[0] : null; // Cambia a null
@@ -363,7 +355,6 @@ const AltaArticulo = ({ open, onClose, articuloEditando, onArticuloCreado }) => 
         formData.append('Imagen', nuevoArticulo.ImagenUrl); // La imagen actual ya existente
       }
 
-
       console.log('FormData para crear artículo:', nuevoArticulo);
       await Products.createProduct(formData); // Asegúrate de que createArticulo acepte FormData
   
@@ -430,15 +421,16 @@ const AltaArticulo = ({ open, onClose, articuloEditando, onArticuloCreado }) => 
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ backgroundColor: colors.primary[400], textAlign: "center", fontSize: "1.5rem"}}>
-        {articuloEditando ? 'Modificar Artículo' : 'Agregar Artículo'}
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+      <DialogTitle sx={{ py: 2 }}>
+        <Typography variant="h4" fontWeight={700} align="center">{articuloEditando ? "Modificar Artículo" : "Agregar Artículo"}</Typography>
       </DialogTitle>
+      <Divider />
 
-      <DialogContent sx={{ backgroundColor: colors.primary[400],}}>
+      <DialogContent sx={{ pt: 1, pb: 0 }}>
         <Box m="10px">
-          <Box m="0px 0" p="20px" borderRadius="8px"
-            sx={{ backgroundColor: colors.primary[400], "& .MuiFormControl-root": { marginBottom: "20px" },}}>
+          <Box m="0px 0" p="20px" borderRadius={2}
+            sx={{ border: (t) => `1px solid ${t.palette.divider}`, "& .MuiFormControl-root": { marginBottom: "20px" } }}>
 
             <Grid container spacing={3}>
               {/* Sección de Producto / Servicio y Activo */}
@@ -956,11 +948,7 @@ const AltaArticulo = ({ open, onClose, articuloEditando, onArticuloCreado }) => 
         </Box>
       </DialogContent>
 
-      <DialogActions
-        sx={{
-          backgroundColor: colors.primary[400],
-        }}
-      >
+      <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={handleCancel} color="error">Cancelar</Button>
     <Button onClick={handleSubmit} color="secondary" disabled={loading}>
   {loading ? (
