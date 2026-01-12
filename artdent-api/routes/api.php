@@ -16,7 +16,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/create-password', [AuthController::class, 'createPassword']); // para el flujo de CrearContraseña.jsx
     // ✅ Recuperar contraseña (envía email con link)
-    Route::post('/auth/password/forgot', [AuthController::class, 'forgotPassword']);
+    // IMPORTANTE: ya estamos dentro del prefijo "auth", evitar duplicar.
+    Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
 
 });
 
@@ -29,12 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Catálogos y auxiliares
     Route::get('warehouses',        [WarehousesController::class, 'index']);
-    Route::get('payment-methods',   [WarehousesController::class, 'paymentMethods']);
-    Route::get('taxes', fn() => response()->json([
-    ['id' => 0,  'name' => 'Exento',    'rate' => 0],
-    ['id' => 10, 'name' => 'IVA 10.5%', 'rate' => 10.5],
-    ['id' => 21, 'name' => 'IVA 21%',   'rate' => 21],
-    ]));
+    // payment-methods y taxes se manejan por sus controllers dedicados (CRUD)
 
     // Productos
     Route::apiResource('products', ProductsController::class);
@@ -60,6 +56,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // Métodos de pago
     Route::apiResource('payment-methods', \App\Http\Controllers\PaymentMethodsController::class)->only(['index','show','store','update','destroy']);
 
+    // Empresas
+    Route::get('companies/me', [\App\Http\Controllers\CompaniesController::class, 'me']);
+    Route::get('companies/{company}', [\App\Http\Controllers\CompaniesController::class, 'show']);
+    // Compat (frontend puede usar /company)
+    Route::get('company', [\App\Http\Controllers\CompaniesController::class, 'me']);
+    Route::get('company/{company}', [\App\Http\Controllers\CompaniesController::class, 'show']);
+
+    // Categorías (si la tabla está vacía, devuelve [])
+    Route::apiResource('categories', \App\Http\Controllers\CategoriesController::class)
+        ->only(['index','show','store','update','destroy']);
+
 
     // Compras
     Route::apiResource('purchases', PurchasesController::class)->only(['index','show','store']);
@@ -73,32 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Facturas
     Route::apiResource('invoices', InvoicesController::class)->only(['index','show','store']);
 
-    // routes/api.php
-    Route::get('categories', fn() => response()->json([
-    ['id' => 1, 'name' => 'Insumos'],
-    ['id' => 2, 'name' => 'Equipos'],
-    ]));
-
-    Route::get('vendors', fn() => response()->json([]));
+    // Promociones (por ahora sin tabla)
     Route::get('promotions', fn() => response()->json([]));
-
-    // Si usás "companies/me" ó "empresa"
-    Route::get('companies/me', function (\Illuminate\Http\Request $r) {
-        $user = $r->user();
-        return response()->json([
-            'id' => $user->company_id,
-            'name' => 'Mi Empresa', // ajustar si tenés modelo Company
-        ]);
-    });
-
-Route::get('company', function () {
-    // TODO: si ya tenés companies en DB, cargá desde el modelo.
-    return response()->json([
-        'id' => 1,
-        'name' => 'Laboratorio ArtDent',
-        'tax_id' => '20402155168',
-        'email' => 'admin@artdent.com.ar',
-    ]);
-});
 
 });

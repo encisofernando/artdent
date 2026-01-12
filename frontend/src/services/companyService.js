@@ -12,19 +12,15 @@ const safeGet = async (url) => {
 };
 
 export const getMyCompany = async () => {
-  // orden de prueba hasta que exista el endpoint real en Laravel
-  return (
-    (await safeGet("api/company")) ??
-    (await safeGet("api/companies/me")) ??
-    null
-  );
+  // Endpoint real en Laravel
+  return (await safeGet("/company")) ?? (await safeGet("/companies/me")) ?? null;
 };
 
 export const getCompanyById = async (id) => {
   if (!id) return null;
   return (
-    (await safeGet(`api/companies/${id}`)) ??
-    (await safeGet(`api/company/${id}`)) ??
+    (await safeGet(`/companies/${id}`)) ??
+    (await safeGet(`/company/${id}`)) ??
     null
   );
 };

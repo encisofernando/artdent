@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Default Company (Multi-tenant)
+    |--------------------------------------------------------------------------
+    |
+    | La UI actual no envía company_id al registrarse. Este valor se usa como
+    | fallback para asignar la empresa por defecto.
+    |
+    */
+
+    'default_company_id' => (int) env('DEFAULT_COMPANY_ID', 1),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
