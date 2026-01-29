@@ -29,6 +29,9 @@ import TuneIcon from "@mui/icons-material/Tune";
 import LocalAtmIcon from "@mui/icons-material/LocalAtm";
 import PersonIcon from "@mui/icons-material/Person";
 import GroupsIcon from "@mui/icons-material/Groups";
+import BadgeIcon from "@mui/icons-material/Badge";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ArticleIcon from "@mui/icons-material/Article";
 import CategoryIcon from "@mui/icons-material/Category";
 import EditNoteIcon from "@mui/icons-material/EditNote";
@@ -408,6 +411,39 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             <MenuItem>Cierre de Caja</MenuItem>
             <MenuItem>Ver Cajas Cerradas</MenuItem>
           </SubMenu> */}
+          
+          {/* === Colaboradores === */}
+          <SubMenu
+            icon={<GroupsIcon />}
+            open={openMainSubMenu === "Colaboradores"}
+            onClick={() => handleMainSubMenuToggle("Colaboradores")}
+            title={<span style={{ color: ui.text }}>Colaboradores</span>}
+          >
+            <MenuItem
+              icon={<BadgeIcon fontSize="small" />}
+              className={isActive("/colaboradores") ? "active" : ""}
+            >
+              <Link to="/colaboradores" style={{ textDecoration: "none", color: "inherit" }}>
+                ABM y $/Hora
+              </Link>
+            </MenuItem>
+            <MenuItem
+              icon={<AccessTimeIcon fontSize="small" />}
+              className={isActive("/colaboradores/asistencias") ? "active" : ""}
+            >
+              <Link to="/colaboradores/asistencias" style={{ textDecoration: "none", color: "inherit" }}>
+                Asistencias
+              </Link>
+            </MenuItem>
+            <MenuItem
+              icon={<ReceiptLongIcon fontSize="small" />}
+              className={isActive("/colaboradores/recibos") ? "active" : ""}
+            >
+              <Link to="/colaboradores/recibos" style={{ textDecoration: "none", color: "inherit" }}>
+                Recibos
+              </Link>
+            </MenuItem>
+          </SubMenu>
 
           {/* Clientes */}
           <SubMenu

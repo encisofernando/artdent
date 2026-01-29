@@ -51,6 +51,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('receipts', [\App\Http\Controllers\ReceiptsController::class, 'store']);
     Route::get('roles', [\App\Http\Controllers\RolesController::class, 'index']);
 
+    // === Colaboradores (Asistencias y Pagos) ===
+    Route::apiResource('collaborators', CollaboratorsController::class)->only(['index','show','store','update','destroy']);
+    Route::apiResource('collaborator-attendances', CollaboratorAttendancesController::class)->only(['index','store','update','destroy']);
+    Route::post('collaborator-receipts/generate', [CollaboratorReceiptsController::class, 'generate']);
+    Route::get('collaborator-receipts/{id}', [CollaboratorReceiptsController::class, 'show']);
+    Route::apiResource('vendors', \App\Http\Controllers\VendorsController::class)->only(['index','show','store','update','destroy']);
+    Route::get('invoice-types', [\App\Http\Controllers\InvoiceTypesController::class, 'index']);
+    Route::get('payments', [\App\Http\Controllers\PaymentsController::class, 'index']);
+    Route::post('payments', [\App\Http\Controllers\PaymentsController::class, 'store']);
+    Route::get('receipts', [\App\Http\Controllers\ReceiptsController::class, 'index']);
+    Route::post('receipts', [\App\Http\Controllers\ReceiptsController::class, 'store']);
+    Route::get('roles', [\App\Http\Controllers\RolesController::class, 'index']);
+
     // Impuestos (taxes)
     Route::apiResource('taxes', \App\Http\Controllers\TaxesController::class)->only(['index','show','store','update','destroy']);
     // Métodos de pago

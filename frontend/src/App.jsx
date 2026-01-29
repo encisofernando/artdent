@@ -33,7 +33,10 @@ import ProveedoresPagos from "./scenes/proveedores/pagos";
 import ProveedoresCtaCte from "./scenes/proveedores/ctacte";
 import Trabajos from "./scenes/jobs";
 import TrabajosConsulta from "./scenes/jobs/consulta";
-
+// Colaboradores
+import Colaboradores from "./scenes/colaboradores/Colaboradores";
+import Asistencias from "./scenes/colaboradores/Asistencias";
+import Recibos from "./scenes/colaboradores/Recibos";
 // Auth
 import Login from "./login/Login";
 import Register from "./login/Register";
@@ -122,6 +125,11 @@ export default function App() {
               <Route path="/profile" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Profile /></ProtectedRoute>} />
               <Route path="/trabajos/ingresar" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Trabajos /></ProtectedRoute>} />
               <Route path="/trabajos/consultar" element={<ProtectedRoute isAuthenticated={isAuthenticated}><TrabajosConsulta /></ProtectedRoute>} />
+              {/* Colaboradores */}
+              <Route path="/colaboradores" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Colaboradores /></ProtectedRoute>} />
+              <Route path="/colaboradores/asistencias" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Asistencias /></ProtectedRoute>} />
+              <Route path="/colaboradores/recibos" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Recibos /></ProtectedRoute>} />
+              
             </Routes>
           </Box>
         </Box>

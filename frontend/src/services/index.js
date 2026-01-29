@@ -16,3 +16,6 @@ export * as Tax from "./taxService";
 export * as Taxes from "./taxes";
 export * as Users from "./userService";
 export * as Vendors from "./vendorService";
+export * as Collaborators from "./collaborators";
+export * as CollaboratorAttendances from "./collaboratorAttendances";
+export * as CollaboratorReceipts from "./collaboratorReceipts";
