@@ -355,6 +355,39 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             </MenuItem>
           </SubMenu>
 
+          {/* === Colaboradores === */}
+          <SubMenu
+            icon={<GroupsIcon />}
+            open={openMainSubMenu === "Colaboradores"}
+            onClick={() => handleMainSubMenuToggle("Colaboradores")}
+            title={<span style={{ color: ui.text }}>Colaboradores</span>}
+          >
+            <MenuItem
+              icon={<BadgeIcon fontSize="small" />}
+              className={isActive("/colaboradores") ? "active" : ""}
+            >
+              <Link to="/colaboradores" style={{ textDecoration: "none", color: "inherit" }}>
+                ABM y $/Hora
+              </Link>
+            </MenuItem>
+            <MenuItem
+              icon={<AccessTimeIcon fontSize="small" />}
+              className={isActive("/colaboradores/asistencias") ? "active" : ""}
+            >
+              <Link to="/colaboradores/asistencias" style={{ textDecoration: "none", color: "inherit" }}>
+                Asistencias
+              </Link>
+            </MenuItem>
+            <MenuItem
+              icon={<ReceiptLongIcon fontSize="small" />}
+              className={isActive("/colaboradores/recibos") ? "active" : ""}
+            >
+              <Link to="/colaboradores/recibos" style={{ textDecoration: "none", color: "inherit" }}>
+                Recibos
+              </Link>
+            </MenuItem>
+          </SubMenu>
+
           {/* Ventas */}
           <SubMenu
             title={<span style={{ color: ui.text }}>Insumos</span>}
@@ -372,9 +405,9 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             </MenuItem>
             <MenuItem
               icon={<ListAltIcon />}
-              className={isActive("/ventas") ? "active" : ""}
+              className={isActive("/invoices") ? "active" : ""}
             >
-              <Link to="/ventas" style={{ textDecoration: "none", color: "inherit" }}>
+              <Link to="/invoices" style={{ textDecoration: "none", color: "inherit" }}>
                 Lista de Ventas
               </Link>
             </MenuItem>
@@ -411,39 +444,6 @@ const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
             <MenuItem>Cierre de Caja</MenuItem>
             <MenuItem>Ver Cajas Cerradas</MenuItem>
           </SubMenu> */}
-          
-          {/* === Colaboradores === */}
-          <SubMenu
-            icon={<GroupsIcon />}
-            open={openMainSubMenu === "Colaboradores"}
-            onClick={() => handleMainSubMenuToggle("Colaboradores")}
-            title={<span style={{ color: ui.text }}>Colaboradores</span>}
-          >
-            <MenuItem
-              icon={<BadgeIcon fontSize="small" />}
-              className={isActive("/colaboradores") ? "active" : ""}
-            >
-              <Link to="/colaboradores" style={{ textDecoration: "none", color: "inherit" }}>
-                ABM y $/Hora
-              </Link>
-            </MenuItem>
-            <MenuItem
-              icon={<AccessTimeIcon fontSize="small" />}
-              className={isActive("/colaboradores/asistencias") ? "active" : ""}
-            >
-              <Link to="/colaboradores/asistencias" style={{ textDecoration: "none", color: "inherit" }}>
-                Asistencias
-              </Link>
-            </MenuItem>
-            <MenuItem
-              icon={<ReceiptLongIcon fontSize="small" />}
-              className={isActive("/colaboradores/recibos") ? "active" : ""}
-            >
-              <Link to="/colaboradores/recibos" style={{ textDecoration: "none", color: "inherit" }}>
-                Recibos
-              </Link>
-            </MenuItem>
-          </SubMenu>
 
           {/* Clientes */}
           <SubMenu

@@ -25,9 +25,34 @@ export default function Recibos() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Encabezado opcional para el recibo (se envía por headers)
+  const [companyName, setCompanyName] = useState(
+    localStorage.getItem("companyName") || ""
+  );
+  const [companyTaxId, setCompanyTaxId] = useState(
+    localStorage.getItem("companyTaxId") || ""
+  );
+  const [companyAddress, setCompanyAddress] = useState(
+    localStorage.getItem("companyAddress") || ""
+  );
+
+  const showApiError = (e, fallback = "Ocurrió un error.") => {
+    const msg =
+      e?.response?.data?.message ||
+      e?.response?.data?.error ||
+      e?.message ||
+      fallback;
+    console.error(e);
+    alert(msg);
+  };
+
   const loadCollaborators = async () => {
-    const data = await CollaboratorsService.Collaborators.list({ active: true });
-    setCollaborators(Array.isArray(data) ? data : []);
+    try {
+      const data = await CollaboratorsService.Collaborators.list({ active: true });
+      setCollaborators(Array.isArray(data) ? data : []);
+    } catch (e) {
+      showApiError(e, "Error cargando colaboradores.");
+    }
   };
 
   useEffect(() => {
@@ -41,12 +66,27 @@ export default function Recibos() {
     }
     setLoading(true);
     try {
-      const data = await ReceiptsService.CollaboratorReceipts.generate({
-        collaborator_id: Number(collaboratorId),
-        period_from: toYmd(from),
-        period_to: toYmd(to),
-      });
+      const headers = {};
+      if (companyName.trim()) headers["X-Company-Name"] = companyName.trim();
+      if (companyTaxId.trim()) headers["X-Company-Tax-Id"] = companyTaxId.trim();
+      if (companyAddress.trim()) headers["X-Company-Address"] = companyAddress.trim();
+
+      // Persistir para próximas veces
+      localStorage.setItem("companyName", companyName);
+      localStorage.setItem("companyTaxId", companyTaxId);
+      localStorage.setItem("companyAddress", companyAddress);
+
+      const data = await ReceiptsService.CollaboratorReceipts.generate(
+        {
+          collaborator_id: Number(collaboratorId),
+          period_from: toYmd(from),
+          period_to: toYmd(to),
+        },
+        headers
+      );
       setResult(data);
+    } catch (e) {
+      showApiError(e, "No se pudo generar el recibo.");
     } finally {
       setLoading(false);
     }
@@ -72,6 +112,31 @@ export default function Recibos() {
 
       <LocalizationProvider dateAdapter={AdapterDateFns}>
         <Stack spacing={2} mb={2}>
+          <Paper sx={{ p: 2 }} variant="outlined">
+            <Typography variant="subtitle1" fontWeight={700} mb={1}>
+              Datos del encabezado (opcional)
+            </Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+              <TextField
+                label="Empresa"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="CUIT"
+                value={companyTaxId}
+                onChange={(e) => setCompanyTaxId(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Domicilio"
+                value={companyAddress}
+                onChange={(e) => setCompanyAddress(e.target.value)}
+                fullWidth
+              />
+            </Stack>
+          </Paper>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <TextField
               select

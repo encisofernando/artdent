@@ -31,7 +31,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index(['collaborator_id', 'work_date']);
+            // Nombre corto por compatibilidad con MySQL (límite 64 chars)
+            $table->index(['collaborator_id', 'work_date'], 'ca_collab_workdate_idx');
         });
 
         Schema::create('collaborator_extras', function (Blueprint $table) {
@@ -43,7 +44,8 @@ return new class extends Migration
             $table->decimal('amount', 12, 2)->default(0);
             $table->timestamps();
 
-            $table->index(['collaborator_id', 'date']);
+            // Nombre corto por compatibilidad con MySQL (límite 64 chars)
+            $table->index(['collaborator_id', 'date'], 'ce_collab_date_idx');
         });
 
         Schema::create('collaborator_discounts', function (Blueprint $table) {
@@ -55,7 +57,8 @@ return new class extends Migration
             $table->decimal('amount', 12, 2)->default(0);
             $table->timestamps();
 
-            $table->index(['collaborator_id', 'date']);
+            // Nombre corto por compatibilidad con MySQL (límite 64 chars)
+            $table->index(['collaborator_id', 'date'], 'cd_collab_date_idx');
         });
 
         Schema::create('collaborator_receipts', function (Blueprint $table) {
@@ -72,7 +75,8 @@ return new class extends Migration
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
 
-            $table->index(['collaborator_id', 'period_from', 'period_to']);
+            // Nombre corto por compatibilidad con MySQL (límite 64 chars)
+            $table->index(['collaborator_id', 'period_from', 'period_to'], 'cr_collab_period_idx');
         });
     }
 

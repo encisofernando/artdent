@@ -13,7 +13,7 @@ class CollaboratorReceiptsController extends Controller
 {
     public function __construct()
     {
-        ->middleware('auth:sanctum');
+        $this->middleware('auth:sanctum');
     }
 
     public function generate(Request $request)

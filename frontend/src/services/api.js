@@ -1,25 +1,20 @@
 import axios from "axios";
 
-// Detecta automáticamente la URL de la API.
-// Prioridad:
-// 1) VITE_API_URL (recomendado)
-// 2) Según el modo de Vite: prod -> https://api.artdent.com.ar/api, dev -> http://localhost:8000/api
-const BASE_URL = (() => {
-  const envUrl = import.meta?.env?.VITE_API_URL;
-  if (envUrl && typeof envUrl === "string") {
-    return envUrl.replace(/\/+$/, "");
-  }
-
-  const isProd = !!import.meta?.env?.PROD;
-  return isProd ? "https://api.artdent.com.ar/api" : "http://localhost:8000/api";
-})();
+// Si existe VITE_API_URL, se usa. Caso contrario, se usa localhost.
+const BASE_URL =
+  (import.meta.env && import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL.replace(/\/+$/, "")
+    : "http://localhost:8000/api");
 
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
+  headers: {
+    Accept: "application/json",
+  },
 });
 
-// (Opcional) adjuntar token si tenés login con bearer
+// Adjuntar token si existe (Laravel Sanctum - Bearer)
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -27,5 +22,17 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Si el backend responde 401, limpiamos token para evitar loops.
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    if (err?.response?.status === 401) {
+      localStorage.removeItem("token");
+      // No forzamos redirect acá para no romper flujos; la UI puede decidir.
+    }
+    return Promise.reject(err);
+  }
+);
 
 export default api;

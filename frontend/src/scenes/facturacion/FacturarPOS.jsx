@@ -15,7 +15,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 // Servicios
-import { Products, Users } from "../../services";
+import { Products, Users, Sales, Receipts, PaymentMethods, Warehouse } from "../../services";
 import { getUserIdFromToken } from "../../auth/auth";
 
 // Modales
@@ -144,6 +144,11 @@ const FacturarPOSCompact = () => {
   // Instantánea de venta para enviar/imprimir luego de limpiar carrito
   const [venta, setVenta] = useState(null);
 
+  // Configuración / datos auxiliares
+  const [warehouses, setWarehouses] = useState([]);
+  const [warehouseId, setWarehouseId] = useState(null);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+
   // Cargar catálogo
   useEffect(() => {
     (async () => {
@@ -152,6 +157,39 @@ const FacturarPOSCompact = () => {
         setCatalogo(prods || []);
       } catch { /* noop */ }
     })();
+  }, []);
+
+  // Cargar depósitos y métodos de pago (para persistir la venta)
+  useEffect(() => {
+    (async () => {
+      try {
+        const ws = await Warehouse.listWarehouses?.();
+        const wArr = Array.isArray(ws) ? ws : (ws?.data && Array.isArray(ws.data) ? ws.data : []);
+        setWarehouses(wArr);
+
+        // Si no hay depósito seleccionado, intentamos setear el primero.
+        if (!warehouseId && wArr.length) setWarehouseId(wArr[0].id);
+
+        // Si la API devuelve vacío pero el sistema igual necesita un depósito para registrar stock,
+        // dejamos un fallback común (id=1) para entornos de desarrollo.
+        if ((!wArr || !wArr.length) && !warehouseId) {
+          setWarehouses([{ id: 1, name: "Depósito", code: "DEFAULT" }]);
+          setWarehouseId(1);
+        }
+      } catch {
+        // Fallback si el endpoint /warehouses no está disponible
+        if (!warehouseId) {
+          setWarehouses([{ id: 1, name: "Depósito", code: "DEFAULT" }]);
+          setWarehouseId(1);
+        }
+      }
+
+      try {
+        const pms = await PaymentMethods.list?.();
+        setPaymentMethods(Array.isArray(pms) ? pms : []);
+      } catch { /* noop */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtrar = useMemo(() => {
@@ -166,13 +204,15 @@ const FacturarPOSCompact = () => {
     const id = prod.idArticulo || prod.id;
     const name = prod.Nombre || prod.name;
     const price = Number(prod.PrecioPublico || prod.price || 0);
+    const ivaPct = Number(prod.Iva ?? prod.iva ?? 0); // ej: 21
+    const ivaRate = isFinite(ivaPct) ? Math.max(0, ivaPct) / 100 : 0;
     setItems((prev) => {
       const f = prev.find((x) => x.id === id);
       if (f)
         return prev.map((x) =>
           x.id === id ? { ...x, qty: x.qty + 1, subtotal: (x.qty + 1) * x.price } : x
         );
-      return [...prev, { id, name, price, qty: 1, subtotal: price }];
+      return [...prev, { id, name, price, ivaRate, qty: 1, subtotal: price }];
     });
   }, []);
   const decItem = (id) =>
@@ -202,11 +242,45 @@ const FacturarPOSCompact = () => {
     return map;
   }, [items]);
 
-  // TOTALES (IVA discriminado desde el total)
-  const total = useMemo(() => items.reduce((a, x) => a + x.subtotal, 0), [items]);
-  const IVA_RATE = 0.21;
-  const iva21 = useMemo(() => total - total / (1 + IVA_RATE), [total]);
-  const neto = useMemo(() => total - iva21, [total, iva21]);
+  // TOTALES (IVA discriminado por ítem; el total ya incluye IVA porque el precio de catálogo es PrecioPublico)
+  const totales = useMemo(() => {
+    let totalBruto = 0;
+    let subtotalNeto = 0;
+    const impuestosPorTasa = new Map(); // key: tasa (ej 0.21), value: impuesto
+
+    for (const it of items) {
+      const lineTotal = Number(it.subtotal || 0);
+      const rate = Number(it.ivaRate || 0);
+      totalBruto += lineTotal;
+
+      if (rate > 0) {
+        const lineNeto = lineTotal / (1 + rate);
+        const lineImp = lineTotal - lineNeto;
+        subtotalNeto += lineNeto;
+        impuestosPorTasa.set(rate, (impuestosPorTasa.get(rate) || 0) + lineImp);
+      } else {
+        subtotalNeto += lineTotal;
+      }
+    }
+
+    const impuestosTotal = totalBruto - subtotalNeto;
+    const iva21 = impuestosPorTasa.get(0.21) || 0;
+    const iva105 = impuestosPorTasa.get(0.105) || 0;
+
+    return {
+      total: totalBruto,
+      subtotal: subtotalNeto,
+      impuestosTotal,
+      iva21,
+      iva105,
+      impuestosPorTasa,
+    };
+  }, [items]);
+
+  const total = totales.total;
+  const neto = totales.subtotal;
+  const iva21 = totales.iva21;
+  const iva105 = totales.iva105;
 
   // Persistir preferencia de tamaño de ticket
   useEffect(() => {
@@ -219,10 +293,81 @@ const FacturarPOSCompact = () => {
     setOpenPago(true);
   };
 
-  const handlePagoConfirm = (info) => {
+  const handlePagoConfirm = async (info) => {
     setPago(info);
+
+    // Validaciones mínimas
+    // Si no hay depósito seleccionado, intentamos elegir uno automáticamente.
+    // (En algunos entornos el endpoint /warehouses puede no estar configurado.)
+    let effectiveWarehouseId = warehouseId;
+    if (!effectiveWarehouseId) {
+      effectiveWarehouseId = warehouses?.[0]?.id || 1;
+      setWarehouseId(effectiveWarehouseId);
+    }
+    if (!items.length) return;
+
     setOpenPago(false);
-    setOpenAcciones(true);
+    setOpenAcciones(false);
+
+    try {
+      // 1) Crear venta (esto descuenta stock en el backend)
+      const payloadSale = {
+        warehouse_id: effectiveWarehouseId,
+        customer_id: cliente?.id || null,
+        invoice_type_id: null,
+        items: items.map((i) => ({
+          product_id: i.id,
+          qty: Number(i.qty || 0),
+          // En el backend se calculan/registran impuestos (IVA). Para evitar duplicar IVA,
+          // guardamos precio neto (sin IVA) cuando el producto tenga tax_rate.
+          unit_price: (() => {
+            const gross = Number(i.price || 0);
+            const rate = Number(i.tax_rate || 0);
+            if (!rate) return gross;
+            const net = gross / (1 + rate);
+            return Math.round(net * 100) / 100;
+          })(),
+        })),
+      };
+
+      const sale = await Sales.createSale(payloadSale);
+
+      // 2) Asociar comprobante de pago (Receipt)
+      const code = info?.metodo_code || null;
+      const pm = (paymentMethods || []).find((x) => x.code === code) || null;
+      if (!pm?.id) {
+        // Si no hay match por código, intentamos por nombre (fallback)
+        const byName = (paymentMethods || []).find(
+          (x) => String(x.name || "").toLowerCase() === String(info?.metodo || "").toLowerCase()
+        );
+        if (byName?.id) {
+          await Receipts.createReceipt({
+            sale_id: sale.id,
+            payment_method_id: byName.id,
+            amount: Number(sale.total ?? total ?? 0),
+            notes: info?.nota || null,
+          });
+        }
+      } else {
+        await Receipts.createReceipt({
+          sale_id: sale.id,
+          payment_method_id: pm.id,
+          amount: Number(sale.total ?? total ?? 0),
+          notes: info?.nota || null,
+        });
+      }
+
+      // 3) Snapshot para imprimir/enviar y limpiar carrito
+      const snap = snapshotVenta();
+      setVenta({ ...snap, sale_id: sale.id });
+      clearAll();
+      setPago({ metodo: "-", nota: "", recibido: 0, cambio: 0 });
+      setOpenAcciones(true);
+    } catch (e) {
+      console.error(e);
+      const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || "Error guardando la venta.";
+      alert(msg);
+    }
   };
 
   // Instantánea + limpiar carrito antes de abrir cada modal de envío/impresión
@@ -232,7 +377,7 @@ const FacturarPOSCompact = () => {
       name: i.name, qty: i.qty, subtotal: i.subtotal, descripcion: i.name, total: i.subtotal,
     })),
     total,
-    totales: { subtotal: neto, iva21, iva105: 0 },
+    totales: { subtotal: neto, iva21, iva105, impuestos: totales.impuestosTotal },
     pago,
     cajero,
   });
@@ -445,15 +590,31 @@ const FacturarPOSCompact = () => {
           </Paper>
 
           {/* Transparencia Fiscal (IVA discriminado del total) */}
-          {iva21 > 0 && (
+          {(totales.impuestosTotal > 0 || neto > 0) && (
             <Stack spacing={0.5} mb={1}>
               <Typography color="text.secondary" fontWeight={700}>
                 Transparencia Fiscal
               </Typography>
               <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">IVA 21%</Typography>
-                <Typography>${iva21.toFixed(2)}</Typography>
+                <Typography color="text.secondary">Subtotal</Typography>
+                <Typography>${neto.toFixed(2)}</Typography>
               </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography color="text.secondary">Impuestos</Typography>
+                <Typography>${totales.impuestosTotal.toFixed(2)}</Typography>
+              </Stack>
+              {iva21 > 0 && (
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography color="text.secondary">IVA 21%</Typography>
+                  <Typography>${iva21.toFixed(2)}</Typography>
+                </Stack>
+              )}
+              {iva105 > 0 && (
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography color="text.secondary">IVA 10.5%</Typography>
+                  <Typography>${iva105.toFixed(2)}</Typography>
+                </Stack>
+              )}
             </Stack>
           )}
 

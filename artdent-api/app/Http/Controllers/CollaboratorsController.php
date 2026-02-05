@@ -9,7 +9,7 @@ class CollaboratorsController extends Controller
 {
     public function __construct()
     {
-        ->middleware('auth:sanctum');
+        $this->middleware('auth:sanctum');
     }
 
     public function index(Request $request)

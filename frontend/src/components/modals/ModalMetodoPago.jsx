@@ -5,11 +5,14 @@ import {
   Radio, TextField, Stack, InputAdornment
 } from "@mui/material";
 
+// Los códigos deben coincidir con los de la tabla `payment_methods` en el backend.
 const METODOS = [
-  "Efectivo",
-  "Tarjeta",
-  "Transferencia",
-  "Mercado Pago",
+  { label: "Efectivo", code: "CASH" },
+  { label: "Tarjeta Débito", code: "DEBIT" },
+  { label: "Tarjeta Crédito", code: "CREDIT" },
+  { label: "Transferencia", code: "TRANSFER" },
+  { label: "Mercado Pago", code: "MERCADO_PAGO" },
+  { label: "Cheque", code: "CHEQUE" },
 ];
 
 export default function ModalMetodoPago({
@@ -31,7 +34,8 @@ export default function ModalMetodoPago({
 
   const handleConfirm = () => {
     onConfirm?.({
-      metodo,
+      metodo, // label
+      metodo_code: METODOS.find((m) => m.label === metodo)?.code || null,
       nota: nota?.trim(),
       recibido: Number(recibido || 0),
       cambio,
@@ -50,7 +54,12 @@ export default function ModalMetodoPago({
               onChange={(e) => setMetodo(e.target.value)}
             >
               {METODOS.map((m) => (
-                <FormControlLabel key={m} value={m} control={<Radio />} label={m} />
+                <FormControlLabel
+                  key={m.code}
+                  value={m.label}
+                  control={<Radio />}
+                  label={m.label}
+                />
               ))}
             </RadioGroup>
           </FormControl>

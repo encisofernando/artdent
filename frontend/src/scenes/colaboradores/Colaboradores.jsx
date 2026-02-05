@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -33,11 +33,27 @@ export default function Colaboradores() {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
 
+  // refs para manejo de foco (evitar warning aria-hidden)
+  const btnNuevoRef = useRef(null);
+  const nombreInputRef = useRef(null);
+
+  const showApiError = (e, fallback = "Ocurrió un error.") => {
+    const msg =
+      e?.response?.data?.message ||
+      e?.response?.data?.error ||
+      e?.message ||
+      fallback;
+    console.error(e);
+    alert(msg);
+  };
+
   const fetchRows = async () => {
     setLoading(true);
     try {
       const data = await CollaboratorsService.Collaborators.list({ search });
       setRows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      showApiError(e, "Error cargando colaboradores.");
     } finally {
       setLoading(false);
     }
@@ -47,6 +63,13 @@ export default function Colaboradores() {
     fetchRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // cuando abre el dialog, forzar foco dentro del modal
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => nombreInputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [open]);
 
   const columns = useMemo(
     () => [
@@ -62,12 +85,7 @@ export default function Colaboradores() {
           return `$ ${v.toFixed(2)}`;
         },
       },
-      {
-        field: "is_active",
-        headerName: "Activo",
-        width: 100,
-        type: "boolean",
-      },
+      { field: "is_active", headerName: "Activo", width: 100, type: "boolean" },
       {
         field: "actions",
         headerName: "Acciones",
@@ -97,13 +115,25 @@ export default function Colaboradores() {
     []
   );
 
+  const closeDialog = () => {
+    setOpen(false);
+    // devolver foco al botón "Nuevo colaborador" cuando cierre
+    setTimeout(() => btnNuevoRef.current?.focus(), 0);
+  };
+
   const onAdd = () => {
+    // IMPORTANTE: sacar foco del botón antes de abrir (evita warning)
+    btnNuevoRef.current?.blur();
+
     setEditingId(null);
     setForm(emptyForm);
     setOpen(true);
   };
 
   const onEdit = (row) => {
+    // también ayuda en editar (si se dispara desde un botón en el grid)
+    (document.activeElement instanceof HTMLElement) && document.activeElement.blur();
+
     setEditingId(row.id);
     setForm({
       name: row.name || "",
@@ -117,8 +147,12 @@ export default function Colaboradores() {
 
   const onDelete = async (row) => {
     if (!window.confirm(`Eliminar colaborador "${row.name}"?`)) return;
-    await CollaboratorsService.Collaborators.remove(row.id);
-    await fetchRows();
+    try {
+      await CollaboratorsService.Collaborators.remove(row.id);
+      await fetchRows();
+    } catch (e) {
+      showApiError(e, "No se pudo eliminar el colaborador.");
+    }
   };
 
   const onSave = async () => {
@@ -143,8 +177,10 @@ export default function Colaboradores() {
         await CollaboratorsService.Collaborators.create(payload);
       }
 
-      setOpen(false);
+      closeDialog();
       await fetchRows();
+    } catch (e) {
+      showApiError(e, "No se pudo guardar el colaborador.");
     } finally {
       setSaving(false);
     }
@@ -170,7 +206,7 @@ export default function Colaboradores() {
         <Button variant="outlined" onClick={fetchRows}>
           Buscar
         </Button>
-        <Button variant="contained" onClick={onAdd}>
+        <Button ref={btnNuevoRef} variant="contained" onClick={onAdd}>
           Nuevo colaborador
         </Button>
       </Stack>
@@ -186,11 +222,13 @@ export default function Colaboradores() {
         />
       </Box>
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={closeDialog} fullWidth maxWidth="sm">
         <DialogTitle>{editingId ? "Editar" : "Nuevo"} colaborador</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <TextField
+              inputRef={nombreInputRef}
+              autoFocus
               label="Nombre"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -240,7 +278,7 @@ export default function Colaboradores() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)} disabled={saving}>
+          <Button onClick={closeDialog} disabled={saving}>
             Cancelar
           </Button>
           <Button onClick={onSave} variant="contained" disabled={saving}>

@@ -32,9 +32,23 @@ export default function Asistencias() {
   const [from, setFrom] = useState(null);
   const [to, setTo] = useState(null);
 
+  const showApiError = (e, fallback = "Ocurrió un error.") => {
+    const msg =
+      e?.response?.data?.message ||
+      e?.response?.data?.error ||
+      e?.message ||
+      fallback;
+    console.error(e);
+    alert(msg);
+  };
+
   const loadCollaborators = async () => {
-    const data = await CollaboratorsService.Collaborators.list({ active: true });
-    setCollaborators(Array.isArray(data) ? data : []);
+    try {
+      const data = await CollaboratorsService.Collaborators.list({ active: true });
+      setCollaborators(Array.isArray(data) ? data : []);
+    } catch (e) {
+      showApiError(e, "Error cargando colaboradores.");
+    }
   };
 
   const fetchRows = async () => {
@@ -46,6 +60,8 @@ export default function Asistencias() {
         to: toYmd(to) || undefined,
       });
       setRows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      showApiError(e, "Error cargando asistencias.");
     } finally {
       setLoading(false);
     }
@@ -114,24 +130,32 @@ export default function Asistencias() {
       return;
     }
 
-    await AttendancesService.CollaboratorAttendances.create({
-      collaborator_id: Number(collaboratorId),
-      work_date: toYmd(workDate),
-      time_in: toHm(timeIn),
-      time_out: toHm(timeOut),
-      notes: notes || null,
-    });
+    try {
+      await AttendancesService.CollaboratorAttendances.create({
+        collaborator_id: Number(collaboratorId),
+        work_date: toYmd(workDate),
+        time_in: toHm(timeIn),
+        time_out: toHm(timeOut),
+        notes: notes || null,
+      });
 
-    setTimeIn(null);
-    setTimeOut(null);
-    setNotes("");
-    await fetchRows();
+      setTimeIn(null);
+      setTimeOut(null);
+      setNotes("");
+      await fetchRows();
+    } catch (e) {
+      showApiError(e, "No se pudo guardar la asistencia.");
+    }
   };
 
   const onDelete = async (row) => {
     if (!window.confirm("Eliminar registro de asistencia?")) return;
-    await AttendancesService.CollaboratorAttendances.remove(row.id);
-    await fetchRows();
+    try {
+      await AttendancesService.CollaboratorAttendances.remove(row.id);
+      await fetchRows();
+    } catch (e) {
+      showApiError(e, "No se pudo eliminar la asistencia.");
+    }
   };
 
   return (

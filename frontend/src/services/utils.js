@@ -1,4 +1,17 @@
-export const unwrap = (p) => p.then((r) => r.data);
+// Acepta tanto una Promise (axios) como una respuesta ya resuelta.
+// Evita errores: "p.then is not a function" cuando se usa unwrap(await api.get(...)).
+export const unwrap = (pOrResponse) => {
+  if (pOrResponse && typeof pOrResponse.then === "function") {
+    return pOrResponse.then((r) => r?.data);
+  }
+
+  // axios resuelto: { data, status, headers, ... }
+  if (pOrResponse && typeof pOrResponse === "object" && "data" in pOrResponse) {
+    return pOrResponse.data;
+  }
+
+  return pOrResponse;
+};
 
 export const toQueryString = (obj = {}) => {
   const params = new URLSearchParams();
