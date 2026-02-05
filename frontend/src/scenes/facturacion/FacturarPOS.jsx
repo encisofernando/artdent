@@ -703,15 +703,19 @@ const FacturarPOSCompact = () => {
         comprobante={{
           tipoLetra: tipoComprobante || "C",
           codigo: "",
-          numero: "0001-00000000",
-          fecha: new Date().toLocaleString(),
+          numero:
+            venta?.receipt_number ||
+            (venta?.receipt_id ? `R-${String(venta.receipt_id).padStart(8, "0")}` : null) ||
+            (venta?.sale_id ? `V-${String(venta.sale_id).padStart(8, "0")}` : "0001-00000000"),
+          fecha: venta?.created_at ? new Date(venta.created_at).toLocaleString() : new Date().toLocaleString(),
           cliente: (venta?.cliente || cliente)?.name || "Consumidor final",
         }}
         items={(venta?.items || items).map((i) => ({
           descripcion: i.name || i.descripcion,
-          precio: i.price || i.precio,
-          cantidad: i.qty || i.cantidad,
-          total: i.subtotal || i.total,
+          // Soportar distintos nombres según origen (carrito vs backend)
+          precio: i.price ?? i.precio ?? i.unit_price ?? 0,
+          cantidad: i.qty ?? i.cantidad ?? 0,
+          total: i.subtotal ?? i.total ?? 0,
         }))}
         totales={venta?.totales || { subtotal: neto, iva21, iva105: 0, total }}
         pago={{
