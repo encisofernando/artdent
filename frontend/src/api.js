@@ -16,7 +16,8 @@ const api = axios.create({
 
 // Adjunta token si existe
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  // Compat: e-commerce usa 'artdent_token'; CRM histórico usa 'token'
+  const token = localStorage.getItem("artdent_token") || localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

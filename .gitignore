@@ -18,6 +18,15 @@ artdent-api/storage/framework/views/*
 artdent-api/public/storage
 artdent-api/phpunit.xml.cache
 
+# --- Frontend (React / Vite / Node) ---
+e-commerce/node_modules/
+e-commerce/.vite/
+e-commerce/dist/
+e-commerce/.DS_Store
+e-commerce/npm-debug.log*
+e-commerce/yarn-error.log*
+e-commerce/pnpm-lock.yaml
+
 # --- Sistemas / IDE ---
 *.swp
 *.swo

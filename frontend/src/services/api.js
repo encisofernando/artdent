@@ -16,7 +16,8 @@ const api = axios.create({
 
 // Adjuntar token si existe (Laravel Sanctum - Bearer)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  // Compat: e-commerce usa 'artdent_token'; CRM histórico usa 'token'
+  const token = localStorage.getItem("artdent_token") || localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -29,6 +30,7 @@ api.interceptors.response.use(
   (err) => {
     if (err?.response?.status === 401) {
       localStorage.removeItem("token");
+      localStorage.removeItem("artdent_token");
       // No forzamos redirect acá para no romper flujos; la UI puede decidir.
     }
     return Promise.reject(err);

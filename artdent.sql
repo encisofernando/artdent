@@ -1,10 +1,8 @@
-CREATE DATABASE  IF NOT EXISTS `artdent_lab` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `artdent_lab`;
--- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
 --
--- Host: localhost    Database: artdent_lab
+-- Host: 127.0.0.1    Database: artdent_lab
 -- ------------------------------------------------------
--- Server version	8.0.44
+-- Server version	5.5.5-10.4.32-MariaDB
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -25,13 +23,13 @@ DROP TABLE IF EXISTS `accounts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `accounts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` enum('asset','liability','equity','income','expense') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `parent_id` bigint unsigned DEFAULT NULL,
-  `is_postable` tinyint(1) DEFAULT '1',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `code` varchar(32) NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `type` enum('asset','liability','equity','income','expense') NOT NULL,
+  `parent_id` bigint(20) unsigned DEFAULT NULL,
+  `is_postable` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -61,13 +59,13 @@ DROP TABLE IF EXISTS `branches`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `branches` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `address` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(32) NOT NULL,
+  `address` varchar(191) DEFAULT NULL,
+  `phone` varchar(64) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -95,11 +93,11 @@ DROP TABLE IF EXISTS `cash_drawers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cash_drawers` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `branch_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) DEFAULT '1',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `branch_id` bigint(20) unsigned DEFAULT NULL,
+  `name` varchar(191) NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -128,15 +126,15 @@ DROP TABLE IF EXISTS `cash_movements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cash_movements` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `cash_session_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `cash_session_id` bigint(20) unsigned NOT NULL,
   `movement_date` datetime NOT NULL,
-  `type` enum('in','out') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payment_method_id` bigint unsigned DEFAULT NULL,
+  `type` enum('in','out') NOT NULL,
+  `payment_method_id` bigint(20) unsigned DEFAULT NULL,
   `amount` decimal(14,2) NOT NULL,
-  `reference_type` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `reference_id` bigint unsigned DEFAULT NULL,
-  `note` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reference_type` varchar(64) DEFAULT NULL,
+  `reference_id` bigint(20) unsigned DEFAULT NULL,
+  `note` varchar(191) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -165,14 +163,14 @@ DROP TABLE IF EXISTS `cash_sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cash_sessions` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `cash_drawer_id` bigint unsigned NOT NULL,
-  `user_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `cash_drawer_id` bigint(20) unsigned NOT NULL,
+  `user_id` bigint(20) unsigned NOT NULL,
   `opened_at` datetime NOT NULL,
   `closed_at` datetime DEFAULT NULL,
-  `opening_amount` decimal(14,2) DEFAULT '0.00',
-  `closing_amount` decimal(14,2) DEFAULT '0.00',
-  `status` enum('open','closed') COLLATE utf8mb4_unicode_ci DEFAULT 'open',
+  `opening_amount` decimal(14,2) DEFAULT 0.00,
+  `closing_amount` decimal(14,2) DEFAULT 0.00,
+  `status` enum('open','closed') DEFAULT 'open',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -201,10 +199,10 @@ DROP TABLE IF EXISTS `categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `categories` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `parent_id` bigint unsigned DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `parent_id` bigint(20) unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -235,21 +233,21 @@ DROP TABLE IF EXISTS `collaborator_attendances`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `collaborator_attendances` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned DEFAULT NULL,
-  `collaborator_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned DEFAULT NULL,
+  `collaborator_id` bigint(20) unsigned NOT NULL,
   `work_date` date NOT NULL,
   `time_in` time DEFAULT NULL,
   `time_out` time DEFAULT NULL,
-  `hours` decimal(8,2) NOT NULL DEFAULT '0.00',
-  `amount` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `notes` text COLLATE utf8mb4_unicode_ci,
+  `hours` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `notes` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `ca_collab_workdate_idx` (`collaborator_id`,`work_date`),
+  KEY `collaborator_attendances_collaborator_id_work_date_index` (`collaborator_id`,`work_date`),
   CONSTRAINT `collaborator_attendances_collaborator_id_foreign` FOREIGN KEY (`collaborator_id`) REFERENCES `collaborators` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -258,7 +256,6 @@ CREATE TABLE `collaborator_attendances` (
 
 LOCK TABLES `collaborator_attendances` WRITE;
 /*!40000 ALTER TABLE `collaborator_attendances` DISABLE KEYS */;
-INSERT INTO `collaborator_attendances` VALUES (1,2,1,'2026-02-02','08:00:00','14:00:00',6.00,33000.00,NULL,'2026-02-05 01:27:06','2026-02-05 01:27:06'),(2,2,1,'2026-02-03','08:00:00','14:00:00',6.00,33000.00,NULL,'2026-02-05 01:27:20','2026-02-05 01:27:20'),(3,2,1,'2026-02-04','08:00:00','14:00:00',6.00,33000.00,NULL,'2026-02-05 01:27:31','2026-02-05 01:27:31');
 /*!40000 ALTER TABLE `collaborator_attendances` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -270,16 +267,16 @@ DROP TABLE IF EXISTS `collaborator_discounts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `collaborator_discounts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned DEFAULT NULL,
-  `collaborator_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned DEFAULT NULL,
+  `collaborator_id` bigint(20) unsigned NOT NULL,
   `date` date NOT NULL,
-  `concept` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `amount` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `concept` varchar(255) NOT NULL,
+  `amount` decimal(12,2) NOT NULL DEFAULT 0.00,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `cd_collab_date_idx` (`collaborator_id`,`date`),
+  KEY `collaborator_discounts_collaborator_id_date_index` (`collaborator_id`,`date`),
   CONSTRAINT `collaborator_discounts_collaborator_id_foreign` FOREIGN KEY (`collaborator_id`) REFERENCES `collaborators` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -301,16 +298,16 @@ DROP TABLE IF EXISTS `collaborator_extras`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `collaborator_extras` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned DEFAULT NULL,
-  `collaborator_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned DEFAULT NULL,
+  `collaborator_id` bigint(20) unsigned NOT NULL,
   `date` date NOT NULL,
-  `concept` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `amount` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `concept` varchar(255) NOT NULL,
+  `amount` decimal(12,2) NOT NULL DEFAULT 0.00,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `ce_collab_date_idx` (`collaborator_id`,`date`),
+  KEY `collaborator_extras_collaborator_id_date_index` (`collaborator_id`,`date`),
   CONSTRAINT `collaborator_extras_collaborator_id_foreign` FOREIGN KEY (`collaborator_id`) REFERENCES `collaborators` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -332,23 +329,23 @@ DROP TABLE IF EXISTS `collaborator_receipts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `collaborator_receipts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned DEFAULT NULL,
-  `collaborator_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned DEFAULT NULL,
+  `collaborator_id` bigint(20) unsigned NOT NULL,
   `period_from` date NOT NULL,
   `period_to` date NOT NULL,
-  `hours` decimal(8,2) NOT NULL DEFAULT '0.00',
-  `gross` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `extras_total` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `discounts_total` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `net` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `created_by` bigint unsigned DEFAULT NULL,
+  `hours` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `gross` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `extras_total` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `discounts_total` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `net` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `created_by` bigint(20) unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `cr_collab_period_idx` (`collaborator_id`,`period_from`,`period_to`),
+  KEY `collaborator_receipts_collaborator_id_foreign` (`collaborator_id`),
   CONSTRAINT `collaborator_receipts_collaborator_id_foreign` FOREIGN KEY (`collaborator_id`) REFERENCES `collaborators` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -357,7 +354,6 @@ CREATE TABLE `collaborator_receipts` (
 
 LOCK TABLES `collaborator_receipts` WRITE;
 /*!40000 ALTER TABLE `collaborator_receipts` DISABLE KEYS */;
-INSERT INTO `collaborator_receipts` VALUES (1,2,1,'2026-02-02','2026-02-06',18.00,99000.00,0.00,0.00,99000.00,1,'2026-02-05 01:28:16','2026-02-05 01:28:16'),(2,2,1,'2026-02-02','2026-02-06',18.00,99000.00,0.00,0.00,99000.00,1,'2026-02-05 01:29:26','2026-02-05 01:29:26');
 /*!40000 ALTER TABLE `collaborator_receipts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -369,17 +365,17 @@ DROP TABLE IF EXISTS `collaborators`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `collaborators` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `document` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `hourly_rate` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `notes` text COLLATE utf8mb4_unicode_ci,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `document` varchar(255) DEFAULT NULL,
+  `hourly_rate` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `notes` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -388,7 +384,7 @@ CREATE TABLE `collaborators` (
 
 LOCK TABLES `collaborators` WRITE;
 /*!40000 ALTER TABLE `collaborators` DISABLE KEYS */;
-INSERT INTO `collaborators` VALUES (1,2,'Fernando','40215516',5500.00,1,NULL,'2026-02-05 01:25:48','2026-02-05 01:25:48');
+INSERT INTO `collaborators` VALUES (1,2,'Lea',NULL,5500.00,1,NULL,'2026-02-05 16:39:05','2026-02-05 16:39:05'),(2,2,'Fer',NULL,5500.00,1,NULL,'2026-02-05 16:56:38','2026-02-05 16:56:38');
 /*!40000 ALTER TABLE `collaborators` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -400,20 +396,21 @@ DROP TABLE IF EXISTS `companies`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `companies` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `legal_name` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tax_id` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `arca_point_of_sale` int DEFAULT NULL,
-  `country_code` char(2) COLLATE utf8mb4_unicode_ci DEFAULT 'AR',
-  `timezone` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT 'America/Argentina/Buenos_Aires',
-  `address_line1` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address_line2` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `city` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `state` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `zip` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(191) NOT NULL,
+  `legal_name` varchar(191) DEFAULT NULL,
+  `tax_id` varchar(32) DEFAULT NULL,
+  `arca_point_of_sale` int(11) DEFAULT NULL,
+  `country_code` char(2) DEFAULT 'AR',
+  `timezone` varchar(64) DEFAULT 'America/Argentina/Buenos_Aires',
+  `address_line1` varchar(191) DEFAULT NULL,
+  `address_line2` varchar(191) DEFAULT NULL,
+  `city` varchar(191) DEFAULT NULL,
+  `state` varchar(191) DEFAULT NULL,
+  `zip` varchar(32) DEFAULT NULL,
+  `phone` varchar(64) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `b2b_discount_percent` decimal(5,2) NOT NULL DEFAULT 0.00,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -429,7 +426,7 @@ CREATE TABLE `companies` (
 
 LOCK TABLES `companies` WRITE;
 /*!40000 ALTER TABLE `companies` DISABLE KEYS */;
-INSERT INTO `companies` VALUES (1,'Empresa Demo',NULL,NULL,NULL,'AR','America/Argentina/Buenos_Aires',NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2025-09-09 00:41:00','2025-09-09 00:41:00',NULL),(2,'ArtDent SRL',NULL,NULL,NULL,'AR','America/Argentina/Buenos_Aires',NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2025-10-05 21:15:38','2025-10-05 21:15:38',NULL);
+INSERT INTO `companies` VALUES (1,'Empresa Demo',NULL,NULL,NULL,'AR','America/Argentina/Buenos_Aires',NULL,NULL,NULL,NULL,NULL,NULL,NULL,0.00,'2025-09-09 00:41:00','2025-09-09 00:41:00',NULL),(2,'ArtDent SRL',NULL,NULL,NULL,'AR','America/Argentina/Buenos_Aires',NULL,NULL,NULL,NULL,NULL,NULL,NULL,0.00,'2025-10-05 21:15:38','2025-10-05 21:15:38',NULL);
 /*!40000 ALTER TABLE `companies` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -441,20 +438,20 @@ DROP TABLE IF EXISTS `customers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `customers` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `code` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tax_id` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tax_condition` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `city` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `state` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `zip` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `credit_limit` decimal(12,2) DEFAULT '0.00',
-  `is_active` tinyint(1) DEFAULT '1',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `code` varchar(32) DEFAULT NULL,
+  `name` varchar(191) NOT NULL,
+  `tax_id` varchar(32) DEFAULT NULL,
+  `tax_condition` varchar(64) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `phone` varchar(64) DEFAULT NULL,
+  `address` varchar(191) DEFAULT NULL,
+  `city` varchar(191) DEFAULT NULL,
+  `state` varchar(191) DEFAULT NULL,
+  `zip` varchar(32) DEFAULT NULL,
+  `credit_limit` decimal(12,2) DEFAULT 0.00,
+  `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -477,6 +474,91 @@ INSERT INTO `customers` VALUES (1,2,NULL,'Clinica Odonto SA','30-12345678-9',NUL
 UNLOCK TABLES;
 
 --
+-- Table structure for table `ecommerce_order_items`
+--
+
+DROP TABLE IF EXISTS `ecommerce_order_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ecommerce_order_items` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `order_id` bigint(20) unsigned NOT NULL,
+  `product_id` bigint(20) unsigned NOT NULL,
+  `sku` varchar(64) DEFAULT NULL,
+  `name` varchar(191) NOT NULL,
+  `qty` decimal(14,3) NOT NULL,
+  `unit_price` decimal(14,2) NOT NULL,
+  `tax_rate` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `line_subtotal` decimal(14,2) NOT NULL,
+  `line_tax` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `line_total` decimal(14,2) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ecommerce_order_items_order_id_index` (`order_id`),
+  KEY `ecommerce_order_items_product_id_index` (`product_id`),
+  CONSTRAINT `ecommerce_order_items_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `ecommerce_orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `ecommerce_order_items_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ecommerce_order_items`
+--
+
+LOCK TABLES `ecommerce_order_items` WRITE;
+/*!40000 ALTER TABLE `ecommerce_order_items` DISABLE KEYS */;
+/*!40000 ALTER TABLE `ecommerce_order_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ecommerce_orders`
+--
+
+DROP TABLE IF EXISTS `ecommerce_orders`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ecommerce_orders` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `warehouse_id` bigint(20) unsigned DEFAULT NULL,
+  `user_id` bigint(20) unsigned DEFAULT NULL,
+  `code` varchar(64) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'pending',
+  `pricing_mode` varchar(10) NOT NULL DEFAULT 'b2c',
+  `customer_name` varchar(191) NOT NULL,
+  `customer_email` varchar(191) NOT NULL,
+  `customer_phone` varchar(64) DEFAULT NULL,
+  `shipping_address` text DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `subtotal` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `tax_total` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `total` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `currency` varchar(8) NOT NULL DEFAULT 'ARS',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ecommerce_orders_code_unique` (`code`),
+  KEY `ecommerce_orders_company_id_created_at_index` (`company_id`,`created_at`),
+  KEY `ecommerce_orders_customer_email_index` (`customer_email`),
+  KEY `ecommerce_orders_warehouse_id_foreign` (`warehouse_id`),
+  KEY `ecommerce_orders_user_id_foreign` (`user_id`),
+  CONSTRAINT `ecommerce_orders_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `ecommerce_orders_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `ecommerce_orders_warehouse_id_foreign` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ecommerce_orders`
+--
+
+LOCK TABLES `ecommerce_orders` WRITE;
+/*!40000 ALTER TABLE `ecommerce_orders` DISABLE KEYS */;
+/*!40000 ALTER TABLE `ecommerce_orders` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `employees`
 --
 
@@ -484,20 +566,20 @@ DROP TABLE IF EXISTS `employees`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `employees` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `branch_id` bigint unsigned DEFAULT NULL,
-  `first_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `last_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `document_type` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `document_number` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `user_id` bigint(20) unsigned DEFAULT NULL,
+  `branch_id` bigint(20) unsigned DEFAULT NULL,
+  `first_name` varchar(191) NOT NULL,
+  `last_name` varchar(191) NOT NULL,
+  `document_type` varchar(32) DEFAULT NULL,
+  `document_number` varchar(64) DEFAULT NULL,
   `hire_date` date DEFAULT NULL,
-  `phone` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `salary_base` decimal(12,2) DEFAULT '0.00',
-  `is_active` tinyint(1) DEFAULT '1',
+  `phone` varchar(64) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `address` varchar(191) DEFAULT NULL,
+  `salary_base` decimal(12,2) DEFAULT 0.00,
+  `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -529,16 +611,16 @@ DROP TABLE IF EXISTS `invoice_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `invoice_items` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `invoice_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned DEFAULT NULL,
-  `description` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `invoice_id` bigint(20) unsigned NOT NULL,
+  `product_id` bigint(20) unsigned DEFAULT NULL,
+  `description` varchar(191) NOT NULL,
   `qty` decimal(14,3) NOT NULL,
   `unit_price` decimal(14,2) NOT NULL,
-  `discount` decimal(14,2) DEFAULT '0.00',
-  `tax_id` bigint unsigned DEFAULT NULL,
+  `discount` decimal(14,2) DEFAULT 0.00,
+  `tax_id` bigint(20) unsigned DEFAULT NULL,
   `tax_rate` decimal(5,2) DEFAULT NULL,
-  `tax_amount` decimal(14,2) DEFAULT '0.00',
+  `tax_amount` decimal(14,2) DEFAULT 0.00,
   `line_total` decimal(14,2) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -570,9 +652,9 @@ DROP TABLE IF EXISTS `invoice_types`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `invoice_types` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `code` varchar(8) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(8) NOT NULL,
+  `description` varchar(191) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -598,27 +680,27 @@ DROP TABLE IF EXISTS `invoices`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `invoices` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `branch_id` bigint unsigned DEFAULT NULL,
-  `sale_id` bigint unsigned NOT NULL,
-  `invoice_type_id` bigint unsigned NOT NULL,
-  `pos_number` int NOT NULL,
-  `invoice_number` bigint unsigned NOT NULL,
-  `cae` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `branch_id` bigint(20) unsigned DEFAULT NULL,
+  `sale_id` bigint(20) unsigned NOT NULL,
+  `invoice_type_id` bigint(20) unsigned NOT NULL,
+  `pos_number` int(11) NOT NULL,
+  `invoice_number` bigint(20) unsigned NOT NULL,
+  `cae` varchar(64) DEFAULT NULL,
   `cae_due_date` date DEFAULT NULL,
   `issue_date` datetime NOT NULL,
-  `customer_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `customer_tax_id` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `customer_tax_condition` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `subtotal` decimal(14,2) DEFAULT '0.00',
-  `tax_total` decimal(14,2) DEFAULT '0.00',
-  `total` decimal(14,2) DEFAULT '0.00',
-  `currency` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT 'ARS',
-  `status` enum('pending','authorized','rejected','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
-  `arca_request` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
-  `arca_response` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
-  `qr_data` text COLLATE utf8mb4_unicode_ci,
+  `customer_name` varchar(191) NOT NULL,
+  `customer_tax_id` varchar(32) DEFAULT NULL,
+  `customer_tax_condition` varchar(64) DEFAULT NULL,
+  `subtotal` decimal(14,2) DEFAULT 0.00,
+  `tax_total` decimal(14,2) DEFAULT 0.00,
+  `total` decimal(14,2) DEFAULT 0.00,
+  `currency` varchar(8) DEFAULT 'ARS',
+  `status` enum('pending','authorized','rejected','cancelled') DEFAULT 'pending',
+  `arca_request` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`arca_request`)),
+  `arca_response` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`arca_response`)),
+  `qr_data` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -634,9 +716,7 @@ CREATE TABLE `invoices` (
   CONSTRAINT `fk_invoices_branch` FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_invoices_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_invoices_sale` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_invoices_type` FOREIGN KEY (`invoice_type_id`) REFERENCES `invoice_types` (`id`) ON UPDATE CASCADE,
-  CONSTRAINT `invoices_chk_1` CHECK (json_valid(`arca_request`)),
-  CONSTRAINT `invoices_chk_2` CHECK (json_valid(`arca_response`))
+  CONSTRAINT `fk_invoices_type` FOREIGN KEY (`invoice_type_id`) REFERENCES `invoice_types` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -657,12 +737,12 @@ DROP TABLE IF EXISTS `journal_entries`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `journal_entries` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
   `entry_date` date NOT NULL,
-  `memo` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `reference_type` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `reference_id` bigint unsigned DEFAULT NULL,
+  `memo` varchar(191) DEFAULT NULL,
+  `reference_type` varchar(64) DEFAULT NULL,
+  `reference_id` bigint(20) unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -689,12 +769,12 @@ DROP TABLE IF EXISTS `journal_lines`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `journal_lines` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `journal_entry_id` bigint unsigned NOT NULL,
-  `account_id` bigint unsigned NOT NULL,
-  `type` enum('debit','credit') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `journal_entry_id` bigint(20) unsigned NOT NULL,
+  `account_id` bigint(20) unsigned NOT NULL,
+  `type` enum('debit','credit') NOT NULL,
   `amount` decimal(14,2) NOT NULL,
-  `description` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` varchar(191) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -722,15 +802,15 @@ DROP TABLE IF EXISTS `ledger_entries`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ledger_entries` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `ledger_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `ledger_id` bigint(20) unsigned NOT NULL,
   `entry_date` date NOT NULL,
-  `type` enum('debit','credit') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` enum('debit','credit') NOT NULL,
   `amount` decimal(14,2) NOT NULL,
-  `balance_after` decimal(14,2) NOT NULL DEFAULT '0.00',
-  `reference_type` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `reference_id` bigint unsigned DEFAULT NULL,
-  `note` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `balance_after` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `reference_type` varchar(64) DEFAULT NULL,
+  `reference_id` bigint(20) unsigned DEFAULT NULL,
+  `note` varchar(191) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -757,11 +837,11 @@ DROP TABLE IF EXISTS `ledgers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ledgers` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `party_type` enum('customer','vendor') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `party_id` bigint unsigned NOT NULL,
-  `currency` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT 'ARS',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `party_type` enum('customer','vendor') NOT NULL,
+  `party_id` bigint(20) unsigned NOT NULL,
+  `currency` varchar(8) DEFAULT 'ARS',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -787,11 +867,11 @@ DROP TABLE IF EXISTS `migrations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `migrations` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `batch` int NOT NULL,
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `migration` varchar(255) NOT NULL,
+  `batch` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -800,7 +880,7 @@ CREATE TABLE `migrations` (
 
 LOCK TABLES `migrations` WRITE;
 /*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
-INSERT INTO `migrations` VALUES (1,'2019_12_14_000001_create_personal_access_tokens_table',1),(2,'2025_10_17_202109_create_password_reset_tokens_table',2),(3,'2026_01_29_000001_create_collaborators_tables',3);
+INSERT INTO `migrations` VALUES (1,'2019_12_14_000001_create_personal_access_tokens_table',1),(2,'2025_10_17_202109_create_password_reset_tokens_table',2),(3,'2026_02_05_000000_add_receipt_number_to_receipts_table',3),(4,'2026_02_11_000001_add_b2b_fields_to_users_and_companies',4),(5,'2026_02_11_000002_create_ecommerce_orders_tables',4),(6,'2026_02_11_000001_create_product_images_table',5);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -812,8 +892,8 @@ DROP TABLE IF EXISTS `password_reset_tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `password_reset_tokens` (
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `token` varchar(255) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -837,11 +917,11 @@ DROP TABLE IF EXISTS `payment_methods`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `payment_methods` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `code` varchar(32) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -869,14 +949,14 @@ DROP TABLE IF EXISTS `payments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `payments` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `purchase_id` bigint unsigned DEFAULT NULL,
-  `ledger_id` bigint unsigned DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `purchase_id` bigint(20) unsigned DEFAULT NULL,
+  `ledger_id` bigint(20) unsigned DEFAULT NULL,
   `payment_date` datetime NOT NULL,
-  `payment_method_id` bigint unsigned DEFAULT NULL,
+  `payment_method_id` bigint(20) unsigned DEFAULT NULL,
   `amount` decimal(14,2) NOT NULL,
-  `reference` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reference` varchar(191) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -908,12 +988,12 @@ DROP TABLE IF EXISTS `personal_access_tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `personal_access_tokens` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tokenable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tokenable_id` bigint unsigned NOT NULL,
-  `name` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `abilities` text COLLATE utf8mb4_unicode_ci,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `tokenable_type` varchar(255) NOT NULL,
+  `tokenable_id` bigint(20) unsigned NOT NULL,
+  `name` text NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `abilities` text DEFAULT NULL,
   `last_used_at` timestamp NULL DEFAULT NULL,
   `expires_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -922,7 +1002,7 @@ CREATE TABLE `personal_access_tokens` (
   UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -931,8 +1011,41 @@ CREATE TABLE `personal_access_tokens` (
 
 LOCK TABLES `personal_access_tokens` WRITE;
 /*!40000 ALTER TABLE `personal_access_tokens` DISABLE KEYS */;
-INSERT INTO `personal_access_tokens` VALUES (1,'App\\Models\\User',1,'api','f13442627492d3b5ebb8e5e8262a1c9e8720c76fc3013b0e3fc027d29ffa6154','[\"*\"]',NULL,NULL,'2025-10-05 21:15:38','2025-10-05 21:15:38'),(2,'App\\Models\\User',1,'api','85d8cf6757e210f93185a177bf080312eed98c69fd1f4c681eb7d69fca71ad69','[\"*\"]','2025-10-05 23:14:54',NULL,'2025-10-05 21:58:38','2025-10-05 23:14:54'),(3,'App\\Models\\User',1,'api','f0ad6fbb7bb05c2de8cf8189d70e7d296339ed0b91a18a95e05e6184a608a8de','[\"*\"]',NULL,NULL,'2025-10-05 23:38:03','2025-10-05 23:38:03'),(4,'App\\Models\\User',1,'api','a17ed93196f2a4779779d461959dc95679c84ca0e8f6a4ead9c5ae22ba3c9741','[\"*\"]',NULL,NULL,'2025-10-05 23:38:20','2025-10-05 23:38:20'),(5,'App\\Models\\User',1,'api','fcdb3ecb9bbf65cd50f39e9acb9f73f71f5878b0ca28d6a67be7ce3315a4169e','[\"*\"]','2025-10-06 01:00:22',NULL,'2025-10-05 23:38:38','2025-10-06 01:00:22'),(6,'App\\Models\\User',1,'api','faa13b8a48eea4ef25e45444d78370a0d8cfef4936cdeb24478ae830103330ad','[\"*\"]','2025-10-06 04:37:29',NULL,'2025-10-06 01:12:00','2025-10-06 04:37:29'),(7,'App\\Models\\User',1,'api','6b9b455f84af7fe3aee8a1f553309bdb8dfdd1d64b2f030afcd06b0b2f313a79','[\"*\"]','2025-10-17 15:16:07',NULL,'2025-10-15 17:43:25','2025-10-17 15:16:07'),(8,'App\\Models\\User',1,'api','3fa766d0bfd867fcd17af03f102ac7982dd87b94ab89e0c0c819bb350fc2d47c','[\"*\"]','2025-12-23 14:20:04',NULL,'2025-10-16 14:25:34','2025-12-23 14:20:04'),(9,'App\\Models\\User',1,'api','9e3459a220a3f215b783da2c3d2e4102b50d255dbd0c3aaa45f42abbb44d0d6b','[\"*\"]',NULL,NULL,'2025-10-17 17:02:46','2025-10-17 17:02:46'),(10,'App\\Models\\User',1,'api','3b4b64f5ddc2fbb1fdbfb527e839f01824cc9739ce4d3faa138cb01407d2ab5e','[\"*\"]','2025-10-23 14:05:00',NULL,'2025-10-20 13:50:24','2025-10-23 14:05:00'),(11,'App\\Models\\User',1,'api','351cf05386b41159259f573ee144c45192b346b0d5b2aebcd98ad51b9eea2912','[\"*\"]','2025-10-23 16:40:59',NULL,'2025-10-23 14:05:10','2025-10-23 16:40:59'),(12,'App\\Models\\User',1,'api','38233c29a8f1eeff671922824a4428c1791872cca7b737fc574b553055ad7ea0','[\"*\"]','2026-01-29 16:52:17',NULL,'2025-12-23 14:20:23','2026-01-29 16:52:17'),(13,'App\\Models\\User',2,'api','5e74326d9cd8411e049156b92099d45bde2ede335de43f3a093cc41fc860cbba','[\"*\"]',NULL,NULL,'2026-01-12 18:01:10','2026-01-12 18:01:10'),(14,'App\\Models\\User',2,'api','2bc1dc8b905c5cc100b164654b82c52398f8453b1ec664d66dfb1b9a502ddd7f','[\"*\"]','2026-01-12 18:15:19',NULL,'2026-01-12 18:04:31','2026-01-12 18:15:19'),(15,'App\\Models\\User',1,'api','8128e20262ed101aaf4c73eea15e9f44829eb05079e0bfad0047dfbf9e846223','[\"*\"]','2026-01-29 19:59:39',NULL,'2026-01-29 16:54:50','2026-01-29 19:59:39'),(16,'App\\Models\\User',1,'api','f78972c79d361dba15de23122ce5910b2ba4799513d8766ee3b8b5ed5f05ee2c','[\"*\"]','2026-02-05 05:31:17',NULL,'2026-02-05 00:47:54','2026-02-05 05:31:17');
+INSERT INTO `personal_access_tokens` VALUES (1,'App\\Models\\User',1,'api','f13442627492d3b5ebb8e5e8262a1c9e8720c76fc3013b0e3fc027d29ffa6154','[\"*\"]',NULL,NULL,'2025-10-05 21:15:38','2025-10-05 21:15:38'),(2,'App\\Models\\User',1,'api','85d8cf6757e210f93185a177bf080312eed98c69fd1f4c681eb7d69fca71ad69','[\"*\"]','2025-10-05 23:14:54',NULL,'2025-10-05 21:58:38','2025-10-05 23:14:54'),(3,'App\\Models\\User',1,'api','f0ad6fbb7bb05c2de8cf8189d70e7d296339ed0b91a18a95e05e6184a608a8de','[\"*\"]',NULL,NULL,'2025-10-05 23:38:03','2025-10-05 23:38:03'),(4,'App\\Models\\User',1,'api','a17ed93196f2a4779779d461959dc95679c84ca0e8f6a4ead9c5ae22ba3c9741','[\"*\"]',NULL,NULL,'2025-10-05 23:38:20','2025-10-05 23:38:20'),(5,'App\\Models\\User',1,'api','fcdb3ecb9bbf65cd50f39e9acb9f73f71f5878b0ca28d6a67be7ce3315a4169e','[\"*\"]','2025-10-06 01:00:22',NULL,'2025-10-05 23:38:38','2025-10-06 01:00:22'),(6,'App\\Models\\User',1,'api','faa13b8a48eea4ef25e45444d78370a0d8cfef4936cdeb24478ae830103330ad','[\"*\"]','2025-10-06 04:37:29',NULL,'2025-10-06 01:12:00','2025-10-06 04:37:29'),(7,'App\\Models\\User',1,'api','6b9b455f84af7fe3aee8a1f553309bdb8dfdd1d64b2f030afcd06b0b2f313a79','[\"*\"]','2025-10-17 15:16:07',NULL,'2025-10-15 17:43:25','2025-10-17 15:16:07'),(8,'App\\Models\\User',1,'api','3fa766d0bfd867fcd17af03f102ac7982dd87b94ab89e0c0c819bb350fc2d47c','[\"*\"]','2025-12-23 14:20:04',NULL,'2025-10-16 14:25:34','2025-12-23 14:20:04'),(9,'App\\Models\\User',1,'api','9e3459a220a3f215b783da2c3d2e4102b50d255dbd0c3aaa45f42abbb44d0d6b','[\"*\"]',NULL,NULL,'2025-10-17 17:02:46','2025-10-17 17:02:46'),(10,'App\\Models\\User',1,'api','3b4b64f5ddc2fbb1fdbfb527e839f01824cc9739ce4d3faa138cb01407d2ab5e','[\"*\"]','2025-10-23 14:05:00',NULL,'2025-10-20 13:50:24','2025-10-23 14:05:00'),(11,'App\\Models\\User',1,'api','351cf05386b41159259f573ee144c45192b346b0d5b2aebcd98ad51b9eea2912','[\"*\"]','2025-10-23 16:40:59',NULL,'2025-10-23 14:05:10','2025-10-23 16:40:59'),(12,'App\\Models\\User',1,'api','38233c29a8f1eeff671922824a4428c1791872cca7b737fc574b553055ad7ea0','[\"*\"]','2026-01-29 16:52:17',NULL,'2025-12-23 14:20:23','2026-01-29 16:52:17'),(13,'App\\Models\\User',2,'api','5e74326d9cd8411e049156b92099d45bde2ede335de43f3a093cc41fc860cbba','[\"*\"]',NULL,NULL,'2026-01-12 18:01:10','2026-01-12 18:01:10'),(14,'App\\Models\\User',2,'api','2bc1dc8b905c5cc100b164654b82c52398f8453b1ec664d66dfb1b9a502ddd7f','[\"*\"]','2026-01-12 18:15:19',NULL,'2026-01-12 18:04:31','2026-01-12 18:15:19'),(15,'App\\Models\\User',1,'api','8128e20262ed101aaf4c73eea15e9f44829eb05079e0bfad0047dfbf9e846223','[\"*\"]','2026-02-11 18:37:56',NULL,'2026-01-29 16:54:50','2026-02-11 18:37:56'),(16,'App\\Models\\User',1,'api','30da1f0697c6e3bf36f3f7878d13a9d9287eb991bf24f9e0f66d5c9b0f3f7841','[\"*\"]','2026-02-11 17:02:18',NULL,'2026-02-11 16:25:55','2026-02-11 17:02:18'),(19,'App\\Models\\User',1,'api','431897edb241546c767b2e0c92be214cd21056b1719a801e02b82335131bf823','[\"*\"]','2026-02-11 18:52:46',NULL,'2026-02-11 18:29:40','2026-02-11 18:52:46'),(20,'App\\Models\\User',1,'api','c57929b6cfb21b7d73afea30dddc9b06b66cc665975b9b874b8a905360cb73fd','[\"*\"]','2026-02-11 19:08:35',NULL,'2026-02-11 18:54:26','2026-02-11 19:08:35');
 /*!40000 ALTER TABLE `personal_access_tokens` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `product_images`
+--
+
+DROP TABLE IF EXISTS `product_images`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_images` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `product_id` bigint(20) unsigned NOT NULL,
+  `path` varchar(255) NOT NULL,
+  `alt` varchar(255) DEFAULT NULL,
+  `sort_order` int(10) unsigned NOT NULL DEFAULT 0,
+  `is_primary` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `product_images_company_id_product_id_index` (`company_id`,`product_id`),
+  KEY `product_images_product_id_is_primary_index` (`product_id`,`is_primary`),
+  CONSTRAINT `product_images_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `product_images`
+--
+
+LOCK TABLES `product_images` WRITE;
+/*!40000 ALTER TABLE `product_images` DISABLE KEYS */;
+/*!40000 ALTER TABLE `product_images` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -943,21 +1056,21 @@ DROP TABLE IF EXISTS `products`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `products` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `category_id` bigint unsigned DEFAULT NULL,
-  `sku` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `barcode` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `unit` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT 'UN',
-  `cost` decimal(12,2) DEFAULT '0.00',
-  `price` decimal(12,2) DEFAULT '0.00',
-  `tax_rate` decimal(5,2) DEFAULT '0.00',
-  `tax_id` bigint unsigned DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1',
-  `track_stock` tinyint(1) DEFAULT '1',
-  `min_stock` decimal(12,3) DEFAULT '0.000',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `category_id` bigint(20) unsigned DEFAULT NULL,
+  `sku` varchar(64) DEFAULT NULL,
+  `barcode` varchar(64) DEFAULT NULL,
+  `name` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `unit` varchar(32) DEFAULT 'UN',
+  `cost` decimal(12,2) DEFAULT 0.00,
+  `price` decimal(12,2) DEFAULT 0.00,
+  `tax_rate` decimal(5,2) DEFAULT 0.00,
+  `tax_id` bigint(20) unsigned DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `track_stock` tinyint(1) DEFAULT 1,
+  `min_stock` decimal(12,3) DEFAULT 0.000,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -994,16 +1107,16 @@ DROP TABLE IF EXISTS `purchase_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `purchase_items` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `purchase_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `description` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `purchase_id` bigint(20) unsigned NOT NULL,
+  `product_id` bigint(20) unsigned NOT NULL,
+  `description` varchar(191) DEFAULT NULL,
   `qty` decimal(14,3) NOT NULL,
   `unit_cost` decimal(14,2) NOT NULL,
-  `discount` decimal(14,2) DEFAULT '0.00',
-  `tax_id` bigint unsigned DEFAULT NULL,
+  `discount` decimal(14,2) DEFAULT 0.00,
+  `tax_id` bigint(20) unsigned DEFAULT NULL,
   `tax_rate` decimal(5,2) DEFAULT NULL,
-  `tax_amount` decimal(14,2) DEFAULT '0.00',
+  `tax_amount` decimal(14,2) DEFAULT 0.00,
   `line_total` decimal(14,2) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -1037,23 +1150,23 @@ DROP TABLE IF EXISTS `purchases`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `purchases` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `branch_id` bigint unsigned DEFAULT NULL,
-  `warehouse_id` bigint unsigned DEFAULT NULL,
-  `status` enum('draft','confirmed','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'draft',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `branch_id` bigint(20) unsigned DEFAULT NULL,
+  `warehouse_id` bigint(20) unsigned DEFAULT NULL,
+  `status` enum('draft','confirmed','cancelled') DEFAULT 'draft',
   `purchase_date` datetime NOT NULL,
-  `subtotal` decimal(14,2) DEFAULT '0.00',
-  `discount_total` decimal(14,2) DEFAULT '0.00',
-  `tax_total` decimal(14,2) DEFAULT '0.00',
-  `total` decimal(14,2) DEFAULT '0.00',
-  `currency` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT 'ARS',
-  `observations` text COLLATE utf8mb4_unicode_ci,
+  `subtotal` decimal(14,2) DEFAULT 0.00,
+  `discount_total` decimal(14,2) DEFAULT 0.00,
+  `tax_total` decimal(14,2) DEFAULT 0.00,
+  `total` decimal(14,2) DEFAULT 0.00,
+  `currency` varchar(8) DEFAULT 'ARS',
+  `observations` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
-  `supplier_id` bigint unsigned DEFAULT NULL,
-  `invoice_number` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `supplier_id` bigint(20) unsigned DEFAULT NULL,
+  `invoice_number` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `purchases_company` (`company_id`,`purchase_date`),
   KEY `fk_purchases_branch` (`branch_id`),
@@ -1084,25 +1197,25 @@ DROP TABLE IF EXISTS `purchases_backup_keep`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `purchases_backup_keep` (
-  `id` bigint unsigned NOT NULL DEFAULT '0',
-  `company_id` bigint unsigned NOT NULL,
-  `branch_id` bigint unsigned DEFAULT NULL,
-  `warehouse_id` bigint unsigned DEFAULT NULL,
-  `vendor_id` bigint unsigned DEFAULT NULL,
-  `number` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('draft','confirmed','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'draft',
+  `id` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `branch_id` bigint(20) unsigned DEFAULT NULL,
+  `warehouse_id` bigint(20) unsigned DEFAULT NULL,
+  `vendor_id` bigint(20) unsigned DEFAULT NULL,
+  `number` varchar(64) DEFAULT NULL,
+  `status` enum('draft','confirmed','cancelled') DEFAULT 'draft',
   `purchase_date` datetime NOT NULL,
-  `subtotal` decimal(14,2) DEFAULT '0.00',
-  `discount_total` decimal(14,2) DEFAULT '0.00',
-  `tax_total` decimal(14,2) DEFAULT '0.00',
-  `total` decimal(14,2) DEFAULT '0.00',
-  `currency` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT 'ARS',
-  `observations` text COLLATE utf8mb4_unicode_ci,
+  `subtotal` decimal(14,2) DEFAULT 0.00,
+  `discount_total` decimal(14,2) DEFAULT 0.00,
+  `tax_total` decimal(14,2) DEFAULT 0.00,
+  `total` decimal(14,2) DEFAULT 0.00,
+  `currency` varchar(8) DEFAULT 'ARS',
+  `observations` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
-  `supplier_id` bigint unsigned DEFAULT NULL,
-  `invoice_number` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+  `supplier_id` bigint(20) unsigned DEFAULT NULL,
+  `invoice_number` varchar(64) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1124,17 +1237,19 @@ DROP TABLE IF EXISTS `receipts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `receipts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `sale_id` bigint unsigned DEFAULT NULL,
-  `ledger_id` bigint unsigned DEFAULT NULL,
-  `receipt_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `payment_method_id` bigint unsigned DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `receipt_number` varchar(20) DEFAULT NULL,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `sale_id` bigint(20) unsigned DEFAULT NULL,
+  `ledger_id` bigint(20) unsigned DEFAULT NULL,
+  `receipt_date` datetime NOT NULL,
+  `payment_method_id` bigint(20) unsigned DEFAULT NULL,
   `amount` decimal(14,2) NOT NULL,
-  `reference` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reference` varchar(191) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `receipts_receipt_number_unique` (`receipt_number`),
   KEY `receipts_company` (`company_id`,`receipt_date`),
   KEY `receipts_sale` (`sale_id`),
   KEY `receipts_ledger` (`ledger_id`),
@@ -1143,7 +1258,7 @@ CREATE TABLE `receipts` (
   CONSTRAINT `fk_receipts_ledger` FOREIGN KEY (`ledger_id`) REFERENCES `ledgers` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_receipts_pm` FOREIGN KEY (`payment_method_id`) REFERENCES `payment_methods` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_receipts_sale` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1152,7 +1267,7 @@ CREATE TABLE `receipts` (
 
 LOCK TABLES `receipts` WRITE;
 /*!40000 ALTER TABLE `receipts` DISABLE KEYS */;
-INSERT INTO `receipts` VALUES (1,2,4,NULL,'2026-02-04 23:19:26',6,6213.00,NULL,NULL,NULL);
+INSERT INTO `receipts` VALUES (1,'0001-00000001',2,3,NULL,'2026-02-05 15:22:51',6,15403.00,NULL,NULL,NULL),(2,'0001-00000002',2,4,NULL,'2026-02-11 12:20:28',6,533.00,NULL,NULL,NULL),(3,'0001-00000003',2,5,NULL,'2026-02-11 12:47:19',6,533.00,NULL,NULL,NULL),(4,'0001-00000004',2,6,NULL,'2026-02-11 12:48:11',6,15403.00,NULL,NULL,NULL),(5,'0001-00000005',2,8,NULL,'2026-02-11 12:49:35',6,352.00,NULL,NULL,NULL),(6,'0001-00000006',2,9,NULL,'2026-02-11 13:14:31',6,352.00,NULL,NULL,NULL),(7,'0001-00000007',2,13,NULL,'2026-02-11 13:15:25',6,533.00,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `receipts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1164,8 +1279,8 @@ DROP TABLE IF EXISTS `role_user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `role_user` (
-  `role_id` bigint unsigned NOT NULL,
-  `user_id` bigint unsigned NOT NULL,
+  `role_id` bigint(20) unsigned NOT NULL,
+  `user_id` bigint(20) unsigned NOT NULL,
   PRIMARY KEY (`role_id`,`user_id`),
   KEY `ru_user` (`user_id`),
   CONSTRAINT `fk_ru_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -1190,8 +1305,8 @@ DROP TABLE IF EXISTS `roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `roles` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1216,16 +1331,16 @@ DROP TABLE IF EXISTS `sale_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sale_items` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `sale_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `description` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `sale_id` bigint(20) unsigned NOT NULL,
+  `product_id` bigint(20) unsigned NOT NULL,
+  `description` varchar(191) DEFAULT NULL,
   `qty` decimal(14,3) NOT NULL,
   `unit_price` decimal(14,2) NOT NULL,
-  `discount` decimal(14,2) DEFAULT '0.00',
-  `tax_id` bigint unsigned DEFAULT NULL,
+  `discount` decimal(14,2) DEFAULT 0.00,
+  `tax_id` bigint(20) unsigned DEFAULT NULL,
   `tax_rate` decimal(5,2) DEFAULT NULL,
-  `tax_amount` decimal(14,2) DEFAULT '0.00',
+  `tax_amount` decimal(14,2) DEFAULT 0.00,
   `line_total` decimal(14,2) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -1238,7 +1353,7 @@ CREATE TABLE `sale_items` (
   CONSTRAINT `fk_si_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_si_sale` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_si_tax` FOREIGN KEY (`tax_id`) REFERENCES `taxes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1247,7 +1362,7 @@ CREATE TABLE `sale_items` (
 
 LOCK TABLES `sale_items` WRITE;
 /*!40000 ALTER TABLE `sale_items` DISABLE KEYS */;
-INSERT INTO `sale_items` VALUES (1,1,1,NULL,2.000,15000.00,0.00,NULL,NULL,0.00,30000.00,NULL,NULL),(2,2,576,NULL,1.000,5680.00,0.00,NULL,NULL,0.00,5680.00,NULL,NULL),(3,3,576,NULL,1.000,5680.00,0.00,NULL,NULL,0.00,5680.00,NULL,NULL),(4,4,576,NULL,1.000,5680.00,0.00,NULL,NULL,0.00,5680.00,NULL,NULL),(5,4,575,NULL,1.000,533.00,0.00,NULL,NULL,0.00,533.00,NULL,NULL);
+INSERT INTO `sale_items` VALUES (1,1,1,NULL,2.000,15000.00,0.00,NULL,NULL,0.00,30000.00,NULL,NULL),(5,3,574,NULL,1.000,15403.00,0.00,NULL,NULL,0.00,15403.00,NULL,NULL),(6,4,575,NULL,1.000,533.00,0.00,NULL,NULL,0.00,533.00,NULL,NULL),(7,5,575,NULL,1.000,533.00,0.00,NULL,NULL,0.00,533.00,NULL,NULL),(8,6,574,NULL,1.000,15403.00,0.00,NULL,NULL,0.00,15403.00,NULL,NULL),(10,8,567,NULL,1.000,352.00,0.00,NULL,NULL,0.00,352.00,NULL,NULL),(11,9,567,NULL,1.000,352.00,0.00,NULL,NULL,0.00,352.00,NULL,NULL),(15,13,575,NULL,1.000,533.00,0.00,NULL,NULL,0.00,533.00,NULL,NULL);
 /*!40000 ALTER TABLE `sale_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1259,21 +1374,21 @@ DROP TABLE IF EXISTS `sales`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sales` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `branch_id` bigint unsigned DEFAULT NULL,
-  `warehouse_id` bigint unsigned DEFAULT NULL,
-  `cashier_id` bigint unsigned DEFAULT NULL,
-  `customer_id` bigint unsigned DEFAULT NULL,
-  `number` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('draft','confirmed','invoiced','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'draft',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `branch_id` bigint(20) unsigned DEFAULT NULL,
+  `warehouse_id` bigint(20) unsigned DEFAULT NULL,
+  `cashier_id` bigint(20) unsigned DEFAULT NULL,
+  `customer_id` bigint(20) unsigned DEFAULT NULL,
+  `number` varchar(64) DEFAULT NULL,
+  `status` enum('draft','confirmed','invoiced','cancelled') DEFAULT 'draft',
   `sale_date` datetime NOT NULL,
-  `subtotal` decimal(14,2) DEFAULT '0.00',
-  `discount_total` decimal(14,2) DEFAULT '0.00',
-  `tax_total` decimal(14,2) DEFAULT '0.00',
-  `total` decimal(14,2) DEFAULT '0.00',
-  `currency` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT 'ARS',
-  `observations` text COLLATE utf8mb4_unicode_ci,
+  `subtotal` decimal(14,2) DEFAULT 0.00,
+  `discount_total` decimal(14,2) DEFAULT 0.00,
+  `tax_total` decimal(14,2) DEFAULT 0.00,
+  `total` decimal(14,2) DEFAULT 0.00,
+  `currency` varchar(8) DEFAULT 'ARS',
+  `observations` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -1291,7 +1406,7 @@ CREATE TABLE `sales` (
   CONSTRAINT `fk_sales_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_sales_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_sales_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1300,7 +1415,7 @@ CREATE TABLE `sales` (
 
 LOCK TABLES `sales` WRITE;
 /*!40000 ALTER TABLE `sales` DISABLE KEYS */;
-INSERT INTO `sales` VALUES (1,2,NULL,1,1,NULL,NULL,'confirmed','2025-10-05 22:22:59',30000.00,0.00,0.00,30000.00,'ARS',NULL,'2025-10-06 01:22:59','2025-10-06 01:22:59',NULL),(2,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-05 01:43:46',5680.00,0.00,0.00,5680.00,'ARS',NULL,'2026-02-05 04:43:46','2026-02-05 04:43:46',NULL),(3,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-05 02:04:04',5680.00,0.00,0.00,5680.00,'ARS',NULL,'2026-02-05 05:04:04','2026-02-05 05:04:04',NULL),(4,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-05 02:19:25',6213.00,0.00,0.00,6213.00,'ARS',NULL,'2026-02-05 05:19:25','2026-02-05 05:19:25',NULL);
+INSERT INTO `sales` VALUES (1,2,NULL,1,1,NULL,NULL,'confirmed','2025-10-05 22:22:59',30000.00,0.00,0.00,30000.00,'ARS',NULL,'2025-10-06 01:22:59','2025-10-06 01:22:59',NULL),(3,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-05 15:22:51',15403.00,0.00,0.00,15403.00,'ARS',NULL,'2026-02-05 18:22:51','2026-02-05 18:22:51',NULL),(4,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-11 12:20:27',533.00,0.00,0.00,533.00,'ARS',NULL,'2026-02-11 15:20:27','2026-02-11 15:20:27',NULL),(5,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-11 12:47:18',533.00,0.00,0.00,533.00,'ARS',NULL,'2026-02-11 15:47:18','2026-02-11 15:47:18',NULL),(6,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-11 12:48:10',15403.00,0.00,0.00,15403.00,'ARS',NULL,'2026-02-11 15:48:10','2026-02-11 15:48:10',NULL),(8,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-11 12:49:35',352.00,0.00,0.00,352.00,'ARS',NULL,'2026-02-11 15:49:35','2026-02-11 15:49:35',NULL),(9,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-11 13:14:30',352.00,0.00,0.00,352.00,'ARS',NULL,'2026-02-11 16:14:30','2026-02-11 16:14:30',NULL),(13,2,NULL,1,1,NULL,NULL,'confirmed','2026-02-11 13:15:24',533.00,0.00,0.00,533.00,'ARS',NULL,'2026-02-11 16:15:24','2026-02-11 16:15:24',NULL);
 /*!40000 ALTER TABLE `sales` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1312,16 +1427,16 @@ DROP TABLE IF EXISTS `stock_movements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `stock_movements` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `warehouse_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `warehouse_id` bigint(20) unsigned NOT NULL,
+  `product_id` bigint(20) unsigned NOT NULL,
   `movement_date` datetime NOT NULL,
-  `type` enum('in','out') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` enum('in','out') NOT NULL,
   `qty` decimal(14,3) NOT NULL,
-  `reference_type` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `reference_id` bigint unsigned DEFAULT NULL,
-  `note` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reference_type` varchar(64) DEFAULT NULL,
+  `reference_id` bigint(20) unsigned DEFAULT NULL,
+  `note` varchar(191) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1332,7 +1447,7 @@ CREATE TABLE `stock_movements` (
   CONSTRAINT `fk_sm_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_sm_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_sm_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1341,7 +1456,7 @@ CREATE TABLE `stock_movements` (
 
 LOCK TABLES `stock_movements` WRITE;
 /*!40000 ALTER TABLE `stock_movements` DISABLE KEYS */;
-INSERT INTO `stock_movements` VALUES (1,2,1,1,'2025-10-05 20:42:50','in',10.000,'purchase_item',1,NULL,NULL,NULL),(2,2,1,1,'2025-10-05 22:22:42','in',10.000,'purchase_item',2,NULL,NULL,NULL),(3,2,1,1,'2025-10-05 22:22:59','out',2.000,'sale_item',1,NULL,NULL,NULL),(4,2,1,576,'2026-02-05 01:43:46','out',1.000,'sale_item',2,NULL,NULL,NULL),(5,2,1,576,'2026-02-05 02:04:04','out',1.000,'sale_item',3,NULL,NULL,NULL),(6,2,1,576,'2026-02-05 02:19:25','out',1.000,'sale_item',4,NULL,NULL,NULL),(7,2,1,575,'2026-02-05 02:19:25','out',1.000,'sale_item',5,NULL,NULL,NULL);
+INSERT INTO `stock_movements` VALUES (1,2,1,1,'2025-10-05 20:42:50','in',10.000,'purchase_item',1,NULL,NULL,NULL),(2,2,1,1,'2025-10-05 22:22:42','in',10.000,'purchase_item',2,NULL,NULL,NULL),(3,2,1,1,'2025-10-05 22:22:59','out',2.000,'sale_item',1,NULL,NULL,NULL),(6,2,1,574,'2026-02-05 15:22:51','out',1.000,'sale_item',5,NULL,NULL,NULL),(7,2,1,575,'2026-02-11 12:20:27','out',1.000,'sale_item',6,NULL,NULL,NULL),(8,2,1,575,'2026-02-11 12:47:18','out',1.000,'sale_item',7,NULL,NULL,NULL),(9,2,1,574,'2026-02-11 12:48:10','out',1.000,'sale_item',8,NULL,NULL,NULL),(10,2,1,567,'2026-02-11 12:49:35','out',1.000,'sale_item',10,NULL,NULL,NULL),(11,2,1,567,'2026-02-11 13:14:30','out',1.000,'sale_item',11,NULL,NULL,NULL),(12,2,1,575,'2026-02-11 13:15:24','out',1.000,'sale_item',15,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `stock_movements` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1353,11 +1468,11 @@ DROP TABLE IF EXISTS `stocks`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `stocks` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `warehouse_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `qty` decimal(14,3) DEFAULT '0.000',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `warehouse_id` bigint(20) unsigned NOT NULL,
+  `product_id` bigint(20) unsigned NOT NULL,
+  `qty` decimal(14,3) DEFAULT 0.000,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1376,7 +1491,7 @@ CREATE TABLE `stocks` (
 
 LOCK TABLES `stocks` WRITE;
 /*!40000 ALTER TABLE `stocks` DISABLE KEYS */;
-INSERT INTO `stocks` VALUES (1,2,1,1,18.000,NULL,NULL),(2,2,1,4,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(3,2,1,5,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(4,2,1,6,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(5,2,1,7,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(6,2,1,8,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(7,2,1,9,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(8,2,1,10,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(9,2,1,11,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(10,2,1,12,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(11,2,1,13,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(12,2,1,14,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(13,2,1,15,7.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(14,2,1,16,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(15,2,1,17,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(16,2,1,18,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(17,2,1,19,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(18,2,1,20,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(19,2,1,21,-14.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(20,2,1,22,-6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(21,2,1,23,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(22,2,1,24,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(23,2,1,25,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(24,2,1,26,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(25,2,1,27,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(26,2,1,28,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(27,2,1,29,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(28,2,1,30,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(29,2,1,31,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(30,2,1,32,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(31,2,1,33,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(32,2,1,34,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(33,2,1,35,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(34,2,1,36,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(35,2,1,37,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(36,2,1,38,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(37,2,1,39,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(38,2,1,40,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(39,2,1,41,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(40,2,1,42,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(41,2,1,43,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(42,2,1,44,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(43,2,1,45,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(44,2,1,46,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(45,2,1,47,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(46,2,1,48,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(47,2,1,49,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(48,2,1,50,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(49,2,1,51,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(50,2,1,52,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(51,2,1,53,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(52,2,1,54,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(53,2,1,55,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(54,2,1,56,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(55,2,1,57,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(56,2,1,58,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(57,2,1,59,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(58,2,1,60,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(59,2,1,61,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(60,2,1,62,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(61,2,1,63,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(62,2,1,64,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(63,2,1,65,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(64,2,1,66,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(65,2,1,67,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(66,2,1,68,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(67,2,1,69,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(68,2,1,70,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(69,2,1,71,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(70,2,1,72,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(71,2,1,73,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(72,2,1,74,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(73,2,1,75,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(74,2,1,76,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(75,2,1,77,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(76,2,1,78,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(77,2,1,79,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(78,2,1,80,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(79,2,1,81,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(80,2,1,82,36.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(81,2,1,83,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(82,2,1,84,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(83,2,1,85,17.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(84,2,1,86,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(85,2,1,87,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(86,2,1,88,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(87,2,1,89,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(88,2,1,90,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(89,2,1,91,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(90,2,1,92,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(91,2,1,93,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(92,2,1,94,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(93,2,1,95,13.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(94,2,1,96,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(95,2,1,97,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(96,2,1,98,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(97,2,1,99,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(98,2,1,100,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(99,2,1,101,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(100,2,1,102,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(101,2,1,103,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(102,2,1,104,24.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(103,2,1,105,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(104,2,1,106,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(105,2,1,107,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(106,2,1,108,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(107,2,1,109,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(108,2,1,110,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(109,2,1,111,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(110,2,1,112,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(111,2,1,113,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(112,2,1,114,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(113,2,1,115,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(114,2,1,116,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(115,2,1,117,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(116,2,1,118,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(117,2,1,119,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(118,2,1,120,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(119,2,1,121,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(120,2,1,122,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(121,2,1,123,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(122,2,1,124,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(123,2,1,125,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(124,2,1,126,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(125,2,1,127,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(126,2,1,128,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(127,2,1,129,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(128,2,1,130,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(129,2,1,131,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(130,2,1,132,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(131,2,1,133,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(132,2,1,134,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(133,2,1,135,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(134,2,1,136,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(135,2,1,137,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(136,2,1,138,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(137,2,1,139,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(138,2,1,140,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(139,2,1,141,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(140,2,1,142,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(141,2,1,143,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(142,2,1,144,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(143,2,1,145,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(144,2,1,146,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(145,2,1,147,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(146,2,1,148,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(147,2,1,149,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(148,2,1,150,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(149,2,1,151,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(150,2,1,152,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(151,2,1,153,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(152,2,1,154,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(153,2,1,155,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(154,2,1,156,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(155,2,1,157,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(156,2,1,158,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(157,2,1,159,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(158,2,1,160,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(159,2,1,161,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(160,2,1,162,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(161,2,1,163,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(162,2,1,164,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(163,2,1,165,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(164,2,1,166,9.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(165,2,1,167,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(166,2,1,168,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(167,2,1,169,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(168,2,1,170,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(169,2,1,171,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(170,2,1,172,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(171,2,1,173,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(172,2,1,174,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(173,2,1,175,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(174,2,1,176,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(175,2,1,177,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(176,2,1,178,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(177,2,1,179,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(178,2,1,180,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(179,2,1,181,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(180,2,1,182,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(181,2,1,183,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(182,2,1,184,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(183,2,1,185,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(184,2,1,186,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(185,2,1,187,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(186,2,1,188,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(187,2,1,189,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(188,2,1,190,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(189,2,1,191,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(190,2,1,192,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(191,2,1,193,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(192,2,1,194,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(193,2,1,195,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(194,2,1,196,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(195,2,1,197,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(196,2,1,198,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(197,2,1,199,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(198,2,1,200,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(199,2,1,201,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(200,2,1,202,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(201,2,1,203,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(202,2,1,204,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(203,2,1,205,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(204,2,1,206,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(205,2,1,207,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(206,2,1,208,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(207,2,1,209,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(208,2,1,210,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(209,2,1,211,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(210,2,1,212,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(211,2,1,213,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(212,2,1,214,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(213,2,1,215,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(214,2,1,216,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(215,2,1,217,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(216,2,1,218,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(217,2,1,219,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(218,2,1,220,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(219,2,1,221,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(220,2,1,222,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(221,2,1,223,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(222,2,1,224,24.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(223,2,1,225,40.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(224,2,1,226,26.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(225,2,1,227,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(226,2,1,228,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(227,2,1,229,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(228,2,1,230,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(229,2,1,231,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(230,2,1,232,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(231,2,1,233,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(232,2,1,234,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(233,2,1,235,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(234,2,1,236,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(235,2,1,237,48.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(236,2,1,238,17.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(237,2,1,239,46.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(238,2,1,240,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(239,2,1,241,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(240,2,1,242,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(241,2,1,243,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(242,2,1,244,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(243,2,1,245,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(244,2,1,246,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(245,2,1,247,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(246,2,1,248,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(247,2,1,249,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(248,2,1,250,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(249,2,1,251,-1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(250,2,1,252,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(251,2,1,253,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(252,2,1,254,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(253,2,1,255,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(254,2,1,256,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(255,2,1,257,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(256,2,1,258,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(257,2,1,259,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(258,2,1,260,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(259,2,1,261,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(260,2,1,262,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(261,2,1,263,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(262,2,1,264,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(263,2,1,265,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(264,2,1,266,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(265,2,1,267,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(266,2,1,268,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(267,2,1,269,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(268,2,1,270,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(269,2,1,271,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(270,2,1,272,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(271,2,1,273,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(272,2,1,274,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(273,2,1,275,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(274,2,1,276,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(275,2,1,277,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(276,2,1,278,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(277,2,1,279,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(278,2,1,280,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(279,2,1,281,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(280,2,1,282,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(281,2,1,283,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(282,2,1,284,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(283,2,1,285,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(284,2,1,286,9.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(285,2,1,287,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(286,2,1,288,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(287,2,1,289,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(288,2,1,290,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(289,2,1,291,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(290,2,1,292,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(291,2,1,293,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(292,2,1,294,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(293,2,1,295,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(294,2,1,296,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(295,2,1,297,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(296,2,1,298,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(297,2,1,299,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(298,2,1,300,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(299,2,1,301,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(300,2,1,302,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(301,2,1,303,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(302,2,1,304,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(303,2,1,305,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(304,2,1,306,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(305,2,1,307,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(306,2,1,308,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(307,2,1,309,32.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(308,2,1,310,11.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(309,2,1,311,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(310,2,1,312,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(311,2,1,313,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(312,2,1,314,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(313,2,1,315,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(314,2,1,316,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(315,2,1,317,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(316,2,1,318,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(317,2,1,319,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(318,2,1,320,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(319,2,1,321,38.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(320,2,1,322,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(321,2,1,323,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(322,2,1,324,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(323,2,1,325,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(324,2,1,326,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(325,2,1,327,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(326,2,1,328,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(327,2,1,329,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(328,2,1,330,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(329,2,1,331,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(330,2,1,332,22.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(331,2,1,333,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(332,2,1,334,33.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(333,2,1,335,9.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(334,2,1,336,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(335,2,1,337,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(336,2,1,338,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(337,2,1,339,29.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(338,2,1,340,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(339,2,1,341,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(340,2,1,342,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(341,2,1,343,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(342,2,1,344,29.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(343,2,1,345,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(344,2,1,346,33.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(345,2,1,347,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(346,2,1,348,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(347,2,1,349,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(348,2,1,350,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(349,2,1,351,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(350,2,1,352,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(351,2,1,353,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(352,2,1,354,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(353,2,1,355,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(354,2,1,356,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(355,2,1,357,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(356,2,1,358,21.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(357,2,1,359,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(358,2,1,360,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(359,2,1,361,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(360,2,1,362,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(361,2,1,363,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(362,2,1,364,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(363,2,1,365,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(364,2,1,366,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(365,2,1,367,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(366,2,1,368,31.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(367,2,1,369,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(368,2,1,370,40.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(369,2,1,371,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(370,2,1,372,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(371,2,1,373,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(372,2,1,374,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(373,2,1,375,42.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(374,2,1,376,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(375,2,1,377,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(376,2,1,378,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(377,2,1,379,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(378,2,1,380,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(379,2,1,381,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(380,2,1,382,21.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(381,2,1,383,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(382,2,1,384,17.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(383,2,1,385,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(384,2,1,386,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(385,2,1,387,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(386,2,1,388,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(387,2,1,389,29.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(388,2,1,390,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(389,2,1,391,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(390,2,1,392,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(391,2,1,393,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(392,2,1,394,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(393,2,1,395,13.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(394,2,1,396,107.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(395,2,1,397,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(396,2,1,398,40.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(397,2,1,399,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(398,2,1,400,23.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(399,2,1,401,31.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(400,2,1,402,14.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(401,2,1,403,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(402,2,1,404,124.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(403,2,1,405,182.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(404,2,1,406,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(405,2,1,407,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(406,2,1,408,-2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(407,2,1,409,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(408,2,1,410,-125.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(409,2,1,411,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(410,2,1,412,192.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(411,2,1,413,13.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(412,2,1,414,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(413,2,1,415,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(414,2,1,416,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(415,2,1,417,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(416,2,1,418,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(417,2,1,419,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(418,2,1,420,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(419,2,1,421,59.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(420,2,1,422,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(421,2,1,423,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(422,2,1,424,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(423,2,1,425,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(424,2,1,426,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(425,2,1,427,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(426,2,1,428,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(427,2,1,429,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(428,2,1,430,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(429,2,1,431,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(430,2,1,432,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(431,2,1,433,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(432,2,1,434,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(433,2,1,435,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(434,2,1,436,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(435,2,1,437,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(436,2,1,438,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(437,2,1,439,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(438,2,1,440,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(439,2,1,441,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(440,2,1,442,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(441,2,1,443,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(442,2,1,444,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(443,2,1,445,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(444,2,1,446,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(445,2,1,447,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(446,2,1,448,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(447,2,1,449,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(448,2,1,450,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(449,2,1,451,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(450,2,1,452,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(451,2,1,453,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(452,2,1,454,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(453,2,1,455,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(454,2,1,456,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(455,2,1,457,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(456,2,1,458,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(457,2,1,459,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(458,2,1,460,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(459,2,1,461,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(460,2,1,462,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(461,2,1,463,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(462,2,1,464,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(463,2,1,465,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(464,2,1,466,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(465,2,1,467,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(466,2,1,468,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(467,2,1,469,48.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(468,2,1,470,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(469,2,1,471,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(470,2,1,472,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(471,2,1,473,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(472,2,1,474,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(473,2,1,475,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(474,2,1,476,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(475,2,1,477,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(476,2,1,478,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(477,2,1,479,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(478,2,1,480,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(479,2,1,481,-2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(480,2,1,482,-3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(481,2,1,483,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(482,2,1,484,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(483,2,1,485,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(484,2,1,486,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(485,2,1,487,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(486,2,1,488,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(487,2,1,489,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(488,2,1,490,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(489,2,1,491,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(490,2,1,492,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(491,2,1,493,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(492,2,1,494,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(493,2,1,495,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(494,2,1,496,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(495,2,1,497,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(496,2,1,498,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(497,2,1,499,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(498,2,1,500,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(499,2,1,501,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(500,2,1,502,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(501,2,1,503,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(502,2,1,504,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(503,2,1,505,-25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(504,2,1,506,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(505,2,1,507,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(506,2,1,508,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(507,2,1,509,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(508,2,1,510,-3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(509,2,1,511,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(510,2,1,512,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(511,2,1,513,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(512,2,1,514,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(513,2,1,515,23.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(514,2,1,516,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(515,2,1,517,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(516,2,1,518,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(517,2,1,519,140.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(518,2,1,520,-1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(519,2,1,521,-71.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(520,2,1,522,44.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(521,2,1,523,70.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(522,2,1,524,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(523,2,1,525,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(524,2,1,526,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(525,2,1,527,14.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(526,2,1,528,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(527,2,1,529,-20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(528,2,1,530,242.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(529,2,1,531,-56.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(530,2,1,532,-3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(531,2,1,533,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(532,2,1,534,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(533,2,1,535,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(534,2,1,536,-2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(535,2,1,537,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(536,2,1,538,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(537,2,1,539,215.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(538,2,1,540,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(539,2,1,541,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(540,2,1,542,488.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(541,2,1,543,211.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(542,2,1,544,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(543,2,1,545,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(544,2,1,546,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(545,2,1,547,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(546,2,1,548,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(547,2,1,549,-12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(548,2,1,550,34.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(549,2,1,551,45.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(550,2,1,552,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(551,2,1,553,7.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(552,2,1,554,-1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(553,2,1,555,60.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(554,2,1,556,-24.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(555,2,1,557,-36.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(556,2,1,558,37.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(557,2,1,559,61.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(558,2,1,560,-42.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(559,2,1,561,411.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(560,2,1,562,-12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(561,2,1,563,-135.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(562,2,1,564,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(563,2,1,565,-121.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(564,2,1,566,-20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(565,2,1,567,81.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(566,2,1,568,141.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(567,2,1,569,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(568,2,1,570,7.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(569,2,1,571,-4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(570,2,1,572,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(571,2,1,573,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(572,2,1,574,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(573,2,1,575,94.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(574,2,1,576,13.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(575,2,1,577,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20');
+INSERT INTO `stocks` VALUES (1,2,1,1,18.000,NULL,NULL),(2,2,1,4,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(3,2,1,5,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(4,2,1,6,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(5,2,1,7,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(6,2,1,8,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(7,2,1,9,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(8,2,1,10,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(9,2,1,11,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(10,2,1,12,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(11,2,1,13,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(12,2,1,14,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(13,2,1,15,7.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(14,2,1,16,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(15,2,1,17,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(16,2,1,18,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(17,2,1,19,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(18,2,1,20,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(19,2,1,21,-14.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(20,2,1,22,-6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(21,2,1,23,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(22,2,1,24,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(23,2,1,25,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(24,2,1,26,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(25,2,1,27,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(26,2,1,28,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(27,2,1,29,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(28,2,1,30,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(29,2,1,31,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(30,2,1,32,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(31,2,1,33,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(32,2,1,34,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(33,2,1,35,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(34,2,1,36,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(35,2,1,37,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(36,2,1,38,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(37,2,1,39,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(38,2,1,40,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(39,2,1,41,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(40,2,1,42,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(41,2,1,43,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(42,2,1,44,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(43,2,1,45,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(44,2,1,46,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(45,2,1,47,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(46,2,1,48,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(47,2,1,49,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(48,2,1,50,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(49,2,1,51,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(50,2,1,52,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(51,2,1,53,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(52,2,1,54,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(53,2,1,55,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(54,2,1,56,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(55,2,1,57,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(56,2,1,58,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(57,2,1,59,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(58,2,1,60,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(59,2,1,61,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(60,2,1,62,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(61,2,1,63,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(62,2,1,64,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(63,2,1,65,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(64,2,1,66,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(65,2,1,67,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(66,2,1,68,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(67,2,1,69,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(68,2,1,70,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(69,2,1,71,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(70,2,1,72,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(71,2,1,73,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(72,2,1,74,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(73,2,1,75,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(74,2,1,76,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(75,2,1,77,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(76,2,1,78,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(77,2,1,79,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(78,2,1,80,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(79,2,1,81,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(80,2,1,82,36.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(81,2,1,83,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(82,2,1,84,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(83,2,1,85,17.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(84,2,1,86,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(85,2,1,87,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(86,2,1,88,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(87,2,1,89,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(88,2,1,90,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(89,2,1,91,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(90,2,1,92,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(91,2,1,93,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(92,2,1,94,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(93,2,1,95,13.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(94,2,1,96,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(95,2,1,97,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(96,2,1,98,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(97,2,1,99,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(98,2,1,100,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(99,2,1,101,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(100,2,1,102,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(101,2,1,103,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(102,2,1,104,24.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(103,2,1,105,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(104,2,1,106,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(105,2,1,107,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(106,2,1,108,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(107,2,1,109,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(108,2,1,110,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(109,2,1,111,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(110,2,1,112,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(111,2,1,113,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(112,2,1,114,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(113,2,1,115,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(114,2,1,116,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(115,2,1,117,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(116,2,1,118,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(117,2,1,119,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(118,2,1,120,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(119,2,1,121,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(120,2,1,122,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(121,2,1,123,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(122,2,1,124,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(123,2,1,125,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(124,2,1,126,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(125,2,1,127,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(126,2,1,128,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(127,2,1,129,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(128,2,1,130,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(129,2,1,131,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(130,2,1,132,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(131,2,1,133,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(132,2,1,134,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(133,2,1,135,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(134,2,1,136,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(135,2,1,137,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(136,2,1,138,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(137,2,1,139,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(138,2,1,140,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(139,2,1,141,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(140,2,1,142,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(141,2,1,143,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(142,2,1,144,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(143,2,1,145,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(144,2,1,146,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(145,2,1,147,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(146,2,1,148,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(147,2,1,149,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(148,2,1,150,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(149,2,1,151,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(150,2,1,152,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(151,2,1,153,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(152,2,1,154,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(153,2,1,155,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(154,2,1,156,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(155,2,1,157,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(156,2,1,158,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(157,2,1,159,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(158,2,1,160,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(159,2,1,161,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(160,2,1,162,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(161,2,1,163,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(162,2,1,164,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(163,2,1,165,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(164,2,1,166,9.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(165,2,1,167,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(166,2,1,168,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(167,2,1,169,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(168,2,1,170,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(169,2,1,171,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(170,2,1,172,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(171,2,1,173,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(172,2,1,174,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(173,2,1,175,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(174,2,1,176,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(175,2,1,177,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(176,2,1,178,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(177,2,1,179,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(178,2,1,180,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(179,2,1,181,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(180,2,1,182,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(181,2,1,183,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(182,2,1,184,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(183,2,1,185,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(184,2,1,186,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(185,2,1,187,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(186,2,1,188,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(187,2,1,189,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(188,2,1,190,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(189,2,1,191,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(190,2,1,192,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(191,2,1,193,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(192,2,1,194,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(193,2,1,195,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(194,2,1,196,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(195,2,1,197,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(196,2,1,198,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(197,2,1,199,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(198,2,1,200,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(199,2,1,201,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(200,2,1,202,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(201,2,1,203,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(202,2,1,204,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(203,2,1,205,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(204,2,1,206,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(205,2,1,207,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(206,2,1,208,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(207,2,1,209,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(208,2,1,210,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(209,2,1,211,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(210,2,1,212,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(211,2,1,213,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(212,2,1,214,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(213,2,1,215,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(214,2,1,216,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(215,2,1,217,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(216,2,1,218,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(217,2,1,219,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(218,2,1,220,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(219,2,1,221,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(220,2,1,222,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(221,2,1,223,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(222,2,1,224,24.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(223,2,1,225,40.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(224,2,1,226,26.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(225,2,1,227,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(226,2,1,228,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(227,2,1,229,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(228,2,1,230,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(229,2,1,231,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(230,2,1,232,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(231,2,1,233,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(232,2,1,234,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(233,2,1,235,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(234,2,1,236,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(235,2,1,237,48.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(236,2,1,238,17.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(237,2,1,239,46.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(238,2,1,240,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(239,2,1,241,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(240,2,1,242,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(241,2,1,243,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(242,2,1,244,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(243,2,1,245,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(244,2,1,246,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(245,2,1,247,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(246,2,1,248,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(247,2,1,249,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(248,2,1,250,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(249,2,1,251,-1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(250,2,1,252,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(251,2,1,253,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(252,2,1,254,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(253,2,1,255,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(254,2,1,256,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(255,2,1,257,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(256,2,1,258,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(257,2,1,259,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(258,2,1,260,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(259,2,1,261,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(260,2,1,262,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(261,2,1,263,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(262,2,1,264,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(263,2,1,265,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(264,2,1,266,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(265,2,1,267,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(266,2,1,268,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(267,2,1,269,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(268,2,1,270,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(269,2,1,271,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(270,2,1,272,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(271,2,1,273,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(272,2,1,274,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(273,2,1,275,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(274,2,1,276,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(275,2,1,277,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(276,2,1,278,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(277,2,1,279,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(278,2,1,280,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(279,2,1,281,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(280,2,1,282,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(281,2,1,283,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(282,2,1,284,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(283,2,1,285,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(284,2,1,286,9.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(285,2,1,287,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(286,2,1,288,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(287,2,1,289,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(288,2,1,290,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(289,2,1,291,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(290,2,1,292,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(291,2,1,293,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(292,2,1,294,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(293,2,1,295,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(294,2,1,296,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(295,2,1,297,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(296,2,1,298,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(297,2,1,299,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(298,2,1,300,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(299,2,1,301,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(300,2,1,302,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(301,2,1,303,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(302,2,1,304,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(303,2,1,305,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(304,2,1,306,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(305,2,1,307,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(306,2,1,308,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(307,2,1,309,32.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(308,2,1,310,11.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(309,2,1,311,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(310,2,1,312,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(311,2,1,313,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(312,2,1,314,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(313,2,1,315,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(314,2,1,316,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(315,2,1,317,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(316,2,1,318,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(317,2,1,319,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(318,2,1,320,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(319,2,1,321,38.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(320,2,1,322,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(321,2,1,323,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(322,2,1,324,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(323,2,1,325,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(324,2,1,326,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(325,2,1,327,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(326,2,1,328,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(327,2,1,329,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(328,2,1,330,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(329,2,1,331,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(330,2,1,332,22.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(331,2,1,333,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(332,2,1,334,33.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(333,2,1,335,9.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(334,2,1,336,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(335,2,1,337,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(336,2,1,338,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(337,2,1,339,29.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(338,2,1,340,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(339,2,1,341,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(340,2,1,342,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(341,2,1,343,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(342,2,1,344,29.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(343,2,1,345,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(344,2,1,346,33.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(345,2,1,347,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(346,2,1,348,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(347,2,1,349,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(348,2,1,350,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(349,2,1,351,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(350,2,1,352,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(351,2,1,353,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(352,2,1,354,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(353,2,1,355,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(354,2,1,356,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(355,2,1,357,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(356,2,1,358,21.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(357,2,1,359,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(358,2,1,360,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(359,2,1,361,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(360,2,1,362,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(361,2,1,363,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(362,2,1,364,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(363,2,1,365,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(364,2,1,366,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(365,2,1,367,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(366,2,1,368,31.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(367,2,1,369,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(368,2,1,370,40.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(369,2,1,371,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(370,2,1,372,15.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(371,2,1,373,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(372,2,1,374,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(373,2,1,375,42.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(374,2,1,376,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(375,2,1,377,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(376,2,1,378,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(377,2,1,379,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(378,2,1,380,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(379,2,1,381,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(380,2,1,382,21.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(381,2,1,383,30.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(382,2,1,384,17.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(383,2,1,385,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(384,2,1,386,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(385,2,1,387,19.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(386,2,1,388,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(387,2,1,389,29.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(388,2,1,390,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(389,2,1,391,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(390,2,1,392,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(391,2,1,393,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(392,2,1,394,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(393,2,1,395,13.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(394,2,1,396,107.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(395,2,1,397,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(396,2,1,398,40.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(397,2,1,399,28.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(398,2,1,400,23.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(399,2,1,401,31.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(400,2,1,402,14.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(401,2,1,403,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(402,2,1,404,124.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(403,2,1,405,182.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(404,2,1,406,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(405,2,1,407,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(406,2,1,408,-2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(407,2,1,409,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(408,2,1,410,-125.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(409,2,1,411,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(410,2,1,412,192.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(411,2,1,413,13.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(412,2,1,414,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(413,2,1,415,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(414,2,1,416,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(415,2,1,417,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(416,2,1,418,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(417,2,1,419,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(418,2,1,420,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(419,2,1,421,59.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(420,2,1,422,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(421,2,1,423,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(422,2,1,424,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(423,2,1,425,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(424,2,1,426,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(425,2,1,427,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(426,2,1,428,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(427,2,1,429,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(428,2,1,430,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(429,2,1,431,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(430,2,1,432,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(431,2,1,433,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(432,2,1,434,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(433,2,1,435,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(434,2,1,436,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(435,2,1,437,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(436,2,1,438,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(437,2,1,439,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(438,2,1,440,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(439,2,1,441,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(440,2,1,442,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(441,2,1,443,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(442,2,1,444,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(443,2,1,445,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(444,2,1,446,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(445,2,1,447,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(446,2,1,448,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(447,2,1,449,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(448,2,1,450,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(449,2,1,451,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(450,2,1,452,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(451,2,1,453,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(452,2,1,454,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(453,2,1,455,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(454,2,1,456,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(455,2,1,457,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(456,2,1,458,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(457,2,1,459,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(458,2,1,460,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(459,2,1,461,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(460,2,1,462,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(461,2,1,463,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(462,2,1,464,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(463,2,1,465,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(464,2,1,466,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(465,2,1,467,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(466,2,1,468,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(467,2,1,469,48.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(468,2,1,470,25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(469,2,1,471,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(470,2,1,472,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(471,2,1,473,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(472,2,1,474,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(473,2,1,475,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(474,2,1,476,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(475,2,1,477,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(476,2,1,478,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(477,2,1,479,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(478,2,1,480,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(479,2,1,481,-2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(480,2,1,482,-3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(481,2,1,483,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(482,2,1,484,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(483,2,1,485,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(484,2,1,486,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(485,2,1,487,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(486,2,1,488,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(487,2,1,489,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(488,2,1,490,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(489,2,1,491,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(490,2,1,492,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(491,2,1,493,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(492,2,1,494,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(493,2,1,495,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(494,2,1,496,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(495,2,1,497,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(496,2,1,498,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(497,2,1,499,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(498,2,1,500,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(499,2,1,501,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(500,2,1,502,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(501,2,1,503,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(502,2,1,504,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(503,2,1,505,-25.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(504,2,1,506,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(505,2,1,507,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(506,2,1,508,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(507,2,1,509,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(508,2,1,510,-3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(509,2,1,511,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(510,2,1,512,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(511,2,1,513,20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(512,2,1,514,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(513,2,1,515,23.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(514,2,1,516,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(515,2,1,517,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(516,2,1,518,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(517,2,1,519,140.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(518,2,1,520,-1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(519,2,1,521,-71.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(520,2,1,522,44.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(521,2,1,523,70.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(522,2,1,524,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(523,2,1,525,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(524,2,1,526,18.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(525,2,1,527,14.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(526,2,1,528,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(527,2,1,529,-20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(528,2,1,530,242.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(529,2,1,531,-56.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(530,2,1,532,-3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(531,2,1,533,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(532,2,1,534,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(533,2,1,535,10.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(534,2,1,536,-2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(535,2,1,537,12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(536,2,1,538,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(537,2,1,539,215.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(538,2,1,540,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(539,2,1,541,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(540,2,1,542,488.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(541,2,1,543,211.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(542,2,1,544,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(543,2,1,545,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(544,2,1,546,5.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(545,2,1,547,4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(546,2,1,548,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(547,2,1,549,-12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(548,2,1,550,34.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(549,2,1,551,45.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(550,2,1,552,1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(551,2,1,553,7.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(552,2,1,554,-1.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(553,2,1,555,60.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(554,2,1,556,-24.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(555,2,1,557,-36.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(556,2,1,558,37.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(557,2,1,559,61.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(558,2,1,560,-42.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(559,2,1,561,411.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(560,2,1,562,-12.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(561,2,1,563,-135.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(562,2,1,564,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(563,2,1,565,-121.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(564,2,1,566,-20.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(565,2,1,567,79.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(566,2,1,568,141.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(567,2,1,569,8.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(568,2,1,570,7.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(569,2,1,571,-4.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(570,2,1,572,6.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(571,2,1,573,2.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(572,2,1,574,0.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(573,2,1,575,92.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(574,2,1,576,16.000,'2025-10-22 14:58:20','2025-10-22 14:58:20'),(575,2,1,577,3.000,'2025-10-22 14:58:20','2025-10-22 14:58:20');
 /*!40000 ALTER TABLE `stocks` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1388,11 +1503,11 @@ DROP TABLE IF EXISTS `taxes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `taxes` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `name` varchar(64) NOT NULL,
   `rate` decimal(5,2) NOT NULL,
-  `is_default` tinyint(1) DEFAULT '0',
+  `is_default` tinyint(1) DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1420,14 +1535,16 @@ DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `email` varchar(191) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `pricing_mode` varchar(10) NOT NULL DEFAULT 'b2c',
+  `b2b_discount_percent` decimal(5,2) DEFAULT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1',
+  `remember_token` varchar(100) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -1444,7 +1561,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,2,'Admin','admin@artdent.com.ar','$2y$12$KBqjAGcwQAMPazHVgYPo8u9MYQEoJuuRrvptDFtSBLbYaIgrgmMxq',NULL,NULL,1,'2025-10-05 21:15:38','2025-10-05 21:15:38',NULL),(2,2,'Smoke Test','smoke+1768229177@example.com','$2y$12$VUeQzrjuHD1lQIcJz.Vss.iOyhwxjbBLni5AgA4PZ59jp/oM6WLmq',NULL,NULL,1,'2026-01-12 18:01:10','2026-01-12 18:01:10',NULL);
+INSERT INTO `users` VALUES (1,2,'Admin','admin@artdent.com.ar','$2y$12$KBqjAGcwQAMPazHVgYPo8u9MYQEoJuuRrvptDFtSBLbYaIgrgmMxq','b2c',NULL,NULL,NULL,1,'2025-10-05 21:15:38','2025-10-05 21:15:38',NULL),(2,2,'Smoke Test','smoke+1768229177@example.com','$2y$12$VUeQzrjuHD1lQIcJz.Vss.iOyhwxjbBLni5AgA4PZ59jp/oM6WLmq','b2c',NULL,NULL,NULL,1,'2026-01-12 18:01:10','2026-01-12 18:01:10',NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1472,17 +1589,17 @@ DROP TABLE IF EXISTS `vendors`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vendors` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tax_id` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `city` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `state` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `zip` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `tax_id` varchar(32) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `phone` varchar(64) DEFAULT NULL,
+  `address` varchar(191) DEFAULT NULL,
+  `city` varchar(191) DEFAULT NULL,
+  `state` varchar(191) DEFAULT NULL,
+  `zip` varchar(32) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -1509,12 +1626,12 @@ DROP TABLE IF EXISTS `warehouses`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `warehouses` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_id` bigint unsigned NOT NULL,
-  `branch_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company_id` bigint(20) unsigned NOT NULL,
+  `branch_id` bigint(20) unsigned DEFAULT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(32) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -1550,8 +1667,8 @@ UNLOCK TABLES;
 /*!50001 SET character_set_results     = utf8mb4 */;
 /*!50001 SET collation_connection      = utf8mb4_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`artdent_fer`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `v_product_stock` AS select `p`.`id` AS `product_id`,`p`.`company_id` AS `company_id`,`p`.`sku` AS `sku`,`p`.`name` AS `name`,coalesce(sum(`s`.`qty`),0) AS `total_qty` from (`products` `p` left join `stocks` `s` on(((`s`.`product_id` = `p`.`id`) and (`s`.`company_id` = `p`.`company_id`)))) group by `p`.`id`,`p`.`company_id`,`p`.`sku`,`p`.`name` */;
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `v_product_stock` AS select `p`.`id` AS `product_id`,`p`.`company_id` AS `company_id`,`p`.`sku` AS `sku`,`p`.`name` AS `name`,coalesce(sum(`s`.`qty`),0) AS `total_qty` from (`products` `p` left join `stocks` `s` on(`s`.`product_id` = `p`.`id` and `s`.`company_id` = `p`.`company_id`)) group by `p`.`id`,`p`.`company_id`,`p`.`sku`,`p`.`name` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -1565,4 +1682,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-02-04 23:37:53
+-- Dump completed on 2026-02-11 13:10:26

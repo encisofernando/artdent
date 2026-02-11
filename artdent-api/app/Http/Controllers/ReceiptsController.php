@@ -8,8 +8,12 @@ class ReceiptsController extends Controller
 {
     public function index(Request $r){
         $cid=$r->user()->company_id;
-        return DB::table('receipts')->where('company_id',$cid)->orderBy('id','desc')->paginate(25);
+        return DB::table('receipts')
+            ->where('company_id',$cid)
+            ->orderBy('id','desc')
+            ->paginate(25);
     }
+
     public function store(Request $r){
         $cid=$r->user()->company_id;
         $data=$r->validate([
@@ -20,14 +24,27 @@ class ReceiptsController extends Controller
             // opcional, si querés forzar una fecha distinta
             'receipt_date'=>'sometimes|nullable|date',
         ]);
+
         $data['company_id']=$cid;
         // `receipts.receipt_date` es NOT NULL en la DB
         $data['receipt_date'] = $data['receipt_date'] ?? now();
-        $id=DB::table('receipts')->insertGetId($data);
-        $receipt = (array) DB::table('receipts')->where('id',$id)->first();
-        // Numeración simple, estable y sin migraciones: usar el ID como correlativo.
+
+        // 1) Insert
+        $id = DB::table('receipts')->insertGetId($data);
+
+        // 2) Generar y persistir número de comprobante
         // Formato ejemplo: 0001-00000042
-        $receipt['receipt_number'] = '0001-' . str_pad((string)$id, 8, '0', STR_PAD_LEFT);
+        $receiptNumber = '0001-' . str_pad((string)$id, 8, '0', STR_PAD_LEFT);
+        // Guardar en DB (requiere columna receipt_number)
+        try {
+            DB::table('receipts')->where('id', $id)->update(['receipt_number' => $receiptNumber]);
+        } catch (\Throwable $e) {
+            // Si todavía no corrieron la migración, igual devolvemos el número para que el front lo muestre.
+        }
+
+        $receipt = (array) DB::table('receipts')->where('id',$id)->first();
+        $receipt['receipt_number'] = $receipt['receipt_number'] ?? $receiptNumber;
+
         return response()->json($receipt,201);
     }
 }

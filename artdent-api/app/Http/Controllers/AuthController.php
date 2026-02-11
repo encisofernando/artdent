@@ -86,4 +86,26 @@ class AuthController extends Controller
             'message' => __($status),   // "We can't find a user with that email address."
         ], 400);
     }
+
+    /**
+     * Crea/actualiza contraseña para un usuario existente.
+     * Mantiene compatibilidad con el flujo "CrearContraseña" del front.
+     */
+    public function createPassword(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required','email'],
+            'password' => ['required','string','min:6','confirmed'],
+        ]);
+
+        $user = User::where('email', $data['email'])->first();
+        if (!$user) {
+            return response()->json(['message' => 'Usuario no encontrado.'], 404);
+        }
+
+        $user->password = Hash::make($data['password']);
+        $user->save();
+
+        return response()->json(['message' => 'OK']);
+    }
 }

@@ -226,32 +226,64 @@ const ModalImprimir = ({
   const ticketRef = useRef(null);
 
   const imprimir = () => {
-    const html = ticketRef.current?.outerHTML || "";
-    const w = window.open("", "_blank");
-    if (!w) return;
+    // Impresión en producción: iframe oculto (evita popup bloqueado / ventana en blanco)
+    const raw = ticketRef.current?.outerHTML || "";
+    if (!raw) return;
 
-    w.document.write(`
+    const html = raw.replace("border: 1px solid", "border: 0");
+
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    doc.open();
+    doc.write(`<!doctype html>
       <html>
         <head>
+          <meta charset="utf-8" />
           <title>Ticket</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
             @page { size: ${size === "57" ? "57mm" : "80mm"} auto; margin: 0; }
-            body { margin:0; font-family:'Montserrat',sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            html, body { margin:0; padding:0; }
+            body { font-family:'Montserrat',sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           </style>
         </head>
-        <body>${html.replace("border: 1px solid", "border: 0")}</body>
-      </html>
-    `);
-    w.document.close();
-    w.focus();
-    const imgs = Array.from(w.document.images || []);
-    Promise.all(imgs.map(img => new Promise(res => {
-      if (img.complete) return res();
-      img.onload = img.onerror = () => res();
-    }))).then(() => {
-      w.print();
-      w.close();
+        <body>${html}</body>
+      </html>`);
+    doc.close();
+
+    const win = iframe.contentWindow;
+    const imgs = Array.from(doc.images || []);
+    Promise.all(
+      imgs.map(
+        (img) =>
+          new Promise((res) => {
+            if (img.complete) res();
+            else img.onload = img.onerror = res;
+          })
+      )
+    ).finally(() => {
+      try {
+        win.focus();
+        win.print();
+      } finally {
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch { /* noop */ }
+        }, 500);
+      }
     });
   };
 

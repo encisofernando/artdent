@@ -11,7 +11,11 @@ import {
   Grid,
   MenuItem,
   TextField,
+  Typography,
+  Stack,
 } from "@mui/material";
+
+import * as Products from "../../services/productService";
 
 // ==== Helpers de saneamiento ====
 const nz = (v) => (v ?? "");             // strings
@@ -82,6 +86,12 @@ export default function EditarArticulo({
   const [articulo, setArticulo] = useState(empty);
   const [imagePreview, setImagePreview] = useState(null);
 
+  // Galería de imágenes (backend e-commerce)
+  const [images, setImages] = useState([]);
+  const [imgLoading, setImgLoading] = useState(false);
+  const [imgFile, setImgFile] = useState(null);
+  const [imgAlt, setImgAlt] = useState("");
+
   // Normalizamos al cargar el artículo
   useEffect(() => {
     if (!open) return;
@@ -123,6 +133,26 @@ export default function EditarArticulo({
     setImagePreview(a.ImagenUrl || null);
   }, [open, articuloEditando]);
 
+  useEffect(() => {
+    const id = articuloEditando?.idArticulo ?? articuloEditando?.id;
+    if (!open || !id) return;
+    let alive = true;
+    (async () => {
+      setImgLoading(true);
+      try {
+        const rows = await Products.listProductImages(id);
+        if (alive) setImages(Array.isArray(rows) ? rows : []);
+      } catch (e) {
+        // Si el backend todavía no tiene imágenes, no rompemos el CRM
+        if (alive) setImages([]);
+        console.error(e);
+      } finally {
+        if (alive) setImgLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [open, articuloEditando]);
+
   // === Handlers ===
   const handleChange = (field) => (e) => {
     const { value } = e.target;
@@ -149,9 +179,50 @@ export default function EditarArticulo({
   const handleImagen = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImgFile(file);
     const reader = new FileReader();
     reader.onload = () => setImagePreview(reader.result);
     reader.readAsDataURL(file);
+  };
+
+  const refreshImages = async () => {
+    const id = articuloEditando?.idArticulo ?? articuloEditando?.id;
+    if (!id) return;
+    setImgLoading(true);
+    try {
+      const rows = await Products.listProductImages(id);
+      setImages(Array.isArray(rows) ? rows : []);
+    } finally {
+      setImgLoading(false);
+    }
+  };
+
+  const uploadImage = async () => {
+    const id = articuloEditando?.idArticulo ?? articuloEditando?.id;
+    if (!id || !imgFile) return;
+    await Products.uploadProductImage(id, imgFile, {
+      alt: imgAlt,
+      is_primary: images.length === 0, // primera imagen -> principal
+      sort_order: images.length,
+    });
+    setImgFile(null);
+    setImgAlt("");
+    setImagePreview(null);
+    await refreshImages();
+  };
+
+  const setPrimary = async (imageId) => {
+    const id = articuloEditando?.idArticulo ?? articuloEditando?.id;
+    if (!id) return;
+    await Products.setProductImagePrimary(id, imageId);
+    await refreshImages();
+  };
+
+  const removeImage = async (imageId) => {
+    const id = articuloEditando?.idArticulo ?? articuloEditando?.id;
+    if (!id) return;
+    await Products.deleteProductImage(id, imageId);
+    await refreshImages();
   };
 
   const submit = () => {
@@ -499,16 +570,73 @@ export default function EditarArticulo({
                 }
                 label="Permitir modificar precio"
               />
-              <input type="file" accept="image/*" onChange={handleImagen} />
-              {imagePreview && (
-                <Box sx={{ mt: 1 }}>
-                  <img
-                    src={imagePreview}
-                    alt="preview"
-                    style={{ maxWidth: 160, borderRadius: 8 }}
+              <Box sx={{ mt: 1, p: 2, borderRadius: 2, border: (t) => `1px solid ${t.palette.divider}` }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Imágenes del producto</Typography>
+
+                <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }}>
+                  <input type="file" accept="image/*" onChange={handleImagen} />
+                  <TextField
+                    label="Alt (opcional)"
+                    size="small"
+                    value={imgAlt}
+                    onChange={(e) => setImgAlt(e.target.value)}
+                    sx={{ minWidth: 220 }}
                   />
+                  <Button
+                    variant="contained"
+                    disabled={!imgFile}
+                    onClick={uploadImage}
+                  >
+                    Subir
+                  </Button>
+                </Stack>
+
+                {imagePreview ? (
+                  <Box sx={{ mt: 1 }}>
+                    <img src={imagePreview} alt="preview" style={{ maxWidth: 220, borderRadius: 12 }} />
+                  </Box>
+                ) : null}
+
+                <Box sx={{ mt: 2 }}>
+                  {imgLoading ? (
+                    <Typography variant="body2" color="text.secondary">Cargando imágenes…</Typography>
+                  ) : images.length ? (
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                      {images
+                        .slice()
+                        .sort((a, b) => (b.is_primary === a.is_primary ? (a.sort_order - b.sort_order) : (b.is_primary ? 1 : -1)))
+                        .map((im) => (
+                          <Box key={im.id} sx={{ width: 92 }}>
+                            <Box
+                              sx={{
+                                width: 92,
+                                height: 92,
+                                borderRadius: 2,
+                                overflow: "hidden",
+                                border: (t) => `1px solid ${t.palette.divider}`,
+                                mb: 0.5,
+                              }}
+                            >
+                              {im.url ? (
+                                <img src={im.url} alt={im.alt || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              ) : (
+                                <Box sx={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>
+                                  <Typography variant="caption" color="text.secondary">Sin URL</Typography>
+                                </Box>
+                              )}
+                            </Box>
+                            <Stack direction="row" gap={0.5}>
+                              <Button size="small" onClick={() => setPrimary(im.id)} disabled={im.is_primary}>Principal</Button>
+                              <Button size="small" color="error" onClick={() => removeImage(im.id)}>Borrar</Button>
+                            </Stack>
+                          </Box>
+                        ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">Sin imágenes cargadas.</Typography>
+                  )}
                 </Box>
-              )}
+              </Box>
             </Grid>
           </Grid>
         </Box>

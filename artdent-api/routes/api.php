@@ -12,6 +12,13 @@ use App\Http\Controllers\WarehousesController;
 use App\Http\Controllers\CollaboratorsController;
 use App\Http\Controllers\CollaboratorAttendancesController;
 use App\Http\Controllers\CollaboratorReceiptsController;
+use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\CompaniesController;
+use App\Http\Controllers\PromotionsController;
+use App\Http\Controllers\ProductImagesController;
+use App\Http\Controllers\Catalog\CatalogController as PublicCatalogController;
+use App\Http\Controllers\Catalog\CheckoutController as PublicCheckoutController;
+use App\Http\Controllers\Catalog\OrdersController as PublicOrdersController;
 
 // ── Público (sin token)
 Route::prefix('auth')->group(function () {
@@ -19,8 +26,21 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/create-password', [AuthController::class, 'createPassword']); // para el flujo de CrearContraseña.jsx
     // ✅ Recuperar contraseña (envía email con link)
-    Route::post('/auth/password/forgot', [AuthController::class, 'forgotPassword']);
+    Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
 
+});
+
+// ── Catálogo público (sin login) con auth opcional para precios B2B
+Route::prefix('catalog')->middleware('auth.optional')->group(function () {
+    Route::get('/categories', [PublicCatalogController::class, 'categories']);
+    Route::get('/products', [PublicCatalogController::class, 'products']);
+    Route::get('/products/{product}', [PublicCatalogController::class, 'product']);
+
+    // Checkout: crea orden + items (guest o autenticado)
+    Route::post('/checkout', [PublicCheckoutController::class, 'checkout']);
+
+    // Consulta de pedido por código (si es invitado, requiere email en query)
+    Route::get('/orders/{code}', [PublicOrdersController::class, 'show']);
 });
 
 // ── Protegido (con token Bearer)
@@ -41,9 +61,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Productos
     Route::apiResource('products', ProductsController::class);
+    // Imágenes de productos (backoffice)
+    Route::get('products/{product}/images', [ProductImagesController::class, 'index']);
+    Route::post('products/{product}/images', [ProductImagesController::class, 'store']);
+    Route::post('products/{product}/images/{image}/primary', [ProductImagesController::class, 'setPrimary']);
+    Route::delete('products/{product}/images/{image}', [ProductImagesController::class, 'destroy']);
     // Stock por producto (dos entradas típicas)
-    Route::get('products/{id}/stock', [StockController::class, 'productStock']);
-    Route::get('stock/summary',       [StockController::class, 'summary']);
+    Route::get('products/{product}/stock', [StockController::class, 'productStock']);
+    Route::get('stock/summary',            [StockController::class, 'summary']);
 
     // Clientes
     Route::apiResource('customers', CustomersController::class);
@@ -83,31 +108,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('invoices', InvoicesController::class)->only(['index','show','store']);
 
     // routes/api.php
-    Route::get('categories', fn() => response()->json([
-    ['id' => 1, 'name' => 'Insumos'],
-    ['id' => 2, 'name' => 'Equipos'],
-    ]));
+    // Catálogos
+    Route::apiResource('categories', CategoriesController::class)->only(['index','show','store','update','destroy']);
 
-    Route::get('vendors', fn() => response()->json([]));
-    Route::get('promotions', fn() => response()->json([]));
+    // Promociones (placeholder: si en el futuro agregás tabla/promos)
+    Route::get('promotions', [PromotionsController::class, 'index']);
 
-    // Si usás "companies/me" ó "empresa"
-    Route::get('companies/me', function (\Illuminate\Http\Request $r) {
-        $user = $r->user();
-        return response()->json([
-            'id' => $user->company_id,
-            'name' => 'Mi Empresa', // ajustar si tenés modelo Company
-        ]);
-    });
-
-Route::get('company', function () {
-    // TODO: si ya tenés companies en DB, cargá desde el modelo.
-    return response()->json([
-        'id' => 1,
-        'name' => 'Laboratorio ArtDent',
-        'tax_id' => '20402155168',
-        'email' => 'admin@artdent.com.ar',
-    ]);
-});
+    // Empresa del usuario autenticado
+    Route::get('companies/me', [CompaniesController::class, 'me']);
+    Route::get('companies/{company}', [CompaniesController::class, 'show']);
 
 });

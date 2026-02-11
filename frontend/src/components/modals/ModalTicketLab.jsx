@@ -19,6 +19,8 @@ const Ticket = forwardRef(
       paciente = {},
       items = [],
       totales = {},
+      pago = {},
+      footer = "",
     },
     ref
   ) => {
@@ -27,6 +29,9 @@ const Ticket = forwardRef(
     const previewWidthPx = mmToPx(widthMM);
 
     const total = Number(totales.total || 0);
+    const subtotal = Number(totales.subtotal || 0);
+    const iva21 = Number(totales.iva21 || 0);
+    const iva105 = Number(totales.iva105 || 0);
 
     return (
       <div
@@ -138,13 +143,46 @@ const Ticket = forwardRef(
 
           <div className="line" />
 
-          {/* === TOTAL === */}
-          <div
-            className="t-center bold"
-            style={{ marginTop: 6, fontSize: 13 }}
-          >
-            Total del Ticket: {total.toLocaleString("es-AR")}
+          {/* === TOTALES (IVA DISCRIMINADO - NO SE SUMA) === */}
+          <div style={{ fontSize: 11.5, marginTop: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="label">Subtotal</span>
+              <span>{subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            {iva21 > 0 ? (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="label">IVA 21%</span>
+                <span>{iva21.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            ) : null}
+            {iva105 > 0 ? (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="label">IVA 10,5%</span>
+                <span>{iva105.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            ) : null}
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+              <span className="bold">TOTAL</span>
+              <span className="bold">{total.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
           </div>
+
+          {(pago?.medio || pago?.cajero) ? (
+            <>
+              <div className="line" />
+              <div style={{ fontSize: 11.5 }}>
+                {pago?.medio ? <div><span className="label">Pago:</span> {pago.medio}</div> : null}
+                {pago?.cajero ? <div><span className="label">Cajero:</span> {pago.cajero}</div> : null}
+              </div>
+            </>
+          ) : null}
+
+          {footer ? (
+            <>
+              <div className="line" />
+              <div className="t-center" style={{ fontSize: 11.5 }}>{footer}</div>
+            </>
+          ) : null}
         </div>
       </div>
     );
@@ -163,31 +201,52 @@ const ModalImprimir = ({
   paciente,
   items,
   totales,
+  pago,
+  footer,
 }) => {
   const ticketRef = useRef(null);
 
   const imprimir = () => {
+    // Impresión robusta: usar iframe oculto (evita popups en blanco / bloqueados)
     const html = ticketRef.current?.outerHTML || "";
-    const w = window.open("", "_blank");
-    if (!w) return;
+    if (!html) return;
 
-    w.document.write(`
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    doc.open();
+    doc.write(`<!doctype html>
       <html>
         <head>
+          <meta charset="utf-8" />
           <title>Ticket</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
             @page { size: ${size === "57" ? "57mm" : "80mm"} auto; margin: 0; }
-            body { margin:0; font-family:'Montserrat',sans-serif; }
+            html, body { margin:0; padding:0; }
+            body { font-family:'Montserrat',sans-serif; }
           </style>
         </head>
         <body>${html}</body>
-      </html>
-    `);
-    w.document.close();
-    w.focus();
-    const imgs = Array.from(w.document.images);
-    Promise.all(
+      </html>`);
+    doc.close();
+
+    const win = iframe.contentWindow;
+    const imgs = Array.from(doc.images || []);
+    const waitImgs = Promise.all(
       imgs.map(
         (img) =>
           new Promise((res) => {
@@ -195,9 +254,17 @@ const ModalImprimir = ({
             else img.onload = img.onerror = res;
           })
       )
-    ).then(() => {
-      w.print();
-      w.close();
+    );
+
+    waitImgs.finally(() => {
+      try {
+        win.focus();
+        win.print();
+      } finally {
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch { /* noop */ }
+        }, 500);
+      }
     });
   };
 
@@ -215,6 +282,8 @@ const ModalImprimir = ({
           paciente={paciente}
           items={items}
           totales={totales}
+          pago={pago}
+          footer={footer}
         />
       </DialogContent>
       <DialogActions>

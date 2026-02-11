@@ -74,6 +74,11 @@ const firstOkDELETE = async (paths = []) => {
 const LIST_PATHS = ["/products"];
 const ONE_PATHS  = (id) => [`/products/${id}`];
 
+// Imágenes (requiere backend con tabla product_images y rutas)
+const IMG_LIST_PATHS = (id) => [`/products/${id}/images`];
+const IMG_PRIMARY_PATHS = (id, imageId) => [`/products/${id}/images/${imageId}/primary`];
+const IMG_DELETE_PATHS = (id, imageId) => [`/products/${id}/images/${imageId}`];
+
 export const listProducts = async (params = {}) => {
   const r = await firstOkGET(LIST_PATHS, params);
   return unwrapRows(r).map(toUI);
@@ -124,4 +129,36 @@ export const toggleProductActive = async (id) => {
     const r = await firstOkPUT(ONE_PATHS(id), next);
     return toUI(unwrapObj(r));
   }
+};
+
+export const listProductImages = async (id) => {
+  const r = await firstOkGET(IMG_LIST_PATHS(id));
+  const rows = unwrapRows(r);
+  return rows.map((x) => ({
+    id: x.id,
+    url: x.url ?? x.image_url ?? x.path_url ?? x.path ?? "",
+    alt: x.alt ?? "",
+    sort_order: Number(x.sort_order ?? 0),
+    is_primary: !!(x.is_primary ?? x.primary),
+  }));
+};
+
+export const uploadProductImage = async (id, file, { alt = "", is_primary = false, sort_order = 0 } = {}) => {
+  const fd = new FormData();
+  fd.append("image", file);
+  if (alt) fd.append("alt", alt);
+  fd.append("is_primary", is_primary ? "1" : "0");
+  fd.append("sort_order", String(sort_order ?? 0));
+  const r = await firstOkPOST(IMG_LIST_PATHS(id), fd, { headers: { "Content-Type": "multipart/form-data" } });
+  return unwrapObj(r);
+};
+
+export const setProductImagePrimary = async (id, imageId) => {
+  const r = await firstOkPOST(IMG_PRIMARY_PATHS(id, imageId));
+  return unwrapObj(r);
+};
+
+export const deleteProductImage = async (id, imageId) => {
+  const r = await firstOkDELETE(IMG_DELETE_PATHS(id, imageId));
+  return unwrapObj(r);
 };

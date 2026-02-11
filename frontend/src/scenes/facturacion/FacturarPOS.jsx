@@ -358,8 +358,8 @@ const FacturarPOSCompact = () => {
       }
 
       // 3) Snapshot para imprimir/enviar y limpiar carrito
-      const snap = snapshotVenta();
-      setVenta({ ...snap, sale_id: sale.id });
+      const snap = snapshotVenta(sale);
+      setVenta({ ...snap, sale_id: sale.id, sale });
       clearAll();
       setPago({ metodo: "-", nota: "", recibido: 0, cambio: 0 });
       setOpenAcciones(true);
@@ -371,11 +371,18 @@ const FacturarPOSCompact = () => {
   };
 
   // Instantánea + limpiar carrito antes de abrir cada modal de envío/impresión
-  const snapshotVenta = () => ({
+  const snapshotVenta = (sale = null) => ({
     cliente: cliente || { name: "Consumidor final" },
     items: items.map((i) => ({
       name: i.name, qty: i.qty, subtotal: i.subtotal, descripcion: i.name, total: i.subtotal,
     })),
+    comprobante: {
+      // Este número viene del backend (SalesController). Si todavía no se guardó la venta,
+      // queda null y el modal puede mostrar un placeholder.
+      numero: sale?.number || null,
+      fecha: sale?.sale_date || sale?.created_at || new Date().toISOString(),
+      tipo: tipoComprobante,
+    },
     total,
     totales: { subtotal: neto, iva21, iva105, impuestos: totales.impuestosTotal },
     pago,
@@ -383,7 +390,7 @@ const FacturarPOSCompact = () => {
   });
 
   const prepararY = (openFn) => {
-    const snap = snapshotVenta();
+    const snap = snapshotVenta(null);
     setVenta(snap);
     setOpenAcciones(false);
     clearAll();             // 👉 nuevo carrito vacío
@@ -703,19 +710,18 @@ const FacturarPOSCompact = () => {
         comprobante={{
           tipoLetra: tipoComprobante || "C",
           codigo: "",
-          numero:
-            venta?.receipt_number ||
-            (venta?.receipt_id ? `R-${String(venta.receipt_id).padStart(8, "0")}` : null) ||
-            (venta?.sale_id ? `V-${String(venta.sale_id).padStart(8, "0")}` : "0001-00000000"),
-          fecha: venta?.created_at ? new Date(venta.created_at).toLocaleString() : new Date().toLocaleString(),
+          // Se toma del backend (sales.number). Si no existe aún, queda como placeholder.
+          numero: venta?.comprobante?.numero || "0001-00000000",
+          fecha: venta?.comprobante?.fecha
+            ? new Date(venta.comprobante.fecha).toLocaleString()
+            : new Date().toLocaleString(),
           cliente: (venta?.cliente || cliente)?.name || "Consumidor final",
         }}
         items={(venta?.items || items).map((i) => ({
           descripcion: i.name || i.descripcion,
-          // Soportar distintos nombres según origen (carrito vs backend)
-          precio: i.price ?? i.precio ?? i.unit_price ?? 0,
-          cantidad: i.qty ?? i.cantidad ?? 0,
-          total: i.subtotal ?? i.total ?? 0,
+          precio: i.price || i.precio,
+          cantidad: i.qty || i.cantidad,
+          total: i.subtotal || i.total,
         }))}
         totales={venta?.totales || { subtotal: neto, iva21, iva105: 0, total }}
         pago={{

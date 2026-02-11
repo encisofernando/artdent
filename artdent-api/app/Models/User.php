@@ -16,6 +16,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'pricing_mode',
+        'b2b_discount_percent',
     ];
 
     protected $hidden = [
@@ -25,6 +27,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'b2b_discount_percent' => 'float',
     ];
 
     /**
