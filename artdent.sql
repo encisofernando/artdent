@@ -18,6 +18,19 @@
 --
 -- Table structure for table `accounts`
 --
+-- 1. Crear la base de datos si no existe
+CREATE DATABASE IF NOT EXISTS artdent_lab 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+
+-- 2. Asegurarnos de que el usuario 'artdent_fer' tenga acceso total a ESTA base de datos
+GRANT ALL PRIVILEGES ON artdent_lab.* TO 'artdent_fer'@'%';
+
+-- 3. Aplicar los cambios de permisos
+FLUSH PRIVILEGES;
+
+-- 4. Seleccionar la base de datos para empezar a trabajar
+USE artdent_lab;
 
 DROP TABLE IF EXISTS `accounts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

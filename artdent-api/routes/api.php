@@ -50,25 +50,33 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me',       [AuthController::class, 'me']);
     Route::post('auth/logout',  [AuthController::class, 'logout']);
 
-    // Catálogos y auxiliares
-    Route::get('warehouses',        [WarehousesController::class, 'index']);
-    Route::get('payment-methods',   [WarehousesController::class, 'paymentMethods']);
-    Route::get('taxes', fn() => response()->json([
-    ['id' => 0,  'name' => 'Exento',    'rate' => 0],
-    ['id' => 10, 'name' => 'IVA 10.5%', 'rate' => 10.5],
-    ['id' => 21, 'name' => 'IVA 21%',   'rate' => 21],
-    ]));
+    // Empresa
+    Route::get('companies/me', [CompaniesController::class, 'me']);
+    // Alias legacy para el frontend
+    Route::get('company', [CompaniesController::class, 'me']);
 
+    // --- Admin only (por ahora) ---
+    Route::middleware('role:Admin')->group(function () {
+
+        // Catálogos y auxiliares
+        Route::get('warehouses', [WarehousesController::class, 'index']);
     // Productos
     Route::apiResource('products', ProductsController::class);
-    // Imágenes de productos (backoffice)
-    Route::get('products/{product}/images', [ProductImagesController::class, 'index']);
-    Route::post('products/{product}/images', [ProductImagesController::class, 'store']);
-    Route::post('products/{product}/images/{image}/primary', [ProductImagesController::class, 'setPrimary']);
-    Route::delete('products/{product}/images/{image}', [ProductImagesController::class, 'destroy']);
+    Route::get('/products', [ProductsController::class, 'index']);
+    Route::post('/products', [ProductsController::class, 'store']);
+    Route::get('/products/{product}', [ProductsController::class, 'show']);
+    Route::put('/products/{product}', [ProductsController::class, 'update']);
+    Route::delete('/products/{product}', [ProductsController::class, 'destroy']);
+
     // Stock por producto (dos entradas típicas)
     Route::get('products/{product}/stock', [StockController::class, 'productStock']);
     Route::get('stock/summary',            [StockController::class, 'summary']);
+
+    // Imágenes
+    Route::get('/products/{product}/images', [ProductsController::class, 'listImages']);
+    Route::post('/products/{product}/images', [ProductsController::class, 'uploadImage']);
+    Route::post('/products/{product}/images/{image}/primary', [ProductsController::class, 'setImagePrimary']);
+    Route::delete('/products/{product}/images/{image}', [ProductsController::class, 'deleteImage']);
 
     // Clientes
     Route::apiResource('customers', CustomersController::class);
@@ -117,5 +125,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Empresa del usuario autenticado
     Route::get('companies/me', [CompaniesController::class, 'me']);
     Route::get('companies/{company}', [CompaniesController::class, 'show']);
+
+
+    });
 
 });

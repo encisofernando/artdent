@@ -1,10 +1,10 @@
 <?php
-
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use App\Http\Middleware\OptionalSanctumAuth;
+use App\Http\Middleware\RoleMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,10 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // CORS nativo
         $middleware->append(HandleCors::class);
-
-        // Alias para auth opcional (catálogo público + modo B2B si hay token)
+        
+        // Alias para middlewares personalizados
         $middleware->alias([
             'auth.optional' => OptionalSanctumAuth::class,
+            'role' => RoleMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

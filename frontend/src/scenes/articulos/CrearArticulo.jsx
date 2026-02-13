@@ -1,490 +1,575 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
+  Alert,
   Box,
   Button,
-  Checkbox,
-  Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   FormControlLabel,
   Grid,
+  InputLabel,
   MenuItem,
+  Select,
+  Switch,
   TextField,
+  Typography,
+  IconButton,
+  Chip,
+  Card,
+  CardMedia,
+  CardContent,
+  LinearProgress,
+  Stack,
+  Tabs,
+  Tab,
 } from "@mui/material";
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  CloudUpload as UploadIcon,
+  Image as ImageIcon,
+  Star as StarIcon,
+  StarBorder as StarBorderIcon,
+} from "@mui/icons-material";
+import * as Products from "../../services/productService";
 
-// ==== Helpers de saneamiento ====
-const nz = (v) => (v ?? "");             // strings
-const n0 = (v) => Number(v ?? 0);        // números
-const b01 = (v) => (v ? 1 : 0);          // 0/1
-const dateIso = (d) => (d ? new Date(d).toISOString().split("T")[0] : "");
+const toNumber = (v, fallback = 0) => {
+  const n = Number(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : fallback;
+};
 
-// value seguro para selects async
-const safeValue = (val, options, key) =>
-  options?.some((o) => String(o[key]) === String(val)) ? String(val) : "";
-
-/**
- * Props esperadas (ajústalas si en tu app cambian los nombres):
- * - open, onClose, onSave
- * - categorias: [{idCategoria, Nombre}]
- * - proveedores: [{idProveedor, Nombre}]
- * - ivas: [{idIva, Nombre, Porcentaje}]
- * - promociones: [{idPromocionCantidad, Nombre}]
- */
-export default function CrearArticulo({
-  open,
-  onClose,
-  onSave,
-  categorias = [],
-  proveedores = [],
-  ivas = [],
-  promociones = [],
-}) {
-  const initial = useMemo(
-    () => ({
-      idCategoria: "",
-      idProveedor1: "",
-      idProveedor2: "",
-      idPromocionCantidad: "",
-      CodigoBarra: "",
-      Nombre: "",
-      Lote: "",
-      Ubicacion: "",
-      Codigo: "",
-      Stock: 0,
-      StockMin: 0,
-      Costo: 0,
-      Ganancia: 0,
-      Iva: "", // guardamos como string en UI (ej: "21" o "10.5000")
-      PrecioPublico: 0,
-      Descripcion: "",
-      activo: 1,
-      HabPrecioManual: 0,
-      NoAplicaStock: 0,
-      NoAplicarDescuento: 0,
-      EmailPorBajoStock: 0,
-      HabNroSerie: 0,
-      AplicaElab: 0,
-      FechaElab: "",
-      AplicaVto: 0,
-      FechaVto: "",
-      HabCostoDolar: 0,
-      CostoDolar: "",
-      permitirModificarPrecio: 0,
-      ImagenUrl: "",
-    }),
-    []
+function TabPanel({ children, value, index }) {
+  return (
+    <div hidden={value !== index} style={{ paddingTop: 16 }}>
+      {value === index && children}
+    </div>
   );
+}
 
-  const [nuevo, setNuevo] = useState(initial);
-  const [imagePreview, setImagePreview] = useState(null);
+export default function CrearArticulo({ onClose, onArticuloCreado }) {
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
+
+  const [categories, setCategories] = useState([]);
+  const [taxes, setTaxes] = useState([]);
+
+  // Imágenes temporales (antes de guardar)
+  const [images, setImages] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    sku: "",
+    barcode: "",
+    category_id: "",
+    description: "",
+    unit: "UN",
+    cost: "",
+    price: "",
+    tax_id: "",
+    tax_rate: 21,
+    is_active: true,
+    track_stock: true,
+    min_stock: 0,
+    initial_stock: 0,
+  });
 
   useEffect(() => {
-    if (!open) {
-      setNuevo(initial);
-      setImagePreview(null);
-    }
-  }, [open, initial]);
+    let alive = true;
 
-  // === Handlers ===
-  const handleChange = (field) => (e) => {
-    const { value } = e.target;
-    setNuevo((s) => ({ ...s, [field]: value ?? "" }));
-  };
+    (async () => {
+      try {
+        const [cats, txs] = await Promise.all([
+          Products.listCategories ? Products.listCategories() : Promise.resolve([]),
+          Products.listTaxes ? Products.listTaxes() : Promise.resolve([]),
+        ]);
 
-  const handleNum = (field) => (e) => {
-    const { value } = e.target;
-    setNuevo((s) => ({ ...s, [field]: value === "" ? 0 : Number(value) }));
-  };
+        if (!alive) return;
 
-  const handleCheck01 = (field) => (e) => {
-    setNuevo((s) => ({ ...s, [field]: e.target.checked ? 1 : 0 }));
-  };
+        setCategories(Array.isArray(cats) ? cats : (cats?.data ?? []));
+        setTaxes(Array.isArray(txs) ? txs : (txs?.data ?? []));
 
-  const handleIvaChange = (value) => {
-    // Guardamos string en UI; al enviar casteamos a número
-    setNuevo((s) => ({ ...s, Iva: value ?? "" }));
-  };
+        const def = (Array.isArray(txs) ? txs : (txs?.data ?? [])).find((t) => t.is_default);
+        if (def) {
+          setForm((p) => ({
+            ...p,
+            tax_id: String(def.id),
+            tax_rate: toNumber(def.rate, 0),
+          }));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
 
-  const handleFecha = (field) => (e) => {
-    setNuevo((s) => ({ ...s, [field]: e.target.value ?? "" }));
-  };
-
-  const handleImagen = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result);
-    reader.readAsDataURL(file);
-    // Si necesitas guardar el file, guárdalo en otro estado o FormData al momento de enviar
-  };
-
-  const submit = () => {
-    // Normalizamos definitivamente números/booleans para el backend
-    const payload = {
-      ...nuevo,
-      Stock: n0(nuevo.Stock),
-      StockMin: n0(nuevo.StockMin),
-      Costo: n0(nuevo.Costo),
-      Ganancia: n0(nuevo.Ganancia),
-      PrecioPublico: n0(nuevo.PrecioPublico),
-      Iva: nuevo.Iva === "" ? null : Number(nuevo.Iva),
-      activo: b01(nuevo.activo),
-      HabPrecioManual: b01(nuevo.HabPrecioManual),
-      NoAplicaStock: b01(nuevo.NoAplicaStock),
-      NoAplicarDescuento: b01(nuevo.NoAplicarDescuento),
-      EmailPorBajoStock: b01(nuevo.EmailPorBajoStock),
-      HabNroSerie: b01(nuevo.HabNroSerie),
-      AplicaElab: b01(nuevo.AplicaElab),
-      FechaElab: dateIso(nuevo.FechaElab) || null,
-      AplicaVto: b01(nuevo.AplicaVto),
-      FechaVto: dateIso(nuevo.FechaVto) || null,
-      HabCostoDolar: b01(nuevo.HabCostoDolar),
-      permitirModificarPrecio: b01(nuevo.permitirModificarPrecio),
+    return () => {
+      alive = false;
     };
-    onSave?.(payload);
+  }, []);
+
+  const canSave = useMemo(() => {
+    if (!form.name.trim()) return false;
+    if (String(form.price).trim() === "") return false;
+    return true;
+  }, [form.name, form.price]);
+
+  const setField = (k) => (e) => {
+    const v = e?.target?.value ?? e;
+    setForm((p) => ({ ...p, [k]: v }));
+  };
+
+  const handleImageUpload = useCallback((e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    files.forEach((file) => {
+      if (!file.type.startsWith("image/")) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const newImage = {
+          id: Date.now() + Math.random(),
+          file,
+          preview: evt.target.result,
+          is_primary: images.length === 0,
+          alt: "",
+          sort_order: images.length,
+        };
+        setImages((prev) => [...prev, newImage]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = "";
+  }, [images.length]);
+
+  const handleDeleteImage = useCallback((id) => {
+    setImages((prev) => {
+      const filtered = prev.filter((img) => img.id !== id);
+      if (filtered.length > 0 && !filtered.some((img) => img.is_primary)) {
+        filtered[0].is_primary = true;
+      }
+      return filtered;
+    });
+  }, []);
+
+  const handleSetPrimary = useCallback((id) => {
+    setImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        is_primary: img.id === id,
+      }))
+    );
+  }, []);
+
+  const handleSubmit = async () => {
+    setErr("");
+
+    if (!canSave) {
+      setErr("Completá al menos Nombre y Precio.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        sku: form.sku?.trim() || null,
+        barcode: form.barcode?.trim() || null,
+        category_id: form.category_id ? Number(form.category_id) : null,
+        description: form.description?.trim() || null,
+        unit: form.unit?.trim() || "UN",
+        cost: toNumber(form.cost, 0),
+        price: toNumber(form.price, 0),
+        tax_id: form.tax_id ? Number(form.tax_id) : null,
+        tax_rate: toNumber(form.tax_rate, 0),
+        is_active: !!form.is_active,
+        track_stock: !!form.track_stock,
+        min_stock: toNumber(form.min_stock, 0),
+        initial_stock: toNumber(form.initial_stock, 0),
+      };
+
+      if (!Products.createProduct) {
+        throw new Error("Falta Products.createProduct en productService.");
+      }
+
+      const newProduct = await Products.createProduct(payload);
+      const productId = newProduct.id || newProduct.idArticulo;
+
+      // Subir imágenes si existen
+      if (images.length > 0 && Products.uploadProductImage) {
+        setUploadingImage(true);
+        for (const img of images) {
+          try {
+            await Products.uploadProductImage(productId, img.file, {
+              alt: img.alt || form.name,
+              is_primary: img.is_primary,
+              sort_order: img.sort_order,
+            });
+          } catch (imgErr) {
+            console.error("Error uploading image:", imgErr);
+          }
+        }
+        setUploadingImage(false);
+      }
+
+      onArticuloCreado?.();
+    } catch (e) {
+      console.error(e);
+      setErr(e?.response?.data?.message || e?.message || "No se pudo crear el artículo.");
+    } finally {
+      setSaving(false);
+      setUploadingImage(false);
+    }
   };
 
   return (
-    <Dialog open={!!open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Crear artículo</DialogTitle>
-      <DialogContent>
-        <Box sx={{ mt: 1 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Nombre"
-                value={nz(nuevo.Nombre)}
-                onChange={handleChange("Nombre")}
-                fullWidth
-              />
-            </Grid>
+    <>
+      <DialogTitle>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Typography variant="h5" component="div" fontWeight={700}>
+            Nuevo Producto
+          </Typography>
+          <Chip 
+            label={images.length > 0 ? `${images.length} imagen${images.length > 1 ? 'es' : ''}` : 'Sin imágenes'} 
+            size="small" 
+            color={images.length > 0 ? "primary" : "default"}
+            icon={<ImageIcon />}
+          />
+        </Stack>
+      </DialogTitle>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Código de barras"
-                value={nz(nuevo.CodigoBarra)}
-                onChange={handleChange("CodigoBarra")}
-                fullWidth
-              />
-            </Grid>
+      <DialogContent dividers sx={{ p: 0 }}>
+        {err && (
+          <Alert severity="error" sx={{ m: 2 }}>
+            {err}
+          </Alert>
+        )}
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                label="Categoría"
-                value={safeValue(nuevo.idCategoria, categorias, "idCategoria")}
-                onChange={handleChange("idCategoria")}
-                fullWidth
-                disabled={!categorias.length}
-                SelectProps={{ displayEmpty: true }}
-              >
-                <MenuItem value="">
-                  {categorias.length ? "Seleccionar…" : "Cargando…"}
-                </MenuItem>
-                {categorias.map((c) => (
-                  <MenuItem key={c.idCategoria} value={String(c.idCategoria)}>
-                    {c.Nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, v) => setActiveTab(v)}
+          sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
+        >
+          <Tab label="Información Básica" />
+          <Tab label="Imágenes" />
+          <Tab label="Inventario" />
+        </Tabs>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                label="IVA"
-                value={safeValue(nuevo.Iva, ivas, "Porcentaje")}
-                onChange={(e) => handleIvaChange(e.target.value)}
-                fullWidth
-                disabled={!ivas.length}
-                SelectProps={{ displayEmpty: true }}
-              >
-                <MenuItem value="">
-                  {ivas.length ? "Seleccionar…" : "Cargando…"}
-                </MenuItem>
-                {ivas.map((iva) => (
-                  <MenuItem
-                    key={iva.idIva}
-                    value={String(iva.Porcentaje)}
-                  >{`${iva.Nombre} (${iva.Porcentaje}%)`}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+        <TabPanel value={activeTab} index={0}>
+          <Box sx={{ p: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  label="Nombre del Producto"
+                  value={form.name}
+                  onChange={setField("name")}
+                  fullWidth
+                  required
+                  autoFocus
+                  variant="outlined"
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                label="Proveedor 1"
-                value={safeValue(nuevo.idProveedor1, proveedores, "idProveedor")}
-                onChange={handleChange("idProveedor1")}
-                fullWidth
-                disabled={!proveedores.length}
-                SelectProps={{ displayEmpty: true }}
-              >
-                <MenuItem value="">
-                  {proveedores.length ? "Seleccionar…" : "Cargando…"}
-                </MenuItem>
-                {proveedores.map((p) => (
-                  <MenuItem key={p.idProveedor} value={String(p.idProveedor)}>
-                    {p.Nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="SKU / Código"
+                  value={form.sku}
+                  onChange={setField("sku")}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                label="Proveedor 2"
-                value={safeValue(nuevo.idProveedor2, proveedores, "idProveedor")}
-                onChange={handleChange("idProveedor2")}
-                fullWidth
-                disabled={!proveedores.length}
-                SelectProps={{ displayEmpty: true }}
-              >
-                <MenuItem value="">
-                  {proveedores.length ? "Seleccionar…" : "Cargando…"}
-                </MenuItem>
-                {proveedores.map((p) => (
-                  <MenuItem key={p.idProveedor} value={String(p.idProveedor)}>
-                    {p.Nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Código de Barras"
+                  value={form.barcode}
+                  onChange={setField("barcode")}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                label="Promo por cantidad"
-                value={safeValue(
-                  nuevo.idPromocionCantidad,
-                  promociones,
-                  "idPromocionCantidad"
-                )}
-                onChange={handleChange("idPromocionCantidad")}
-                fullWidth
-                disabled={!promociones.length}
-                SelectProps={{ displayEmpty: true }}
-              >
-                <MenuItem value="">
-                  {promociones.length ? "Sin promoción" : "Cargando…"}
-                </MenuItem>
-                {promociones.map((pr) => (
-                  <MenuItem
-                    key={pr.idPromocionCantidad}
-                    value={String(pr.idPromocionCantidad)}
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel>Categoría</InputLabel>
+                  <Select
+                    label="Categoría"
+                    value={form.category_id}
+                    onChange={setField("category_id")}
                   >
-                    {pr.Nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+                    <MenuItem value="">Sin categoría</MenuItem>
+                    {categories.map((c) => (
+                      <MenuItem key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-            <Grid item xs={12} sm={3}>
-              <TextField
-                label="Costo"
-                type="number"
-                value={Number(nuevo.Costo)}
-                onChange={handleNum("Costo")}
-                fullWidth
-                inputProps={{ step: "0.01" }}
-              />
-            </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Unidad de Medida"
+                  value={form.unit}
+                  onChange={setField("unit")}
+                  fullWidth
+                  placeholder="UN"
+                  variant="outlined"
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={3}>
-              <TextField
-                label="Ganancia (%)"
-                type="number"
-                value={Number(nuevo.Ganancia)}
-                onChange={handleNum("Ganancia")}
-                fullWidth
-                inputProps={{ step: "0.01" }}
-              />
-            </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Descripción"
+                  value={form.description}
+                  onChange={setField("description")}
+                  fullWidth
+                  multiline
+                  rows={4}
+                  variant="outlined"
+                  placeholder="Describe las características principales del producto..."
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={3}>
-              <TextField
-                label="Precio público"
-                type="number"
-                value={Number(nuevo.PrecioPublico)}
-                onChange={handleNum("PrecioPublico")}
-                fullWidth
-                inputProps={{ step: "0.01" }}
-              />
-            </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Costo"
+                  value={form.cost}
+                  onChange={setField("cost")}
+                  fullWidth
+                  inputMode="decimal"
+                  variant="outlined"
+                  InputProps={{
+                    startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+                  }}
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={3}>
-              <TextField
-                label="Stock"
-                type="number"
-                value={Number(nuevo.Stock)}
-                onChange={handleNum("Stock")}
-                fullWidth
-              />
-            </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Precio de Venta"
+                  value={form.price}
+                  onChange={setField("price")}
+                  fullWidth
+                  inputMode="decimal"
+                  required
+                  variant="outlined"
+                  InputProps={{
+                    startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+                  }}
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={3}>
-              <TextField
-                label="Stock mínimo"
-                type="number"
-                value={Number(nuevo.StockMin)}
-                onChange={handleNum("StockMin")}
-                fullWidth
-              />
-            </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel>IVA</InputLabel>
+                  <Select
+                    label="IVA"
+                    value={form.tax_id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const t = taxes.find((x) => String(x.id) === String(id));
+                      setForm((p) => ({
+                        ...p,
+                        tax_id: id,
+                        tax_rate: t ? toNumber(t.rate, 0) : p.tax_rate,
+                      }));
+                    }}
+                  >
+                    <MenuItem value="">Sin IVA</MenuItem>
+                    {taxes.map((t) => (
+                      <MenuItem key={t.id} value={String(t.id)}>
+                        {t.name} ({toNumber(t.rate, 0)}%)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-            <Grid item xs={12} sm={9}>
-              <TextField
-                label="Descripción"
-                value={nz(nuevo.Descripcion)}
-                onChange={handleChange("Descripcion")}
-                fullWidth
-                multiline
-                minRows={2}
-              />
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.is_active}
+                      onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
+                      color="primary"
+                    />
+                  }
+                  label="Producto Activo"
+                />
+              </Grid>
             </Grid>
+          </Box>
+        </TabPanel>
 
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.HabPrecioManual === 1}
-                    onChange={handleCheck01("HabPrecioManual")}
+        <TabPanel value={activeTab} index={1}>
+          <Box sx={{ p: 2 }}>
+            <Stack spacing={2}>
+              <Box>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<UploadIcon />}
+                  fullWidth
+                  sx={{ height: 56, borderStyle: 'dashed' }}
+                >
+                  Subir Imágenes
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
                   />
-                }
-                label="Precio en el momento de la venta"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.NoAplicaStock === 1}
-                    onChange={handleCheck01("NoAplicaStock")}
-                  />
-                }
-                label="No aplica stock"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.NoAplicarDescuento === 1}
-                    onChange={handleCheck01("NoAplicarDescuento")}
-                  />
-                }
-                label="No aplicar descuento"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.EmailPorBajoStock === 1}
-                    onChange={handleCheck01("EmailPorBajoStock")}
-                  />
-                }
-                label="Email por bajo stock"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.HabNroSerie === 1}
-                    onChange={handleCheck01("HabNroSerie")}
-                  />
-                }
-                label="Habilitar Nº de serie"
-              />
-            </Grid>
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Soporta: JPG, PNG, WebP. Máximo 5MB por imagen.
+                </Typography>
+              </Box>
 
-            <Grid item xs={12} sm={6}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.AplicaElab === 1}
-                    onChange={handleCheck01("AplicaElab")}
-                  />
-                }
-                label="Aplica fecha de elaboración"
-              />
-              <TextField
-                label="Fecha Elaboración"
-                type="date"
-                value={nz(nuevo.FechaElab)}
-                onChange={handleFecha("FechaElab")}
-                fullWidth
-                disabled={nuevo.AplicaElab !== 1}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.AplicaVto === 1}
-                    onChange={handleCheck01("AplicaVto")}
-                  />
-                }
-                label="Aplica fecha de vencimiento"
-              />
-              <TextField
-                label="Fecha Vencimiento"
-                type="date"
-                value={nz(nuevo.FechaVto)}
-                onChange={handleFecha("FechaVto")}
-                fullWidth
-                disabled={nuevo.AplicaVto !== 1}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.HabCostoDolar === 1}
-                    onChange={handleCheck01("HabCostoDolar")}
-                  />
-                }
-                label="Costo en USD"
-              />
-              <TextField
-                label="Costo USD"
-                value={nz(nuevo.CostoDolar)}
-                onChange={handleChange("CostoDolar")}
-                fullWidth
-                disabled={nuevo.HabCostoDolar !== 1}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={nuevo.permitirModificarPrecio === 1}
-                    onChange={handleCheck01("permitirModificarPrecio")}
-                  />
-                }
-                label="Permitir modificar precio"
-              />
-              <input type="file" accept="image/*" onChange={handleImagen} />
-              {imagePreview && (
-                <Box sx={{ mt: 1 }}>
-                  <img
-                    src={imagePreview}
-                    alt="preview"
-                    style={{ maxWidth: 160, borderRadius: 8 }}
-                  />
+              {images.length > 0 ? (
+                <Grid container spacing={2}>
+                  {images.map((img) => (
+                    <Grid item xs={6} md={4} key={img.id}>
+                      <Card 
+                        sx={{ 
+                          position: 'relative',
+                          border: img.is_primary ? '2px solid' : '1px solid',
+                          borderColor: img.is_primary ? 'primary.main' : 'divider',
+                        }}
+                      >
+                        <CardMedia
+                          component="img"
+                          height="160"
+                          image={img.preview}
+                          alt={img.alt || "Preview"}
+                          sx={{ objectFit: 'cover' }}
+                        />
+                        <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                          <Stack direction="row" spacing={1} justifyContent="space-between">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleSetPrimary(img.id)}
+                              color={img.is_primary ? "primary" : "default"}
+                            >
+                              {img.is_primary ? <StarIcon /> : <StarBorderIcon />}
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteImage(img.id)}
+                              color="error"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Stack>
+                          {img.is_primary && (
+                            <Chip 
+                              label="Principal" 
+                              size="small" 
+                              color="primary" 
+                              sx={{ mt: 0.5 }} 
+                            />
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Box 
+                  sx={{ 
+                    p: 4, 
+                    textAlign: 'center', 
+                    border: '2px dashed', 
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    bgcolor: 'background.default'
+                  }}
+                >
+                  <ImageIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    No hay imágenes cargadas
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Las imágenes ayudan a aumentar las ventas
+                  </Typography>
                 </Box>
               )}
+            </Stack>
+          </Box>
+        </TabPanel>
+
+        <TabPanel value={activeTab} index={2}>
+          <Box sx={{ p: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.track_stock}
+                      onChange={(e) => setForm((p) => ({ ...p, track_stock: e.target.checked }))}
+                      color="primary"
+                    />
+                  }
+                  label="Controlar Stock"
+                />
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4 }}>
+                  Activa esta opción para recibir alertas de stock bajo
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Stock Inicial"
+                  value={form.initial_stock}
+                  onChange={setField("initial_stock")}
+                  fullWidth
+                  inputMode="decimal"
+                  disabled={!form.track_stock}
+                  variant="outlined"
+                  helperText="Cantidad inicial de unidades en inventario"
+                  type="number"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Stock Mínimo"
+                  value={form.min_stock}
+                  onChange={setField("min_stock")}
+                  fullWidth
+                  inputMode="decimal"
+                  disabled={!form.track_stock}
+                  variant="outlined"
+                  helperText="Nivel de alerta de stock bajo"
+                  type="number"
+                />
+              </Grid>
             </Grid>
-          </Grid>
-        </Box>
+          </Box>
+        </TabPanel>
+
+        {(saving || uploadingImage) && <LinearProgress />}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="contained" onClick={submit}>
-          Guardar
+
+      <DialogActions sx={{ p: 2, gap: 1 }}>
+        <Button onClick={onClose} disabled={saving || uploadingImage}>
+          Cancelar
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleSubmit} 
+          disabled={saving || uploadingImage || !canSave}
+          size="large"
+        >
+          {uploadingImage ? "Subiendo imágenes..." : saving ? "Guardando..." : "Crear Producto"}
         </Button>
       </DialogActions>
-    </Dialog>
+    </>
   );
 }

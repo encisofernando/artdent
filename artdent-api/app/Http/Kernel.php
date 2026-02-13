@@ -47,5 +47,11 @@ class Kernel extends HttpKernel
         'guest'      => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'throttle'   => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified'   => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+
+        // Auth opcional (para catálogo público; usa token si existe, no lo exige)
+        'auth.optional' => \App\Http\Middleware\OptionalSanctumAuth::class,
+
+        // Roles (Admin-only por ahora)
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
     ];
 }
