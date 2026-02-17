@@ -31,6 +31,15 @@ export type CatalogProduct = Product & {
   price_mode?: 'b2c' | 'b2b'
   primary_image_url?: string | null
   images?: Array<{ id: number; url: string; alt?: string | null; sort_order?: number; is_primary?: boolean }>
+
+  // Campos agregados para eliminar los errores de "property does not exist"
+  stock?: number
+  average_rating?: number
+  review_count?: number
+  category?: {
+    id: number | string
+    name: string
+  } | null
 }
 
 export type StockSummary = {

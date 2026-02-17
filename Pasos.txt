@@ -6,7 +6,9 @@ curl -i -X POST http://127.0.0.1:8000/api/invoices \
  -d '{"sale_id":123,"invoice_type_code":"C","pos_number":1}'
 
 
+E-Commerce:
 
+npm run dev -- --port 5175
 
 
 1) Levantar el server

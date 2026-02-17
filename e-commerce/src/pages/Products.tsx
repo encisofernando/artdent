@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { listProducts } from '../api/products'
 import { listCategories } from '../api/categories'
 import { useCart } from '../store/cart'
+import WishlistButton from '../components/WishlistButton'
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -94,7 +95,18 @@ export default function Products() {
 
       <div className="mt-8">
         {query.isLoading ? (
-          <div className="text-sm text-gray-500">Cargando productos...</div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="card p-5 animate-pulse">
+                <div className="h-40 bg-gray-200 rounded-2xl"></div>
+                <div className="mt-4 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-8 bg-gray-200 rounded mt-4"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : query.isError ? (
           <div className="card p-4">
             <p className="text-sm font-semibold text-red-600">No se pudo cargar el catálogo.</p>
@@ -102,17 +114,42 @@ export default function Products() {
               Probables causas: no estás logueado, CORS, o la URL del backend en <code>VITE_API_BASE_URL</code>.
             </p>
           </div>
+        ) : products.length === 0 ? (
+          <div className="card p-8 text-center">
+            <p className="text-gray-600">No se encontraron productos.</p>
+            <button
+              onClick={() => {
+                setDraftQ('')
+                setSearchParams({})
+              }}
+              className="mt-4 btn btn-outline"
+            >
+              Limpiar filtros
+            </button>
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((p) => {
               const price = Number(p.price_final ?? p.price ?? 0)
               const mode = p.price_mode
+              const hasStock = (p.stock ?? 0) > 0
+              
               return (
-                <div key={p.id} className="card p-5 hover:border-gray-300">
+                <div key={p.id} className="card p-5 hover:border-gray-300 transition relative">
+                  {/* Botón de Wishlist - Posicionado en esquina superior derecha */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <WishlistButton productId={p.id} />
+                  </div>
+
                   <Link to={`/productos/${p.id}`} className="block">
                     <div className="h-40 w-full overflow-hidden rounded-2xl border bg-white" style={{ borderColor: 'var(--border)' }}>
                       {p.primary_image_url ? (
-                        <img src={p.primary_image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                        <img 
+                          src={p.primary_image_url} 
+                          alt={p.name} 
+                          className="h-full w-full object-cover transition hover:scale-105" 
+                          loading="lazy" 
+                        />
                       ) : (
                         <div className="h-full w-full grid place-items-center">
                           <span className="text-xs text-gray-500">Sin imagen</span>
@@ -120,9 +157,16 @@ export default function Products() {
                       )}
                     </div>
                   </Link>
+
                   <Link to={`/productos/${p.id}`}>
-                    <p className="text-xs font-semibold text-[var(--brand-primary)]">SKU: {p.sku || '—'}</p>
-                    <p className="mt-2 line-clamp-2 text-sm font-semibold">{p.name}</p>
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold text-[var(--brand-primary)]">
+                        SKU: {p.sku || '—'}
+                      </p>
+                      <p className="mt-2 line-clamp-2 text-sm font-semibold min-h-[2.5rem]">
+                        {p.name}
+                      </p>
+                    </div>
                   </Link>
 
                   <div className="mt-4 flex items-center justify-between">
@@ -130,16 +174,26 @@ export default function Products() {
                       <p className="text-lg font-bold">${price.toLocaleString('es-AR')}</p>
                       <p className="text-xs text-gray-500">IVA {Number(p.tax_rate || 0)}%</p>
                     </div>
-                    {mode === 'b2b' ? (
-                      <span className="rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-primary)]">B2B</span>
-                    ) : null}
+                    <div className="flex items-center gap-2">
+                      {mode === 'b2b' && (
+                        <span className="rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-primary)]">
+                          B2B
+                        </span>
+                      )}
+                      {!hasStock && (
+                        <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+                          Sin stock
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <button
-                    className="btn btn-outline w-full mt-4"
-                    onClick={() => cart.add(p, 1)}
+                    className={`btn btn-outline w-full mt-4 ${!hasStock ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => hasStock && cart.add(p, 1)}
+                    disabled={!hasStock}
                   >
-                    Agregar al carrito
+                    {hasStock ? 'Agregar al carrito' : 'Sin stock'}
                   </button>
                 </div>
               )
@@ -148,33 +202,38 @@ export default function Products() {
         )}
       </div>
 
-      <div className="mt-10 flex items-center justify-between">
-        <button
-          className={`btn btn-outline ${!canPrev ? 'opacity-50 pointer-events-none' : ''}`}
-          onClick={() => {
-            const next: Record<string, string> = { page: String(currentPage - 1) }
-            if (q) next.q = q
-            if (category_id) next.category_id = String(category_id)
-            setSearchParams(next)
-          }}
-        >
-          Anterior
-        </button>
-        <p className="text-sm text-gray-600">
-          Página <span className="font-semibold">{currentPage}</span> de <span className="font-semibold">{lastPage}</span>
-        </p>
-        <button
-          className={`btn btn-outline ${!canNext ? 'opacity-50 pointer-events-none' : ''}`}
-          onClick={() => {
-            const next: Record<string, string> = { page: String(currentPage + 1) }
-            if (q) next.q = q
-            if (category_id) next.category_id = String(category_id)
-            setSearchParams(next)
-          }}
-        >
-          Siguiente
-        </button>
-      </div>
+      {/* Paginación */}
+      {products.length > 0 && (
+        <div className="mt-10 flex items-center justify-between">
+          <button
+            className={`btn btn-outline ${!canPrev ? 'opacity-50 pointer-events-none' : ''}`}
+            onClick={() => {
+              const next: Record<string, string> = { page: String(currentPage - 1) }
+              if (q) next.q = q
+              if (category_id) next.category_id = String(category_id)
+              setSearchParams(next)
+            }}
+            disabled={!canPrev}
+          >
+            Anterior
+          </button>
+          <p className="text-sm text-gray-600">
+            Página <span className="font-semibold">{currentPage}</span> de <span className="font-semibold">{lastPage}</span>
+          </p>
+          <button
+            className={`btn btn-outline ${!canNext ? 'opacity-50 pointer-events-none' : ''}`}
+            onClick={() => {
+              const next: Record<string, string> = { page: String(currentPage + 1) }
+              if (q) next.q = q
+              if (category_id) next.category_id = String(category_id)
+              setSearchParams(next)
+            }}
+            disabled={!canNext}
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
     </div>
   )
 }

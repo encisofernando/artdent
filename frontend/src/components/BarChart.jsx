@@ -1,17 +1,33 @@
 import { useTheme } from "@mui/material";
 import { ResponsiveBar } from "@nivo/bar";
 import { tokens } from "../theme";
-import { mockBarData as data } from "../data/mockData";
+import { mockBarData } from "../data/mockData";
 
-const BarChart = ({ isDashboard = false }) => {
+const BarChart = ({ isDashboard = false, data = null }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
+  // Usar datos del backend si están disponibles, sino usar mock
+  const chartData = data && data.length > 0 ? data : mockBarData;
+
+  // Determinar keys dinámicamente basado en los datos
+  const keys = chartData.length > 0 && chartData[0].value !== undefined
+    ? ["value"] // Para datos del backend
+    : ["hot dog", "burger", "sandwich", "kebab", "fries", "donut"]; // Para mock data
+
+  const indexBy = chartData.length > 0 && chartData[0].country !== undefined
+    ? "country" // Para datos del backend
+    : "country"; // Para mock data (igual)
+
+  // Colores mejorados según el tema
+  const barColors = theme.palette.mode === 'dark'
+    ? { scheme: "nivo" }
+    : { scheme: "category10" }; // Mejor contraste para tema claro
+
   return (
     <ResponsiveBar
-      data={data}
+      data={chartData}
       theme={{
-        // added
         axis: {
           domain: {
             line: {
@@ -38,14 +54,26 @@ const BarChart = ({ isDashboard = false }) => {
             fill: colors.grey[100],
           },
         },
+        tooltip: {
+          container: {
+            background: theme.palette.mode === 'dark' ? '#1e293b' : '#ffffff',
+            color: theme.palette.mode === 'dark' ? '#ffffff' : '#1e293b',
+            fontSize: 12,
+            borderRadius: 8,
+            boxShadow: theme.palette.mode === 'dark' 
+              ? '0 4px 6px rgba(0, 0, 0, 0.4)'
+              : '0 4px 6px rgba(0, 0, 0, 0.1)',
+            padding: '8px 12px',
+          },
+        },
       }}
-      keys={["hot dog", "burger", "sandwich", "kebab", "fries", "donut"]}
-      indexBy="country"
-      margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
+      keys={keys}
+      indexBy={indexBy}
+      margin={{ top: 50, right: isDashboard ? 20 : 130, bottom: 50, left: 60 }}
       padding={0.3}
       valueScale={{ type: "linear" }}
       indexScale={{ type: "band", round: true }}
-      colors={{ scheme: "nivo" }}
+      colors={barColors}
       defs={[
         {
           id: "dots",
@@ -75,8 +103,8 @@ const BarChart = ({ isDashboard = false }) => {
       axisBottom={{
         tickSize: 5,
         tickPadding: 5,
-        tickRotation: 0,
-        legend: isDashboard ? undefined : "country", // changed
+        tickRotation: isDashboard ? -45 : 0,
+        legend: isDashboard ? undefined : "country",
         legendPosition: "middle",
         legendOffset: 32,
       }}
@@ -84,18 +112,18 @@ const BarChart = ({ isDashboard = false }) => {
         tickSize: 5,
         tickPadding: 5,
         tickRotation: 0,
-        legend: isDashboard ? undefined : "food", // changed
+        legend: isDashboard ? undefined : "food",
         legendPosition: "middle",
         legendOffset: -40,
       }}
-      enableLabel={false}
+      enableLabel={!isDashboard}
       labelSkipWidth={12}
       labelSkipHeight={12}
       labelTextColor={{
         from: "color",
         modifiers: [["darker", 1.6]],
       }}
-      legends={[
+      legends={isDashboard ? [] : [
         {
           dataFrom: "keys",
           anchor: "bottom-right",
@@ -120,6 +148,7 @@ const BarChart = ({ isDashboard = false }) => {
         },
       ]}
       role="application"
+      ariaLabel="Gráfico de barras"
       barAriaLabel={function (e) {
         return e.id + ": " + e.formattedValue + " in country: " + e.indexValue;
       }}

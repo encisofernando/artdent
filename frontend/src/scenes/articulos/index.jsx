@@ -38,7 +38,7 @@ import {
   ViewList as ViewListIcon,
   Image as ImageIcon,
 } from "@mui/icons-material";
-
+import { useSidebarContext } from "../../contexts/SidebarContext";
 import * as Products from "../../services/productService";
 import CrearArticulo from "./CrearArticulo";
 import EditarArticulo from "./EditarArticulo";
@@ -100,15 +100,30 @@ function ProductCard({ product, onEdit, onToggleActive }) {
             left: 0,
             right: 0,
             bottom: 0,
-            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            bgcolor: 'rgba(0, 0, 0, 0.6)',
             zIndex: 1,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: 1,
+            gap: 2,
           }}
         >
           <Chip label="INACTIVO" color="error" size="small" />
+          <Button
+            variant="contained"
+            color="success"
+            size="small"
+            startIcon={<PowerSettingsNewIcon />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleActive(product);
+            }}
+            sx={{ zIndex: 3 }}
+          >
+            Activar Producto
+          </Button>
         </Box>
       )}
 
@@ -143,6 +158,7 @@ function ProductCard({ product, onEdit, onToggleActive }) {
             right: 8,
             bgcolor: 'background.paper',
             '&:hover': { bgcolor: 'background.paper' },
+            zIndex: 2, // 👈 Asegurar que el botón esté por encima del overlay
           }}
           size="small"
           onClick={handleMenuOpen}
@@ -237,7 +253,8 @@ export default function ArticulosIndex() {
   const appbarH = TOPBAR_HEIGHT(theme);
   const mdDown = useMediaQuery(theme.breakpoints.down("md"));
 
-  const [sidebarW, setSidebarW] = useState(0);
+// Obtener ancho del sidebar desde el contexto
+const { sidebarWidth } = useSidebarContext();
   useEffect(() => {
     const el = document.querySelector(".pro-sidebar");
     const sideBox =
@@ -261,6 +278,7 @@ export default function ArticulosIndex() {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [viewMode, setViewMode] = useState("grid"); // "grid" | "list"
+  const [filterStatus, setFilterStatus] = useState("all"); // "all" | "active" | "inactive"
 
   const [openCrear, setOpenCrear] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
@@ -269,17 +287,26 @@ export default function ArticulosIndex() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await Products.listProducts({
+      const params = {
         q,
         per_page: 50,
-      });
+      };
+      
+      // Agregar filtro de estado si no es "all"
+      if (filterStatus === "active") {
+        params.is_active = true;
+      } else if (filterStatus === "inactive") {
+        params.is_active = false;
+      }
+      
+      const data = await Products.listProducts(params);
       setItems(data);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [q]);
+  }, [q, filterStatus]);
 
   useEffect(() => {
     fetchData();
@@ -299,12 +326,12 @@ export default function ArticulosIndex() {
       sx={{
         position: "fixed",
         top: appbarH,
-        left: mdDown ? 0 : sidebarW,
+        left: mdDown ? 0 : sidebarWidth,  // ← Usar sidebarWidth del contexto
         right: 0,
         bottom: 0,
         p: 2,
         overflow: "hidden",
-        transition: "left .18s ease",
+        transition: "left 0.3s ease",  // ← Sincronizar con transición del sidebar
       }}
     >
       <Paper
@@ -364,13 +391,32 @@ export default function ArticulosIndex() {
               ),
             }}
             sx={{ 
-              maxWidth: { sm: 500 },
+              maxWidth: { sm: 400 },
               '.MuiOutlinedInput-root': { 
                 borderRadius: 3,
                 bgcolor: 'background.default'
               } 
             }}
           />
+
+          <ToggleButtonGroup
+            value={filterStatus}
+            exclusive
+            onChange={(e, newStatus) => {
+              if (newStatus !== null) setFilterStatus(newStatus);
+            }}
+            size="small"
+          >
+            <ToggleButton value="all">
+              Todos
+            </ToggleButton>
+            <ToggleButton value="active">
+              Activos
+            </ToggleButton>
+            <ToggleButton value="inactive">
+              Inactivos
+            </ToggleButton>
+          </ToggleButtonGroup>
 
           <ToggleButtonGroup
             value={viewMode}

@@ -20,7 +20,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/DeleteOutline";
 import SearchIcon from "@mui/icons-material/Search";
-
+import { useSidebarContext } from "../../contexts/SidebarContext";
 import ClienteForm from "./ClienteForm";
 import ClienteFormEdit from "./ClienteFormEdit";
 import * as Customers from "../../services/customerService";

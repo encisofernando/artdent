@@ -1,259 +1,550 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  Box, Paper, Card, CardHeader, CardActionArea, CardContent, Chip,
-  Typography, TextField, InputAdornment, Button, IconButton, Tooltip,
-  Divider, Stack, Select, MenuItem, FormControl, InputLabel, Dialog,
-  DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery, Grid
+  Box, Paper, Card, CardMedia, CardContent, Chip, Typography, TextField,
+  InputAdornment, Button, IconButton, Tooltip, Divider, Stack, Badge,
+  Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery,
+  Grid, List, ListItem, ListItemText, ListItemSecondaryAction, Alert, Snackbar,
+  Skeleton, ToggleButtonGroup, ToggleButton
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import StarBorderIcon from "@mui/icons-material/StarBorder";
-import StarIcon from "@mui/icons-material/Star";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
-import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import {
+  Search as SearchIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon,
+  Delete as DeleteIcon,
+  ShoppingCart as CartIcon,
+  Receipt as ReceiptIcon,
+  Image as ImageIcon,
+  Person as PersonIcon,
+  Print as PrintIcon,
+  WhatsApp as WhatsAppIcon,
+  Email as EmailIcon,
+} from "@mui/icons-material";
+import { useSidebarContext } from "../../contexts/SidebarContext";
+// ✅ Modal de impresión externo
+import ModalImprimir from "../../components/modals/ModalImprimir";
 
 // Servicios
-import { Products, Users, Sales, Receipts, PaymentMethods, Warehouse } from "../../services";
+import * as Products from "../../services/productService";
+import * as Sales from "../../services/salesService";
+import * as Warehouse from "../../services/warehouseService";
 import { getUserIdFromToken } from "../../auth/auth";
 
-// Modales
-import ModalWhatsApp from "../../components/modals/ModalWhatsApp";
-import ModalEmail from "../../components/modals/ModalEmail";
-import ModalImprimir from "../../components/modals/ModalImprimir";
-import ModalMetodoPago from "../../components/modals/ModalMetodoPago";
-
-// Altura del Topbar
 const TOPBAR_HEIGHT = (theme) =>
-  (theme.mixins?.toolbar?.minHeight ? Number(theme.mixins.toolbar.minHeight) : 64);
+  theme.mixins?.toolbar?.minHeight ? Number(theme.mixins.toolbar.minHeight) : 64;
 
-// ====== Tarjeta de producto
-const ProductTile = ({ prod, onAdd, count, isFav, onToggleFav }) => {
-  const theme = useTheme();
+const TIPOS_COMPROBANTE = [
+  { id: "X", name: "X - Ticket / Consumidor Final" },
+  { id: "A", name: "A - Responsable Inscripto" },
+  { id: "B", name: "B - Consumidor Final / IVA Incluido" },
+  { id: "C", name: "C - Exento / Monotributo" },
+];
+
+// ====== MODAL DE SELECCIÓN DE CLIENTE ======
+const ModalCliente = ({ open, onClose, onSelect }) => {
+  const [clienteNuevo, setClienteNuevo] = useState({
+    nombre: "",
+    cuit: "",
+    email: "",
+  });
+
+  const handleConsumidorFinal = () => {
+    onSelect({
+      id: null,
+      nombre: "Consumidor Final",
+      cuit: "",
+      email: "",
+    });
+    onClose();
+  };
+
+  const handleNuevoCliente = () => {
+    if (!clienteNuevo.nombre) return;
+    onSelect({
+      id: null,
+      ...clienteNuevo,
+    });
+    onClose();
+  };
+
   return (
-    <Card variant="outlined" sx={{ borderRadius: 2, position: "relative" }}>
-      {!!count && (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Seleccionar Cliente</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={3}>
+          <Button
+            variant="outlined"
+            fullWidth
+            size="large"
+            onClick={handleConsumidorFinal}
+            startIcon={<PersonIcon />}
+          >
+            Consumidor Final
+          </Button>
+
+          <Divider>o ingresar datos</Divider>
+
+          <TextField
+            label="Nombre / Razón Social"
+            value={clienteNuevo.nombre}
+            onChange={(e) =>
+              setClienteNuevo({ ...clienteNuevo, nombre: e.target.value })
+            }
+            fullWidth
+          />
+          <TextField
+            label="CUIT (opcional)"
+            value={clienteNuevo.cuit}
+            onChange={(e) =>
+              setClienteNuevo({ ...clienteNuevo, cuit: e.target.value })
+            }
+            fullWidth
+          />
+          <TextField
+            label="Email (opcional)"
+            value={clienteNuevo.email}
+            onChange={(e) =>
+              setClienteNuevo({ ...clienteNuevo, email: e.target.value })
+            }
+            fullWidth
+            type="email"
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancelar</Button>
+        <Button
+          variant="contained"
+          onClick={handleNuevoCliente}
+          disabled={!clienteNuevo.nombre}
+        >
+          Seleccionar
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ====== MODAL DE MÉTODO DE PAGO ======
+const ModalMetodoPago = ({ open, onClose, total, onConfirm }) => {
+  const [metodo, setMetodo] = useState("Efectivo");
+  const [recibido, setRecibido] = useState("");
+  const [cambio, setCambio] = useState(0);
+
+  useEffect(() => {
+    const r = Number(recibido || 0);
+    setCambio(r > total ? r - total : 0);
+  }, [recibido, total]);
+
+  const handleConfirm = () => {
+    if (metodo === "Efectivo" && Number(recibido || 0) < total) return;
+    onConfirm?.({
+      metodo,
+      recibido: Number(recibido || 0),
+      cambio,
+    });
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>Método de Pago</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Paper
+            variant="outlined"
+            sx={{ p: 2, bgcolor: "primary.50", borderColor: "primary.main" }}
+          >
+            <Stack direction="row" justifyContent="space-between">
+              <Typography fontWeight={600}>Total:</Typography>
+              <Typography variant="h6" color="primary" fontWeight={700}>
+                $
+                {total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              </Typography>
+            </Stack>
+          </Paper>
+
+          <TextField
+            select
+            label="Método de Pago"
+            value={metodo}
+            onChange={(e) => setMetodo(e.target.value)}
+            SelectProps={{ native: true }}
+          >
+            <option value="Efectivo">💵 Efectivo</option>
+            <option value="Débito">💳 Tarjeta Débito</option>
+            <option value="Crédito">💳 Tarjeta Crédito</option>
+            <option value="Transferencia">🏦 Transferencia</option>
+            <option value="Mercado Pago">💚 Mercado Pago</option>
+          </TextField>
+
+          {metodo === "Efectivo" && (
+            <>
+              <TextField
+                label="Monto Recibido"
+                value={recibido}
+                onChange={(e) => setRecibido(e.target.value)}
+                type="number"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">$</InputAdornment>
+                  ),
+                }}
+                error={Boolean(recibido && Number(recibido) < total)}
+                helperText={
+                  recibido && Number(recibido) < total
+                    ? "Debe ser mayor o igual al total"
+                    : ""
+                }
+              />
+              {recibido && Number(recibido) >= total && (
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    bgcolor: "success.50",
+                    borderColor: "success.main",
+                  }}
+                >
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography fontWeight={600}>Cambio:</Typography>
+                    <Typography variant="h6" color="success.main" fontWeight={700}>
+                      $
+                      {cambio.toLocaleString("es-AR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </Typography>
+                  </Stack>
+                </Paper>
+              )}
+            </>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancelar</Button>
+        <Button
+          variant="contained"
+          onClick={handleConfirm}
+          disabled={metodo === "Efectivo" && Number(recibido || 0) < total}
+        >
+          Confirmar Cobro
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ====== MODAL DE ACCIONES POST-VENTA ======
+const ModalAcciones = ({ open, onClose, venta, onImprimir, onWhatsApp, onEmail }) => {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <ReceiptIcon color="success" />
+          <Typography variant="h6" fontWeight={700}>
+            Venta Exitosa
+          </Typography>
+        </Stack>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Alert severity="success">
+            Venta #{venta?.number || venta?.id} registrada correctamente
+          </Alert>
+
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1}>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Total:</Typography>
+                <Typography variant="h6" fontWeight={700}>
+                  {(venta?.total || 0).toLocaleString("es-AR", {
+                    minimumFractionDigits: 2,
+                  })}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Comprobante:</Typography>
+                <Chip label={venta?.tipo_comprobante || "X"} size="small" />
+              </Stack>
+            </Stack>
+          </Paper>
+
+          <Divider />
+
+          <Stack spacing={1}>
+            <Button variant="contained" fullWidth startIcon={<PrintIcon />} onClick={onImprimir}>
+              Imprimir Ticket
+            </Button>
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={<WhatsAppIcon />}
+              onClick={onWhatsApp}
+              color="success"
+            >
+              Enviar por WhatsApp
+            </Button>
+            <Button variant="outlined" fullWidth startIcon={<EmailIcon />} onClick={onEmail}>
+              Enviar por Email
+            </Button>
+          </Stack>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} size="large" variant="contained">
+          Nueva Venta
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ====== TARJETA DE PRODUCTO ======
+const ProductCard = ({ product, onAdd, cartCount }) => {
+  const imageUrl = product.image_url || product.ImagenUrl || product.primary_image_url;
+  const price = Number(product.price || product.PrecioPublico || 0);
+  const stock = Number(product.stock || product.Stock || 0);
+  const name = product.name || product.Nombre || "";
+
+  return (
+    <Card
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        cursor: "pointer",
+        transition: "all 0.2s",
+        position: "relative",
+        "&:hover": {
+          transform: "translateY(-4px)",
+          boxShadow: 6,
+        },
+      }}
+      onClick={() => onAdd(product)}
+    >
+      {cartCount > 0 && (
         <Chip
-          size="small"
+          label={cartCount}
           color="secondary"
-          label={count}
-          sx={{ position: "absolute", top: -10, right: -10, zIndex: 2 }}
+          size="small"
+          sx={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            zIndex: 2,
+            fontWeight: 700,
+          }}
         />
       )}
-      <CardHeader
-        sx={{ pb: 0.5 }}
-        action={
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); onToggleFav(prod); }}>
-            {isFav ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
-          </IconButton>
-        }
-        title={
-          <Chip
-            size="small"
-            label={prod?.stock != null ? `Inv ${prod.stock}` : "Inv"}
-            sx={{ borderRadius: 1.5 }}
+
+      <CardMedia
+        sx={{
+          height: 140,
+          bgcolor: "grey.100",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
-        }
-      />
-      <CardActionArea onClick={() => onAdd(prod)}>
-        <CardContent sx={{ pt: 1 }}>
-          <Box
-            sx={{
-              width: "100%", height: 82, borderRadius: 2, mb: 1.2,
-              bgcolor: theme.palette.background.default,
-              border: `1px dashed ${theme.palette.divider}`,
-              display: "grid", placeItems: "center", fontSize: 24, opacity: .7,
-            }}
-          >
-            🏷️
-          </Box>
-          <Typography variant="subtitle2" noWrap title={prod.Nombre || prod.name}>
-            {prod.Nombre || prod.name}
+        ) : (
+          <ImageIcon sx={{ fontSize: 48, color: "grey.400" }} />
+        )}
+      </CardMedia>
+
+      <CardContent sx={{ flexGrow: 1, pb: 1.5 }}>
+        <Tooltip title={name}>
+          <Typography variant="subtitle2" fontWeight={600} noWrap sx={{ mb: 0.5 }}>
+            {name}
           </Typography>
-          <Typography variant="subtitle1" fontWeight={700}>
-            ${(prod.PrecioPublico || prod.price || 0).toFixed(2)}
-          </Typography>
-        </CardContent>
-      </CardActionArea>
+        </Tooltip>
+
+        <Typography variant="h6" color="primary" fontWeight={700}>
+          ${price.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+        </Typography>
+
+        <Chip
+          label={`Stock: ${stock}`}
+          size="small"
+          color={stock > 0 ? "success" : "error"}
+          variant="outlined"
+          sx={{ mt: 0.5 }}
+        />
+      </CardContent>
     </Card>
   );
 };
 
-const FacturarPOSCompact = () => {
+// ====== ÍTEM DEL CARRITO ======
+const CartItem = ({ item, onInc, onDec, onRemove }) => {
+  const subtotal = item.qty * item.price;
+
+  return (
+    <ListItem
+      sx={{
+        bgcolor: "background.default",
+        borderRadius: 2,
+        mb: 1,
+        "&:hover": { bgcolor: "action.hover" },
+      }}
+    >
+      <ListItemText
+        primary={
+          <Typography variant="subtitle2" fontWeight={600}>
+            {item.name}
+          </Typography>
+        }
+        secondary={
+          <Box component="span" sx={{ display: "block", mt: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" component="span">
+              ${item.price.toLocaleString("es-AR", { minimumFractionDigits: 2 })} × {item.qty}
+            </Typography>
+            {" = "}
+            <Typography variant="body2" color="primary" fontWeight={700} component="span">
+              ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+            </Typography>
+          </Box>
+        }
+      />
+      <ListItemSecondaryAction>
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <IconButton size="small" onClick={() => onDec(item.id)} color="primary">
+            <RemoveIcon fontSize="small" />
+          </IconButton>
+          <Chip label={item.qty} size="small" />
+          <IconButton size="small" onClick={() => onInc(item.id)} color="primary">
+            <AddIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" onClick={() => onRemove(item.id)} color="error">
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      </ListItemSecondaryAction>
+    </ListItem>
+  );
+};
+
+// ====== SKELETON ======
+const ProductCardSkeleton = () => (
+  <Card>
+    <Skeleton variant="rectangular" height={140} />
+    <CardContent>
+      <Skeleton variant="text" height={24} />
+      <Skeleton variant="text" height={32} width="60%" />
+      <Skeleton variant="rectangular" height={24} width="40%" sx={{ mt: 0.5, borderRadius: 1 }} />
+    </CardContent>
+  </Card>
+);
+
+// ====== PRINCIPAL ======
+export default function FacturarPOS() {
   const theme = useTheme();
   const appbarH = TOPBAR_HEIGHT(theme);
   const mdDown = useMediaQuery(theme.breakpoints.down("md"));
 
-  // === Detectar ancho del sidebar ===
-  const [sidebarW, setSidebarW] = useState(0);
+const { sidebarWidth } = useSidebarContext();
   useEffect(() => {
     const el = document.querySelector(".pro-sidebar");
     const sideBox = el?.closest('[style*="position: fixed"]') || el?.parentElement;
-    if (!sideBox) { setSidebarW(0); return; }
-    setSidebarW(sideBox.offsetWidth || 0);
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setSidebarW(entry.target.offsetWidth || entry.contentRect?.width || 0);
-      }
-    });
+    if (!sideBox) return;
+
+    const update = () => setSidebarW(sideBox.offsetWidth || 0);
+    update();
+
+    const ro = new ResizeObserver(update);
     ro.observe(sideBox);
-    const onResize = () => setSidebarW(sideBox.offsetWidth || 0);
-    window.addEventListener("resize", onResize);
-    return () => { ro.disconnect(); window.removeEventListener("resize", onResize); };
+    window.addEventListener("resize", update);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
-  // Catálogo
+  const [loading, setLoading] = useState(true);
   const [catalogo, setCatalogo] = useState([]);
   const [busca, setBusca] = useState("");
-  const [favIds, setFavIds] = useState([]);
+  const [items, setItems] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [warehouseId, setWarehouseId] = useState(null);
+  const [cajero, setCajero] = useState("Cajero");
 
-  // Venta
   const [cliente, setCliente] = useState(null);
-  const [tipoComprobante, setTipoComprobante] = useState("C");
-  const [listaPrecio, setListaPrecio] = useState("General");
-  const [items, setItems] = useState([]); // {id, name, price, qty, subtotal}
+  const [tipoComprobante, setTipoComprobante] = useState("X");
 
-  // Usuario / Cajero
-  const [cajero, setCajero] = useState("Usuario");
+  const [openCliente, setOpenCliente] = useState(false);
+  const [openPago, setOpenPago] = useState(false);
+  const [openAcciones, setOpenAcciones] = useState(false);
+  const [openImprimir, setOpenImprimir] = useState(false);
+  const [ventaGuardada, setVentaGuardada] = useState(null);
+
+  const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
+
   useEffect(() => {
     (async () => {
       try {
         const id = getUserIdFromToken?.();
-        if (id && Users?.getUser) {
-          const u = await Users.getUser(id);
-          const nombre = u?.Nombre || u?.name || u?.username || "Usuario";
-          setCajero(nombre);
-        } else {
-          const local = JSON.parse(localStorage.getItem("user") || "{}");
-          setCajero(local?.Nombre || local?.name || "Usuario");
-        }
-      } catch { /* noop */ }
+        if (id) setCajero("Cajero");
+      } catch {}
     })();
   }, []);
 
-  // Modales y pago
-  const [openPago, setOpenPago] = useState(false);
-  const [openAcciones, setOpenAcciones] = useState(false);
-  const [openWA, setOpenWA] = useState(false);
-  const [openEmail, setOpenEmail] = useState(false);
-  const [openPrint, setOpenPrint] = useState(false);
-  const [ticketSize, setTicketSize] = useState(localStorage.getItem("ticketSize") || "80"); // "57" o "80"
-  const [pago, setPago] = useState({ metodo: "-", nota: "", recibido: 0, cambio: 0 });
-
-  // Instantánea de venta para enviar/imprimir luego de limpiar carrito
-  const [venta, setVenta] = useState(null);
-
-  // Configuración / datos auxiliares
-  const [warehouses, setWarehouses] = useState([]);
-  const [warehouseId, setWarehouseId] = useState(null);
-  const [paymentMethods, setPaymentMethods] = useState([]);
-
-  // Cargar catálogo
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
-        const prods = await Products.listProducts?.();
-        setCatalogo(prods || []);
-      } catch { /* noop */ }
-    })();
-  }, []);
+        const [prods, warehs] = await Promise.all([
+          Products.listProducts?.() || Promise.resolve([]),
+          Warehouse.listWarehouses?.() || Promise.resolve([]),
+        ]);
 
-  // Cargar depósitos y métodos de pago (para persistir la venta)
-  useEffect(() => {
-    (async () => {
-      try {
-        const ws = await Warehouse.listWarehouses?.();
-        const wArr = Array.isArray(ws) ? ws : (ws?.data && Array.isArray(ws.data) ? ws.data : []);
+        setCatalogo(Array.isArray(prods) ? prods : prods?.data || []);
+
+        const wArr = Array.isArray(warehs) ? warehs : warehs?.data || [];
         setWarehouses(wArr);
 
-        // Si no hay depósito seleccionado, intentamos setear el primero.
         if (!warehouseId && wArr.length) setWarehouseId(wArr[0].id);
-
-        // Si la API devuelve vacío pero el sistema igual necesita un depósito para registrar stock,
-        // dejamos un fallback común (id=1) para entornos de desarrollo.
-        if ((!wArr || !wArr.length) && !warehouseId) {
-          setWarehouses([{ id: 1, name: "Depósito", code: "DEFAULT" }]);
-          setWarehouseId(1);
-        }
-      } catch {
-        // Fallback si el endpoint /warehouses no está disponible
-        if (!warehouseId) {
-          setWarehouses([{ id: 1, name: "Depósito", code: "DEFAULT" }]);
-          setWarehouseId(1);
-        }
+      } catch (e) {
+        console.error(e);
+        setSnack({ open: true, message: "Error al cargar datos", severity: "error" });
+      } finally {
+        setLoading(false);
       }
-
-      try {
-        const pms = await PaymentMethods.list?.();
-        setPaymentMethods(Array.isArray(pms) ? pms : []);
-      } catch { /* noop */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtrar = useMemo(() => {
-    const q = (busca || "").toLowerCase();
-    return (catalogo || []).filter((p) =>
-      String(p.name || p.Nombre || "").toLowerCase().includes(q) ||
-      String(p.code || p.CodigoBarra || "").toLowerCase().includes(q)
+  const catalogoFiltrado = useMemo(() => {
+    const q = busca.toLowerCase();
+    return catalogo.filter(
+      (p) =>
+        (p.name || p.Nombre || "").toLowerCase().includes(q) ||
+        (p.sku || p.Codigo || "").toLowerCase().includes(q) ||
+        (p.barcode || p.CodigoBarra || "").toLowerCase().includes(q)
     );
   }, [catalogo, busca]);
 
-  const addItem = useCallback((prod) => {
-    const id = prod.idArticulo || prod.id;
-    const name = prod.Nombre || prod.name;
-    const price = Number(prod.PrecioPublico || prod.price || 0);
-    const ivaPct = Number(prod.Iva ?? prod.iva ?? 0); // ej: 21
-    const ivaRate = isFinite(ivaPct) ? Math.max(0, ivaPct) / 100 : 0;
-    setItems((prev) => {
-      const f = prev.find((x) => x.id === id);
-      if (f)
-        return prev.map((x) =>
-          x.id === id ? { ...x, qty: x.qty + 1, subtotal: (x.qty + 1) * x.price } : x
-        );
-      return [...prev, { id, name, price, ivaRate, qty: 1, subtotal: price }];
-    });
-  }, []);
-  const decItem = (id) =>
-    setItems((prev) =>
-      prev.map((x) =>
-        x.id === id
-          ? { ...x, qty: Math.max(1, x.qty - 1), subtotal: Math.max(1, x.qty - 1) * x.price }
-          : x
-      )
-    );
-  const incItem = (id) =>
-    setItems((prev) =>
-      prev.map((x) =>
-        x.id === id ? { ...x, qty: x.qty + 1, subtotal: (x.qty + 1) * x.price } : x
-      )
-    );
-  const removeItem = (id) => setItems((prev) => prev.filter((x) => x.id !== id));
-  const clearAll = () => setItems([]);
-
-  const toggleFav = (p) => {
-    const id = p.idArticulo || p.id;
-    setFavIds((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
-  };
-  const contador = useMemo(() => {
+  const cartCounts = useMemo(() => {
     const map = new Map();
-    items.forEach((x) => map.set(x.id, x.qty));
+    items.forEach((item) => map.set(item.id, item.qty));
     return map;
   }, [items]);
 
-  // TOTALES (IVA discriminado por ítem; el total ya incluye IVA porque el precio de catálogo es PrecioPublico)
   const totales = useMemo(() => {
     let totalBruto = 0;
     let subtotalNeto = 0;
-    const impuestosPorTasa = new Map(); // key: tasa (ej 0.21), value: impuesto
+    const impuestosPorTasa = new Map();
 
     for (const it of items) {
       const lineTotal = Number(it.subtotal || 0);
       const rate = Number(it.ivaRate || 0);
       totalBruto += lineTotal;
 
-      if (rate > 0) {
+      if (rate > 0 && tipoComprobante !== "C") {
         const lineNeto = lineTotal / (1 + rate);
         const lineImp = lineTotal - lineNeto;
         subtotalNeto += lineNeto;
@@ -263,139 +554,141 @@ const FacturarPOSCompact = () => {
       }
     }
 
-    const impuestosTotal = totalBruto - subtotalNeto;
-    const iva21 = impuestosPorTasa.get(0.21) || 0;
-    const iva105 = impuestosPorTasa.get(0.105) || 0;
-
     return {
       total: totalBruto,
       subtotal: subtotalNeto,
-      impuestosTotal,
-      iva21,
-      iva105,
-      impuestosPorTasa,
+      iva21: impuestosPorTasa.get(0.21) || 0,
+      iva105: impuestosPorTasa.get(0.105) || 0,
     };
-  }, [items]);
+  }, [items, tipoComprobante]);
 
-  const total = totales.total;
-  const neto = totales.subtotal;
-  const iva21 = totales.iva21;
-  const iva105 = totales.iva105;
+  const addItem = useCallback((prod) => {
+    const id = prod.id || prod.idArticulo;
+    const name = prod.name || prod.Nombre;
+    const price = Number(prod.price || prod.PrecioPublico || 0);
+    const ivaPct = Number(prod.tax_rate ?? prod.Iva ?? 0);
+    const ivaRate = Number.isFinite(ivaPct) ? Math.max(0, ivaPct) / 100 : 0;
 
-  // Persistir preferencia de tamaño de ticket
-  useEffect(() => {
-    localStorage.setItem("ticketSize", ticketSize);
-  }, [ticketSize]);
+    setItems((prev) => {
+      const existing = prev.find((x) => x.id === id);
+      if (existing) {
+        return prev.map((x) =>
+          x.id === id ? { ...x, qty: x.qty + 1, subtotal: (x.qty + 1) * x.price } : x
+        );
+      }
+      return [...prev, { id, name, price, ivaRate, qty: 1, subtotal: price }];
+    });
+  }, []);
 
-  // Vender: abre método de pago
+  const incItem = useCallback((id) => {
+    setItems((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, qty: x.qty + 1, subtotal: (x.qty + 1) * x.price } : x))
+    );
+  }, []);
+
+  const decItem = useCallback((id) => {
+    setItems((prev) =>
+      prev.map((x) =>
+        x.id === id && x.qty > 1 ? { ...x, qty: x.qty - 1, subtotal: (x.qty - 1) * x.price } : x
+      )
+    );
+  }, []);
+
+  const removeItem = useCallback((id) => {
+    setItems((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  const clearCart = useCallback(() => {
+    setItems([]);
+    setCliente(null);
+    setTipoComprobante("X");
+  }, []);
+
   const handleVender = () => {
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      setSnack({ open: true, message: "El carrito está vacío", severity: "warning" });
+      return;
+    }
+    if (!warehouseId) {
+      setSnack({ open: true, message: "Selecciona un almacén", severity: "error" });
+      return;
+    }
+    if (!cliente) {
+      setOpenCliente(true);
+      return;
+    }
     setOpenPago(true);
   };
 
-  const handlePagoConfirm = async (info) => {
-    setPago(info);
+  const handleClienteSelect = (clienteData) => {
+    setCliente(clienteData);
+    setOpenPago(true);
+  };
 
-    // Validaciones mínimas
-    // Si no hay depósito seleccionado, intentamos elegir uno automáticamente.
-    // (En algunos entornos el endpoint /warehouses puede no estar configurado.)
-    let effectiveWarehouseId = warehouseId;
-    if (!effectiveWarehouseId) {
-      effectiveWarehouseId = warehouses?.[0]?.id || 1;
-      setWarehouseId(effectiveWarehouseId);
-    }
-    if (!items.length) return;
-
+  const handlePagoConfirm = async (pagoInfo) => {
     setOpenPago(false);
-    setOpenAcciones(false);
 
     try {
-      // 1) Crear venta (esto descuenta stock en el backend)
-      const payloadSale = {
-        warehouse_id: effectiveWarehouseId,
+      const payload = {
+        warehouse_id: warehouseId,
         customer_id: cliente?.id || null,
-        invoice_type_id: null,
-        items: items.map((i) => ({
-          product_id: i.id,
-          qty: Number(i.qty || 0),
-          // En el backend se calculan/registran impuestos (IVA). Para evitar duplicar IVA,
-          // guardamos precio neto (sin IVA) cuando el producto tenga tax_rate.
-          unit_price: (() => {
-            const gross = Number(i.price || 0);
-            const rate = Number(i.tax_rate || 0);
-            if (!rate) return gross;
-            const net = gross / (1 + rate);
-            return Math.round(net * 100) / 100;
-          })(),
+        items: items.map((it) => ({
+          product_id: it.id,
+          qty: it.qty,
+          unit_price: it.price,
+          tax_rate: (it.ivaRate || 0) * 100,
         })),
+        observations: `Comprobante ${tipoComprobante} - Cliente: ${cliente?.nombre || "Consumidor Final"}`,
       };
 
-      const sale = await Sales.createSale(payloadSale);
+      const venta = await Sales.createSale(payload);
 
-      // 2) Asociar comprobante de pago (Receipt)
-      const code = info?.metodo_code || null;
-      const pm = (paymentMethods || []).find((x) => x.code === code) || null;
-      if (!pm?.id) {
-        // Si no hay match por código, intentamos por nombre (fallback)
-        const byName = (paymentMethods || []).find(
-          (x) => String(x.name || "").toLowerCase() === String(info?.metodo || "").toLowerCase()
-        );
-        if (byName?.id) {
-          await Receipts.createReceipt({
-            sale_id: sale.id,
-            payment_method_id: byName.id,
-            amount: Number(sale.total ?? total ?? 0),
-            notes: info?.nota || null,
-          });
-        }
-      } else {
-        await Receipts.createReceipt({
-          sale_id: sale.id,
-          payment_method_id: pm.id,
-          amount: Number(sale.total ?? total ?? 0),
-          notes: info?.nota || null,
-        });
-      }
+      setVentaGuardada({
+        ...venta,
+        tipo_comprobante: tipoComprobante,
+        cliente,
+        items: items.map((it) => ({
+          descripcion: it.name,
+          name: it.name,
+          cantidad: it.qty,
+          qty: it.qty,
+          precio: it.price,
+          price: it.price,
+          total: it.subtotal,
+          subtotal: it.subtotal,
+        })),
+        totales,
+        pago: { ...pagoInfo, cajero },
+      });
 
-      // 3) Snapshot para imprimir/enviar y limpiar carrito
-      const snap = snapshotVenta(sale);
-      setVenta({ ...snap, sale_id: sale.id, sale });
-      clearAll();
-      setPago({ metodo: "-", nota: "", recibido: 0, cambio: 0 });
+      clearCart();
       setOpenAcciones(true);
     } catch (e) {
       console.error(e);
-      const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || "Error guardando la venta.";
-      alert(msg);
+      setSnack({
+        open: true,
+        message: e.response?.data?.message || "Error al procesar la venta",
+        severity: "error",
+      });
     }
   };
 
-  // Instantánea + limpiar carrito antes de abrir cada modal de envío/impresión
-  const snapshotVenta = (sale = null) => ({
-    cliente: cliente || { name: "Consumidor final" },
-    items: items.map((i) => ({
-      name: i.name, qty: i.qty, subtotal: i.subtotal, descripcion: i.name, total: i.subtotal,
-    })),
-    comprobante: {
-      // Este número viene del backend (SalesController). Si todavía no se guardó la venta,
-      // queda null y el modal puede mostrar un placeholder.
-      numero: sale?.number || null,
-      fecha: sale?.sale_date || sale?.created_at || new Date().toISOString(),
-      tipo: tipoComprobante,
-    },
-    total,
-    totales: { subtotal: neto, iva21, iva105, impuestos: totales.impuestosTotal },
-    pago,
-    cajero,
-  });
-
-  const prepararY = (openFn) => {
-    const snap = snapshotVenta(null);
-    setVenta(snap);
+  const handleImprimir = () => {
     setOpenAcciones(false);
-    clearAll();             // 👉 nuevo carrito vacío
-    setPago({ metodo: "-", nota: "", recibido: 0, cambio: 0 });
-    openFn(true);
+    setOpenImprimir(true);
+  };
+
+  const handleWhatsApp = () => {
+    const mensaje = `Hola! Tu comprobante ${ventaGuardada?.tipo_comprobante} #${
+      ventaGuardada?.number || ventaGuardada?.id
+    }\nTotal: $${(ventaGuardada?.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`);
+  };
+
+  const handleEmail = () => {
+    const asunto = `Comprobante ${ventaGuardada?.tipo_comprobante} #${ventaGuardada?.number || ventaGuardada?.id}`;
+    const cuerpo = `Total: $${(ventaGuardada?.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+    window.open(`mailto:${cliente?.email || ""}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`);
   };
 
   return (
@@ -403,339 +696,266 @@ const FacturarPOSCompact = () => {
       sx={{
         position: "fixed",
         top: appbarH,
-        left: mdDown ? 0 : sidebarW,
+        left: mdDown ? 0 : sidebarWidth,  // ← Usar sidebarWidth del contexto
         right: 0,
         bottom: 0,
-        display: "grid",
-        gridTemplateColumns: { xs: "1fr", md: "1fr 420px", lg: "1fr 460px" },
-        gap: 2,
         p: 2,
         overflow: "hidden",
-        transition: "left .18s ease",
+        transition: "left 0.3s ease",  // ← Sincronizar con transición del sidebar
       }}
     >
-      {/* IZQUIERDA - Catálogo */}
-      <Paper
-        variant="outlined"
-        sx={{ borderRadius: 2, p: 1.5, display: "flex", flexDirection: "column", minHeight: 0 }}
-      >
-        <Stack direction="row" spacing={1} mb={1.5}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Buscar productos"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ ".MuiOutlinedInput-root": { height: 44, borderRadius: 2 } }}
-          />
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={() => (window.location.href = "/articulos")}
-            sx={{ height: 44, borderRadius: 2, px: 2, whiteSpace: "nowrap" }}
-          >
-            Nuevo producto
-          </Button>
-        </Stack>
-
-        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pr: 0.5 }}>
-          <Grid container spacing={2}>
-            {filtrar.map((p) => {
-              const id = p.idArticulo || p.id;
-              return (
-                <Grid key={id} item xs={12} sm={6} md={4} lg={3}>
-                  <ProductTile
-                    prod={p}
-                    onAdd={addItem}
-                    count={contador.get(id) || 0}
-                    isFav={favIds.includes(id)}
-                    onToggleFav={toggleFav}
-                  />
-                </Grid>
-              );
-            })}
-            {filtrar.length === 0 && (
-              <Grid item xs={12}>
-                <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
-                  <Typography>No se encontraron productos.</Typography>
-                </Paper>
-              </Grid>
-            )}
-          </Grid>
-        </Box>
-      </Paper>
-
-      {/* DERECHA - Carrito */}
-      <Paper
-        variant="outlined"
-        sx={{ borderRadius: 2, p: 2, display: "flex", flexDirection: "column", minHeight: 0 }}
-      >
-        <Stack direction="row" alignItems="center" spacing={1} mb={1.25}>
-          <Typography variant="h6">Punto de Venta</Typography>
-          <Tooltip title="Numeración / listas">
-            <IconButton size="small"><ReceiptLongIcon fontSize="small" /></IconButton>
-          </Tooltip>
-        </Stack>
-
-        <Grid container spacing={1.25}>
-          <Grid item xs={12}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Lista de precio</InputLabel>
-              <Select value={listaPrecio} label="Lista de precio" onChange={(e) => setListaPrecio(e.target.value)}>
-                <MenuItem value="General">General</MenuItem>
-                <MenuItem value="Mayorista">Mayorista</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Tipo de Comprobante</InputLabel>
-              <Select value={tipoComprobante} label="Tipo de Comprobante" onChange={(e) => setTipoComprobante(e.target.value)}>
-                <MenuItem value="X">Factura X</MenuItem>
-                <MenuItem value="C">Factura Electrónica C</MenuItem>
-                <MenuItem value="B">Factura Electrónica B</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          {/* Preferencia de tamaño */}
-          <Grid item xs={12}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Tamaño de ticket</InputLabel>
-              <Select value={ticketSize} label="Tamaño de ticket" onChange={(e) => setTicketSize(e.target.value)}>
-                <MenuItem value="80">80 mm</MenuItem>
-                <MenuItem value="57">57 mm</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Stack direction="row" spacing={1}>
+      <Grid container spacing={2} sx={{ height: "100%" }}>
+        <Grid item xs={12} md={8} sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+          <Paper variant="outlined" sx={{ height: "100%", borderRadius: 2, p: 2, display: "flex", flexDirection: "column" }}>
+            <Stack direction="row" spacing={2} alignItems="center" mb={2}>
               <TextField
-                size="small"
+                placeholder="Buscar productos..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
                 fullWidth
-                label="Cliente"
-                value={cliente?.name || cliente?.Nombre || "Consumidor final"}
-                InputProps={{ readOnly: true }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  ".MuiOutlinedInput-root": {
+                    borderRadius: 3,
+                    bgcolor: "background.default",
+                  },
+                }}
               />
-              <Tooltip title="Buscar cliente">
-                <IconButton color="primary"><PersonAddAltIcon /></IconButton>
-              </Tooltip>
+              <Chip label={`${catalogoFiltrado.length} productos`} color="primary" variant="outlined" />
             </Stack>
-          </Grid>
+
+            <Divider sx={{ mb: 2 }} />
+
+            <Box
+              sx={{
+                flex: 1,
+                overflow: "auto",
+                "&::-webkit-scrollbar": { width: 8 },
+                "&::-webkit-scrollbar-thumb": { bgcolor: "grey.300", borderRadius: 4 },
+              }}
+            >
+              <Grid container spacing={2}>
+                {loading
+                  ? [1, 2, 3, 4, 5, 6].map((i) => (
+                      <Grid item xs={6} sm={4} md={3} key={i}>
+                        <ProductCardSkeleton />
+                      </Grid>
+                    ))
+                  : catalogoFiltrado.map((prod) => (
+                      <Grid item xs={6} sm={4} md={3} key={prod.id || prod.idArticulo}>
+                        <ProductCard
+                          product={prod}
+                          onAdd={addItem}
+                          cartCount={cartCounts.get(prod.id || prod.idArticulo) || 0}
+                        />
+                      </Grid>
+                    ))}
+              </Grid>
+            </Box>
+          </Paper>
         </Grid>
 
-        <Divider sx={{ my: 2 }} />
-
-        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          {items.length === 0 ? (
-            <Box py={6} textAlign="center" sx={{ opacity: 0.7 }}>
-              <Typography variant="body2">
-                Acá verás los productos que elijas para tu primera venta
-              </Typography>
-            </Box>
-          ) : (
-            <Stack spacing={1}>
-              {items.map((it) => (
-                <Paper key={it.id} variant="outlined" sx={{ p: 1, borderRadius: 1.5 }}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" noWrap title={it.name}>{it.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        ${it.price.toFixed(2)}
-                      </Typography>
-                    </Box>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <IconButton size="small" onClick={() => decItem(it.id)}><RemoveIcon fontSize="small" /></IconButton>
-                      <Typography width={24} textAlign="center">{it.qty}</Typography>
-                      <IconButton size="small" onClick={() => incItem(it.id)}><AddIcon fontSize="small" /></IconButton>
-                    </Stack>
-                    <Typography variant="body2" fontWeight={700} width={82} textAlign="right">
-                      ${it.subtotal.toFixed(2)}
-                    </Typography>
-                    <IconButton size="small" color="error" onClick={() => removeItem(it.id)}>
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
-                </Paper>
-              ))}
-            </Stack>
-          )}
-        </Box>
-
-        {/* FOOTER */}
-        <Box
-          sx={{
-            position: "sticky",
-            bottom: 0,
-            pt: 1.5,
-            mt: 2,
-            background: theme.palette.background.paper,
-            borderTop: `1px solid ${theme.palette.divider}`,
-            boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
-          }}
-        >
-          {/* Total (incluye IVA) */}
-          <Paper
-            variant="outlined"
-            sx={{ p: 1.25, borderRadius: 2, mb: 1.25, background: theme.palette.background.default }}
-          >
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography fontWeight={700}>Total</Typography>
-              <Typography fontWeight={800} variant="h6">
-                ${total.toFixed(2)}
-              </Typography>
-            </Stack>
-          </Paper>
-
-          {/* Transparencia Fiscal (IVA discriminado del total) */}
-          {(totales.impuestosTotal > 0 || neto > 0) && (
-            <Stack spacing={0.5} mb={1}>
-              <Typography color="text.secondary" fontWeight={700}>
-                Transparencia Fiscal
-              </Typography>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Subtotal</Typography>
-                <Typography>${neto.toFixed(2)}</Typography>
+        <Grid item xs={12} md={4} sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+          <Paper variant="outlined" sx={{ height: "100%", borderRadius: 2, p: 2, display: "flex", flexDirection: "column" }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CartIcon color="primary" />
+                <Typography variant="h6" fontWeight={700}>
+                  Carrito
+                </Typography>
+                <Badge badgeContent={items.length} color="secondary" />
               </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Impuestos</Typography>
-                <Typography>${totales.impuestosTotal.toFixed(2)}</Typography>
-              </Stack>
-              {iva21 > 0 && (
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">IVA 21%</Typography>
-                  <Typography>${iva21.toFixed(2)}</Typography>
-                </Stack>
-              )}
-              {iva105 > 0 && (
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">IVA 10.5%</Typography>
-                  <Typography>${iva105.toFixed(2)}</Typography>
-                </Stack>
+              {items.length > 0 && (
+                <IconButton size="small" onClick={clearCart} color="error">
+                  <DeleteIcon />
+                </IconButton>
               )}
             </Stack>
-          )}
 
-          {/* Info breve del pago si ya fue elegido */}
-          {pago?.metodo && pago.metodo !== "-" && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-              Pago: {pago.metodo}{pago.nota ? ` · ${pago.nota}` : ""}{pago.cambio ? ` · Cambio $${pago.cambio.toFixed(2)}` : ""}
-            </Typography>
-          )}
+            <Stack spacing={1.5} mb={2}>
+              <Button variant="outlined" startIcon={<PersonIcon />} onClick={() => setOpenCliente(true)} fullWidth>
+                {cliente ? cliente.nombre : "Seleccionar Cliente"}
+              </Button>
 
-          <Stack direction="row" spacing={1}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="secondary"
-              disabled={items.length === 0}
-              onClick={handleVender}
+              <ToggleButtonGroup
+                value={tipoComprobante}
+                exclusive
+                onChange={(e, val) => val && setTipoComprobante(val)}
+                fullWidth
+                size="small"
+              >
+                {TIPOS_COMPROBANTE.map((tipo) => (
+                  <ToggleButton key={tipo.id} value={tipo.id}>
+                    {tipo.id}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Stack>
+
+            <Divider sx={{ mb: 2 }} />
+
+            <Box
+              sx={{
+                flex: 1,
+                overflow: "auto",
+                "&::-webkit-scrollbar": { width: 6 },
+                "&::-webkit-scrollbar-thumb": { bgcolor: "grey.300", borderRadius: 3 },
+              }}
             >
-              Vender
-            </Button>
-            <Button variant="text" color="inherit" onClick={clearAll}>
-              Cancelar
-            </Button>
-          </Stack>
-        </Box>
-      </Paper>
+              {items.length === 0 ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    textAlign: "center",
+                    color: "text.secondary",
+                  }}
+                >
+                  <CartIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
+                  <Typography variant="body2">El carrito está vacío</Typography>
+                  <Typography variant="caption">Agrega productos para comenzar</Typography>
+                </Box>
+              ) : (
+                <List disablePadding>
+                  {items.map((item) => (
+                    <CartItem key={item.id} item={item} onInc={incItem} onDec={decItem} onRemove={removeItem} />
+                  ))}
+                </List>
+              )}
+            </Box>
 
-      {/* 1) Modal método de pago */}
-      <ModalMetodoPago
-        open={openPago}
-        onClose={() => setOpenPago(false)}
-        total={total}
-        onConfirm={handlePagoConfirm}
-      />
+            {items.length > 0 && (
+              <>
+                <Divider sx={{ my: 2 }} />
+                <Stack spacing={1}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">
+                      Subtotal
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      ${totales.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Stack>
 
-      {/* 2) Diálogo de acciones posventa */}
-      <Dialog open={openAcciones} onClose={() => setOpenAcciones(false)} fullWidth maxWidth="xs">
-        <DialogTitle>¿Qué querés hacer con la venta?</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={1}>
-            <Button variant="outlined" onClick={() => prepararY(setOpenWA)}>
-              Enviar por WhatsApp
-            </Button>
-            <Button variant="outlined" onClick={() => prepararY(setOpenEmail)}>
-              Enviar por Email
-            </Button>
-            <Button variant="outlined" onClick={() => prepararY(setOpenPrint)}>
-              Imprimir
-            </Button>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAcciones(false)}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
+                  {tipoComprobante !== "C" && (
+                    <>
+                      {totales.iva21 > 0 && (
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="body2" color="text.secondary">
+                            IVA 21%
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            ${totales.iva21.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Stack>
+                      )}
 
-      {/* 3) Modales específicos (usan la instantánea `venta`) */}
-      <ModalWhatsApp
-        open={openWA}
-        onClose={() => setOpenWA(false)}
-        cliente={venta?.cliente || cliente}
-        items={venta?.items || items}
-        total={venta?.total ?? total}
-        pago={venta?.pago || pago}
-        totales={venta?.totales || { iva21, iva105: 0, subtotal: neto }}
-        cajero={venta?.cajero || cajero}
-      />
+                      {totales.iva105 > 0 && (
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="body2" color="text.secondary">
+                            IVA 10.5%
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            ${totales.iva105.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Stack>
+                      )}
+                    </>
+                  )}
 
-      <ModalEmail
-        open={openEmail}
-        onClose={() => setOpenEmail(false)}
-        cliente={venta?.cliente || cliente}
-        items={venta?.items || items}
-        total={venta?.total ?? total}
-        pago={venta?.pago || pago}
-        totales={venta?.totales || { iva21, iva105: 0, subtotal: neto }}
-        cajero={venta?.cajero || cajero}
-      />
+                  <Divider />
 
-      <ModalImprimir
-        open={openPrint}
-        onClose={() => setOpenPrint(false)}
-        size={ticketSize}
-        logoUrl="https://artdent.com.ar/logo-negro.png"
-        company={{ nombre: "ARTDENT", condicion: "Responsable Monotributo" }}
-        comprobante={{
-          tipoLetra: tipoComprobante || "C",
-          codigo: "",
-          // Se toma del backend (sales.number). Si no existe aún, queda como placeholder.
-          numero: venta?.comprobante?.numero || "0001-00000000",
-          fecha: venta?.comprobante?.fecha
-            ? new Date(venta.comprobante.fecha).toLocaleString()
-            : new Date().toLocaleString(),
-          cliente: (venta?.cliente || cliente)?.name || "Consumidor final",
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6" fontWeight={700}>
+                      TOTAL
+                    </Typography>
+                    <Typography variant="h5" color="primary" fontWeight={700}>
+                      ${totales.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Stack>
+                </Stack>
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  startIcon={<ReceiptIcon />}
+                  onClick={handleVender}
+                  sx={{ mt: 2, py: 1.5 }}
+                >
+                  Procesar Venta
+                </Button>
+              </>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+
+      <ModalCliente open={openCliente} onClose={() => setOpenCliente(false)} onSelect={handleClienteSelect} />
+
+      <ModalMetodoPago open={openPago} onClose={() => setOpenPago(false)} total={totales.total} onConfirm={handlePagoConfirm} />
+
+      <ModalAcciones
+        open={openAcciones}
+        onClose={() => {
+          setOpenAcciones(false);
+          setVentaGuardada(null);
         }}
-        items={(venta?.items || items).map((i) => ({
-          descripcion: i.name || i.descripcion,
-          precio: i.price || i.precio,
-          cantidad: i.qty || i.cantidad,
-          total: i.subtotal || i.total,
-        }))}
-        totales={venta?.totales || { subtotal: neto, iva21, iva105: 0, total }}
-        pago={{
-          medio: (venta?.pago?.metodo
-            ? `${venta.pago.metodo}${venta.pago.nota ? ` (${venta.pago.nota})` : ""}`
-            : "-"),
-          cajero: venta?.cajero || cajero,
-        }}
-        cae={{ numero: "", vencimiento: "" }}
-        qrImage={undefined}
-        footer="Gracias por su compra."
+        venta={ventaGuardada}
+        onImprimir={handleImprimir}
+        onWhatsApp={handleWhatsApp}
+        onEmail={handleEmail}
       />
+
+      {ventaGuardada && (
+        <ModalImprimir
+          open={openImprimir}
+          onClose={() => setOpenImprimir(false)}
+          empresa={{
+            razonSocial: "ARTDENT",
+            condicionIva: "Responsable Inscripto",
+            domicilio: "",
+            cuit: "",
+            iibb: "",
+            inicioActividad: "",
+          }}
+          comprobante={{
+            tipo: ventaGuardada.tipo_comprobante || "X",
+            numero: ventaGuardada.receipt_number || ventaGuardada.number || `00001-${String(ventaGuardada.id || 1).padStart(8, "0")}`,
+            fecha: new Date().toLocaleDateString("es-AR"),
+            hora: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          }}
+          cliente={{ nombre: ventaGuardada.cliente?.nombre || "Consumidor Final" }}
+          items={ventaGuardada.items}
+          totales={ventaGuardada.totales}
+          pago={ventaGuardada.pago}
+        />
+      )}
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={6000}
+        onClose={() => setSnack({ ...snack, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnack({ ...snack, open: false })}
+          severity={snack.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snack.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
-};
-
-export default FacturarPOSCompact;
+}

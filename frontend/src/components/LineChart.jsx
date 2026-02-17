@@ -1,15 +1,23 @@
 import { ResponsiveLine } from "@nivo/line";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
-import { mockLineData as data } from "../data/mockData";
+import { mockLineData } from "../data/mockData";
 
-const LineChart = ({ isCustomLineColors = false, isDashboard = false }) => {
+const LineChart = ({ isCustomLineColors = false, isDashboard = false, data = null }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
+  // Usar datos del backend si están disponibles, sino usar mock
+  const chartData = data && data.length > 0 ? data : mockLineData;
+
+  // Colores mejorados para el tema claro
+  const lineColors = theme.palette.mode === 'dark'
+    ? { datum: "color" }
+    : { scheme: "set2" }; // Esquema con mejor contraste para tema claro
+
   return (
     <ResponsiveLine
-      data={data}
+      data={chartData}
       theme={{
         axis: {
           domain: {
@@ -39,11 +47,18 @@ const LineChart = ({ isCustomLineColors = false, isDashboard = false }) => {
         },
         tooltip: {
           container: {
-            color: colors.primary[500],
+            background: theme.palette.mode === 'dark' ? '#1e293b' : '#ffffff',
+            color: theme.palette.mode === 'dark' ? '#ffffff' : '#1e293b',
+            fontSize: 12,
+            borderRadius: 8,
+            boxShadow: theme.palette.mode === 'dark' 
+              ? '0 4px 6px rgba(0, 0, 0, 0.4)'
+              : '0 4px 6px rgba(0, 0, 0, 0.1)',
+            padding: '8px 12px',
           },
         },
       }}
-      colors={isDashboard ? { datum: "color" } : { scheme: "nivo" }} // added
+      colors={isDashboard ? lineColors : { scheme: "nivo" }}
       margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
       xScale={{ type: "point" }}
       yScale={{
@@ -62,17 +77,17 @@ const LineChart = ({ isCustomLineColors = false, isDashboard = false }) => {
         tickSize: 0,
         tickPadding: 5,
         tickRotation: 0,
-        legend: isDashboard ? undefined : "transportation", // added
+        legend: isDashboard ? undefined : "transportation",
         legendOffset: 36,
         legendPosition: "middle",
       }}
       axisLeft={{
         orient: "left",
-        tickValues: 5, // added
+        tickValues: 5,
         tickSize: 3,
         tickPadding: 5,
         tickRotation: 0,
-        legend: isDashboard ? undefined : "count", // added
+        legend: isDashboard ? undefined : "count",
         legendOffset: -40,
         legendPosition: "middle",
       }}

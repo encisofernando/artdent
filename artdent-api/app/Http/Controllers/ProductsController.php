@@ -69,8 +69,10 @@ class ProductsController extends Controller
             // Agregar URL de imagen principal
             if (isset($primaryImages[$product->id])) {
                 $product->primary_image_url = $primaryImages[$product->id]->url;
+                $product->image_url = $primaryImages[$product->id]->url; // Para compatibilidad
             } else {
                 $product->primary_image_url = null;
+                $product->image_url = null;
             }
             
             return $product;

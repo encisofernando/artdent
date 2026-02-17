@@ -65,8 +65,8 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
-
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
+    'ecommerce_company_id' => env('ECOMMERCE_COMPANY_ID', 1),
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

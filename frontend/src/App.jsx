@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { CssBaseline, ThemeProvider, Box, useMediaQuery, useTheme } from "@mui/material";
 import { ColorModeContext, useMode } from "./theme";
+import { SidebarContext } from "./contexts/SidebarContext";
 
 // Layout
 import Sidebar, { SIDEBAR_WIDTH, COLLAPSED_WIDTH } from "./scenes/global/Sidebar";
@@ -38,26 +39,22 @@ import Colaboradores from "./scenes/colaboradores/Colaboradores";
 import Asistencias from "./scenes/colaboradores/Asistencias";
 import Recibos from "./scenes/colaboradores/Recibos";
 
-
 // Auth
 import Login from "./login/Login";
 import Register from "./login/Register";
-import CrearContraseña from "./login/Crearcontraseña";
+import CrearContraseña from "./login/CrearContraseña";
 
 const ProtectedRoute = ({ children, isAuthenticated }) =>
   isAuthenticated ? children : <Navigate to="/" />;
 
 export default function App() {
   const [theme, colorMode] = useMode();
-  const muiTheme = useTheme(); // este useTheme se poblará después del ThemeProvider
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem("token"));
 
   // Estado del sidebar
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // ⚠️ useMediaQuery necesita un theme, así que lo calculamos *dentro* del ThemeProvider.
-  // Por eso hacemos un render condicional: primero provider, luego todo lo demás.
   const AppShell = () => {
     const t = useTheme();
     const mdDown = useMediaQuery(t.breakpoints.down("md"));
@@ -69,7 +66,10 @@ export default function App() {
     }, [mdDown, isCollapsed]);
 
     return isAuthenticated ? (
-      <>
+      <SidebarContext.Provider value={{ 
+        isCollapsed, 
+        sidebarWidth: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH 
+      }}>
         {/* Sidebar fijo en desktop / Drawer en móvil */}
         <Sidebar
           mobileOpen={mobileOpen}
@@ -78,12 +78,12 @@ export default function App() {
           setIsCollapsed={setIsCollapsed}
         />
 
-        {/* Contenedor principal desplazado */}
+        {/* Contenedor principal - SOLUCIÓN DEFINITIVA */}
         <Box
           sx={{
-            ml: { md: `${contentLeftOffset}px` },
+            ml: { xs: 0, md: `${contentLeftOffset}px` },
             minHeight: "100vh",
-            transition: "margin-left .2s ease",
+            transition: "margin-left 0.3s ease",
           }}
         >
           <Topbar
@@ -91,7 +91,7 @@ export default function App() {
             onOpenSidebar={() => setMobileOpen(true)}
           />
 
-          <Box component="main" sx={{ p: { xs: 2, md: 3 }, pt: { xs: 2, md: 3 } }}>
+          <Box component="main" sx={{ p: { xs: 2, md: 3 } }}>
             <Routes>
               <Route
                 path="/"
@@ -131,11 +131,10 @@ export default function App() {
               <Route path="/colaboradores" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Colaboradores /></ProtectedRoute>} />
               <Route path="/colaboradores/asistencias" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Asistencias /></ProtectedRoute>} />
               <Route path="/colaboradores/recibos" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Recibos /></ProtectedRoute>} />
-
             </Routes>
           </Box>
         </Box>
-      </>
+      </SidebarContext.Provider>
     ) : (
       <Routes>
         <Route path="/" element={<Login setIsAuthenticated={setIsAuthenticated} />} />

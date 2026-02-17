@@ -3,32 +3,32 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Services\CategoryService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class CategoriesController extends Controller
 {
+    public function __construct(private CategoryService $service) {}
+
     public function index(Request $request)
     {
         $companyId = (int)$request->user()->company_id;
-        $query = Category::query()->where('company_id', $companyId);
+        $q = $request->query('q');
 
-        // Soporte simple de búsqueda
-        if ($request->filled('q')) {
-            $q = (string)$request->query('q');
-            $query->where('name', 'like', "%{$q}%");
-        }
-
-        $items = $query->orderBy('name')->get();
+        $items = $this->service->list($companyId, is_string($q) ? $q : null);
         return response()->json($items);
     }
 
     public function show(Request $request, Category $category)
     {
-        if ((int)$category->company_id !== (int)$request->user()->company_id) {
+        $companyId = (int)$request->user()->company_id;
+
+        if ((int)$category->company_id !== $companyId) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-        return response()->json($category);
+
+        return response()->json($category->load(['parent:id,name']));
     }
 
     public function store(Request $request)
@@ -36,54 +36,49 @@ class CategoriesController extends Controller
         $companyId = (int)$request->user()->company_id;
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:191', Rule::unique('categories', 'name')->where(fn($q) => $q->where('company_id', $companyId))],
+            'name' => [
+                'required',
+                'string',
+                'max:191',
+                Rule::unique('categories', 'name')
+                    ->where(fn($q) => $q->where('company_id', $companyId)),
+            ],
             'parent_id' => ['nullable', 'integer'],
         ]);
 
-        $data['company_id'] = $companyId;
+        $category = $this->service->create($companyId, $data);
 
-        // Si viene parent_id, validar que sea de la misma empresa
-        if (!empty($data['parent_id'])) {
-            $parent = Category::query()->find($data['parent_id']);
-            if (!$parent || (int)$parent->company_id !== $companyId) {
-                return response()->json(['message' => 'Invalid parent_id'], 422);
-            }
-        }
-
-        $category = Category::query()->create($data);
-        return response()->json($category, 201);
+        return response()->json($category->load(['parent:id,name']), 201);
     }
 
     public function update(Request $request, Category $category)
     {
         $companyId = (int)$request->user()->company_id;
-        if ((int)$category->company_id !== $companyId) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
 
         $data = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:191', Rule::unique('categories', 'name')->ignore($category->id)->where(fn($q) => $q->where('company_id', $companyId))],
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:191',
+                Rule::unique('categories', 'name')
+                    ->ignore($category->id)
+                    ->where(fn($q) => $q->where('company_id', $companyId)),
+            ],
             'parent_id' => ['nullable', 'integer'],
         ]);
 
-        if (array_key_exists('parent_id', $data) && !empty($data['parent_id'])) {
-            $parent = Category::query()->find($data['parent_id']);
-            if (!$parent || (int)$parent->company_id !== $companyId) {
-                return response()->json(['message' => 'Invalid parent_id'], 422);
-            }
-        }
+        $updated = $this->service->update($category, $companyId, $data);
 
-        $category->fill($data)->save();
-        return response()->json($category);
+        return response()->json($updated);
     }
 
     public function destroy(Request $request, Category $category)
     {
-        if ((int)$category->company_id !== (int)$request->user()->company_id) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        $companyId = (int)$request->user()->company_id;
 
-        $category->delete();
+        $this->service->delete($category, $companyId);
+
         return response()->json(['ok' => true]);
     }
 }

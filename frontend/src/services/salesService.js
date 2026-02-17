@@ -1,43 +1,120 @@
-// 📁 src/services/salesService.js
+// src/services/salesService.js
 import api from "./api";
-import { unwrap } from "./utils";
+
+/** Unwrap helpers */
+const unwrap = (res) => res?.data?.data ?? res?.data ?? res;
+const unwrapRows = (res) => {
+  const d = res?.data;
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.data)) return d.data;
+  if (Array.isArray(d?.results)) return d.results;
+  return [];
+};
 
 /**
- * Estructura esperada por el backend (según SQL):
- *  - sales: id, customer_id, sale_date, subtotal, discount_total, tax_total, total, observations
- *  - sale_items: sale_id, product_id, qty, unit_price, discount, tax_id | tax_rate, tax_amount, line_total
- *  - receipts: sale_id, payment_method_id, amount, receipt_date, reference
+ * Listar ventas con filtros
  */
-
-export const listSales = async (params = {}) => unwrap(await api.get("/sales", { params }));
-
-export const getSale = async (id) => unwrap(await api.get(`/sales/${id}`));
-
-export const createSale = async (payload) => unwrap(await api.post("/sales", payload));
-
-export const updateSale = async (id, payload) => unwrap(await api.put(`/sales/${id}`, payload));
-
-export const cancelSale = async (id) => unwrap(await api.post(`/sales/${id}/cancel`));
+export const listSales = async (params = {}) => {
+  const res = await api.get("/sales", { params });
+  return unwrapRows(res);
+};
 
 /**
- * Registra cobros por la venta (recibos). Intenta endpoint bulk y si no existe,
- * cae a crear uno por uno en /receipts.
+ * Obtener detalle de una venta
+ */
+export const getSale = async (id) => {
+  const res = await api.get(`/sales/${id}`);
+  return unwrap(res);
+};
+
+/**
+ * Crear nueva venta
+ * 
+ * Payload esperado:
+ * {
+ *   warehouse_id: number,
+ *   customer_id?: number,
+ *   sale_date?: string (ISO),
+ *   observations?: string,
+ *   payment_method?: string,
+ *   payment_reference?: string,
+ *   items: [
+ *     {
+ *       product_id: number,
+ *       qty: number,
+ *       unit_price: number,
+ *       tax_rate?: number (0-100),
+ *       discount?: number
+ *     }
+ *   ]
+ * }
+ */
+export const createSale = async (payload) => {
+  const res = await api.post("/sales", payload);
+  return unwrap(res);
+};
+
+/**
+ * Actualizar venta (solo en estado draft)
+ */
+export const updateSale = async (id, payload) => {
+  const res = await api.put(`/sales/${id}`, payload);
+  return unwrap(res);
+};
+
+/**
+ * Cancelar venta (revierte stock)
+ */
+export const cancelSale = async (id) => {
+  const res = await api.post(`/sales/${id}/cancel`);
+  return unwrap(res);
+};
+
+/**
+ * Obtener estadísticas de ventas
+ */
+export const getStats = async () => {
+  const res = await api.get("/sales/stats");
+  return unwrap(res);
+};
+
+/**
+ * Registrar recibos/cobros por la venta
+ * 
+ * @param {number} saleId 
+ * @param {Array} receipts - [{payment_method_id, amount, receipt_date, reference}]
+ * @returns 
  */
 export const registerReceipts = async (saleId, receipts = []) => {
   if (!receipts.length) return [];
+  
   try {
     const res = await api.post(`/sales/${saleId}/receipts`, { receipts });
     return unwrap(res);
   } catch (e) {
-    // fallback unitario
+    // Fallback: crear uno por uno si el endpoint bulk no existe
     const results = [];
-    for (const r of receipts) {
-      const body = { ...r, sale_id: saleId };
-      const res = await api.post(`/receipts`, body);
+    for (const receipt of receipts) {
+      const body = { ...receipt, sale_id: saleId };
+      const res = await api.post("/receipts", body);
       results.push(unwrap(res));
     }
     return results;
   }
 };
 
-export const deleteReceipt = async (id) => unwrap(await api.delete(`/receipts/${id}`));
+/**
+ * Eliminar recibo
+ */
+export const deleteReceipt = async (id) => {
+  const res = await api.delete(`/receipts/${id}`);
+  return unwrap(res);
+};
+
+/**
+ * Generar reporte de ventas
+ */
+export const generateReport = async (params = {}) => {
+  const res = await api.get("/sales/report", { params });
+  return unwrap(res);
+};

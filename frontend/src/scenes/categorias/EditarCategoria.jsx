@@ -1,40 +1,106 @@
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Grid } from '@mui/material';
-import { Catalog } from '../../services';
+import { useEffect, useMemo, useState } from "react";
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, Stack, FormControl, InputLabel, Select, MenuItem,
+  Alert
+} from "@mui/material";
+import * as Categories from "../../services/categoryService";
 
-const EditarCategoria = ({ open, onClose, onEdited, categoria }) => {
-  const [form, setForm] = useState({ idCategoria: null, Nombre: '', parent_id: null });
+export default function EditarCategoria({ open, onClose, row, onUpdated }) {
+  const [name, setName] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [parents, setParents] = useState([]);
 
   useEffect(() => {
-    if (categoria) setForm({ idCategoria: categoria.idCategoria, Nombre: categoria.Nombre, parent_id: categoria.parent_id ?? null });
-  }, [categoria]);
+    if (!open) return;
 
-  const change = (e) => setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
+    setName(row?.name || "");
+    setParentId(row?.parent_id ? String(row.parent_id) : "");
+    setError("");
 
-  const submit = async () => {
+    (async () => {
+      try {
+        const data = await Categories.listCategories({ q: "" });
+        const list = Array.isArray(data) ? data : [];
+        // No permitir que se seleccione a sí misma como padre
+        setParents(list.filter((c) => c.id !== row?.id));
+      } catch (e) {
+        setParents([]);
+      }
+    })();
+  }, [open, row]);
+
+  const canSubmit = useMemo(() => name.trim().length >= 2 && row?.id, [name, row]);
+
+  const handleSubmit = async () => {
+    if (!row?.id) return;
+    setLoading(true);
+    setError("");
     try {
-      await Catalog.updateCategory(form.idCategoria, form);
-      onEdited?.();
+      await Categories.updateCategory(row.id, {
+        name: name.trim(),
+        parent_id: parentId ? Number(parentId) : null,
+      });
+      onUpdated?.();
+      onClose?.();
     } catch (e) {
-      alert('No se pudo editar la categoría');
+      const msg =
+        e?.response?.data?.message ||
+        (e?.response?.data?.errors
+          ? Object.values(e.response.data.errors).flat().join(" ")
+          : "") ||
+        "No se pudo actualizar la categoría.";
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={loading ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>Editar Categoría</DialogTitle>
+
       <DialogContent dividers>
-        <Grid container spacing={2} mt={1}>
-          <Grid item xs={12}><TextField name="Nombre" label="Nombre" fullWidth value={form.Nombre} onChange={change} /></Grid>
-          <Grid item xs={12}><TextField name="parent_id" label="ID Padre (opcional)" fullWidth value={form.parent_id ?? ""} onChange={change} /></Grid>
-        </Grid>
+        <Stack gap={2}>
+          {error && <Alert severity="error">{error}</Alert>}
+
+          <TextField
+            label="Nombre"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+          />
+
+          <FormControl fullWidth>
+            <InputLabel>Categoría padre (opcional)</InputLabel>
+            <Select
+              label="Categoría padre (opcional)"
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+            >
+              <MenuItem value="">
+                <em>Sin padre</em>
+              </MenuItem>
+              {parents.map((c) => (
+                <MenuItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
       </DialogContent>
+
       <DialogActions>
-        <Button onClick={onClose} color="error">Cancelar</Button>
-        <Button onClick={submit} color="secondary">Guardar</Button>
+        <Button onClick={onClose} disabled={loading}>
+          Cancelar
+        </Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={!canSubmit || loading}>
+          Guardar
+        </Button>
       </DialogActions>
     </Dialog>
   );
-};
-
-export default EditarCategoria;
+}

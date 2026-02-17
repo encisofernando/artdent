@@ -1,5 +1,19 @@
 // 📁 src/services/userService.js
 import api from "./api";
-import { unwrap } from "./utils";
+import { unwrap, toQueryString } from "./utils";
 
-export const getUser = async (id) => unwrap(await api.get(`/users/${id}`));
+// === Usuarios (cuentas del sistema) ===
+
+export const listUsers = (params = {}) =>
+  unwrap(api.get(`/users?${toQueryString(params)}`));
+
+export const getUser = (id) => unwrap(api.get(`/users/${id}`));
+
+export const createUser = (payload) => unwrap(api.post(`/users`, payload));
+
+export const updateUser = (id, payload) => unwrap(api.put(`/users/${id}`, payload));
+
+export const deleteUser = (id) => unwrap(api.delete(`/users/${id}`));
+
+export const toggleUserActive = async (id, currentActive) =>
+  updateUser(id, { is_active: currentActive ? 0 : 1 });

@@ -1,8 +1,8 @@
 <?php
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\HandleCors;
 use App\Http\Middleware\OptionalSanctumAuth;
 use App\Http\Middleware\RoleMiddleware;
 
@@ -14,10 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // CORS nativo
-        $middleware->append(HandleCors::class);
-        
-        // Alias para middlewares personalizados
+        // CORS: Agregar dominios permitidos
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
+
+        // Alias de middlewares personalizados
         $middleware->alias([
             'auth.optional' => OptionalSanctumAuth::class,
             'role' => RoleMiddleware::class,
