@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import isotipoAzul from '../assets/isotipo-azul.png'
 
-// ✅ IMPORTÁ tus imágenes del carrusel (bottles)
 import bottles1 from '../assets/hero/bottles-1.png'
 import bottles2 from '../assets/hero/bottles-2.png'
 import bottles3 from '../assets/hero/bottles-3.png'
@@ -73,17 +72,9 @@ export default function Home() {
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
 
-  // Auto-play del carrusel
-  useEffect(() => {
-    if (paused || isTransitioning) return
-    const id = window.setInterval(() => {
-      handleNext()
-    }, 6500)
-    return () => window.clearInterval(id)
-  }, [paused, isTransitioning, active])
-
-  // Función para cambiar al siguiente slide
   const handleNext = useCallback(() => {
     if (isTransitioning) return
     setIsTransitioning(true)
@@ -91,7 +82,6 @@ export default function Home() {
     setTimeout(() => setIsTransitioning(false), 500)
   }, [isTransitioning, slides.length])
 
-  // Función para cambiar al anterior slide
   const handlePrev = useCallback(() => {
     if (isTransitioning) return
     setIsTransitioning(true)
@@ -99,13 +89,44 @@ export default function Home() {
     setTimeout(() => setIsTransitioning(false), 500)
   }, [isTransitioning, slides.length])
 
-  // Función para ir a un slide específico
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning || index === active) return
     setIsTransitioning(true)
     setActive(index)
     setTimeout(() => setIsTransitioning(false), 500)
   }, [isTransitioning, active])
+
+  // Auto-play
+  useEffect(() => {
+    if (paused || isTransitioning) return
+    const id = window.setInterval(() => {
+      handleNext()
+    }, 6500)
+    return () => window.clearInterval(id)
+  }, [paused, isTransitioning, active, handleNext])
+
+  // Gestos táctiles para el carrusel
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+
+    if (isLeftSwipe) handleNext()
+    if (isRightSwipe) handlePrev()
+
+    setTouchStart(0)
+    setTouchEnd(0)
+  }
 
   // Keyboard navigation
   useEffect(() => {
@@ -126,15 +147,18 @@ export default function Home() {
 
   return (
     <div>
-      {/* Hero + Carrusel profesional */}
+      {/* Hero + Carrusel */}
       <section
         className="relative overflow-hidden"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         aria-label="Carrusel principal"
         role="region"
       >
-        {/* Background con transición suave */}
+        {/* Background con transición */}
         <div className="absolute inset-0" aria-hidden="true">
           <div 
             className={`h-full w-full transition-all duration-700 ease-in-out ${current.bgClassName}`}
@@ -145,7 +169,7 @@ export default function Home() {
 
         <div className="relative mx-auto max-w-7xl px-4 py-14 md:py-16">
           <div className="grid items-center gap-10 md:grid-cols-[1.2fr,0.8fr]">
-            {/* Contenido izquierdo con animación */}
+            {/* Contenido izquierdo */}
             <div 
               className="animate-fade-in"
               key={`content-${active}`}
@@ -160,10 +184,11 @@ export default function Home() {
                 {current.subtitle}
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3 animate-fade-in-delayed">
+              {/* Botones - en columna para mobile */}
+              <div className="mt-8 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 animate-fade-in-delayed">
                 <Link
                   to={current.ctaHref}
-                  className="btn bg-white text-[var(--brand-primary)] hover:bg-white/90 hover:scale-105 transition-all"
+                  className="btn bg-white text-[var(--brand-primary)] hover:bg-white/90 hover:scale-105 transition-all text-center"
                 >
                   {current.ctaLabel}
                 </Link>
@@ -171,7 +196,7 @@ export default function Home() {
                 {current.secondaryHref && current.secondaryLabel && (
                   <Link
                     to={current.secondaryHref}
-                    className="btn btn-outline border-white/70 text-white hover:bg-white/10 hover:scale-105 transition-all"
+                    className="btn btn-outline border-white/70 text-white hover:bg-white/10 hover:scale-105 transition-all text-center"
                   >
                     {current.secondaryLabel}
                   </Link>
@@ -204,63 +229,58 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Botón play/pause */}
+                {/* Play/Pause */}
                 <button
                   type="button"
-                  onClick={() => setPaused((prev) => !prev)}
-                  className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 transition-all"
-                  aria-label={paused ? 'Reproducir carrusel' : 'Pausar carrusel'}
-                  title={paused ? 'Reproducir (Espacio)' : 'Pausar (Espacio)'}
+                  onClick={() => setPaused(!paused)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur transition hover:bg-white/30"
+                  aria-label={paused ? 'Reproducir' : 'Pausar'}
                 >
-                  {paused ? <Play size={14} className="text-white ml-0.5" /> : <Pause size={14} className="text-white" />}
+                  {paused ? <Play size={16} className="text-white" /> : <Pause size={16} className="text-white" />}
                 </button>
               </div>
             </div>
 
-            {/* Panel visual derecho con animación */}
-            <div 
-              className="relative animate-fade-in"
+            {/* Imagen derecha */}
+            <div
+              className="relative"
               key={`image-${active}`}
             >
-              <div className="card border-white/20 bg-white/10 p-6 md:p-8 text-white backdrop-blur">
-                {/* Imagen de bottles con animación */}
-                <div className="relative w-full">
-                  <img
-                    src={current.imageSrc}
-                    alt={current.imageAlt}
-                    className="mx-auto max-h-[320px] w-auto object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)] animate-float"
-                    loading="eager"
-                  />
-                </div>
+              <div className="relative animate-fade-in">
+                <img
+                  src={current.imageSrc}
+                  alt={current.imageAlt}
+                  className="mx-auto max-h-[320px] md:max-h-[400px] w-auto object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)] animate-float"
+                  loading="eager"
+                />
+              </div>
 
-                {/* Info inferior */}
-                <div className="mt-6 flex items-center gap-4">
-                  <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">
-                    <img src={isotipoAzul} alt="ARTDENT" className="h-10 w-auto opacity-90" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">ARTDENT</p>
-                    <p className="text-xs text-white/80">Identidad consistente · Montserrat</p>
-                  </div>
+              {/* Info inferior */}
+              <div className="mt-6 flex items-center gap-4">
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">
+                  <img src={isotipoAzul} alt="ARTDENT" className="h-10 w-auto opacity-90" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">ARTDENT</p>
+                  <p className="text-xs text-white/80">Identidad consistente · Montserrat</p>
                 </div>
               </div>
 
               <div
-                className="pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-3xl bg-white/15 ring-1 ring-white/20"
+                className="pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-3xl bg-white/15 ring-1 ring-white/20 hidden md:block"
                 aria-hidden="true"
               />
             </div>
           </div>
 
-          {/* Flechas de navegación */}
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-between px-2 md:px-0 pointer-events-none">
+          {/* Flechas de navegación (solo desktop/tablet) */}
+          <div className="hidden md:flex absolute inset-x-0 top-1/2 -translate-y-1/2 items-center justify-between px-2 md:px-0 pointer-events-none">
             <button
               type="button"
               onClick={handlePrev}
               disabled={isTransitioning}
               className="pointer-events-auto -ml-4 md:-ml-6 flex items-center justify-center h-12 w-12 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110"
               aria-label="Slide anterior"
-              title="Anterior (←)"
             >
               <ChevronLeft size={24} className="text-white" />
             </button>
@@ -271,7 +291,6 @@ export default function Home() {
               disabled={isTransitioning}
               className="pointer-events-auto -mr-4 md:-mr-6 flex items-center justify-center h-12 w-12 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110"
               aria-label="Siguiente slide"
-              title="Siguiente (→)"
             >
               <ChevronRight size={24} className="text-white" />
             </button>
@@ -367,15 +386,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Estilos para las animaciones */}
+      {/* Estilos para animaciones */}
       <style>{`
         @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
         @keyframes slide-up {
@@ -401,12 +416,8 @@ export default function Home() {
         }
 
         @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
         }
 
         .animate-fade-in {
