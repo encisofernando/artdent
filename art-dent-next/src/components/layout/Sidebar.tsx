@@ -1,250 +1,466 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useSidebarStore, SIDEBAR_WIDTH, COLLAPSED_WIDTH } from "@/stores/useSidebarStore";
 
+// Radix
+import * as Collapsible from "@radix-ui/react-collapsible";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as Tooltip from "@radix-ui/react-tooltip";
+
+// Vaul (mobile drawer)
+import { Drawer } from "vaul";
+
+// Icons (lucide-react)
 import {
-  Home, DollarSign, Users, ShoppingCart, Briefcase,
-  BarChart2, Settings, ChevronRight, ChevronLeft,
-  ChevronDown, ShoppingBag, List, FileText, UserCheck,
-  Wallet, UserPlus, Receipt, Clock, PlusCircle, Search,
-  Tag, Building2, X,
+  Home,
+  Menu as MenuIcon,
+  DollarSign,
+  Users,
+  Building2,
+  BadgeCheck,
+  Briefcase,
+  BarChart3,
+  FileText,
+  Search,
+  SlidersHorizontal,
+  ShoppingCart,
+  ListChecks,
+  File,
+  Accessibility,
+  Wallet,
+  UserPlus,
+  Receipt,
+  Users2,
+  Clock,
+  PlusCircle,
+  ScanSearch,
+  Tags,
+  User,
+  Building,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
-// ─── Tipos ──────────────────────────────────────────────────────────────────
-interface NavItem {
-  label:    string;
-  icon:     React.ReactNode;
-  href?:    string;
-  children?: NavItem[];
-  badge?:   string;
+export const SIDEBAR_WIDTH = 280;
+export const COLLAPSED_WIDTH = 80;
+
+type MenuItem = {
+  title: string;
+  path?: string;
+  key?: string;
+  icon?: React.ReactNode;
+  children?: MenuItem[];
+};
+
+type SidebarProps = {
+  mobileOpen: boolean;
+  onClose: () => void;
+  isCollapsed: boolean;
+  setIsCollapsed: (v: boolean) => void;
+};
+
+function isActive(pathname: string, path?: string) {
+  if (!path) return false;
+  return pathname === path || pathname.startsWith(path + "/");
 }
 
-// ─── Árbol de navegación (mismo que el Sidebar original) ─────────────────────
-const NAV: NavItem[] = [
-  { label: "Dashboard",    icon: <Home       size={18} />, href: "/" },
-  {
-    label: "Facturación",  icon: <DollarSign size={18} />,
-    children: [
-      { label: "POS / Ventas",   icon: <ShoppingCart size={16} />, href: "/facturacion" },
-      { label: "Comprobantes",   icon: <FileText     size={16} />, href: "/invoices" },
-    ],
-  },
-  {
-    label: "Artículos",    icon: <ShoppingBag size={18} />,
-    children: [
-      { label: "Listado",        icon: <List         size={16} />, href: "/articulos" },
-      { label: "Categorías",     icon: <Tag          size={16} />, href: "/categorias" },
-    ],
-  },
-  {
-    label: "Clientes",     icon: <Users size={18} />,
-    children: [
-      { label: "Listado",        icon: <List         size={16} />, href: "/clientes" },
-      { label: "Cta. Corriente", icon: <Wallet       size={16} />, href: "/ctacte" },
-      { label: "Pagos",          icon: <DollarSign   size={16} />, href: "/pagoscte" },
-    ],
-  },
-  {
-    label: "Proveedores",  icon: <Building2 size={18} />,
-    children: [
-      { label: "Comprobantes",   icon: <FileText     size={16} />, href: "/proveedores/comprobantes" },
-      { label: "Pagos",          icon: <DollarSign   size={16} />, href: "/proveedores/pagos" },
-      { label: "Cta. Corriente", icon: <Wallet       size={16} />, href: "/proveedores/ctacte" },
-    ],
-  },
-  {
-    label: "Trabajos",     icon: <Briefcase size={18} />,
-    children: [
-      { label: "Ingresar",       icon: <PlusCircle   size={16} />, href: "/trabajos/ingresar" },
-      { label: "Consultar",      icon: <Search       size={16} />, href: "/trabajos/consultar" },
-    ],
-  },
-  {
-    label: "Team",         icon: <UserCheck size={18} />,
-    children: [
-      { label: "Equipo",         icon: <Users        size={16} />, href: "/team" },
-      { label: "Nuevo empleado", icon: <UserPlus     size={16} />, href: "/nuevoempleado" },
-    ],
-  },
-  {
-    label: "Colaboradores",icon: <Users size={18} />,
-    children: [
-      { label: "Listado",        icon: <List         size={16} />, href: "/colaboradores" },
-      { label: "Asistencias",    icon: <Clock        size={16} />, href: "/colaboradores/asistencias" },
-      { label: "Recibos",        icon: <Receipt      size={16} />, href: "/colaboradores/recibos" },
-    ],
-  },
-  { label: "Reportes",     icon: <BarChart2  size={18} />, href: "/bar" },
-  { label: "Configuración",icon: <Settings   size={18} />, href: "/settings" },
-];
+export default function Sidebar({
+  mobileOpen,
+  onClose,
+  isCollapsed,
+  setIsCollapsed,
+}: SidebarProps) {
+  const pathname = usePathname();
+  const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>({});
 
-// ─── Componente ──────────────────────────────────────────────────────────────
-export default function Sidebar() {
-  const pathname    = usePathname();
-  const { isCollapsed, mobileOpen, closeMobile, toggleCollapse } = useSidebarStore();
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  React.useEffect(() => {
+    const next: Record<string, boolean> = {};
+    const p = pathname || "";
 
-  const toggle = useCallback((label: string) => {
-    setOpenMenus((p) => ({ ...p, [label]: !p[label] }));
-  }, []);
-
-  const isActive = (href?: string) =>
-    href ? (href === "/" ? pathname === "/" : pathname.startsWith(href)) : false;
-
-  const hasActiveChild = (item: NavItem) =>
-    item.children?.some((c) => isActive(c.href)) ?? false;
-
-  // ─── Nav item ──────────────────────────────────────────────────────────────
-  const NavLink = ({ item, depth = 0 }: { item: NavItem; depth?: number }) => {
-    const active      = isActive(item.href);
-    const childActive = hasActiveChild(item);
-    const open        = openMenus[item.label] ?? childActive;
-
-    if (item.children) {
-      return (
-        <div>
-          <button
-            onClick={() => toggle(item.label)}
-            className={cn(
-              "sidebar-item w-full flex items-center rounded-xl px-3 py-2.5 text-sm font-medium gap-3",
-              "text-sidebar-foreground",
-              (childActive || open) && "bg-sidebar-accent text-sidebar-accent-foreground",
-              isCollapsed && "justify-center px-0"
-            )}
-            title={isCollapsed ? item.label : undefined}
-          >
-            <span className="shrink-0 opacity-80">{item.icon}</span>
-            {!isCollapsed && (
-              <>
-                <span className="flex-1 text-left truncate">{item.label}</span>
-                <ChevronDown
-                  size={14}
-                  className={cn("shrink-0 transition-transform duration-200", open && "rotate-180")}
-                />
-              </>
-            )}
-          </button>
-
-          {!isCollapsed && open && (
-            <div className="mt-0.5 ml-6 pl-3 border-l border-sidebar-border space-y-0.5">
-              {item.children.map((child) => (
-                <NavLink key={child.label} item={child} depth={depth + 1} />
-              ))}
-            </div>
-          )}
-        </div>
-      );
+    if (p.startsWith("/facturacion") || p.startsWith("/invoices") || p.startsWith("/articulos")) {
+      next.ventas = true;
+    }
+    if (p.startsWith("/clientes") || p.startsWith("/ctacte") || p.startsWith("/pagoscte")) {
+      next.clientes = true;
+    }
+    if (p.startsWith("/proveedores")) next.proveedores = true;
+    if (p.startsWith("/colaboradores")) next.colaboradores = true;
+    if (p.startsWith("/trabajos")) next.trabajos = true;
+    if (p.startsWith("/team") || p.startsWith("/settings") || p.startsWith("/categorias")) {
+      next.administracion = true;
     }
 
-    return (
-      <Link
-        href={item.href!}
-        onClick={() => { if (mobileOpen) closeMobile(); }}
-        className={cn(
-          "sidebar-item flex items-center rounded-xl px-3 py-2.5 text-sm font-medium gap-3",
-          "text-sidebar-foreground transition-colors",
-          active && "sidebar-item-active shadow-sm",
-          isCollapsed && "justify-center px-0"
-        )}
-        title={isCollapsed ? item.label : undefined}
-      >
-        <span className="shrink-0 opacity-90">{item.icon}</span>
-        {!isCollapsed && (
-          <span className="flex-1 truncate">{item.label}</span>
-        )}
-        {!isCollapsed && item.badge && (
-          <span className="ml-auto shrink-0 text-[10px] font-bold bg-brand-green text-white rounded-full px-1.5 py-0.5">
-            {item.badge}
-          </span>
-        )}
-      </Link>
-    );
+    setOpenMenus((prev) => ({ ...prev, ...next }));
+  }, [pathname]);
+
+  const menuItems: MenuItem[] = React.useMemo(
+    () => [
+      { title: "Panel General", icon: <Home className="h-5 w-5" />, path: "/dashboard" },
+      {
+        title: "Ventas",
+        icon: <DollarSign className="h-5 w-5" />,
+        key: "ventas",
+        children: [
+          { title: "Nueva Venta", icon: <ShoppingCart className="h-4 w-4" />, path: "/facturacion" },
+          { title: "Lista de Ventas", icon: <ListChecks className="h-4 w-4" />, path: "/invoices" },
+          { title: "Artículos", icon: <File className="h-4 w-4" />, path: "/articulos" },
+        ],
+      },
+      {
+        title: "Clientes",
+        icon: <Users className="h-5 w-5" />,
+        key: "clientes",
+        children: [
+          { title: "Lista de Clientes", icon: <Accessibility className="h-4 w-4" />, path: "/clientes" },
+          { title: "Cta Cte", icon: <Wallet className="h-4 w-4" />, path: "/ctacte" },
+          { title: "Pagos", icon: <UserPlus className="h-4 w-4" />, path: "/pagoscte" },
+        ],
+      },
+      {
+        title: "Proveedores",
+        icon: <Building2 className="h-5 w-5" />,
+        key: "proveedores",
+        children: [
+          { title: "Comprobantes", icon: <Receipt className="h-4 w-4" />, path: "/proveedores/comprobantes" },
+          { title: "Pagos", icon: <Wallet className="h-4 w-4" />, path: "/proveedores/pagos" },
+          { title: "CtaCte", icon: <Wallet className="h-4 w-4" />, path: "/proveedores/ctacte" },
+        ],
+      },
+      {
+        title: "Colaboradores",
+        icon: <BadgeCheck className="h-5 w-5" />,
+        key: "colaboradores",
+        children: [
+          { title: "Lista", icon: <Users2 className="h-4 w-4" />, path: "/colaboradores" },
+          { title: "Asistencias", icon: <Clock className="h-4 w-4" />, path: "/colaboradores/asistencias" },
+          { title: "Recibos", icon: <Receipt className="h-4 w-4" />, path: "/colaboradores/recibos" },
+        ],
+      },
+      {
+        title: "Trabajos",
+        icon: <Briefcase className="h-5 w-5" />,
+        key: "trabajos",
+        children: [
+          { title: "Ingresar", icon: <PlusCircle className="h-4 w-4" />, path: "/trabajos/ingresar" },
+          { title: "Consultar", icon: <ScanSearch className="h-4 w-4" />, path: "/trabajos/consultar" },
+        ],
+      },
+      { title: "Estadísticas", icon: <BarChart3 className="h-5 w-5" />, path: "/estadisticas" },
+      { title: "Reportes", icon: <FileText className="h-5 w-5" />, path: "/reportes" },
+      { title: "Operaciones", icon: <Search className="h-5 w-5" />, path: "/operaciones" },
+      {
+        title: "Administración",
+        icon: <SlidersHorizontal className="h-5 w-5" />,
+        key: "administracion",
+        children: [
+          { title: "Categorías", icon: <Tags className="h-4 w-4" />, path: "/categorias" },
+          { title: "Usuarios", icon: <User className="h-4 w-4" />, path: "/team" },
+          { title: "Empresa", icon: <Building className="h-4 w-4" />, path: "/settings" },
+        ],
+      },
+    ],
+    []
+  );
+
+  const toggleMenu = (key?: string) => {
+    if (!key) return;
+    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // ─── Inner sidebar content ────────────────────────────────────────────────
-  const SidebarContent = () => (
-    <div
-      className="flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border"
-      style={{ width: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
-    >
-      {/* Header */}
-      <div className={cn(
-        "flex items-center h-16 px-4 border-b border-sidebar-border shrink-0",
-        isCollapsed ? "justify-center" : "justify-between"
-      )}>
-        {!isCollapsed && (
-          <div className="flex flex-col leading-none">
-            <span className="text-lg font-bold tracking-tight text-sidebar-primary">ARTDENT</span>
-            <span className="text-[10px] text-sidebar-foreground/50 tracking-widest uppercase">CRM</span>
-          </div>
-        )}
-        <button
-          onClick={toggleCollapse}
-          className="hidden md:flex p-1.5 rounded-lg hover:bg-sidebar-accent transition-colors text-sidebar-foreground/70 hover:text-sidebar-foreground"
-          title={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
-        >
-          {isCollapsed
-            ? <ChevronRight size={16} />
-            : <ChevronLeft  size={16} />
-          }
-        </button>
+  const SidebarHeader = (
+    <div className="flex items-center justify-between border-b px-3 py-3">
+      <div className={cn("font-extrabold tracking-tight", isCollapsed ? "hidden" : "block")}>
+        ARTDENT
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {NAV.map((item) => (
-          <NavLink key={item.label} item={item} />
-        ))}
-      </nav>
+      <button
+        type="button"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted"
+        aria-label="Toggle sidebar"
+      >
+        <MenuIcon className="h-5 w-5" />
+      </button>
+    </div>
+  );
 
-      {/* Footer */}
+  function ItemButton({
+    item,
+    level = 0,
+    collapsed = false,
+  }: {
+    item: MenuItem;
+    level?: number;
+    collapsed?: boolean;
+  }) {
+    const active = isActive(pathname || "", item.path);
+    const base = "w-full flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-muted/70";
+    const activeCls = active ? "bg-primary text-primary-foreground hover:bg-primary" : "";
+    const indent = level > 0 ? "ml-2" : "";
+    const textWeight = active ? "font-bold" : level > 0 ? "font-medium" : "font-semibold";
+
+    const content = (
+      <div className={cn(base, activeCls, indent, collapsed && "justify-center px-2")}>
+        {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
+        {!collapsed && <span className={cn("truncate text-sm", textWeight)}>{item.title}</span>}
+        {!collapsed && level > 0 && <ChevronRight className="ml-auto h-4 w-4 opacity-50" />}
+      </div>
+    );
+
+    if (item.path) {
+      return (
+        <Link href={item.path} onClick={onClose}>
+          {content}
+        </Link>
+      );
+    }
+    return content;
+  }
+
+  function RenderExpanded() {
+    return (
+      <div className="px-2 py-2">
+        {menuItems.map((item) => {
+          const hasChildren = !!item.children?.length;
+          const open = item.key ? !!openMenus[item.key] : false;
+
+          if (!hasChildren) {
+            return (
+              <div key={item.key || item.path || item.title} className="my-1">
+                <ItemButton item={item} />
+              </div>
+            );
+          }
+
+          return (
+            <Collapsible.Root
+              key={item.key}
+              open={open}
+              onOpenChange={() => toggleMenu(item.key)}
+              className="my-1"
+            >
+              <Collapsible.Trigger asChild>
+                <button type="button" className="w-full" onClick={() => toggleMenu(item.key)}>
+                  <div className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-muted/70">
+                    <span className="shrink-0">{item.icon}</span>
+                    <span className="truncate text-sm font-semibold">{item.title}</span>
+                    <ChevronDown
+                      className={cn("ml-auto h-4 w-4 opacity-60 transition-transform", open && "rotate-180")}
+                    />
+                  </div>
+                </button>
+              </Collapsible.Trigger>
+
+              <Collapsible.Content className="mt-1 rounded-xl bg-muted/30 p-1">
+                {item.children!.map((child) => (
+                  <div key={child.path || child.title} className="my-1">
+                    <ItemButton item={child} level={1} />
+                  </div>
+                ))}
+              </Collapsible.Content>
+            </Collapsible.Root>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function RenderCollapsed() {
+    return (
+      <Tooltip.Provider delayDuration={200}>
+        <div className="px-2 py-2">
+          {menuItems.map((item) => {
+            if (!item.icon) return null;
+
+            const hasChildren = !!item.children?.length;
+            const active = isActive(pathname || "", item.path);
+
+            if (hasChildren) {
+              return (
+                <div key={item.key || item.title} className="my-1">
+                  <DropdownMenu.Root>
+                    <Tooltip.Root>
+                      <Tooltip.Trigger asChild>
+                        <DropdownMenu.Trigger asChild>
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full flex items-center justify-center rounded-xl px-2 py-2 transition hover:bg-muted/70",
+                              active && "bg-primary text-primary-foreground hover:bg-primary"
+                            )}
+                            aria-label={item.title}
+                          >
+                            {item.icon}
+                          </button>
+                        </DropdownMenu.Trigger>
+                      </Tooltip.Trigger>
+
+                      <Tooltip.Content side="right" className="rounded-md bg-foreground px-2 py-1 text-xs text-background shadow">
+                        {item.title}
+                        <Tooltip.Arrow className="fill-foreground" />
+                      </Tooltip.Content>
+                    </Tooltip.Root>
+
+                    <DropdownMenu.Content side="right" align="start" className="z-50 min-w-[220px] rounded-xl border bg-background p-1 shadow-lg">
+                      <div className="px-2 py-2 text-xs font-semibold text-muted-foreground">{item.title}</div>
+                      {item.children!.map((child) => {
+                        const childActive = isActive(pathname || "", child.path);
+                        return (
+                          <DropdownMenu.Item key={child.path || child.title} asChild>
+                            <Link
+                              href={child.path || "#"}
+                              onClick={onClose}
+                              className={cn(
+                                "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-muted",
+                                childActive && "bg-primary text-primary-foreground hover:bg-primary"
+                              )}
+                            >
+                              <span className="shrink-0">{child.icon}</span>
+                              <span className="truncate">{child.title}</span>
+                            </Link>
+                          </DropdownMenu.Item>
+                        );
+                      })}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Root>
+                </div>
+              );
+            }
+
+            return (
+              <div key={item.path || item.title} className="my-1">
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <Link
+                      href={item.path || "#"}
+                      onClick={onClose}
+                      className={cn(
+                        "w-full flex items-center justify-center rounded-xl px-2 py-2 transition hover:bg-muted/70",
+                        active && "bg-primary text-primary-foreground hover:bg-primary"
+                      )}
+                      aria-label={item.title}
+                    >
+                      {item.icon}
+                    </Link>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content side="right" className="rounded-md bg-foreground px-2 py-1 text-xs text-background shadow">
+                    {item.title}
+                    <Tooltip.Arrow className="fill-foreground" />
+                  </Tooltip.Content>
+                </Tooltip.Root>
+              </div>
+            );
+          })}
+        </div>
+      </Tooltip.Provider>
+    );
+  }
+
+  const DesktopSidebar = (
+    <aside
+      className="fixed left-0 top-0 z-40 h-screen border-r bg-background"
+      style={{ width: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
+    >
+      {SidebarHeader}
+
+      <div className="h-[calc(100vh-64px)] overflow-y-auto px-1 pb-3">
+        {isCollapsed ? <RenderCollapsed /> : <RenderExpanded />}
+      </div>
+
       {!isCollapsed && (
-        <div className="shrink-0 px-4 py-3 border-t border-sidebar-border">
-          <p className="text-[10px] text-sidebar-foreground/40 text-center">
-            ARTDENT © {new Date().getFullYear()}
-          </p>
+        <div className="border-t px-3 py-3 text-center">
+          <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground">
+            v1.0.0
+          </span>
         </div>
       )}
-    </div>
+    </aside>
+  );
+
+  const MobileDrawer = (
+    <Drawer.Root open={mobileOpen} onOpenChange={(v) => !v && onClose()}>
+      <Drawer.Portal>
+        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Drawer.Content className="fixed inset-y-0 left-0 z-50 w-[280px] bg-background border-r outline-none">
+          {/* Accesibilidad (evita warnings tipo DialogTitle) */}
+          <Drawer.Title className="sr-only">Menú</Drawer.Title>
+          <Drawer.Description className="sr-only">Navegación principal</Drawer.Description>
+
+          <div className="flex items-center justify-between border-b px-3 py-3">
+            <div className="font-extrabold tracking-tight">ARTDENT</div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted"
+              aria-label="Cerrar menú"
+            >
+              <MenuIcon className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="h-[calc(100vh-64px)] overflow-y-auto px-1 pb-3">
+            <div className="px-2 py-2">
+              {menuItems.map((item) => {
+                const hasChildren = !!item.children?.length;
+                const open = item.key ? !!openMenus[item.key] : false;
+
+                if (!hasChildren) {
+                  return (
+                    <div key={item.key || item.path || item.title} className="my-1">
+                      <ItemButton item={item} />
+                    </div>
+                  );
+                }
+
+                return (
+                  <Collapsible.Root
+                    key={item.key}
+                    open={open}
+                    onOpenChange={() => toggleMenu(item.key)}
+                    className="my-1"
+                  >
+                    <Collapsible.Trigger asChild>
+                      <button type="button" className="w-full" onClick={() => toggleMenu(item.key)}>
+                        <div className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-muted/70">
+                          <span className="shrink-0">{item.icon}</span>
+                          <span className="truncate text-sm font-semibold">{item.title}</span>
+                          <ChevronDown
+                            className={cn("ml-auto h-4 w-4 opacity-60 transition-transform", open && "rotate-180")}
+                          />
+                        </div>
+                      </button>
+                    </Collapsible.Trigger>
+
+                    <Collapsible.Content className="mt-1 rounded-xl bg-muted/30 p-1">
+                      {item.children!.map((child) => (
+                        <div key={child.path || child.title} className="my-1">
+                          <ItemButton item={child} level={1} />
+                        </div>
+                      ))}
+                    </Collapsible.Content>
+                  </Collapsible.Root>
+                );
+              })}
+            </div>
+
+            <div className="border-t px-3 py-3 text-center">
+              <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground">
+                v1.0.0
+              </span>
+            </div>
+          </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 
   return (
     <>
-      {/* Desktop: fixed sidebar */}
-      <aside
-        className="hidden md:flex fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-in-out"
-        style={{ width: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
-      >
-        <SidebarContent />
-      </aside>
-
-      {/* Mobile: drawer */}
-      {mobileOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40 bg-black/50 md:hidden"
-            onClick={closeMobile}
-          />
-          {/* Drawer */}
-          <aside className="fixed inset-y-0 left-0 z-50 md:hidden animate-slide-in">
-            <div className="relative h-full">
-              <SidebarContent />
-              {/* Close btn */}
-              <button
-                onClick={closeMobile}
-                className="absolute top-4 right-3 p-1.5 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/70"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </aside>
-        </>
-      )}
+      <div className="hidden md:block">{DesktopSidebar}</div>
+      <div className="md:hidden">{MobileDrawer}</div>
     </>
   );
 }

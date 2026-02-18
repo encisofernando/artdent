@@ -1,181 +1,252 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import * as React from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import Link from "next/link";
+
 import {
-  Menu, Sun, Moon, Bell, Settings, LogOut,
-  CheckCircle2, XCircle, Clock, Zap, User,
+  Menu,
+  Sun,
+  Moon,
+  Bell,
+  Settings,
+  LogOut,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Gauge,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useSidebarStore, SIDEBAR_WIDTH, COLLAPSED_WIDTH } from "@/stores/useSidebarStore";
-import { useAuthStore } from "@/stores/useAuthStore";
 
-// Status indicator
-type ApiStatus = "idle" | "ok" | "error";
+import { Companies, Products, Customers } from "@/services";
 
-export default function Topbar() {
-  const router   = useRouter();
+const TOPBAR_HEIGHT = 64;
+
+type TopbarProps = {
+  onOpenSidebar?: () => void;
+  onLogout?: () => void;
+  setIsAuthenticated?: (v: boolean) => void;
+};
+
+export default function Topbar({
+  setIsAuthenticated,
+  onOpenSidebar,
+  onLogout,
+}: TopbarProps) {
+  const router = useRouter();
   const pathname = usePathname();
+  const { setTheme, resolvedTheme } = useTheme();
 
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
+  // Importante: para evitar hydration mismatch, no usamos "isDark" para clases del header.
+  // Usamos colores por CSS variables (bg-background, border-border, etc).
+  // Solo usamos resolvedTheme para el ícono (y lo hacemos "safe" con mounted).
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const isDark = mounted ? resolvedTheme === "dark" : false;
 
-  const { isCollapsed, openMobile } = useSidebarStore();
-  const { user, logout } = useAuthStore();
+  const [apiOk, setApiOk] = React.useState<boolean | null>(null);
+  const [latencyMs, setLatencyMs] = React.useState<number | null>(null);
+  const [label, setLabel] = React.useState<string>("Sistema");
+  const [count, setCount] = React.useState<number | null>(null);
 
-  const [status,    setStatus]    = useState<ApiStatus>("idle");
-  const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [label,     setLabel]     = useState("Sistema");
+  const logout = React.useCallback(() => {
+    if (onLogout) onLogout();
+    else {
+      localStorage.removeItem("token");
+      localStorage.removeItem("artdent_token");
+      setIsAuthenticated?.(false);
+    }
+    router.push("/");
+  }, [onLogout, router, setIsAuthenticated]);
 
-  // Health check (lightweight ping)
-  useEffect(() => {
+  React.useEffect(() => {
     let cancelled = false;
-    setStatus("idle"); setLatencyMs(null);
 
-    const check = async () => {
-      const t0 = performance.now();
+    const run = async () => {
       try {
-        const token =
-          typeof window !== "undefined"
-            ? (localStorage.getItem("artdent_token") || localStorage.getItem("token"))
-            : null;
+        setApiOk(null);
+        setLatencyMs(null);
+        setCount(null);
 
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL ?? "https://api.artdent.com.ar/api"}/company`,
-          { headers: { Authorization: `Bearer ${token ?? ""}`, Accept: "application/json" }, signal: AbortSignal.timeout(6000) }
-        );
+        const t0 = performance.now();
 
+        if (
+          pathname.startsWith("/ventas") ||
+          pathname.startsWith("/facturacion") ||
+          pathname.startsWith("/articulos")
+        ) {
+          setLabel("Productos");
+          const rows = await Products.listProducts?.({ page: 1, per_page: 1 });
+          const list = Array.isArray(rows) ? rows : rows?.data ?? [];
+          if (!cancelled) {
+            setApiOk(true);
+            setLatencyMs(Math.round(performance.now() - t0));
+            setCount(list.length);
+          }
+          return;
+        }
+
+        if (pathname.startsWith("/clientes")) {
+          setLabel("Clientes");
+          const res = await Customers.list?.({ page: 1, per_page: 1 });
+          const list = Array.isArray(res) ? res : res?.data ?? [];
+          if (!cancelled) {
+            setApiOk(true);
+            setLatencyMs(Math.round(performance.now() - t0));
+            setCount(list.length);
+          }
+          return;
+        }
+
+        setLabel("Sistema");
+        await Companies.get?.();
         if (!cancelled) {
-          setStatus(res.ok ? "ok" : "error");
+          setApiOk(true);
           setLatencyMs(Math.round(performance.now() - t0));
-          setLabel(
-            pathname.startsWith("/facturacion") || pathname.startsWith("/articulos")
-              ? "Productos"
-              : pathname.startsWith("/clientes")
-              ? "Clientes"
-              : "Sistema"
-          );
         }
       } catch {
-        if (!cancelled) setStatus("error");
+        if (!cancelled) setApiOk(false);
       }
     };
 
-    check();
-    return () => { cancelled = true; };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
-  const statusConfig = useMemo(() => ({
-    idle:  { color: "text-yellow-400", dot: "bg-yellow-400", icon: <Clock     size={13} />, text: "Verificando" },
-    ok:    { color: "text-emerald-400", dot: "bg-emerald-400", icon: <CheckCircle2 size={13} />, text: "Conectado" },
-    error: { color: "text-red-400",    dot: "bg-red-400",    icon: <XCircle   size={13} />, text: "Error" },
-  }[status]), [status]);
+  const status = React.useMemo(() => {
+    if (apiOk === null) {
+      return {
+        dotClass: "bg-yellow-500 animate-pulse",
+        icon: <Loader2 className="h-4 w-4 animate-spin" />,
+        text: "Verificando",
+      };
+    }
+    if (apiOk) {
+      return {
+        dotClass: "bg-emerald-500",
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+        text: "Conectado",
+      };
+    }
+    return {
+      dotClass: "bg-rose-500",
+      icon: <AlertCircle className="h-4 w-4 text-rose-500" />,
+      text: "Error",
+    };
+  }, [apiOk]);
 
-  const handleLogout = useCallback(() => {
-    logout();
-    router.replace("/login");
-  }, [logout, router]);
-
-  const sidebarW = isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH;
-  const userInitial = user?.name ? String(user.name)[0].toUpperCase() : "A";
+  const toggleTheme = React.useCallback(() => {
+    // Ojo: si no está mounted, igual no pasa nada grave; es click del usuario.
+    setTheme(isDark ? "light" : "dark");
+  }, [isDark, setTheme]);
 
   return (
     <header
-      className={cn(
-        "fixed top-0 right-0 z-30 h-16 flex items-center",
-        "border-b border-border",
-        "bg-background/80 backdrop-blur-md",
-        "transition-all duration-300"
-      )}
-      style={{ left: `${sidebarW}px` }}
+      className="sticky top-0 z-[1100] w-full border-b backdrop-blur-xl bg-background/70 border-border"
+      style={{ height: TOPBAR_HEIGHT }}
     >
-      <div className="flex items-center gap-2 px-4 w-full">
-        {/* Hamburger (mobile) */}
+      <div className="h-full px-3 sm:px-4 flex items-center gap-2">
+        {/* Menú móvil */}
         <button
-          onClick={openMobile}
-          className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+          type="button"
+          onClick={onOpenSidebar}
+          className="md:hidden inline-flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/40"
+          aria-label="Abrir menú"
         >
-          <Menu size={18} className="text-foreground/70" />
+          <Menu className="h-5 w-5" />
         </button>
 
-        {/* API Status pill */}
-        <div className={cn(
-          "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border",
-          "bg-card border-border text-sm font-medium min-w-[160px]"
-        )}>
-          <span className={cn("w-2 h-2 rounded-full shrink-0", statusConfig.dot,
-            status === "idle" && "animate-pulse"
-          )} />
-          <span className="text-foreground/80 truncate">{label}</span>
-          {latencyMs !== null && (
-            <span className={cn(
-              "ml-auto flex items-center gap-0.5 text-xs font-semibold",
-              statusConfig.color
-            )}>
-              <Zap size={11} />
-              {latencyMs}ms
-            </span>
-          )}
-          <span className={cn("ml-1", statusConfig.color)}>
-            {statusConfig.icon}
-          </span>
+        {/* Panel de estado (OCULTO EN MOBILE) */}
+        <div className="hidden md:flex items-center gap-3 rounded-2xl border border-border px-3 py-2 min-w-0 w-[360px] bg-card/60">
+          <span className={["h-3 w-3 rounded-full", status.dotClass].join(" ")} />
+
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-extrabold truncate">{label}</span>
+
+                {typeof count === "number" && (
+                  <span
+                    className="text-[11px] font-semibold rounded-full px-2 py-[2px] border border-border bg-muted/40 text-foreground/90"
+                    title="Cantidad (muestra 1 por el health-check)"
+                  >
+                    {count}
+                  </span>
+                )}
+              </div>
+
+              <div className="text-[11px] truncate text-muted-foreground">
+                {status.text}
+              </div>
+            </div>
+
+            {latencyMs !== null && (
+              <span
+                className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[11px] font-semibold border border-border bg-muted/40"
+                title="Latencia"
+              >
+                <Gauge className="h-3 w-3" />
+                {latencyMs}ms
+              </span>
+            )}
+          </div>
+
+          {status.icon}
         </div>
 
         <div className="flex-1" />
 
-        {/* Actions */}
-        <div className="flex items-center gap-1">
-          {/* Theme toggle */}
+        {/* Acciones */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setTheme(isDark ? "light" : "dark")}
+            type="button"
+            onClick={toggleTheme}
+            className="inline-flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/40"
+            aria-label={isDark ? "Modo claro" : "Modo oscuro"}
             title={isDark ? "Modo claro" : "Modo oscuro"}
-            className="p-2 rounded-lg hover:bg-accent transition-colors text-foreground/70 hover:text-foreground"
           >
-            {isDark ? <Sun size={17} /> : <Moon size={17} />}
+            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
 
-          {/* Notificaciones */}
           <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/40"
+            aria-label="Notificaciones"
             title="Notificaciones"
-            className="p-2 rounded-lg hover:bg-accent transition-colors text-foreground/70 hover:text-foreground relative"
           >
-            <Bell size={17} />
-            {/* Badge ejemplo */}
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-brand-green rounded-full" />
+            <Bell className="h-5 w-5" />
           </button>
 
-          {/* Settings */}
-          <Link
-            href="/settings"
-            title="Configuración"
-            className="hidden sm:flex p-2 rounded-lg hover:bg-accent transition-colors text-foreground/70 hover:text-foreground"
-          >
-            <Settings size={17} />
-          </Link>
-
-          {/* Logout */}
           <button
-            onClick={handleLogout}
-            title="Cerrar sesión"
-            className="p-2 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-foreground/70"
+            type="button"
+            onClick={() => router.push("/settings")}
+            className="hidden sm:inline-flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/40"
+            aria-label="Configuración"
+            title="Configuración"
           >
-            <LogOut size={17} />
+            <Settings className="h-5 w-5" />
           </button>
 
-          {/* Avatar */}
-          <Link
-            href="/profile"
-            className={cn(
-              "flex items-center justify-center w-8 h-8 rounded-xl ml-1",
-              "bg-brand-green text-white font-bold text-sm",
-              "hover:opacity-90 transition-opacity"
-            )}
-            title="Mi perfil"
+          <button
+            type="button"
+            onClick={logout}
+            className="inline-flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/40"
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
           >
-            {user?.name ? userInitial : <User size={14} />}
-          </Link>
+            <LogOut className="h-5 w-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/profile")}
+            className="ml-1 h-9 w-9 rounded-full grid place-items-center font-extrabold text-sm border border-border bg-emerald-500/20 text-emerald-200"
+            aria-label="Perfil"
+            title="Perfil"
+          >
+            A
+          </button>
         </div>
       </div>
     </header>

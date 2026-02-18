@@ -12,6 +12,8 @@ return [
         'http://127.0.0.1:5175',
         'http://localhost:8000',
         'http://127.0.0.1:8000',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
         'https://shop.artdent.com.ar',
         'https://pos.artdent.com.ar',
     ],
