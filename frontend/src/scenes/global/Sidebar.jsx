@@ -1,29 +1,25 @@
-// src/scenes/global/Sidebar.jsx - COMPLETAMENTE NUEVO Y PROFESIONAL
-import { useEffect, useState, useMemo } from "react";
+// src/scenes/global/Sidebar.jsx
+import { useEffect, useMemo, useState } from "react";
 import {
+  Box,
   Drawer,
   List,
-  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Box,
-  IconButton,
   Typography,
   Collapse,
-  useTheme,
-  useMediaQuery,
   Divider,
-  Chip,
-  alpha,
-  Tooltip,
-  Menu,
+  IconButton,
+  Popover,
   MenuItem,
+  useMediaQuery,
+  useTheme,
+  alpha,
 } from "@mui/material";
-import { Link, useLocation } from "react-router-dom";
-import { tokens } from "../../theme";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
-// Iconos
+// Icons
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import LocalAtmIcon from "@mui/icons-material/LocalAtm";
@@ -37,9 +33,8 @@ import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import TuneIcon from "@mui/icons-material/Tune";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
-// Iconos secundarios
+// Sub-icons
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import ArticleIcon from "@mui/icons-material/Article";
@@ -55,510 +50,441 @@ import CategoryIcon from "@mui/icons-material/Category";
 import PersonIcon from "@mui/icons-material/Person";
 import ApartmentIcon from "@mui/icons-material/Apartment";
 
-export const SIDEBAR_WIDTH = 280;
-export const COLLAPSED_WIDTH = 80;
+export const SIDEBAR_WIDTH = 288;
+export const COLLAPSED_WIDTH = 76;
 
-const Sidebar = ({ mobileOpen, onClose, isCollapsed, setIsCollapsed }) => {
+export default function Sidebar({
+  mobileOpen,
+  onClose, // cierra Drawer en mobile
+  isCollapsed,
+  setIsCollapsed,
+}) {
   const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
-  const isDark = theme.palette.mode === "dark";
-  const mdDown = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
+  const navigate = useNavigate();
 
+  // Mobile detection robusto (breakpoint + fallback)
+  const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+  const narrow = useMediaQuery("(max-width: 900px)");
+  const isMobile = mdDown || narrow;
+
+  // Submenús en modo expandido
   const [openMenus, setOpenMenus] = useState({});
-  const [popupMenu, setPopupMenu] = useState(null); // Para menú flotante en modo colapsado
-  const [popupMenuItems, setPopupMenuItems] = useState([]); // Items del menú flotante
 
-  // Colores del sidebar
-  const sidebarColors = useMemo(
-    () => ({
-      bg: isDark ? colors.primary[800] : '#fff',
-      text: isDark ? colors.grey[100] : colors.grey[100],
-      textSecondary: isDark ? colors.grey[300] : colors.grey[400],
-      hover: isDark ? alpha(colors.primary[700], 0.6) : alpha(colors.grey[900], 0.8),
-      active: isDark ? colors.primary[600] : colors.greenAccent[500],
-      activeText: '#fff',
-      border: isDark ? alpha('#fff', 0.08) : colors.outline,
-      expandBg: isDark ? alpha(colors.primary[700], 0.4) : alpha(colors.grey[900], 0.5),
-    }),
-    [isDark, colors]
+  // Popover para modo colapsado (solo desktop)
+  const [popoverAnchor, setPopoverAnchor] = useState(null);
+  const [popoverParent, setPopoverParent] = useState(null);
+
+  const palette = useMemo(() => {
+    const isDark = theme.palette.mode === "dark";
+    return {
+      isDark,
+      bg: isDark ? theme.palette.background.default : theme.palette.background.paper,
+      text: isDark ? theme.palette.grey[100] : theme.palette.grey[900],
+      textMuted: isDark ? theme.palette.grey[400] : theme.palette.grey[600],
+      border: alpha(isDark ? "#fff" : "#000", 0.08),
+      hover: alpha(isDark ? "#fff" : "#000", isDark ? 0.06 : 0.05),
+      activeBg: alpha(theme.palette.primary.main, isDark ? 0.22 : 0.12),
+      activeText: isDark ? "#fff" : theme.palette.grey[900],
+      expandBg: alpha(isDark ? "#fff" : "#000", isDark ? 0.04 : 0.03),
+    };
+  }, [theme]);
+
+  const menuItems = useMemo(
+    () => [
+      { title: "Panel General", icon: <HomeOutlinedIcon />, path: "/" },
+
+      {
+        title: "Ventas",
+        icon: <LocalAtmIcon />,
+        key: "ventas",
+        children: [
+          { title: "Nueva Venta", icon: <AddShoppingCartIcon />, path: "/facturacion" },
+          { title: "Lista de Ventas", icon: <ListAltIcon />, path: "/invoices" },
+          { title: "Artículos", icon: <ArticleIcon />, path: "/articulos" },
+        ],
+      },
+
+      {
+        title: "Clientes",
+        icon: <PeopleOutlinedIcon />,
+        key: "clientes",
+        children: [
+          { title: "Lista de Clientes", icon: <AccessibilityIcon />, path: "/clientes" },
+          { title: "Cta Cte", icon: <AccountBalanceWalletIcon />, path: "/ctacte" },
+          { title: "Pagos", icon: <PersonAddAlt1Icon />, path: "/pagoscte" },
+        ],
+      },
+
+      {
+        title: "Proveedores",
+        icon: <AddBusinessIcon />,
+        key: "proveedores",
+        children: [
+          { title: "Comprobantes", icon: <ReceiptLongIcon />, path: "/proveedores/comprobantes" },
+          { title: "Pagos", icon: <AccountBalanceWalletIcon />, path: "/proveedores/pagos" },
+          { title: "CtaCte", icon: <AccountBalanceWalletIcon />, path: "/proveedores/ctacte" },
+        ],
+      },
+
+      {
+        title: "Colaboradores",
+        icon: <BadgeIcon />,
+        key: "colaboradores",
+        children: [
+          { title: "Lista", icon: <GroupsIcon />, path: "/colaboradores" },
+          { title: "Asistencias", icon: <AccessTimeIcon />, path: "/colaboradores/asistencias" },
+          { title: "Recibos", icon: <ReceiptLongIcon />, path: "/colaboradores/recibos" },
+        ],
+      },
+
+      {
+        title: "Trabajos",
+        icon: <WorkIcon />,
+        key: "trabajos",
+        children: [
+          { title: "Ingresar", icon: <AddCircleOutlineIcon />, path: "/trabajos/ingresar" },
+          { title: "Consultar", icon: <SearchIcon />, path: "/trabajos/consultar" },
+        ],
+      },
+
+      { title: "Estadísticas", icon: <SignalCellularAltIcon />, path: "/estadisticas" },
+      { title: "Reportes", icon: <AnalyticsIcon />, path: "/reportes" },
+      { title: "Operaciones", icon: <ManageSearchIcon />, path: "/operaciones" },
+
+      {
+        title: "Administración",
+        icon: <TuneIcon />,
+        key: "administracion",
+        children: [
+          { title: "Categorías", icon: <CategoryIcon />, path: "/categorias" },
+          { title: "Usuarios", icon: <PersonIcon />, path: "/team" },
+          { title: "Empresa", icon: <ApartmentIcon />, path: "/settings" },
+        ],
+      },
+    ],
+    []
   );
 
-  const handleToggle = (menu) => {
-    setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
+  const isActive = (path) => (path ? location.pathname === path : false);
+
+  const toggleMenu = (key) => setOpenMenus((p) => ({ ...p, [key]: !p[key] }));
+
+  const closeCollapsedPopover = () => {
+    setPopoverAnchor(null);
+    setPopoverParent(null);
   };
 
-  const handlePopupOpen = (event, item) => {
-    setPopupMenu(event.currentTarget);
-    setPopupMenuItems(item.children || []);
+  const openCollapsedPopover = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPopoverAnchor(e.currentTarget);
+    setPopoverParent(item);
   };
 
-  const handlePopupClose = () => {
-    setPopupMenu(null);
-    setPopupMenuItems([]);
-  };
-
-  const isActive = (path) => location.pathname === path;
-
-  // Auto-expandir según ruta
+  // Auto-expand por ruta + cierres en cambios de ruta
   useEffect(() => {
-    if (location.pathname.startsWith("/facturacion") || location.pathname.startsWith("/invoices") || location.pathname.startsWith("/articulos")) {
-      setOpenMenus((prev) => ({ ...prev, ventas: true }));
-    }
-    if (location.pathname.startsWith("/clientes")) {
-      setOpenMenus((prev) => ({ ...prev, clientes: true }));
-    }
-    if (location.pathname.startsWith("/proveedores")) {
-      setOpenMenus((prev) => ({ ...prev, proveedores: true }));
-    }
-    if (location.pathname.startsWith("/colaboradores")) {
-      setOpenMenus((prev) => ({ ...prev, colaboradores: true }));
-    }
-    if (location.pathname.startsWith("/trabajos")) {
-      setOpenMenus((prev) => ({ ...prev, trabajos: true }));
-    }
-    if (location.pathname.startsWith("/team") || location.pathname.startsWith("/settings") || location.pathname.startsWith("/categorias")) {
-      setOpenMenus((prev) => ({ ...prev, administracion: true }));
-    }
+    const p = location.pathname;
 
-    if (mdDown && onClose) onClose();
-  }, [location.pathname, mdDown, onClose]);
+    const next = {};
+    if (p.startsWith("/facturacion") || p.startsWith("/invoices") || p.startsWith("/articulos")) next.ventas = true;
+    if (p.startsWith("/clientes") || p.startsWith("/ctacte") || p.startsWith("/pagoscte")) next.clientes = true;
+    if (p.startsWith("/proveedores")) next.proveedores = true;
+    if (p.startsWith("/colaboradores")) next.colaboradores = true;
+    if (p.startsWith("/trabajos")) next.trabajos = true;
+    if (p.startsWith("/team") || p.startsWith("/settings") || p.startsWith("/categorias")) next.administracion = true;
 
-  // Estructura del menú
-  const menuItems = [
-    {
-      title: "Panel General",
-      icon: <HomeOutlinedIcon />,
-      path: "/",
-    },
-    {
-      title: "Ventas",
-      icon: <LocalAtmIcon />,
-      key: "ventas",
-      children: [
-        { title: "Nueva Venta", icon: <AddShoppingCartIcon />, path: "/facturacion" },
-        { title: "Lista de Ventas", icon: <ListAltIcon />, path: "/invoices" },
-        { title: "Artículos", icon: <ArticleIcon />, path: "/articulos" },
-      ],
-    },
-    {
-      title: "Clientes",
-      icon: <PeopleOutlinedIcon />,
-      key: "clientes",
-      children: [
-        { title: "Lista de Clientes", icon: <AccessibilityIcon />, path: "/clientes" },
-        { title: "Cta Cte", icon: <AccountBalanceWalletIcon />, path: "/ctacte" },
-        { title: "Pagos", icon: <PersonAddAlt1Icon />, path: "/pagoscte" },
-      ],
-    },
-    {
-      title: "Proveedores",
-      icon: <AddBusinessIcon />,
-      key: "proveedores",
-      children: [
-        { title: "Comprobantes", icon: <ReceiptLongIcon />, path: "/proveedores/comprobantes" },
-        { title: "Pagos", icon: <AccountBalanceWalletIcon />, path: "/proveedores/pagos" },
-        { title: "CtaCte", icon: <AccountBalanceWalletIcon />, path: "/proveedores/ctacte" },
-      ],
-    },
-    {
-      title: "Colaboradores",
-      icon: <BadgeIcon />,
-      key: "colaboradores",
-      children: [
-        { title: "Lista", icon: <GroupsIcon />, path: "/colaboradores" },
-        { title: "Asistencias", icon: <AccessTimeIcon />, path: "/colaboradores/asistencias" },
-        { title: "Recibos", icon: <ReceiptLongIcon />, path: "/colaboradores/recibos" },
-      ],
-    },
-    {
-      title: "Trabajos",
-      icon: <WorkIcon />,
-      key: "trabajos",
-      children: [
-        { title: "Ingresar", icon: <AddCircleOutlineIcon />, path: "/trabajos/ingresar" },
-        { title: "Consultar", icon: <SearchIcon />, path: "/trabajos/consultar" },
-      ],
-    },
-    {
-      title: "Estadísticas",
-      icon: <SignalCellularAltIcon />,
-      key: "estadisticas",
-    },
-    {
-      title: "Reportes",
-      icon: <AnalyticsIcon />,
-      key: "reportes",
-    },
-    {
-      title: "Operaciones",
-      icon: <ManageSearchIcon />,
-      key: "operaciones",
-    },
-    {
-      title: "Administración",
-      icon: <TuneIcon />,
-      key: "administracion",
-      children: [
-        { title: "Categorías", icon: <CategoryIcon />, path: "/categorias" },
-        { title: "Usuarios", icon: <PersonIcon />, path: "/team" },
-        { title: "Empresa", icon: <ApartmentIcon />, path: "/settings" },
-      ],
-    },
-  ];
+    setOpenMenus((prev) => ({ ...prev, ...next }));
 
-  const renderMenuItem = (item, level = 0) => {
-    const hasChildren = item.children && item.children.length > 0;
-    const isOpen = openMenus[item.key];
-    const isItemActive = item.path && isActive(item.path);
+    // Mobile: cerrar Drawer al navegar
+    if (isMobile && onClose) onClose();
+
+    // Cerrar popover (desktop colapsado) al navegar
+    closeCollapsedPopover();
+  }, [location.pathname]); // intencional: solo por navegación
+
+  // Si estamos en mobile, jamás usar popover y no tiene sentido "colapsar"
+  useEffect(() => {
+    if (isMobile) closeCollapsedPopover();
+  }, [isMobile]);
+
+  const width = isMobile ? SIDEBAR_WIDTH : isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH;
+
+  const ExpandedItem = ({ item, level = 0 }) => {
+    const hasChildren = !!item.children?.length;
+    const active = !!item.path && isActive(item.path);
+
+    const baseSx = {
+      mx: 1.5,
+      my: 0.5,
+      borderRadius: 2,
+      px: 1.75,
+      py: level ? 1.0 : 1.15,
+      transition: "background-color .15s ease, transform .15s ease",
+      color: palette.text,
+      "&:hover": { bgcolor: palette.hover, transform: "translateX(2px)" },
+    };
 
     if (hasChildren) {
+      const open = !!openMenus[item.key];
       return (
         <Box key={item.key}>
-          <ListItemButton
-            onClick={() => handleToggle(item.key)}
-            sx={{
-              py: 1.5,
-              px: 2,
-              mx: 1.5,
-              my: 0.5,
-              borderRadius: 2,
-              transition: "all 0.2s ease",
-              "&:hover": {
-                bgcolor: sidebarColors.hover,
-                transform: "translateX(4px)",
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40, color: sidebarColors.text }}>
-              {item.icon}
-            </ListItemIcon>
+          <ListItemButton onClick={() => toggleMenu(item.key)} sx={baseSx}>
+            <ListItemIcon sx={{ minWidth: 38, color: palette.text }}>{item.icon}</ListItemIcon>
             <ListItemText
               primary={item.title}
-              primaryTypographyProps={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: sidebarColors.text,
-              }}
+              primaryTypographyProps={{ fontSize: 13.5, fontWeight: 800 }}
             />
-            {isOpen ? <ExpandLess /> : <ExpandMore />}
+            {open ? <ExpandLess /> : <ExpandMore />}
           </ListItemButton>
 
-          <Collapse in={isOpen} timeout="auto" unmountOnExit>
-            <List
-              disablePadding
-              sx={{
-                bgcolor: sidebarColors.expandBg,
-                mx: 1.5,
-                mb: 1,
-                borderRadius: 2,
-                py: 1,
-              }}
-            >
-              {item.children.map((child) => renderMenuItem(child, level + 1))}
-            </List>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ mx: 1.5, mb: 0.75, borderRadius: 2, bgcolor: palette.expandBg, py: 0.75 }}>
+              <List disablePadding>
+                {item.children.map((c) => (
+                  <ExpandedItem key={c.path || c.title} item={c} level={level + 1} />
+                ))}
+              </List>
+            </Box>
           </Collapse>
         </Box>
       );
     }
 
-    const content = (
+    return (
       <ListItemButton
+        key={item.path || item.title}
         component={item.path ? Link : "div"}
         to={item.path || undefined}
         sx={{
-          py: level > 0 ? 1 : 1.5,
-          px: 2,
-          mx: level > 0 ? 1 : 1.5,
-          my: 0.5,
-          borderRadius: 2,
-          bgcolor: isItemActive ? sidebarColors.active : "transparent",
-          color: isItemActive ? sidebarColors.activeText : sidebarColors.text,
-          transition: "all 0.2s ease",
-          "&:hover": {
-            bgcolor: isItemActive ? sidebarColors.active : sidebarColors.hover,
-            transform: "translateX(4px)",
-          },
-          ...(isItemActive && {
-            boxShadow: isDark
-              ? "0 4px 12px rgba(0,0,0,0.3)"
-              : "0 4px 12px rgba(79,178,134,0.25)",
-          }),
+          ...baseSx,
+          pl: level ? 4.25 : 1.75,
+          bgcolor: active ? palette.activeBg : "transparent",
+          "&:hover": { bgcolor: active ? palette.activeBg : palette.hover, transform: "translateX(2px)" },
         }}
       >
-        {item.icon && (
-          <ListItemIcon
-            sx={{
-              minWidth: 40,
-              color: isItemActive ? sidebarColors.activeText : sidebarColors.text,
-            }}
-          >
-            {item.icon}
-          </ListItemIcon>
-        )}
+        {item.icon && <ListItemIcon sx={{ minWidth: 38, color: palette.text }}>{item.icon}</ListItemIcon>}
         <ListItemText
           primary={item.title}
           primaryTypographyProps={{
-            fontSize: level > 0 ? 13 : 14,
-            fontWeight: isItemActive ? 700 : level > 0 ? 500 : 600,
-            color: isItemActive ? sidebarColors.activeText : sidebarColors.text,
+            fontSize: level ? 13 : 13.5,
+            fontWeight: active ? 900 : level ? 700 : 800,
+            color: active ? palette.activeText : palette.text,
           }}
         />
-        {level > 0 && <ChevronRightIcon sx={{ fontSize: 16, opacity: 0.5 }} />}
       </ListItemButton>
     );
-
-    return <Box key={item.key || item.path}>{content}</Box>;
   };
 
-  const drawerContent = (
+  const Content = (
     <Box
       sx={{
-        width: mdDown ? SIDEBAR_WIDTH : (isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH),
-        height: "100vh",
-        bgcolor: sidebarColors.bg,
+        width,
+        height: "100%",
+        bgcolor: palette.bg,
+        borderRight: `1px solid ${palette.border}`,
         display: "flex",
         flexDirection: "column",
-        borderRight: `1px solid ${sidebarColors.border}`,
-        boxShadow: isDark
-          ? "4px 0 12px rgba(0,0,0,0.3)"
-          : "4px 0 12px rgba(0,0,0,0.08)",
-        transition: "width 0.3s ease",
       }}
     >
       {/* Header */}
       <Box
         sx={{
-          p: 2,
+          height: 64,
+          px: 1.5,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderBottom: `1px solid ${sidebarColors.border}`,
-          minHeight: 64,
         }}
       >
-        {(!isCollapsed || mdDown) && (
-          <Typography
-            variant="h5"
-            fontWeight={800}
-            sx={{
-              color: sidebarColors.text,
-              letterSpacing: -0.5,
-            }}
-          >
-            ARTDENT
-          </Typography>
+        {(!isCollapsed || isMobile) ? (
+          <Box sx={{ pl: 0.5 }}>
+            <Typography sx={{ fontWeight: 900, letterSpacing: -0.5, color: palette.text }}>
+              ARTDENT
+            </Typography>
+            <Typography sx={{ fontSize: 11.5, color: palette.textMuted, mt: -0.25 }}>
+              Back Office
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ width: 1 }} />
         )}
+
         <IconButton
-          onClick={() => mdDown ? onClose() : setIsCollapsed(!isCollapsed)}
-          sx={{
-            color: sidebarColors.text,
-            display: { xs: "flex", md: "flex" },
+          onClick={() => {
+            // Mobile: cerrar Drawer. Desktop: colapsar/expandir.
+            if (isMobile) onClose?.();
+            else setIsCollapsed?.(!isCollapsed);
           }}
+          sx={{ color: palette.text }}
+          aria-label={isMobile ? "Cerrar menú" : "Colapsar menú"}
         >
           <MenuOutlinedIcon />
         </IconButton>
       </Box>
 
-      {/* Menu List */}
+      <Divider sx={{ borderColor: palette.border }} />
+
+      {/* List */}
       <Box
         sx={{
           flex: 1,
           overflowY: "auto",
-          overflowX: "hidden",
           py: 1,
-          "&::-webkit-scrollbar": {
-            width: "6px",
-          },
-          "&::-webkit-scrollbar-track": {
-            background: "transparent",
-          },
+          "&::-webkit-scrollbar": { width: 6 },
           "&::-webkit-scrollbar-thumb": {
-            background: isDark ? alpha("#fff", 0.2) : colors.grey[600],
-            borderRadius: "3px",
-            "&:hover": {
-              background: isDark ? alpha("#fff", 0.3) : colors.grey[500],
-            },
+            background: alpha(palette.isDark ? "#fff" : "#000", 0.18),
+            borderRadius: 6,
           },
         }}
       >
         <List disablePadding>
-          {(isCollapsed && !mdDown) ? (
-            // Modo colapsado: Todos los iconos con popup para submenús
+          {/* Desktop colapsado: iconos + popover */}
+          {!isMobile && isCollapsed ? (
             <>
               {menuItems.map((item) => {
-                if (!item.icon) return null;
-                const hasChildren = item.children && item.children.length > 0;
-                const isItemActive = item.path && isActive(item.path);
-                
+                const hasChildren = !!item.children?.length;
+                const active = !!item.path && isActive(item.path);
+
                 return (
-                  <Tooltip key={item.key || item.path} title={item.title} placement="right" arrow>
+                  <Box key={item.key || item.path || item.title} sx={{ mx: 1, my: 0.5 }}>
                     <ListItemButton
-                      component={!hasChildren && item.path ? Link : "div"}
+                      component={!hasChildren && item.path ? Link : "button"}
                       to={!hasChildren && item.path ? item.path : undefined}
-                      onClick={(e) => hasChildren ? handlePopupOpen(e, item) : undefined}
+                      type={!hasChildren && item.path ? undefined : "button"}
+                      onClick={(e) => {
+                        if (hasChildren) openCollapsedPopover(e, item);
+                      }}
                       sx={{
-                        py: 1.5,
-                        px: 2,
-                        mx: 1,
-                        my: 0.5,
                         borderRadius: 2,
-                        bgcolor: isItemActive ? sidebarColors.active : "transparent",
+                        height: 46,
                         justifyContent: "center",
-                        transition: "all 0.2s ease",
-                        "&:hover": {
-                          bgcolor: isItemActive ? sidebarColors.active : sidebarColors.hover,
-                        },
-                        ...(isItemActive && {
-                          boxShadow: isDark
-                            ? "0 4px 12px rgba(0,0,0,0.3)"
-                            : "0 4px 12px rgba(79,178,134,0.25)",
-                        }),
+                        bgcolor: active ? palette.activeBg : "transparent",
+                        "&:hover": { bgcolor: active ? palette.activeBg : palette.hover },
                       }}
                     >
-                      <ListItemIcon
-                        sx={{
-                          minWidth: 0,
-                          color: isItemActive ? sidebarColors.activeText : sidebarColors.text,
-                        }}
-                      >
+                      <ListItemIcon sx={{ minWidth: 0, color: active ? palette.activeText : palette.text }}>
                         {item.icon}
                       </ListItemIcon>
                     </ListItemButton>
-                  </Tooltip>
+                  </Box>
                 );
               })}
-              
-              {/* Menú Popup para submenús */}
-              <Menu
-                anchorEl={popupMenu}
-                open={Boolean(popupMenu)}
-                onClose={handlePopupClose}
-                anchorOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'left',
-                }}
+
+              <Popover
+                open={Boolean(popoverAnchor && popoverParent)}
+                anchorEl={popoverAnchor}
+                onClose={closeCollapsedPopover}
+                anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "left" }}
                 PaperProps={{
                   sx: {
                     ml: 1,
-                    minWidth: 200,
-                    bgcolor: sidebarColors.bg,
-                    border: `1px solid ${sidebarColors.border}`,
-                    boxShadow: isDark
-                      ? "0 8px 24px rgba(0,0,0,0.4)"
-                      : "0 8px 24px rgba(0,0,0,0.15)",
+                    minWidth: 240,
+                    bgcolor: palette.bg,
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    boxShadow: palette.isDark
+                      ? "0 12px 30px rgba(0,0,0,.45)"
+                      : "0 12px 30px rgba(0,0,0,.18)",
                   },
                 }}
               >
-                {popupMenuItems.map((child) => {
-                  const isChildActive = child.path && isActive(child.path);
-                  return (
-                    <MenuItem
-                      key={child.path || child.title}
-                      component={child.path ? Link : "div"}
-                      to={child.path || undefined}
-                      onClick={handlePopupClose}
-                      sx={{
-                        py: 1.5,
-                        px: 2,
-                        gap: 1.5,
-                        bgcolor: isChildActive ? sidebarColors.active : "transparent",
-                        color: isChildActive ? sidebarColors.activeText : sidebarColors.text,
-                        "&:hover": {
-                          bgcolor: isChildActive ? sidebarColors.active : sidebarColors.hover,
-                        },
-                      }}
-                    >
-                      {child.icon && (
-                        <ListItemIcon
-                          sx={{
-                            minWidth: 0,
-                            color: isChildActive ? sidebarColors.activeText : sidebarColors.text,
-                          }}
-                        >
-                          {child.icon}
-                        </ListItemIcon>
-                      )}
-                      <Typography variant="body2" sx={{ fontWeight: isChildActive ? 700 : 500 }}>
-                        {child.title}
-                      </Typography>
-                    </MenuItem>
-                  );
-                })}
-              </Menu>
+                <Box sx={{ px: 1.5, py: 1.25, borderBottom: `1px solid ${palette.border}` }}>
+                  <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: palette.text }}>
+                    {popoverParent?.title}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ py: 0.5 }}>
+                  {(popoverParent?.children || []).map((child) => {
+                    const active = !!child.path && isActive(child.path);
+
+                    return (
+                      <MenuItem
+                        key={child.path || child.title}
+                        onClick={() => {
+                          closeCollapsedPopover();
+                          if (child.path) navigate(child.path);
+                        }}
+                        sx={{
+                          py: 1.1,
+                          px: 1.5,
+                          gap: 1.25,
+                          bgcolor: active ? palette.activeBg : "transparent",
+                          "&:hover": { bgcolor: active ? palette.activeBg : palette.hover },
+                          color: palette.text,
+                        }}
+                      >
+                        {child.icon && (
+                          <ListItemIcon sx={{ minWidth: 0, color: "inherit" }}>
+                            {child.icon}
+                          </ListItemIcon>
+                        )}
+                        <Typography sx={{ fontSize: 13.5, fontWeight: active ? 900 : 750 }}>
+                          {child.title}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })}
+                </Box>
+              </Popover>
             </>
           ) : (
-            // Modo expandido: menú completo (siempre en móvil)
-            menuItems.map((item) => renderMenuItem(item))
+            // Mobile y desktop expandido
+            menuItems.map((item) => <ExpandedItem key={item.key || item.path || item.title} item={item} />)
           )}
         </List>
       </Box>
 
-      {/* Footer */}
-      {(!isCollapsed || mdDown) && (
-        <Box
-          sx={{
-            p: 2,
-            borderTop: `1px solid ${sidebarColors.border}`,
-            textAlign: "center",
-          }}
-        >
-          <Chip
-            label="v1.0.0"
-            size="small"
-            sx={{
-              bgcolor: sidebarColors.active,
-              color: "#fff",
-              fontWeight: 600,
-              fontSize: 10,
-            }}
-          />
+      <Divider sx={{ borderColor: palette.border }} />
+
+      {/* Footer (no en colapsado desktop) */}
+      {(!isCollapsed || isMobile) && (
+        <Box sx={{ p: 1.5 }}>
+          <Typography sx={{ fontSize: 11.5, color: palette.textMuted }}>
+            © {new Date().getFullYear()} ARTDENT
+          </Typography>
         </Box>
       )}
     </Box>
   );
 
-  // Renderizado condicional: Drawer en móvil, Box fijo en desktop
-  if (mdDown) {
+  // MOBILE: Drawer (esto es lo que debe abrir)
+  if (isMobile) {
     return (
       <Drawer
+        anchor="left"
         variant="temporary"
-        open={mobileOpen}
+        open={Boolean(mobileOpen)}
         onClose={onClose}
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
             width: SIDEBAR_WIDTH,
-            bgcolor: "transparent",
-            boxShadow: "none",
+            bgcolor: palette.bg,
           },
         }}
       >
-        {drawerContent}
+        {Content}
       </Drawer>
     );
   }
 
-  // Fijo en desktop
+  // DESKTOP: fijo
   return (
     <Box
       sx={{
         position: "fixed",
-        left: 0,
         top: 0,
+        left: 0,
         height: "100vh",
-        width: isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH,
+        width,
         zIndex: 1200,
-        transition: "width 0.3s ease",
       }}
     >
-      {drawerContent}
+      {Content}
     </Box>
   );
-};
-
-export default Sidebar;
+}

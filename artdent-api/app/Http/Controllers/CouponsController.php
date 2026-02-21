@@ -10,7 +10,7 @@ class CouponsController extends Controller
     /**
      * POST /api/coupons/validate
      */
-    public function validate(Request $request)
+   public function validateCoupon(Request $request)
     {
         $data = $request->validate([
             'code' => 'required|string',

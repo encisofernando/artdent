@@ -72,7 +72,7 @@ Route::get('/products/{product}/reviews', [ReviewsController::class, 'index']);
 
 // ── Cupones públicos
 Route::get('/coupons/available', [CouponsController::class, 'available']);
-Route::post('/coupons/validate', [CouponsController::class, 'validate']);
+Route::post('/coupons/validate', [CouponsController::class, 'validateCoupon']);
 
 // Enviar mensaje de contacto (público)
 Route::post('/contact', [ContactController::class, 'store'])
