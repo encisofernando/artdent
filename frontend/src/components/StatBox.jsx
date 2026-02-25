@@ -1,110 +1,114 @@
-import { Box, Typography, useTheme, Stack, Avatar, LinearProgress } from "@mui/material";
-import { tokens } from "../theme";
-import { TrendingUp as TrendingUpIcon, TrendingDown as TrendingDownIcon } from "@mui/icons-material";
+// src/components/StatBox.jsx
+//
+// Props (backward-compatible con el original):
+//   title      – label del métrico (e.g. "Nuevos Clientes")
+//   subtitle   – valor principal  (e.g. "1.325")
+//   icon       – ReactNode (elemento MUI Icon)
+//   progress   – string|number 0–1 (e.g. "0.75")
+//   increase   – string (e.g. "+14%" o "-3%")
+//   color      – (opcional) color de acento; default brand green #5AAD9C
+//
+import { Box, Typography, Stack, useTheme } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import TrendingUpIcon   from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import ProgressCircle   from "./ProgressCircle";
 
-const StatBox = ({ title, subtitle, icon, progress, increase }) => {
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
+const StatBox = ({ title, subtitle, icon, progress, increase, color }) => {
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
 
-  const progressValue = parseFloat(progress) || 0;
-  const increaseValue = parseFloat(increase?.replace('%', '').replace('+', '')) || 0;
-  const isPositive = increaseValue >= 0;
+  const accent   = color ?? "#5AAD9C";
+  const rawInc   = parseFloat((increase || "0").replace("%", "").replace("+", "")) || 0;
+  const isPos    = rawInc >= 0;
+  const trendCol = isPos ? "#5AAD9C" : "#E63946";
+
+  const textCol  = isDark ? "#E6EEF5"                 : "#1A202C";
+  const mutedCol = isDark ? "rgba(230,238,245,0.45)"  : "rgba(26,32,44,0.45)";
 
   return (
-    <Box 
-      width="100%" 
-      sx={{ 
+    <Box
+      sx={{
         p: 2.5,
-        position: 'relative',
-        overflow: 'hidden',
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.75,
       }}
     >
-      {/* Círculo de fondo decorativo */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: -30,
-          right: -30,
-          width: 120,
-          height: 120,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${colors.greenAccent[500]}15 0%, transparent 70%)`,
-        }}
-      />
-
-      <Stack spacing={2} position="relative">
-        {/* Header con icono */}
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-          <Box>
-            <Avatar
-              sx={{
-                width: 48,
-                height: 48,
-                bgcolor: `${colors.greenAccent[500]}20`,
-                mb: 1.5,
-              }}
-            >
-              {icon}
-            </Avatar>
-            
-            <Typography
-              variant="h3"
-              fontWeight={700}
-              sx={{ color: colors.grey[100], mb: 0.5 }}
-            >
-              {title}
-            </Typography>
-            
-            <Typography 
-              variant="body2" 
-              sx={{ color: colors.greenAccent[500], fontWeight: 600 }}
-            >
-              {subtitle}
-            </Typography>
-          </Box>
-        </Stack>
-
-        {/* Progress bar */}
-        <Box>
-          <LinearProgress
-            variant="determinate"
-            value={progressValue * 100}
-            sx={{
-              height: 8,
-              borderRadius: 4,
-              bgcolor: theme.palette.mode === 'dark' ? colors.primary[500] : '#e2e8f0',
-              '& .MuiLinearProgress-bar': {
-                bgcolor: colors.greenAccent[500],
-                borderRadius: 4,
-              },
-            }}
-          />
+      {/* ── Top: ícono + circle ── */}
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+        {/* Icon badge */}
+        <Box
+          sx={{
+            width: 42,
+            height: 42,
+            borderRadius: "11px",
+            bgcolor: alpha(accent, isDark ? 0.18 : 0.1),
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: accent,
+            flexShrink: 0,
+            "& svg": { fontSize: 21 },
+          }}
+        >
+          {icon}
         </Box>
 
-        {/* Trend indicator */}
-        <Stack direction="row" alignItems="center" spacing={1}>
-          {isPositive ? (
-            <TrendingUpIcon sx={{ fontSize: 18, color: colors.greenAccent[500] }} />
-          ) : (
-            <TrendingDownIcon sx={{ fontSize: 18, color: '#f87171' }} />
-          )}
+        <ProgressCircle progress={progress} size={42} color={accent} />
+      </Stack>
+
+      {/* ── Valor + label ── */}
+      <Box>
+        <Typography
+          sx={{
+            fontSize: 24,
+            fontWeight: 800,
+            color: textCol,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.15,
+            fontFamily: "Montserrat, sans-serif",
+          }}
+        >
+          {subtitle}
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: mutedCol,
+            textTransform: "uppercase",
+            letterSpacing: "0.07em",
+            mt: 0.5,
+          }}
+        >
+          {title}
+        </Typography>
+      </Box>
+
+      {/* ── Trend ── */}
+      {increase !== undefined && (
+        <Stack direction="row" alignItems="center" spacing={0.6} mt="auto">
+          {isPos
+            ? <TrendingUpIcon   sx={{ fontSize: 15, color: trendCol }} />
+            : <TrendingDownIcon sx={{ fontSize: 15, color: trendCol }} />
+          }
           <Typography
-            variant="body2"
-            fontWeight={600}
-            sx={{ 
-              color: isPositive ? colors.greenAccent[500] : '#f87171',
+            sx={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: trendCol,
+              fontFamily: "Montserrat, sans-serif",
             }}
           >
-            {increase}
+            {rawInc > 0 && !String(increase).startsWith("+") ? "+" : ""}{increase}
           </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: colors.grey[300] }}
-          >
-            vs último periodo
+          <Typography sx={{ fontSize: 11, color: mutedCol }}>
+            vs período anterior
           </Typography>
         </Stack>
-      </Stack>
+      )}
     </Box>
   );
 };

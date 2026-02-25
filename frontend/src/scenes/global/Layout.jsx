@@ -5,16 +5,18 @@ import Sidebar, { SIDEBAR_WIDTH, COLLAPSED_WIDTH } from "./Sidebar";
 import Topbar from "./Topbar";
 
 export default function Layout({ children, setIsAuthenticated }) {
-  const theme = useTheme();
-  const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+  const theme   = useTheme();
+  const mdDown  = useMediaQuery(theme.breakpoints.down("md"));
+  const narrow  = useMediaQuery("(max-width: 900px)");
+  const isMobile = mdDown || narrow;
 
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen]   = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const leftOffset = useMemo(() => {
-    if (mdDown) return 0;
+    if (isMobile) return 0;
     return isCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH;
-  }, [mdDown, isCollapsed]);
+  }, [isMobile, isCollapsed]);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -30,7 +32,10 @@ export default function Layout({ children, setIsAuthenticated }) {
           flex: 1,
           minWidth: 0,
           ml: { xs: 0, md: `${leftOffset}px` },
-          transition: "margin-left .2s ease",
+          transition: "margin-left .22s cubic-bezier(.4,0,.2,1)",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
         }}
       >
         <Topbar
@@ -38,7 +43,15 @@ export default function Layout({ children, setIsAuthenticated }) {
           onOpenSidebar={() => setMobileOpen(true)}
         />
 
-        <Box component="main" sx={{ p: { xs: 2, md: 3 } }}>
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            p: { xs: 2, sm: 2.5, md: 3 },
+            // Fondo ligeramente diferente al sidebar para dar profundidad
+            bgcolor: "background.default",
+          }}
+        >
           {children}
         </Box>
       </Box>

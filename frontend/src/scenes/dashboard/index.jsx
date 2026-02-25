@@ -1,184 +1,157 @@
-import { useState, useEffect, useCallback } from 'react';
-import { 
-  Box, 
-  Button, 
-  IconButton, 
-  Typography, 
-  useTheme,
-  Card,
-  CardContent,
-  Grid,
-  Paper,
-  Stack,
-  Avatar,
-  Chip,
-  LinearProgress,
-  Divider,
-  TextField,
-  MenuItem,
-  Dialog,
-  DialogContent,
-  Snackbar,
-  Alert,
-  CircularProgress,
-  ToggleButtonGroup,
-  ToggleButton,
-} from "@mui/material";
-import { tokens } from "../../theme";
+// src/scenes/dashboard/index.jsx
+import { useState, useEffect, useCallback } from "react";
 import {
-  DownloadOutlined as DownloadIcon,
-  Email as EmailIcon,
-  PointOfSale as SalesIcon,
-  PersonAdd as PersonAddIcon,
-  Traffic as TrafficIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  AttachMoney as MoneyIcon,
-  ShowChart as ChartIcon,
-  Fullscreen as FullscreenIcon,
-  Close as CloseIcon,
-  CalendarToday as CalendarIcon,
-  Refresh as RefreshIcon,
-} from "@mui/icons-material";
-import Header from "../../components/Header";
-import LineChart from "../../components/LineChart";
-import GeographyChart from "../../components/GeographyChart";
-import BarChart from "../../components/BarChart";
-import PieChart from "../../components/PieChart";
+  Box, Button, IconButton, Typography, useTheme,
+  Card, CardContent, Grid, Stack, Avatar, Chip,
+  LinearProgress, Dialog, DialogContent, Snackbar,
+  Alert, CircularProgress, Tooltip, Divider,
+  TextField,
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import { tokens } from "../../theme";
 
-// ✅ IMPORTAR SERVICIO REAL
+import DownloadOutlinedIcon    from "@mui/icons-material/DownloadOutlined";
+import PointOfSaleIcon         from "@mui/icons-material/PointOfSale";
+import PersonAddIcon           from "@mui/icons-material/PersonAdd";
+import TrafficIcon             from "@mui/icons-material/Traffic";
+import AttachMoneyIcon         from "@mui/icons-material/AttachMoney";
+import TrendingUpIcon          from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon        from "@mui/icons-material/TrendingDown";
+import FullscreenIcon          from "@mui/icons-material/Fullscreen";
+import CloseIcon               from "@mui/icons-material/Close";
+import RefreshIcon             from "@mui/icons-material/Refresh";
+import ShowChartIcon           from "@mui/icons-material/ShowChart";
+
+import LineChart       from "../../components/LineChart";
+import GeographyChart  from "../../components/GeographyChart";
+import BarChart        from "../../components/BarChart";
+import PieChart        from "../../components/PieChart";
 import * as DashboardService from "../../services/dashboardService";
 
-// ========================================
-// STATCARD COMPONENT - DISEÑO PROFESIONAL
-// ========================================
-// Reemplazar desde línea ~52 hasta ~204 en index.jsx
+/* ─── Brand palette shortcuts ─── */
+const B = {
+  blue:    "#397B9C",
+  green:   "#5AAD9C",
+  mint:    "#ACD6CE",
+  teal:    "#49949C",
+  blueSoft:"#7CA5C3",
+};
 
-const StatCard = ({ title, value, subtitle, icon: Icon, trend, progress, loading = false }) => {
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
-  const isDark = theme.palette.mode === 'dark';
-  
+/* ─── Period tabs ─── */
+const PERIODS = [
+  { value: "today",  label: "Hoy"    },
+  { value: "week",   label: "Semana" },
+  { value: "month",  label: "Mes"    },
+  { value: "year",   label: "Año"    },
+  { value: "custom", label: "Custom" },
+];
+
+/* ══════════════════════════════════════════════
+   STAT CARD
+   ══════════════════════════════════════════════ */
+const ACCENT_COLORS = [B.blue, B.green, B.teal, B.blueSoft];
+
+const StatCard = ({ title, value, subtitle, icon: Icon, trend, progress, accentColor = B.blue, loading = false }) => {
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
+  const cardBg   = isDark ? "#172A36" : "#fff";
+  const borderCol = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+  const labelCol  = isDark ? "rgba(230,238,245,0.5)"  : "rgba(26,32,44,0.5)";
+  const valueCol  = isDark ? "#E6EEF5" : "#1A202C";
+  const subCol    = isDark ? "rgba(230,238,245,0.65)" : "rgba(26,32,44,0.6)";
+
   return (
     <Card
+      elevation={0}
       sx={{
-        height: '100%',
-        background: isDark 
-          ? `linear-gradient(135deg, ${colors.primary[400]} 0%, ${colors.primary[500]} 100%)`
-          : colors.surface,
-        borderRadius: 3,
-        border: isDark ? 'none' : `2px solid ${colors.outline}`,
-        position: 'relative',
-        overflow: 'hidden',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          transform: 'translateY(-4px)',
+        height: "100%",
+        bgcolor: cardBg,
+        border: `1px solid ${borderCol}`,
+        borderRadius: "14px",
+        overflow: "hidden",
+        position: "relative",
+        transition: "box-shadow .2s, transform .2s",
+        "&:hover": {
+          transform: "translateY(-2px)",
           boxShadow: isDark
-            ? '0 12px 40px rgba(0,0,0,0.3)'
-            : '0 8px 24px rgba(0,0,0,0.08)',
+            ? `0 8px 32px rgba(0,0,0,.35)`
+            : `0 8px 28px rgba(0,0,0,.09)`,
+        },
+        // Thin colored top border as accent
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0, left: 0, right: 0,
+          height: 3,
+          background: `linear-gradient(90deg, ${accentColor}, ${alpha(accentColor, 0.5)})`,
+          borderRadius: "14px 14px 0 0",
         },
       }}
     >
-      <CardContent sx={{ p: 3 }}>
+      <CardContent sx={{ p: 2.75 }}>
         {loading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" height="140px">
-            <CircularProgress size={40} sx={{ color: isDark ? '#fff' : colors.primary[500] }} />
+          <Box display="flex" justifyContent="center" alignItems="center" height={120}>
+            <CircularProgress size={32} sx={{ color: accentColor }} />
           </Box>
         ) : (
-          <Stack spacing={2.5}>
-            {/* Header con ícono */}
+          <Stack spacing={2}>
+            {/* Icon + label row */}
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-              <Box flex={1}>
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    color: isDark ? 'rgba(255,255,255,0.7)' : colors.grey[400],
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
-                    mb: 1,
-                    fontSize: 11,
-                  }}
-                >
+              <Box>
+                <Typography sx={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+                  textTransform: "uppercase", color: labelCol, mb: 1,
+                }}>
                   {title}
                 </Typography>
-                <Typography 
-                  variant="h3" 
-                  sx={{ 
-                    color: isDark ? '#fff' : colors.grey[100],
-                    fontWeight: 800,
-                    mb: 0.5,
-                    lineHeight: 1.2,
-                  }}
-                >
+                <Typography sx={{
+                  fontSize: 28, fontWeight: 800, color: valueCol,
+                  lineHeight: 1.1, letterSpacing: "-0.02em",
+                }}>
                   {value}
                 </Typography>
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    color: isDark ? 'rgba(255,255,255,0.85)' : colors.grey[300],
-                    fontSize: 13,
-                  }}
-                >
+                <Typography sx={{ fontSize: 12.5, color: subCol, mt: 0.5 }}>
                   {subtitle}
                 </Typography>
               </Box>
-              
-              <Avatar
-                sx={{
-                  width: 56,
-                  height: 56,
-                  bgcolor: isDark 
-                    ? 'rgba(255,255,255,0.15)'
-                    : colors.greenAccent[500],
-                  color: '#fff',
-                  boxShadow: isDark 
-                    ? 'none'
-                    : '0 4px 12px rgba(79,178,134,0.25)',
-                }}
-              >
-                <Icon sx={{ fontSize: 28 }} />
-              </Avatar>
+
+              <Box sx={{
+                width: 44, height: 44,
+                borderRadius: "12px",
+                bgcolor: alpha(accentColor, isDark ? 0.18 : 0.1),
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <Icon sx={{ fontSize: 22, color: accentColor }} />
+              </Box>
             </Stack>
 
             {/* Progress bar */}
             {progress !== undefined && (
-              <Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={progress * 100}
-                  sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    bgcolor: isDark 
-                      ? 'rgba(255,255,255,0.1)'
-                      : colors.grey[700],
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: isDark ? '#fff' : colors.greenAccent[500],
-                      borderRadius: 4,
-                    },
-                  }}
-                />
-              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={progress * 100}
+                sx={{
+                  height: 4, borderRadius: 4,
+                  bgcolor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)",
+                  "& .MuiLinearProgress-bar": { bgcolor: accentColor, borderRadius: 4 },
+                }}
+              />
             )}
-            
-            {/* Trend indicator */}
+
+            {/* Trend */}
             {trend !== undefined && (
-              <Stack direction="row" alignItems="center" spacing={0.75}>
-                {trend > 0 ? (
-                  <TrendingUpIcon sx={{ fontSize: 18, color: colors.greenAccent[500] }} />
-                ) : (
-                  <TrendingDownIcon sx={{ fontSize: 18, color: colors.redAccent[500] }} />
-                )}
-                <Typography
-                  variant="caption"
-                  sx={{ 
-                    color: trend > 0 ? colors.greenAccent[500] : colors.redAccent[500],
-                    fontWeight: 700,
-                    fontSize: 12,
-                  }}
-                >
-                  {trend > 0 ? '+' : ''}{trend}% vs anterior
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                {trend > 0
+                  ? <TrendingUpIcon   sx={{ fontSize: 15, color: B.green }} />
+                  : <TrendingDownIcon sx={{ fontSize: 15, color: "#E63946" }} />
+                }
+                <Typography sx={{
+                  fontSize: 11.5, fontWeight: 700,
+                  color: trend > 0 ? B.green : "#E63946",
+                }}>
+                  {trend > 0 ? "+" : ""}{trend}% vs anterior
                 </Typography>
               </Stack>
             )}
@@ -189,326 +162,394 @@ const StatCard = ({ title, value, subtitle, icon: Icon, trend, progress, loading
   );
 };
 
-// ========================================
-// TRANSACTIONCARD COMPONENT - DISEÑO PROFESIONAL
-// ========================================
-// Reemplazar desde línea ~206 hasta ~280 en index.jsx
+/* ══════════════════════════════════════════════
+   TRANSACTION ROW
+   ══════════════════════════════════════════════ */
+const TransactionRow = ({ transaction, isDark }) => {
+  const borderCol = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+  const textCol   = isDark ? "#E6EEF5" : "#1A202C";
+  const mutedCol  = isDark ? "rgba(230,238,245,0.45)" : "rgba(26,32,44,0.45)";
 
-const TransactionCard = ({ transaction }) => {
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
-  const isDark = theme.palette.mode === 'dark';
-  
+  // Formatear fecha compacta: "01/09/2025 00:00" → "01/09/25"
+  const fmtDate = (d) => {
+    if (!d) return "";
+    const parts = d.split(" ")[0].split("/");
+    if (parts.length === 3) return `${parts[0]}/${parts[1]}/${parts[2].slice(-2)}`;
+    return d.split(" ")[0];
+  };
+
+  // Formatear monto: $246586.00 → $246.5K
+  const fmtAmt = (c) => {
+    const n = parseFloat(c) || 0;
+    if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`;
+    if (n >= 1e3) return `$${(n/1e3).toFixed(1)}K`;
+    return `$${n.toLocaleString("es-AR")}`;
+  };
+
   return (
-    <Paper
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={1.25}
+      sx={{
+        py: 0.85,
+        px: 1,
+        borderBottom: `1px solid ${borderCol}`,
+        borderRadius: "6px",
+        transition: "background-color .13s",
+        "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.025)" },
+        "&:last-child": { borderBottom: "none" },
+      }}
+    >
+      {/* Avatar compacto */}
+      <Avatar sx={{
+        width: 28, height: 28, flexShrink: 0,
+        background: `linear-gradient(135deg, ${B.blue}, ${B.green})`,
+        color: "#fff", fontSize: 11, fontWeight: 800,
+        fontFamily: "Montserrat, sans-serif",
+      }}>
+        {transaction.user.charAt(0).toUpperCase()}
+      </Avatar>
+
+      {/* ID + user — se trunca si es largo */}
+      <Box flex={1} minWidth={0}>
+        <Typography noWrap sx={{
+          fontSize: 12, fontWeight: 700, color: textCol,
+          lineHeight: 1.25, letterSpacing: "-0.01em",
+        }}>
+          {transaction.txId}
+        </Typography>
+        <Typography noWrap sx={{ fontSize: 10.5, color: mutedCol, lineHeight: 1.2 }}>
+          {transaction.user}
+        </Typography>
+      </Box>
+
+      {/* Monto + fecha — compactos */}
+      <Stack alignItems="flex-end" flexShrink={0} spacing={0}>
+        <Typography sx={{
+          fontSize: 12.5, fontWeight: 700,
+          color: B.green, fontFamily: "Montserrat, sans-serif",
+          lineHeight: 1.25,
+        }}>
+          {fmtAmt(transaction.cost)}
+        </Typography>
+        <Typography sx={{ fontSize: 10, color: mutedCol, whiteSpace: "nowrap", lineHeight: 1.2 }}>
+          {fmtDate(transaction.date)}
+        </Typography>
+      </Stack>
+    </Stack>
+  );
+};
+
+/* ══════════════════════════════════════════════
+   FULLSCREEN MODAL
+   ══════════════════════════════════════════════ */
+const FullscreenModal = ({ open, onClose, title, children }) => (
+  <Dialog
+    open={open}
+    onClose={onClose}
+    fullScreen
+    PaperProps={{ sx: { bgcolor: "background.default" } }}
+  >
+    <DialogContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Typography sx={{ fontSize: 20, fontWeight: 700, fontFamily: "Montserrat, sans-serif" }}>
+          {title}
+        </Typography>
+        <IconButton onClick={onClose} sx={{ borderRadius: "8px" }}>
+          <CloseIcon />
+        </IconButton>
+      </Stack>
+      <Box flex={1}>{children}</Box>
+    </DialogContent>
+  </Dialog>
+);
+
+/* ══════════════════════════════════════════════
+   CHART CARD wrapper
+   ══════════════════════════════════════════════ */
+const ChartCard = ({ title, subtitle, onFullscreen, onDownload, headerRight, children, isDark, height = "100%" }) => {
+  const borderCol = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+  const textCol   = isDark ? "#E6EEF5" : "#1A202C";
+  const mutedCol  = isDark ? "rgba(230,238,245,0.5)" : "rgba(26,32,44,0.5)";
+
+  return (
+    <Card
       elevation={0}
       sx={{
-        p: 2,
-        mb: 1.5,
-        borderRadius: 2.5,
-        bgcolor: isDark ? colors.primary[400] : colors.surface,
-        border: `1px solid ${colors.outline}`,
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          bgcolor: isDark ? colors.primary[500] : colors.grey[900],
-          transform: 'translateX(4px)',
-          borderColor: isDark ? colors.primary[300] : colors.grey[700],
-        },
+        height,
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: isDark ? "#172A36" : "#fff",
+        border: `1px solid ${borderCol}`,
+        borderRadius: "14px",
+        overflow: "hidden",   // ← necesario para que el scroll interno funcione
       }}
     >
-      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
-        {/* Avatar + Info */}
-        <Stack direction="row" alignItems="center" spacing={2} flex={1} minWidth={0}>
-          <Avatar
-            sx={{
-              width: 44,
-              height: 44,
-              bgcolor: colors.greenAccent[500],
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 16,
-              flexShrink: 0,
-            }}
-          >
-            {transaction.user.charAt(0).toUpperCase()}
-          </Avatar>
-          
-          <Box flex={1} minWidth={0}>
-            <Typography 
-              variant="body2" 
-              fontWeight={700}
-              noWrap
-              sx={{ 
-                color: isDark ? '#fff' : colors.grey[100],
-                fontSize: 13,
-              }}
-            >
-              {transaction.txId}
-            </Typography>
-            <Typography 
-              variant="caption" 
-              noWrap
-              sx={{ 
-                color: isDark ? colors.grey[300] : colors.grey[400],
-                fontSize: 12,
-              }}
-            >
-              {transaction.user}
-            </Typography>
-          </Box>
-        </Stack>
-
-        {/* Amount + Date */}
-        <Stack alignItems="flex-end" spacing={0.5} flexShrink={0}>
-          <Chip
-            label={`$${transaction.cost}`}
-            size="small"
-            sx={{
-              bgcolor: colors.greenAccent[500],
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 12,
-              height: 24,
-              minWidth: 80,
-              '& .MuiChip-label': {
-                px: 1.5,
-              },
-            }}
-          />
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              fontSize: 10,
-              color: isDark ? colors.grey[400] : colors.grey[400],
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {transaction.date}
-          </Typography>
-        </Stack>
-      </Stack>
-    </Paper>
-  );
-};
-
-// ====== MODAL FULLSCREEN PARA GRÁFICOS ======
-const FullscreenChartModal = ({ open, onClose, title, children }) => {
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullScreen
-      PaperProps={{
-        sx: {
-          bgcolor: 'background.default',
-        },
-      }}
-    >
-      <DialogContent>
-        <Stack spacing={2} height="100%">
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="h4" fontWeight={700}>
+      {/* CardContent no usa padding bottom para no desperdiciar espacio */}
+      <Box sx={{ p: 2.75, pb: 2, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+        {/* Header */}
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2} flexShrink={0}>
+          <Box>
+            <Typography sx={{ fontSize: 14.5, fontWeight: 700, color: textCol, lineHeight: 1.2 }}>
               {title}
             </Typography>
-            <IconButton onClick={onClose} size="large">
-              <CloseIcon />
-            </IconButton>
-          </Stack>
-          <Box flex={1}>
-            {children}
+            {subtitle && (
+              <Typography sx={{ fontSize: 12, color: mutedCol, mt: 0.4 }}>
+                {subtitle}
+              </Typography>
+            )}
           </Box>
+
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {headerRight}
+            {onFullscreen && (
+              <Tooltip title="Pantalla completa" arrow>
+                <IconButton
+                  size="small" onClick={onFullscreen}
+                  sx={{
+                    width: 30, height: 30, borderRadius: "7px",
+                    color: mutedCol,
+                    "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)", color: textCol },
+                  }}
+                >
+                  <FullscreenIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {onDownload && (
+              <Tooltip title="Descargar" arrow>
+                <IconButton
+                  size="small" onClick={onDownload}
+                  sx={{
+                    width: 30, height: 30, borderRadius: "7px",
+                    bgcolor: alpha(B.green, 0.14),
+                    color: B.green,
+                    "&:hover": { bgcolor: alpha(B.green, 0.22) },
+                  }}
+                >
+                  <DownloadOutlinedIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Stack>
         </Stack>
-      </DialogContent>
-    </Dialog>
+
+        {/* Content — flex:1 + minHeight:0 permite que el scroll funcione */}
+        <Box sx={{ flex: 1, minHeight: 0 }}>
+          {children}
+        </Box>
+      </Box>
+    </Card>
   );
 };
 
-// ====== COMPONENTE PRINCIPAL CON DATOS REALES ======
+/* ══════════════════════════════════════════════
+   MAIN DASHBOARD
+   ══════════════════════════════════════════════ */
 const Dashboard = () => {
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
 
-  // Estados
-  const [period, setPeriod] = useState('month');
-  const [customDates, setCustomDates] = useState({ start: '', end: '' });
-  const [stats, setStats] = useState(null);
+  const [period, setPeriod]           = useState("month");
+  const [customDates, setCustomDates] = useState({ start: "", end: "" });
+  const [stats, setStats]             = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
-  const [salesData, setSalesData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [salesData, setSalesData]     = useState([]);
+  const [loading, setLoading]         = useState(true);
   const [fullscreenChart, setFullscreenChart] = useState(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [snackbar, setSnackbar]       = useState({ open: false, message: "", severity: "success" });
 
-  // Cargar datos iniciales
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = period === 'custom' && customDates.start && customDates.end
-        ? { period, start_date: customDates.start, end_date: customDates.end }
-        : { period };
+      const params =
+        period === "custom" && customDates.start && customDates.end
+          ? { period, start_date: customDates.start, end_date: customDates.end }
+          : { period };
 
-      // Cargar en paralelo
-      const [statsResponse, transactionsResponse, revenueResponse, salesResponse] = await Promise.all([
+      const [statsRes, txRes, revRes, salesRes] = await Promise.all([
         DashboardService.getStats(params),
         DashboardService.getRecentTransactions(10),
-        DashboardService.getChartData('revenue', period),
-        DashboardService.getChartData('sales', period),
+        DashboardService.getChartData("revenue", params),
+        DashboardService.getChartData("sales", params),
       ]);
 
-      setStats(statsResponse);
-      setTransactions(transactionsResponse);
-      setRevenueData(revenueResponse);
-      setSalesData(salesResponse);
-
-      setSnackbar({
-        open: true,
-        message: 'Dashboard actualizado',
-        severity: 'success',
-      });
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar datos del dashboard',
-        severity: 'error',
-      });
+      setStats(statsRes);
+      setTransactions(txRes);
+      setRevenueData(revRes);
+      setSalesData(salesRes);
+      setSnackbar({ open: true, message: "Dashboard actualizado", severity: "success" });
+    } catch (err) {
+      console.error("Error loading dashboard:", err);
+      setSnackbar({ open: true, message: "Error al cargar datos", severity: "error" });
     } finally {
       setLoading(false);
     }
   }, [period, customDates]);
 
+  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+
   useEffect(() => {
-    fetchDashboardData();
+    const id = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(id);
   }, [fetchDashboardData]);
 
-  // Auto-refresh cada 30 segundos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchDashboardData();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
-
-  // Exportar PDF
   const handleExportPDF = async () => {
     try {
-      const params = period === 'custom' && customDates.start && customDates.end
+      const params = period === "custom" && customDates.start && customDates.end
         ? { period, start_date: customDates.start, end_date: customDates.end }
         : { period };
-
       await DashboardService.exportPDF(params);
-      setSnackbar({
-        open: true,
-        message: 'PDF descargado exitosamente',
-        severity: 'success',
-      });
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al exportar PDF',
-        severity: 'error',
-      });
+      setSnackbar({ open: true, message: "PDF descargado", severity: "success" });
+    } catch (err) {
+      setSnackbar({ open: true, message: "Error al exportar PDF", severity: "error" });
     }
   };
 
-  // Formatear números
-  const formatNumber = (num) => {
-    if (!num) return '0';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toLocaleString('es-AR');
-  };
+  const fmt  = (n) => { if (!n) return "0"; if (n >= 1e6) return `${(n/1e6).toFixed(1)}M`; if (n >= 1e3) return `${(n/1e3).toFixed(1)}K`; return n.toLocaleString("es-AR"); };
+  const fmtC = (n) => `$${fmt(n || 0)}`;
 
-  const formatCurrency = (num) => {
-    if (!num) return '$0';
-    return `$${formatNumber(num)}`;
-  };
+  // Color tokens for UI elements
+  const borderCol = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+  const textCol   = isDark ? "#E6EEF5" : "#1A202C";
+  const mutedCol  = isDark ? "rgba(230,238,245,0.45)" : "rgba(26,32,44,0.45)";
+  const cardBg    = isDark ? "#172A36" : "#fff";
+
+  /* ── Period pie donut values ── */
+  const rev   = stats?.current?.revenue || 0;
+  const tax   = stats?.current?.tax || 0;
+  const total = rev + tax || 1;
+  const pct   = Math.round((rev / total) * 100);
+  const deg   = (rev / total) * 360;
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* HEADER CON FILTROS */}
-      <Stack 
-        direction={{ xs: "column", sm: "row" }} 
-        justifyContent="space-between" 
+    <Box sx={{ p: { xs: 2, md: 2.5 } }}>
+
+      {/* ══ HEADER ══ */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
         alignItems={{ xs: "flex-start", sm: "center" }}
         spacing={2}
-        mb={4}
+        mb={3.5}
       >
         <Box>
-          <Typography variant="h3" fontWeight={700} color={colors.grey[100]} gutterBottom>
+          <Typography sx={{
+            fontSize: 22, fontWeight: 800, color: textCol,
+            letterSpacing: "-0.02em", fontFamily: "Montserrat, sans-serif",
+            lineHeight: 1.2,
+          }}>
             Panel de Control
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Análisis en tiempo real de tu negocio
+          <Typography sx={{ fontSize: 13, color: mutedCol, mt: 0.4 }}>
+            Análisis en tiempo real · ArtDent Laboratorio
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={2} flexWrap="wrap">
-          {/* Selector de Período */}
-          <ToggleButtonGroup
-            value={period}
-            exclusive
-            onChange={(e, val) => val && setPeriod(val)}
-            size="small"
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          {/* Period selector */}
+          <Stack
+            direction="row"
+            sx={{
+              borderRadius: "10px",
+              border: `1px solid ${borderCol}`,
+              bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+              p: 0.4,
+              gap: 0.25,
+            }}
           >
-            <ToggleButton value="today">Hoy</ToggleButton>
-            <ToggleButton value="week">Semana</ToggleButton>
-            <ToggleButton value="month">Mes</ToggleButton>
-            <ToggleButton value="year">Año</ToggleButton>
-            <ToggleButton value="custom">Personalizado</ToggleButton>
-          </ToggleButtonGroup>
+            {PERIODS.map(({ value, label }) => (
+              <Box
+                key={value}
+                onClick={() => setPeriod(value)}
+                sx={{
+                  px: 1.4, py: 0.6,
+                  borderRadius: "7px",
+                  fontSize: 12.5,
+                  fontWeight: period === value ? 700 : 500,
+                  fontFamily: "Montserrat, sans-serif",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  bgcolor: period === value
+                    ? `linear-gradient(90deg, ${B.blue}, ${B.teal})`
+                    : "transparent",
+                  background: period === value
+                    ? `linear-gradient(90deg, ${B.blue}, ${B.teal})`
+                    : "transparent",
+                  color: period === value ? "#fff" : mutedCol,
+                  transition: "all .15s",
+                  "&:hover": {
+                    color: period === value ? "#fff" : textCol,
+                    bgcolor: period === value ? undefined : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+                  },
+                }}
+              >
+                {label}
+              </Box>
+            ))}
+          </Stack>
 
-          {/* Filtros de fecha personalizada */}
-          {period === 'custom' && (
-            <Stack direction="row" spacing={1}>
-              <TextField
-                type="date"
-                size="small"
-                label="Desde"
-                value={customDates.start}
-                onChange={(e) => setCustomDates({ ...customDates, start: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                sx={{ width: 150 }}
-              />
-              <TextField
-                type="date"
-                size="small"
-                label="Hasta"
-                value={customDates.end}
-                onChange={(e) => setCustomDates({ ...customDates, end: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                sx={{ width: 150 }}
-              />
+          {/* Custom date range */}
+          {period === "custom" && (
+            <Stack direction="row" spacing={0.75}>
+              {["start", "end"].map((k) => (
+                <TextField
+                  key={k}
+                  type="date"
+                  size="small"
+                  label={k === "start" ? "Desde" : "Hasta"}
+                  value={customDates[k]}
+                  onChange={(e) => setCustomDates((p) => ({ ...p, [k]: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{
+                    width: 145,
+                    "& .MuiOutlinedInput-root": { borderRadius: "9px", fontSize: 12.5 },
+                  }}
+                />
+              ))}
             </Stack>
           )}
 
-          <IconButton
-            onClick={fetchDashboardData}
-            disabled={loading}
-            sx={{ bgcolor: 'action.hover' }}
-          >
-            <RefreshIcon />
-          </IconButton>
+          {/* Refresh */}
+          <Tooltip title="Actualizar" arrow>
+            <IconButton
+              onClick={fetchDashboardData}
+              disabled={loading}
+              sx={{
+                width: 36, height: 36, borderRadius: "9px",
+                border: `1px solid ${borderCol}`,
+                color: mutedCol,
+                "&:hover": { color: textCol, bgcolor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
+                "&.Mui-disabled": { opacity: 0.4 },
+              }}
+            >
+              {loading
+                ? <CircularProgress size={16} sx={{ color: "inherit" }} />
+                : <RefreshIcon sx={{ fontSize: 18 }} />
+              }
+            </IconButton>
+          </Tooltip>
 
-          <Button
-            variant="outlined"
-            startIcon={<ChartIcon />}
-            sx={{ borderRadius: 2 }}
-          >
-            Analytics
-          </Button>
-          
+          {/* Export PDF */}
           <Button
             variant="contained"
-            startIcon={<DownloadIcon />}
+            size="small"
+            startIcon={<DownloadOutlinedIcon sx={{ fontSize: "16px !important" }} />}
             onClick={handleExportPDF}
             sx={{
-              borderRadius: 2,
-              bgcolor: colors.greenAccent[500],
-              '&:hover': {
-                bgcolor: colors.greenAccent[600],
+              background: `linear-gradient(90deg, ${B.blue}, ${B.teal})`,
+              color: "#fff",
+              fontFamily: "Montserrat, sans-serif",
+              fontWeight: 700, fontSize: 12.5,
+              textTransform: "none",
+              px: 1.75, py: 0.85,
+              borderRadius: "9px",
+              boxShadow: `0 4px 14px ${alpha(B.blue, 0.35)}`,
+              "&:hover": {
+                background: `linear-gradient(90deg, ${B.teal}, ${B.green})`,
+                boxShadow: `0 4px 18px ${alpha(B.green, 0.4)}`,
               },
             }}
           >
@@ -517,386 +558,300 @@ const Dashboard = () => {
         </Stack>
       </Stack>
 
-      {/* ESTADÍSTICAS PRINCIPALES */}
-      <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Total Ventas"
-            value={formatNumber(stats?.current?.total_sales || 0)}
-            subtitle={`${formatNumber(stats?.current?.total_sales || 0)} operaciones`}
-            icon={SalesIcon}
-            trend={stats?.trends?.sales}
-            progress={0.75}
-            loading={loading}
-          />
+      {/* ══ STAT CARDS ══ */}
+      <Grid container spacing={2.5} mb={3}>
+        {[
+          {
+            title: "Total Ventas",
+            value: fmt(stats?.current?.total_sales),
+            subtitle: `${fmt(stats?.current?.total_sales || 0)} operaciones`,
+            icon: PointOfSaleIcon,
+            trend: stats?.trends?.sales,
+            progress: 0.75,
+            accentColor: B.blue,
+          },
+          {
+            title: "Ingresos",
+            value: fmtC(stats?.current?.revenue),
+            subtitle: "Total del período",
+            icon: AttachMoneyIcon,
+            trend: stats?.trends?.revenue,
+            progress: 0.65,
+            accentColor: B.green,
+          },
+          {
+            title: "Nuevos Clientes",
+            value: fmt(stats?.current?.new_customers),
+            subtitle: "Este período",
+            icon: PersonAddIcon,
+            trend: stats?.trends?.customers,
+            progress: 0.45,
+            accentColor: B.teal,
+          },
+          {
+            title: "Ticket Promedio",
+            value: fmtC(stats?.current?.avg_ticket),
+            subtitle: "Por operación",
+            icon: TrafficIcon,
+            trend: stats?.trends?.avg_ticket,
+            progress: 0.55,
+            accentColor: B.blueSoft,
+          },
+        ].map((card, i) => (
+          <Grid item xs={12} sm={6} md={3} key={i}>
+            <StatCard {...card} loading={loading} />
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* ══ MAIN ROW: Line chart + Transactions ══ */}
+      <Grid container spacing={2.5} mb={3}>
+        <Grid item xs={12} lg={8}>
+          <ChartCard
+            isDark={isDark}
+            height={520}
+            title="Ingresos Generados"
+            subtitle={`Período: ${PERIODS.find((p) => p.value === period)?.label}`}
+            onFullscreen={() => setFullscreenChart("revenue")}
+            onDownload={() => {}}
+            headerRight={
+              !loading && stats?.trends?.revenue !== undefined ? (
+                <Chip
+                  size="small"
+                  icon={stats.trends.revenue > 0
+                    ? <TrendingUpIcon sx={{ fontSize: "14px !important", color: `${B.green} !important` }} />
+                    : <TrendingDownIcon sx={{ fontSize: "14px !important", color: "#E63946 !important" }} />
+                  }
+                  label={`${stats.trends.revenue > 0 ? "+" : ""}${stats.trends.revenue}%`}
+                  sx={{
+                    height: 24, fontSize: 11.5, fontWeight: 700,
+                    bgcolor: stats.trends.revenue > 0 ? alpha(B.green, 0.12) : alpha("#E63946", 0.1),
+                    color: stats.trends.revenue > 0 ? B.green : "#E63946",
+                    border: `1px solid ${stats.trends.revenue > 0 ? alpha(B.green, 0.25) : alpha("#E63946", 0.25)}`,
+                  }}
+                />
+              ) : null
+            }
+          >
+            {loading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                <CircularProgress sx={{ color: B.blue }} />
+              </Box>
+            ) : (
+              <>
+                <Typography sx={{
+                  fontSize: 26, fontWeight: 800, color: B.green,
+                  letterSpacing: "-0.02em", fontFamily: "Montserrat, sans-serif",
+                  mb: 1.5,
+                }}>
+                  {fmtC(stats?.current?.revenue)}
+                </Typography>
+                <Box height={380}>
+                  <LineChart isDashboard data={revenueData} />
+                </Box>
+              </>
+            )}
+          </ChartCard>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Ingresos"
-            value={formatCurrency(stats?.current?.revenue || 0)}
-            subtitle="Total del período"
-            icon={MoneyIcon}
-            trend={stats?.trends?.revenue}
-            progress={0.65}
-            loading={loading}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Nuevos Clientes"
-            value={formatNumber(stats?.current?.new_customers || 0)}
-            subtitle="Este período"
-            icon={PersonAddIcon}
-            trend={stats?.trends?.customers}
-            progress={0.45}
-            loading={loading}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Ticket Promedio"
-            value={formatCurrency(stats?.current?.avg_ticket || 0)}
-            subtitle="Por operación"
-            icon={TrafficIcon}
-            trend={stats?.trends?.avg_ticket}
-            progress={0.55}
-            loading={loading}
-          />
+
+        {/* Transactions */}
+        <Grid item xs={12} lg={4}>
+          <ChartCard
+            isDark={isDark}
+            height={520}
+            title="Transacciones Recientes"
+            headerRight={
+              <Chip
+                label={transactions.length}
+                size="small"
+                sx={{
+                  height: 22, fontSize: 11.5, fontWeight: 700,
+                  bgcolor: alpha(B.blue, isDark ? 0.2 : 0.1),
+                  color: B.blue,
+                  border: `1px solid ${alpha(B.blue, 0.25)}`,
+                }}
+              />
+            }
+          >
+            {/* height: 100% funciona porque ChartCard tiene flex:1 + minHeight:0 en el wrapper */}
+            <Box sx={{
+              height: "100%",
+              overflowY: "auto",
+              overflowX: "hidden",
+              pr: 0.25,
+              "&::-webkit-scrollbar": { width: 3 },
+              "&::-webkit-scrollbar-thumb": {
+                bgcolor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+                borderRadius: 4,
+              },
+              "&::-webkit-scrollbar-track": { background: "transparent" },
+            }}>
+              {loading ? (
+                <Box display="flex" justifyContent="center" pt={6}>
+                  <CircularProgress size={28} sx={{ color: B.blue }} />
+                </Box>
+              ) : transactions.length === 0 ? (
+                <Box display="flex" alignItems="center" justifyContent="center" height="100%">
+                  <Typography sx={{ fontSize: 13, color: mutedCol }}>
+                    Sin transacciones en este período
+                  </Typography>
+                </Box>
+              ) : (
+                transactions.map((tx, i) => (
+                  <TransactionRow key={`${tx.txId}-${i}`} transaction={tx} isDark={isDark} />
+                ))
+              )}
+            </Box>
+          </ChartCard>
         </Grid>
       </Grid>
 
-      {/* GRÁFICOS PRINCIPALES */}
-      <Grid container spacing={3} mb={4}>
-        {/* Ingresos Generados - Gráfico más grande */}
-        <Grid item xs={12} lg={8}>
-          <Card
-            sx={{
-              height: '550px', // Aumentado de 100% para dar más espacio
-              borderRadius: 3,
-              bgcolor: theme.palette.background.paper,
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Stack 
-                direction="row" 
-                justifyContent="space-between" 
-                alignItems="center"
-                mb={3}
-              >
-                <Box>
-                  <Typography variant="h5" fontWeight={700} gutterBottom>
-                    Ingresos Generados
-                  </Typography>
-                  <Stack direction="row" alignItems="baseline" spacing={1}>
-                    <Typography variant="h3" fontWeight={700} color={colors.greenAccent[500]}>
-                      {formatCurrency(stats?.current?.revenue || 0)}
+      {/* ══ BOTTOM ROW ══ */}
+      <Grid container spacing={2.5}>
+        {/* Resumen donut */}
+        <Grid item xs={12} md={4}>
+          <ChartCard isDark={isDark} title="Resumen del Período">
+            {loading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" minHeight={280}>
+                <CircularProgress sx={{ color: B.green }} />
+              </Box>
+            ) : (
+              <Stack alignItems="center" spacing={2} pt={1}>
+                {/* Donut */}
+                <Box sx={{
+                  position: "relative",
+                  width: 148, height: 148,
+                  borderRadius: "50%",
+                  background: `conic-gradient(${B.green} 0deg ${deg}deg, ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"} ${deg}deg 360deg)`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: `0 0 0 6px ${isDark ? "#172A36" : "#fff"}`,
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    inset: 18,
+                    borderRadius: "50%",
+                    bgcolor: isDark ? "#172A36" : "#fff",
+                    zIndex: 1,
+                  },
+                }}>
+                  <Stack alignItems="center" sx={{ position: "relative", zIndex: 2 }}>
+                    <Typography sx={{
+                      fontSize: 24, fontWeight: 800, color: B.green,
+                      lineHeight: 1.1, letterSpacing: "-0.02em",
+                      fontFamily: "Montserrat, sans-serif",
+                    }}>
+                      {pct}%
                     </Typography>
-                    {stats?.trends?.revenue !== undefined && (
-                      <Chip 
-                        label={`${stats.trends.revenue > 0 ? '+' : ''}${stats.trends.revenue}%`}
-                        size="small" 
-                        color={stats.trends.revenue > 0 ? "success" : "error"}
-                        icon={stats.trends.revenue > 0 ? <TrendingUpIcon /> : <TrendingDownIcon />}
-                      />
-                    )}
+                    <Typography sx={{ fontSize: 10.5, color: mutedCol, fontWeight: 600 }}>
+                      completado
+                    </Typography>
                   </Stack>
                 </Box>
-                
-                <Stack direction="row" spacing={1}>
-                  <IconButton
-                    onClick={() => setFullscreenChart('revenue')}
-                    sx={{ bgcolor: 'action.hover' }}
-                  >
-                    <FullscreenIcon />
-                  </IconButton>
-                  <IconButton
-                    sx={{
-                      bgcolor: colors.greenAccent[500],
-                      color: '#fff',
-                      '&:hover': {
-                        bgcolor: colors.greenAccent[600],
-                      },
-                    }}
-                  >
-                    <DownloadIcon />
-                  </IconButton>
+
+                <Stack alignItems="center" spacing={0.25}>
+                  <Typography sx={{
+                    fontSize: 20, fontWeight: 800, color: B.green,
+                    letterSpacing: "-0.02em", fontFamily: "Montserrat, sans-serif",
+                  }}>
+                    {fmtC(stats?.current?.revenue)}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12.5, color: mutedCol }}>
+                    Ingresos generados
+                  </Typography>
+                  <Typography sx={{ fontSize: 11.5, color: mutedCol, mt: 0.5 }}>
+                    {fmt(stats?.current?.items_sold || 0)} ítems vendidos
+                  </Typography>
+                </Stack>
+
+                {/* Legend */}
+                <Stack direction="row" spacing={2} mt={1}>
+                  {[
+                    { label: "Ingresos", color: B.green },
+                    { label: "Impuestos", color: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" },
+                  ].map(({ label, color }) => (
+                    <Stack key={label} direction="row" alignItems="center" spacing={0.75}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: color }} />
+                      <Typography sx={{ fontSize: 11.5, color: mutedCol }}>{label}</Typography>
+                    </Stack>
+                  ))}
                 </Stack>
               </Stack>
-
-              <Box height="400px" mt={1}>
-                <LineChart isDashboard={true} data={revenueData} />
-              </Box>
-            </CardContent>
-          </Card>
+            )}
+          </ChartCard>
         </Grid>
 
-        {/* Transacciones Recientes */}
-        <Grid item xs={12} lg={4}>
-          <Card
-            sx={{
-              height: '550px', // Misma altura que el gráfico
-              borderRadius: 3,
-              bgcolor: theme.palette.background.paper,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
+        {/* Top Productos */}
+        <Grid item xs={12} md={4}>
+          <ChartCard
+            isDark={isDark}
+            title="Top Productos"
+            onFullscreen={() => setFullscreenChart("sales")}
           >
-            <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h5" fontWeight={700}>
-                  Transacciones Recientes
-                </Typography>
-                <Chip 
-                  label={transactions.length}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                />
-              </Stack>
+            <Box height={280} mt={1}>
+              {loading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                  <CircularProgress sx={{ color: B.teal }} />
+                </Box>
+              ) : (
+                <BarChart isDashboard data={salesData} />
+              )}
+            </Box>
+          </ChartCard>
+        </Grid>
 
-              <Box 
-                sx={{ 
-                  flex: 1,
-                  overflow: 'auto',
-                  maxHeight: '420px', // Altura fija para el scroll
-                  pr: 1, // Padding para separar del scrollbar
-                  '&::-webkit-scrollbar': { 
-                    width: 8,
-                  },
-                  '&::-webkit-scrollbar-track': {
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    borderRadius: 4,
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                    borderRadius: 4,
-                    '&:hover': {
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-                    },
-                  },
-                }}
-              >
-                {loading ? (
-                  <Box display="flex" justifyContent="center" py={4}>
-                    <CircularProgress />
-                  </Box>
-                ) : transactions.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" textAlign="center" py={4}>
-                    No hay transacciones en este período
-                  </Typography>
-                ) : (
-                  transactions.map((transaction, i) => (
-                    <TransactionCard key={`${transaction.txId}-${i}`} transaction={transaction} />
-                  ))
-                )}
-              </Box>
-            </CardContent>
-          </Card>
+        {/* Por Categoría */}
+        <Grid item xs={12} md={4}>
+          <ChartCard
+            isDark={isDark}
+            title="Por Categoría"
+            onFullscreen={() => setFullscreenChart("categories")}
+          >
+            <Box height={280} mt={1}>
+              {loading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                  <CircularProgress sx={{ color: B.blueSoft }} />
+                </Box>
+              ) : (
+                <PieChart />
+              )}
+            </Box>
+          </ChartCard>
         </Grid>
       </Grid>
 
-      {/* FILA INFERIOR */}
-      <Grid container spacing={3}>
-        {/* Campaña */}
-        <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              height: '100%',
-              borderRadius: 3,
-              bgcolor: theme.palette.background.paper,
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Typography variant="h5" fontWeight={700} gutterBottom>
-                Resumen del Período
-              </Typography>
-              
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center',
-                  py: 4,
-                }}
-              >
-                {loading ? (
-                  <CircularProgress />
-                ) : (
-                  <>
-                    <Box
-                      sx={{
-                        width: 160,
-                        height: 160,
-                        borderRadius: '50%',
-                        background: `conic-gradient(
-                          ${colors.greenAccent[500]} 0deg ${(stats?.current?.revenue / (stats?.current?.revenue + stats?.current?.tax || 1)) * 360}deg,
-                          ${theme.palette.mode === 'dark' ? colors.primary[500] : colors.grey[700]} ${(stats?.current?.revenue / (stats?.current?.revenue + stats?.current?.tax || 1)) * 360}deg 360deg
-                        )`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                        mb: 3,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 120,
-                          height: 120,
-                          borderRadius: '50%',
-                          bgcolor: theme.palette.background.paper,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Typography variant="h4" fontWeight={700} color={colors.greenAccent[500]}>
-                          {Math.round((stats?.current?.revenue / (stats?.current?.revenue + stats?.current?.tax || 1)) * 100)}%
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Completado
-                        </Typography>
-                      </Box>
-                    </Box>
+      {/* ══ FULLSCREEN MODALS ══ */}
+      {[
+        { key: "revenue",    title: "Ingresos Generados",           content: <Box height="calc(100vh - 120px)"><LineChart isDashboard={false} data={revenueData} /></Box> },
+        { key: "sales",      title: "Top Productos",                content: <Box height="calc(100vh - 120px)"><BarChart isDashboard={false} data={salesData} /></Box> },
+        { key: "categories", title: "Distribución por Categorías",  content: <Box height="calc(100vh - 120px)"><PieChart /></Box> },
+      ].map(({ key, title, content }) => (
+        <FullscreenModal
+          key={key}
+          open={fullscreenChart === key}
+          onClose={() => setFullscreenChart(null)}
+          title={title}
+        >
+          {content}
+        </FullscreenModal>
+      ))}
 
-                    <Typography 
-                      variant="h5" 
-                      fontWeight={700}
-                      color={colors.greenAccent[500]}
-                      gutterBottom
-                    >
-                      {formatCurrency(stats?.current?.revenue || 0)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" textAlign="center">
-                      Ingresos generados
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" textAlign="center" mt={1}>
-                      {formatNumber(stats?.current?.items_sold || 0)} items vendidos
-                    </Typography>
-                  </>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Ventas por Categoría */}
-        <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              height: '100%',
-              borderRadius: 3,
-              bgcolor: theme.palette.background.paper,
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h5" fontWeight={700}>
-                  Top Productos
-                </Typography>
-                <IconButton
-                  onClick={() => setFullscreenChart('sales')}
-                  size="small"
-                  sx={{ bgcolor: 'action.hover' }}
-                >
-                  <FullscreenIcon />
-                </IconButton>
-              </Stack>
-              
-              <Box height="280px" mt={2}>
-                {loading ? (
-                  <Box display="flex" justifyContent="center" alignItems="center" height="100%">
-                    <CircularProgress />
-                  </Box>
-                ) : (
-                  <BarChart isDashboard={true} data={salesData} />
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Distribución por Categorías */}
-        <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              height: '100%',
-              borderRadius: 3,
-              bgcolor: theme.palette.background.paper,
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h5" fontWeight={700}>
-                  Por Categoría
-                </Typography>
-                <IconButton
-                  onClick={() => setFullscreenChart('categories')}
-                  size="small"
-                  sx={{ bgcolor: 'action.hover' }}
-                >
-                  <FullscreenIcon />
-                </IconButton>
-              </Stack>
-              
-              <Box height="280px" mt={2}>
-                {loading ? (
-                  <Box display="flex" justifyContent="center" alignItems="center" height="100%">
-                    <CircularProgress />
-                  </Box>
-                ) : (
-                  <PieChart />
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* MODALES FULLSCREEN */}
-      <FullscreenChartModal
-        open={fullscreenChart === 'revenue'}
-        onClose={() => setFullscreenChart(null)}
-        title="Ingresos Generados - Vista Completa"
-      >
-        <Box height="calc(100vh - 120px)" maxHeight="800px">
-          <LineChart isDashboard={false} data={revenueData} />
-        </Box>
-      </FullscreenChartModal>
-
-      <FullscreenChartModal
-        open={fullscreenChart === 'sales'}
-        onClose={() => setFullscreenChart(null)}
-        title="Top Productos - Vista Completa"
-      >
-        <Box height="calc(100vh - 120px)" maxHeight="800px">
-          <BarChart isDashboard={false} data={salesData} />
-        </Box>
-      </FullscreenChartModal>
-
-      <FullscreenChartModal
-        open={fullscreenChart === 'categories'}
-        onClose={() => setFullscreenChart(null)}
-        title="Distribución por Categorías - Vista Completa"
-      >
-        <Box height="calc(100vh - 120px)" maxHeight="800px">
-          <PieChart />
-        </Box>
-      </FullscreenChartModal>
-
-      {/* SNACKBAR DE NOTIFICACIONES */}
+      {/* ══ SNACKBAR ══ */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        autoHideDuration={3500}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
           severity={snackbar.severity}
           variant="filled"
-          sx={{ width: '100%' }}
+          sx={{
+            borderRadius: "10px",
+            fontFamily: "Montserrat, sans-serif",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
         >
           {snackbar.message}
         </Alert>

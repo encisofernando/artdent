@@ -32,7 +32,7 @@ import Recibos from "./scenes/colaboradores/Recibos";
 // Auth
 import Login from "./login/Login";
 import Register from "./login/Register";
-import CrearContraseña from "./login/CrearContraseña";
+import CrearContraseña from "./login/Crearcontraseña";
 
 const ProtectedRoute = ({ children, isAuthenticated }) =>
   isAuthenticated ? children : <Navigate to="/" />;
@@ -84,7 +84,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
             <Route path="/register" element={<Register setIsAuthenticated={setIsAuthenticated} />} />
-            <Route path="/crearcontrasena" element={<CrearContraseña setIsAuthenticated={setIsAuthenticated} />} />
+            <Route path="/forgot" element={<CrearContraseña setIsAuthenticated={setIsAuthenticated} />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         )}

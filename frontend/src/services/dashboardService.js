@@ -21,10 +21,10 @@ export const getStats = async (params = {}) => {
  * @param {string} period - today, week, month, year
  * @returns {Promise}
  */
-export const getChartData = async (type, period = 'month') => {
+export const getChartData = async (type, params = {}) => {
   try {
     const response = await api.get('/dashboard/charts', {
-      params: { type, period },
+      params: { type, ...params }, // period, start_date, end_date
     });
     return response.data;
   } catch (error) {

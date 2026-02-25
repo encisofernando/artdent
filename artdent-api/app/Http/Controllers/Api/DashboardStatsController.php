@@ -335,7 +335,7 @@ class DashboardStatsController extends Controller
                 'id' => 'Ingresos',
                 'color' => 'hsl(141, 70%, 50%)',
                 'data' => $data->map(fn($item) => [
-                    'x' => Carbon::parse($item->date)->format('d/m'),
+                    'x' => Carbon::parse($item->date)->format('Y-m-d'),
                     'y' => (float) $item->value,
                 ])->toArray(),
             ],

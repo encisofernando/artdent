@@ -1,4 +1,9 @@
 // src/scenes/global/Topbar.jsx
+//
+// Assets requeridos en src/assets/:
+//   logo-artdent-color.png   →  "logo ART DENT.png"
+//   logo-artdent-blanco.png  →  "logo ART DENT (blanco trans).png"
+
 import { useContext, useEffect, useMemo, useState } from "react";
 import {
   AppBar,
@@ -10,85 +15,123 @@ import {
   Avatar,
   Chip,
   Stack,
-  Paper,
   useTheme,
   useMediaQuery,
+  alpha,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 
-import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
-import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
-import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
-import NotificationsOutlinedIcon from "@mui/icons-material/NotificationsOutlined";
-import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorIcon from "@mui/icons-material/Error";
-import PendingIcon from "@mui/icons-material/Pending";
-import SpeedIcon from "@mui/icons-material/Speed";
+import MenuOutlinedIcon           from "@mui/icons-material/MenuOutlined";
+import LightModeOutlinedIcon      from "@mui/icons-material/LightModeOutlined";
+import DarkModeOutlinedIcon       from "@mui/icons-material/DarkModeOutlined";
+import NotificationsOutlinedIcon  from "@mui/icons-material/NotificationsOutlined";
+import LogoutOutlinedIcon         from "@mui/icons-material/LogoutOutlined";
+import PersonOutlineIcon          from "@mui/icons-material/PersonOutline";
 
 import { useLocation, useNavigate } from "react-router-dom";
-import { ColorModeContext } from "../../theme";
+import { ColorModeContext }         from "../../theme";
 import { Companies, Products, Customers } from "../../services";
 
-const TOPBAR_HEIGHT = 64;
+import logoColor  from "../../assets/logo-artdent-color.png";
+import logoBlanco from "../../assets/logo-artdent-blanco.png";
 
-const safeAlpha = (color, value, fallback = "#000") => {
-  if (typeof color !== "string" || !color.trim()) return alpha(fallback, value);
-  return alpha(color, value);
+export const TOPBAR_HEIGHT = 64;
+
+/* ─── Status dot helper ─── */
+const StatusDot = ({ apiOk, latencyMs, label, isDark }) => {
+  const color =
+    apiOk === null  ? "#FFB020"  // pending  → warning
+    : apiOk         ? "#5AAD9C"  // ok       → brand green
+    :                 "#E63946"; // error    → red
+
+  return (
+    <Box sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+      px: 1.5,
+      py: 0.6,
+      borderRadius: "8px",
+      border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+      bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+      userSelect: "none",
+    }}>
+      {/* Animated dot */}
+      <Box sx={{
+        width: 7, height: 7,
+        borderRadius: "50%",
+        bgcolor: color,
+        flexShrink: 0,
+        ...(apiOk === null && {
+          animation: "pulseDot 1.5s ease-in-out infinite",
+          "@keyframes pulseDot": {
+            "0%,100%": { opacity: 1, transform: "scale(1)" },
+            "50%":     { opacity: 0.4, transform: "scale(0.8)" },
+          },
+        }),
+        ...(apiOk === true && {
+          boxShadow: `0 0 6px ${alpha(color, 0.6)}`,
+        }),
+      }}/>
+
+      <Typography sx={{
+        fontSize: 12.5,
+        fontWeight: 600,
+        color: isDark ? "rgba(230,238,245,0.85)" : "rgba(26,32,44,0.75)",
+        lineHeight: 1,
+      }}>
+        {label}
+      </Typography>
+
+      {latencyMs != null && (
+        <Typography sx={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: isDark ? "rgba(172,214,206,0.7)" : "rgba(57,123,156,0.8)",
+          lineHeight: 1,
+        }}>
+          {latencyMs}ms
+        </Typography>
+      )}
+    </Box>
+  );
 };
 
+/* ══════════════════════════════════════════════ */
 export default function Topbar({ onOpenSidebar, setIsAuthenticated, onLogout }) {
-  const theme = useTheme();
-
-  // Breakpoints
-  const mdDown = useMediaQuery(theme.breakpoints.down("md"));
-  const smDown = useMediaQuery(theme.breakpoints.down("sm"));
-
-  // Fallback robusto
-  const isNarrow = useMediaQuery("(max-width: 900px)");
-  const showHamburger = mdDown || isNarrow;
-
-  const isDark = theme.palette.mode === "dark";
+  const theme    = useTheme();
+  const isDark   = theme.palette.mode === "dark";
   const colorMode = useContext(ColorModeContext);
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const { pathname } = useLocation();
 
-  const [apiOk, setApiOk] = useState(null);
+  const mdDown     = useMediaQuery(theme.breakpoints.down("md"));
+  const smDown     = useMediaQuery(theme.breakpoints.down("sm"));
+  const isNarrow   = useMediaQuery("(max-width: 900px)");
+  const showHamburger = mdDown || isNarrow;
+
+  const [apiOk, setApiOk]       = useState(null);
   const [latencyMs, setLatencyMs] = useState(null);
-  const [label, setLabel] = useState("Sistema");
+  const [label, setLabel]       = useState("Sistema");
 
   const logout = () => {
-    if (onLogout) onLogout();
-    else {
-      localStorage.removeItem("token");
-      localStorage.removeItem("artdent_token");
-      setIsAuthenticated?.(false);
-    }
+    if (onLogout) { onLogout(); return; }
+    localStorage.removeItem("token");
+    localStorage.removeItem("artdent_token");
+    setIsAuthenticated?.(false);
     navigate("/");
   };
 
   useEffect(() => {
     let cancelled = false;
-
     const run = async () => {
       try {
-        setApiOk(null);
-        setLatencyMs(null);
-
+        setApiOk(null); setLatencyMs(null);
         const t0 = performance.now();
 
-        if (
-          pathname.startsWith("/facturacion") ||
-          pathname.startsWith("/invoices") ||
-          pathname.startsWith("/articulos")
-        ) {
+        if (pathname.startsWith("/facturacion") || pathname.startsWith("/invoices") || pathname.startsWith("/articulos")) {
           setLabel("Productos");
           await Products.listProducts?.({ page: 1, per_page: 1 });
-        } else if (
-          pathname.startsWith("/clientes") ||
-          pathname.startsWith("/ctacte") ||
-          pathname.startsWith("/pagoscte")
-        ) {
+        } else if (pathname.startsWith("/clientes") || pathname.startsWith("/ctacte") || pathname.startsWith("/pagoscte")) {
           setLabel("Clientes");
           await Customers.list?.({ page: 1, per_page: 1 });
         } else {
@@ -96,47 +139,43 @@ export default function Topbar({ onOpenSidebar, setIsAuthenticated, onLogout }) 
           await Companies.get?.();
         }
 
-        if (!cancelled) {
-          setApiOk(true);
-          setLatencyMs(Math.round(performance.now() - t0));
-        }
+        if (!cancelled) { setApiOk(true); setLatencyMs(Math.round(performance.now() - t0)); }
       } catch {
         if (!cancelled) setApiOk(false);
       }
     };
-
     run();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [pathname]);
 
-  const status = useMemo(() => {
-    if (apiOk === null) {
-      return {
-        icon: <PendingIcon sx={{ fontSize: 16 }} />,
-        color: theme.palette.warning.main,
-      };
-    }
-    if (apiOk) {
-      return {
-        icon: <CheckCircleIcon sx={{ fontSize: 16 }} />,
-        color: theme.palette.success.main,
-      };
-    }
-    return {
-      icon: <ErrorIcon sx={{ fontSize: 16 }} />,
-      color: theme.palette.error.main,
-    };
-  }, [apiOk, theme.palette.error.main, theme.palette.success.main, theme.palette.warning.main]);
+  // User data from localStorage
+  const user = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("user") || "{}"); }
+    catch { return {}; }
+  }, []);
 
-  const appBarBg = safeAlpha(
-    isDark ? theme.palette.background.default : theme.palette.background.paper,
-    0.86,
-    isDark ? "#101318" : "#ffffff"
-  );
+  const userInitial = (user?.name || user?.email || "A")[0].toUpperCase();
 
-  const textColor = isDark ? theme.palette.common.white : theme.palette.text.primary;
+  // Topbar surface color
+  const bgSurface = isDark
+    ? alpha(theme.palette.background.default, 0.92)
+    : alpha(theme.palette.background.paper, 0.94);
+
+  const iconColor = isDark ? "rgba(230,238,245,0.75)" : "rgba(26,32,44,0.65)";
+  const iconHover = isDark ? "rgba(230,238,245,1)"    : "rgba(26,32,44,1)";
+
+  /* ── Shared icon button style ── */
+  const iconBtnSx = {
+    color: iconColor,
+    borderRadius: "8px",
+    width: 36, height: 36,
+    "&:hover": {
+      color: iconHover,
+      bgcolor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+    },
+    "& svg": { fontSize: 20 },
+    transition: "color .15s, background-color .15s",
+  };
 
   return (
     <AppBar
@@ -146,118 +185,153 @@ export default function Topbar({ onOpenSidebar, setIsAuthenticated, onLogout }) 
       sx={{
         height: TOPBAR_HEIGHT,
         zIndex: (t) => t.zIndex.drawer + 10,
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        backdropFilter: "blur(12px)",
-        backgroundColor: appBarBg,
+        backdropFilter: "blur(14px)",
+        backgroundColor: bgSurface,
+        borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`,
       }}
     >
-      <Toolbar sx={{ minHeight: TOPBAR_HEIGHT, px: { xs: 1, sm: 2 }, gap: 1 }}>
-        {/* Botón menú: mobile/tablet */}
+      <Toolbar sx={{
+        minHeight: `${TOPBAR_HEIGHT}px !important`,
+        px: { xs: 1.5, sm: 2 },
+        gap: 1,
+        display: "flex",
+        alignItems: "center",
+      }}>
+
+        {/* ── Hamburger (mobile/tablet) ── */}
         {showHamburger && (
           <IconButton
             onClick={() => onOpenSidebar?.()}
-            sx={{ color: textColor }}
+            sx={{ ...iconBtnSx, mr: 0.5 }}
             aria-label="Abrir menú"
           >
             <MenuOutlinedIcon />
           </IconButton>
         )}
 
-        {/* Estado: NO mostrar en mobile (smDown) */}
-        {!smDown && (
-          <Paper
-            elevation={0}
+        {/* ── Mobile logo (visible solo cuando el sidebar está oculto) ── */}
+        {showHamburger && (
+          <Box
+            component="img"
+            src={isDark ? logoBlanco : logoColor}
+            alt="ArtDent"
             sx={{
-              px: 1.25,
-              py: 0.75,
-              borderRadius: 2,
-              border: `1px solid ${theme.palette.divider}`,
-              bgcolor: safeAlpha(isDark ? "#fff" : "#000", isDark ? 0.06 : 0.04, "#000"),
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              minWidth: 260,
-              maxWidth: 360,
-              overflow: "hidden",
+              height: 32,
+              width: "auto",
+              objectFit: "contain",
+              filter: isDark ? "brightness(0) invert(1)" : "none",
+              cursor: "pointer",
+              flexShrink: 0,
             }}
-          >
-            <Box
-              sx={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                bgcolor: status.color,
-                ...(apiOk === null && {
-                  animation: "pulse 1.6s ease-in-out infinite",
-                  "@keyframes pulse": {
-                    "0%,100%": { opacity: 1 },
-                    "50%": { opacity: 0.45 },
-                  },
-                }),
-              }}
-            />
+            onClick={() => navigate("/")}
+          />
+        )}
 
-            <Typography noWrap sx={{ fontSize: 13, fontWeight: 800, color: textColor, flex: 1 }}>
-              {label}
-            </Typography>
-
-            {latencyMs != null && (
-              <Chip
-                icon={<SpeedIcon sx={{ fontSize: 14 }} />}
-                label={`${latencyMs}ms`}
-                size="small"
-                sx={{
-                  height: 22,
-                  fontSize: 11,
-                  fontWeight: 800,
-                  bgcolor: safeAlpha(isDark ? "#fff" : "#000", 0.12, "#000"),
-                  color: textColor,
-                  "& .MuiChip-icon": { color: "inherit" },
-                }}
-              />
-            )}
-
-            {status.icon}
-          </Paper>
+        {/* ── API Status (solo tablets+) ── */}
+        {!smDown && (
+          <StatusDot
+            apiOk={apiOk}
+            latencyMs={latencyMs}
+            label={label}
+            isDark={isDark}
+          />
         )}
 
         <Box sx={{ flex: 1 }} />
 
-        {/* Acciones */}
+        {/* ── Acciones ── */}
         <Stack direction="row" spacing={0.5} alignItems="center">
-          <Tooltip title={isDark ? "Modo claro" : "Modo oscuro"}>
-            <IconButton onClick={colorMode.toggleColorMode} sx={{ color: textColor }}>
+          {/* Toggle dark/light */}
+          <Tooltip title={isDark ? "Modo claro" : "Modo oscuro"} arrow>
+            <IconButton onClick={colorMode.toggleColorMode} sx={iconBtnSx}>
               {isDark ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Notificaciones">
-            <IconButton sx={{ color: textColor }}>
+          {/* Notificaciones */}
+          <Tooltip title="Notificaciones" arrow>
+            <IconButton sx={iconBtnSx}>
               <NotificationsOutlinedIcon />
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Cerrar sesión">
-            <IconButton onClick={logout} sx={{ color: textColor }}>
+          {/* Logout */}
+          <Tooltip title="Cerrar sesión" arrow>
+            <IconButton onClick={logout} sx={iconBtnSx}>
               <LogoutOutlinedIcon />
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Perfil">
-            <Avatar
-              sx={{
-                width: 34,
-                height: 34,
-                ml: 0.5,
-                bgcolor: theme.palette.primary.main,
-                color: theme.palette.primary.contrastText,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
+          {/* Divider visual */}
+          <Box sx={{
+            width: 1,
+            height: 24,
+            bgcolor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            mx: 0.5,
+          }} />
+
+          {/* Avatar / perfil */}
+          <Tooltip title={user?.name || user?.email || "Perfil"} arrow>
+            <Box
               onClick={() => navigate("/profile")}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 0.75,
+                py: 0.5,
+                borderRadius: "8px",
+                cursor: "pointer",
+                "&:hover": {
+                  bgcolor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+                },
+                transition: "background-color .15s",
+              }}
             >
-              A
-            </Avatar>
+              <Avatar
+                sx={{
+                  width: 30,
+                  height: 30,
+                  background: "linear-gradient(135deg, #397B9C, #5AAD9C)",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  fontFamily: "Montserrat, sans-serif",
+                  flexShrink: 0,
+                }}
+              >
+                {userInitial}
+              </Avatar>
+
+              {/* Nombre (solo en desktop amplio) */}
+              {!smDown && user?.name && (
+                <Box sx={{ lineHeight: 1.2, display: { xs: "none", lg: "block" } }}>
+                  <Typography sx={{
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    color: isDark ? "rgba(230,238,245,0.9)" : "rgba(26,32,44,0.85)",
+                    lineHeight: 1.2,
+                    maxWidth: 120,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {user.name}
+                  </Typography>
+                  {user?.role && (
+                    <Typography sx={{
+                      fontSize: 10.5,
+                      fontWeight: 500,
+                      color: isDark ? "rgba(172,214,206,0.65)" : "rgba(57,123,156,0.75)",
+                      lineHeight: 1.2,
+                      textTransform: "capitalize",
+                    }}>
+                      {user.role}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Box>
           </Tooltip>
         </Stack>
       </Toolbar>
