@@ -75,6 +75,8 @@
     "@vitejs/plugin-react": "^5.0.4",
     "baseline-browser-mapping": "^2.9.12",
     "cross-env": "^10.0.0",
-    "daisyui": "^5.1.7"
+    "daisyui": "^5.1.7",
+    "sharp": "^0.34.5",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }

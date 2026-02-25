@@ -1,43 +1,65 @@
 <?php
+// config/sanctum.php
+// Reemplaza el archivo que generó php artisan vendor:publish --tag=sanctum-config
+
+use Laravel\Sanctum\Sanctum;
 
 return [
 
     /*
     |--------------------------------------------------------------------------
-    | Stateful Domains
+    | Stateful Domains (SPA con cookie session)
     |--------------------------------------------------------------------------
+    | Estos son los dominios desde donde tu React puede hacer requests
+    | "stateful" (con cookie de sesión) en lugar de Bearer token.
     |
-    | Requests from these domains will receive stateful API authentication
-    | cookies. You may include your local frontend and production domains.
+    | En local: localhost:5173 (Vite dev server)
+    | En producción: el dominio de tu front SPA
     |
+    | ⚠️  No incluir http:// ni https://
     */
-    'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
-        '%s%s',
-        'localhost,localhost:5173,127.0.0.1,127.0.0.1:5173',
-        env('APP_URL') ? ','.parse_url(env('APP_URL'), PHP_URL_HOST) : ''
-    ))),
+    'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', implode(',', [
+        'localhost',
+        'localhost:3000',
+        'localhost:5173',   // ← Vite dev server
+        'localhost:4173',   // ← Vite preview
+        '127.0.0.1',
+        '127.0.0.1:8000',
+        // En producción, agregar en .env:
+        // SANCTUM_STATEFUL_DOMAINS=app.artdent.com
+    ]))),
 
     /*
     |--------------------------------------------------------------------------
-    | Expiration Minutes
+    | Sanctum Guards
     |--------------------------------------------------------------------------
-    |
-    | Tokens can have an expiration time in minutes. Null means no expiration.
-    |
+    */
+    'guard' => ['web'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Expiración de tokens (solo aplica a Bearer tokens, no a cookies)
+    |--------------------------------------------------------------------------
+    | null = no expiran (solo para API tokens de terceros)
     */
     'expiration' => null,
 
     /*
     |--------------------------------------------------------------------------
-    | Sanctum Middleware
+    | Token prefix
     |--------------------------------------------------------------------------
-    |
-    | These middleware are applied when using Sanctum for stateful auth.
-    |
+    */
+    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Middleware
+    |--------------------------------------------------------------------------
     */
     'middleware' => [
-        'verify_csrf_token' => App\Http\Middleware\VerifyCsrfToken::class,
-        'encrypt_cookies'   => App\Http\Middleware\EncryptCookies::class,
+        'authenticate_session' => Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,
+        'encrypt_cookies' => Illuminate\Cookie\Middleware\EncryptCookies::class,
+        'validate_csrf_token' => Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ],
 
 ];

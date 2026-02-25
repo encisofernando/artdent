@@ -1,30 +1,78 @@
 <?php
+// config/cors.php
+// Reemplaza el cors.php existente.
 
 return [
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Rutas que aplican CORS
+    |--------------------------------------------------------------------------
+    */
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        'login',
+        'logout',
+        'register',
+        'user',
+        // Si tenés rutas de password reset:
+        'forgot-password',
+        'reset-password',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Métodos permitidos
+    |--------------------------------------------------------------------------
+    */
     'allowed_methods' => ['*'],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Orígenes permitidos
+    |--------------------------------------------------------------------------
+    | ⚠️  NUNCA usar '*' cuando supports_credentials = true.
+    |     El browser lo rechaza por seguridad.
+    |
+    | Agregar aquí el dominio del front en producción:
+    |   env('FRONTEND_URL', 'https://app.artdent.com')
+    */
     'allowed_origins' => [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5175',
-        'http://127.0.0.1:5175',
-        'http://localhost:8000',
-        'http://127.0.0.1:8000',
+        env('FRONTEND_URL', 'http://localhost:5173'),
         'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'https://shop.artdent.com.ar',
-        'https://pos.artdent.com.ar',
+        'http://localhost:4173',
+        'http://127.0.0.1:5173',
     ],
 
     'allowed_origins_patterns' => [],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Headers permitidos
+    |--------------------------------------------------------------------------
+    */
     'allowed_headers' => ['*'],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Headers expuestos al browser
+    |--------------------------------------------------------------------------
+    */
     'exposed_headers' => [],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Max Age del preflight cache (en segundos)
+    |--------------------------------------------------------------------------
+    */
     'max_age' => 0,
 
-    'supports_credentials' => true, // ← Cambiar a true
+    /*
+    |--------------------------------------------------------------------------
+    | CRÍTICO: credentials = true para que el browser envíe las cookies
+    |--------------------------------------------------------------------------
+    */
+    'supports_credentials' => true,
+
 ];

@@ -7,15 +7,17 @@
 import React, { useState, useEffect } from "react";
 import {
   Box, TextField, Button, Typography, Checkbox,
-  FormControlLabel, Link, InputAdornment, IconButton,
+  FormControlLabel, Link, InputAdornment, IconButton, CircularProgress,
 } from "@mui/material";
-import GoogleIcon from "@mui/icons-material/Google";
-import MailOutlineIcon from "@mui/icons-material/MailOutline";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import Visibility from "@mui/icons-material/Visibility";
-import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import { useNavigate } from "react-router-dom";
-import { Auth } from "../services";
+import GoogleIcon          from "@mui/icons-material/Google";
+import MailOutlineIcon     from "@mui/icons-material/MailOutline";
+import LockOutlinedIcon    from "@mui/icons-material/LockOutlined";
+import Visibility          from "@mui/icons-material/Visibility";
+import VisibilityOff       from "@mui/icons-material/VisibilityOff";
+import { useNavigate }     from "react-router-dom";
+
+// ── Reemplaza el antiguo "Auth.login + localStorage.setItem('token')" ─────────
+import { useAuth } from "../contexts/AuthContext";
 
 import logoBlanco from "../assets/logo-artdent-blanco.png";
 import logoColor  from "../assets/logo-artdent-color.png";
@@ -42,7 +44,6 @@ const inputSx = (focusColor = C.blue) => ({
     fontSize: "0.95rem",
     color: "#fff",
     "&::placeholder": { color: "rgba(255,255,255,0.25)", opacity: 1 },
-    // ── Anula el fondo azul/amarillo del autocompletado del browser ──
     "&:-webkit-autofill": {
       WebkitBoxShadow: "0 0 0 100px #1a2e3e inset !important",
       WebkitTextFillColor: "#fff !important",
@@ -70,7 +71,7 @@ const inputSx = (focusColor = C.blue) => ({
   "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.35)" },
 });
 
-/* ─── Left panel decorative pattern (AD icon repeat) ─── */
+/* ─── Left panel decorative pattern ─── */
 const BgPattern = () => (
   <svg
     width="100%" height="100%"
@@ -88,35 +89,60 @@ const BgPattern = () => (
 );
 
 /* ═══════════════════════════════════ */
-const Login = ({ setIsAuthenticated }) => {
-  const [Email, setEmail]       = useState("");
-  const [Password, setPassword] = useState("");
+const Login = () => {
+  // ── MIGRACIÓN: ya no recibe setIsAuthenticated como prop ─────────────────
+  // App.jsx ahora reacciona al cambio de `user` en AuthContext automáticamente.
+  // Al hacer login exitoso, AuthContext actualiza `user` y App muestra el Layout.
+
+  const { login } = useAuth();
+  const navigate  = useNavigate();
+
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
   const [showPwd, setShowPwd]   = useState(false);
   const [remember, setRemember] = useState(false);
+  const [loading, setLoading]   = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const navigate = useNavigate();
 
+  // Si ya hay sesión activa (cookie válida), redirigir al dashboard
+  // AuthContext lo maneja: App.jsx renderiza Layout si user != null.
+  // Este efecto es un seguro extra para el caso edge de navegar a /login
+  // manualmente teniendo sesión.
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) navigate("/");
-  }, [navigate]);
+    // No es necesario verificar localStorage — AuthContext lo hace vía
+    // GET /api/auth/me al montar. Si hay sesión, App.jsx ya muestra el Layout.
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setLoading(true);
     try {
-      const { token, user } = await Auth.login(Email, Password);
-      if (!token) { setErrorMessage("Usuario o contraseña incorrectos"); return; }
-      localStorage.setItem("token", token);
-      if (user) localStorage.setItem("user", JSON.stringify(user));
-      if (typeof setIsAuthenticated === "function") setIsAuthenticated(true);
-      navigate("/");
+      // ── ANTES (Bearer token): ─────────────────────────────────────────────
+      //   const { token, user } = await Auth.login(Email, Password);
+      //   localStorage.setItem("token", token);
+      //   setIsAuthenticated(true);
+      //
+      // ── AHORA (Sanctum cookie session): ──────────────────────────────────
+      //   login() llama a:
+      //     1. GET  /sanctum/csrf-cookie      → setea XSRF-TOKEN cookie
+      //     2. POST /api/auth/login           → autentica, crea session cookie
+      //     3. GET  /api/auth/me              → devuelve el user
+      //   El user queda en AuthContext y App.jsx renderiza el Layout
+      //   automáticamente. No hay localStorage.setItem de ningún tipo.
+      await login({ email, password });
+      // navigate("/") no es necesario: App.jsx reacciona al cambio de `user`
+      // y renderiza el Layout con <Route path="/" element={<Dashboard />} />
     } catch (error) {
       const data = error?.response?.data;
       const msg =
         (Array.isArray(data?.errors?.email) && data.errors.email[0]) ||
-        data?.message || error?.message || "No se pudo iniciar sesión.";
+        data?.message ||
+        error?.message ||
+        "No se pudo iniciar sesión. Verificá tus credenciales.";
       setErrorMessage(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -142,20 +168,14 @@ const Login = ({ setIsAuthenticated }) => {
       }}>
         <BgPattern />
 
-        {/* Logo blanco — filter para que sea blanco puro sobre gradiente */}
         <Box sx={{ position: "relative", zIndex: 1 }}>
           <img
             src={logoBlanco}
             alt="ArtDent Laboratorio Odontológico"
-            style={{
-              height: 68,
-              width: "auto",
-              filter: "brightness(0) invert(1)",
-            }}
+            style={{ height: 68, width: "auto", filter: "brightness(0) invert(1)" }}
           />
         </Box>
 
-        {/* Hero copy */}
         <Box sx={{ position: "relative", zIndex: 1 }}>
           <Typography sx={{
             fontFamily: "'Montserrat', sans-serif",
@@ -172,7 +192,8 @@ const Login = ({ setIsAuthenticated }) => {
             fontWeight: 400, fontSize: "0.9rem",
             color: "rgba(255,255,255,0.6)", lineHeight: 1.75, maxWidth: 290,
           }}>
-            Sistema de gestión para el laboratorio odontológico. Accedé con tu cuenta para continuar.
+            Sistema de gestión para el laboratorio odontológico.
+            Accedé con tu cuenta para continuar.
           </Typography>
         </Box>
 
@@ -223,7 +244,10 @@ const Login = ({ setIsAuthenticated }) => {
               border: "1px solid rgba(239,83,80,0.28)",
               borderRadius: "10px", px: 2, py: 1.5, mb: 2.5,
             }}>
-              <Typography sx={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.85rem", color: "#ef9090" }}>
+              <Typography sx={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: "0.85rem", color: "#ef9090",
+              }}>
                 {errorMessage}
               </Typography>
             </Box>
@@ -234,7 +258,7 @@ const Login = ({ setIsAuthenticated }) => {
               fullWidth required
               id="email" name="email" label="Correo electrónico"
               autoComplete="email" autoFocus
-              value={Email} onChange={(e) => setEmail(e.target.value)}
+              value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="email@artdent.com.ar"
               InputLabelProps={{ shrink: true }}
               InputProps={{
@@ -252,7 +276,7 @@ const Login = ({ setIsAuthenticated }) => {
               id="password" name="password" label="Contraseña"
               type={showPwd ? "text" : "password"}
               autoComplete="current-password"
-              value={Password} onChange={(e) => setPassword(e.target.value)}
+              value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               InputLabelProps={{ shrink: true }}
               InputProps={{
@@ -265,9 +289,15 @@ const Login = ({ setIsAuthenticated }) => {
                   <InputAdornment position="end">
                     <IconButton
                       onClick={() => setShowPwd((v) => !v)} edge="end"
-                      sx={{ color: "rgba(255,255,255,0.3)", "&:hover": { color: "rgba(255,255,255,0.6)" } }}
+                      sx={{
+                        color: "rgba(255,255,255,0.3)",
+                        "&:hover": { color: "rgba(255,255,255,0.6)" },
+                      }}
                     >
-                      {showPwd ? <VisibilityOff sx={{ fontSize: 18 }}/> : <Visibility sx={{ fontSize: 18 }}/>}
+                      {showPwd
+                        ? <VisibilityOff sx={{ fontSize: 18 }}/>
+                        : <Visibility    sx={{ fontSize: 18 }}/>
+                      }
                     </IconButton>
                   </InputAdornment>
                 ),
@@ -275,17 +305,28 @@ const Login = ({ setIsAuthenticated }) => {
               sx={{ mb: 0.5, ...inputSx(C.green) }}
             />
 
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3.5 }}>
+            <Box sx={{
+              display: "flex", justifyContent: "space-between",
+              alignItems: "center", mb: 3.5,
+            }}>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={remember} onChange={(e) => setRemember(e.target.checked)}
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
                     size="small"
-                    sx={{ color: "rgba(255,255,255,0.2)", "&.Mui-checked": { color: C.green }, p: "6px" }}
+                    sx={{
+                      color: "rgba(255,255,255,0.2)",
+                      "&.Mui-checked": { color: C.green },
+                      p: "6px",
+                    }}
                   />
                 }
                 label={
-                  <Typography sx={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.82rem", color: "rgba(255,255,255,0.45)" }}>
+                  <Typography sx={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontSize: "0.82rem", color: "rgba(255,255,255,0.45)",
+                  }}>
                     Recordarme
                   </Typography>
                 }
@@ -300,15 +341,20 @@ const Login = ({ setIsAuthenticated }) => {
             </Box>
 
             <Button
-              type="submit" fullWidth variant="contained"
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={loading}
               sx={{
-                background: `linear-gradient(90deg, ${C.blue}, ${C.teal})`,
+                background: loading
+                  ? "rgba(57,123,156,0.5)"
+                  : `linear-gradient(90deg, ${C.blue}, ${C.teal})`,
                 color: "#fff",
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 700, fontSize: "0.9rem",
                 letterSpacing: "0.05em", textTransform: "uppercase",
                 py: 1.5, borderRadius: "10px",
-                boxShadow: `0 8px 24px rgba(57,123,156,0.35)`,
+                boxShadow: loading ? "none" : `0 8px 24px rgba(57,123,156,0.35)`,
                 "&:hover": {
                   background: `linear-gradient(90deg, ${C.teal}, ${C.green})`,
                   boxShadow: `0 8px 28px rgba(90,173,156,0.4)`,
@@ -316,27 +362,39 @@ const Login = ({ setIsAuthenticated }) => {
                 transition: "all .3s ease",
               }}
             >
-              Iniciar sesión
+              {loading
+                ? <CircularProgress size={20} sx={{ color: "rgba(255,255,255,0.7)" }} />
+                : "Iniciar sesión"
+              }
             </Button>
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", my: 3 }}>
             <Box sx={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.07)" }}/>
-            <Typography sx={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.78rem", color: "rgba(255,255,255,0.28)", mx: 2 }}>
+            <Typography sx={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontSize: "0.78rem", color: "rgba(255,255,255,0.28)", mx: 2,
+            }}>
               o continuá con
             </Typography>
             <Box sx={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.07)" }}/>
           </Box>
 
           <Button
-            fullWidth variant="outlined"
+            fullWidth
+            variant="outlined"
             startIcon={<GoogleIcon sx={{ fontSize: "18px !important" }}/>}
             sx={{
-              color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.13)",
+              color: "rgba(255,255,255,0.7)",
+              borderColor: "rgba(255,255,255,0.13)",
               fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 600, fontSize: "0.88rem", py: 1.35, borderRadius: "10px",
+              fontWeight: 600, fontSize: "0.88rem",
+              py: 1.35, borderRadius: "10px",
               background: "rgba(255,255,255,0.02)",
-              "&:hover": { borderColor: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.06)" },
+              "&:hover": {
+                borderColor: "rgba(255,255,255,0.3)",
+                background: "rgba(255,255,255,0.06)",
+              },
               transition: "all .2s ease",
             }}
           >

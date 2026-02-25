@@ -1,4 +1,5 @@
 <?php
+// routes/api.php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -24,189 +25,159 @@ use App\Http\Controllers\ReceiptsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\Api\ContactController;
-
-// ✅ NEW: E-commerce Pro Controllers
 use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\CouponsController;
 use App\Http\Controllers\OrderTrackingController;
 use App\Http\Controllers\NotificationsController;
-
-// ✅ NUEVO: Dashboard Stats Controller
 use App\Http\Controllers\Api\DashboardStatsController;
 
-// ── Público (sin token)
+// ── Público (sin token/cookie) ────────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/create-password', [AuthController::class, 'createPassword']);
-    Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
+    Route::post('/register',         [AuthController::class, 'register']);
+    Route::post('/login',            [AuthController::class, 'login']);
+    Route::post('/create-password',  [AuthController::class, 'createPassword']);
+    Route::post('/password/forgot',  [AuthController::class, 'forgotPassword']);
 });
 
-// ── Catálogo público (sin login) con auth opcional para precios B2B
+// ── Catálogo público con auth opcional ───────────────────────────────────────
 Route::prefix('catalog')->middleware('auth.optional')->group(function () {
-    Route::get('/categories', [PublicCatalogController::class, 'categories']);
-    Route::get('/products', [PublicCatalogController::class, 'products']);
+    Route::get('/categories',         [PublicCatalogController::class, 'categories']);
+    Route::get('/products',           [PublicCatalogController::class, 'products']);
     Route::get('/products/{product}', [PublicCatalogController::class, 'product']);
-    Route::get('/orders/{code}', [PublicCatalogController::class, 'getOrder']);
-    Route::post('/checkout', [PublicCheckoutController::class, 'checkout']);
-    Route::get('/orders/{code}', [PublicOrdersController::class, 'show']);
+    Route::get('/orders/{code}',      [PublicCatalogController::class, 'getOrder']);
+    Route::post('/checkout',          [PublicCheckoutController::class, 'checkout']);
+    Route::get('/orders/{code}',      [PublicOrdersController::class, 'show']);
 });
 
-// ── Search & Analytics (público)
+// ── Search & Analytics ────────────────────────────────────────────────────────
 Route::prefix('search')->group(function () {
     Route::get('/suggestions', [SearchController::class, 'suggestions']);
-    Route::get('/popular', [SearchController::class, 'popular']);
-    Route::post('/track', [SearchController::class, 'track']);
+    Route::get('/popular',     [SearchController::class, 'popular']);
+    Route::post('/track',      [SearchController::class, 'track']);
 });
 
 Route::prefix('analytics')->group(function () {
-    Route::post('/product-view', [AnalyticsController::class, 'productView']);
+    Route::post('/product-view',  [AnalyticsController::class, 'productView']);
     Route::post('/product-click', [AnalyticsController::class, 'productClick']);
-    Route::post('/add-to-cart', [AnalyticsController::class, 'addToCart']);
-    Route::post('/purchase', [AnalyticsController::class, 'purchase']);
+    Route::post('/add-to-cart',   [AnalyticsController::class, 'addToCart']);
+    Route::post('/purchase',      [AnalyticsController::class, 'purchase']);
 });
 
-// ── Reviews públicos (lectura)
 Route::get('/products/{product}/reviews', [ReviewsController::class, 'index']);
+Route::get('/coupons/available',          [CouponsController::class, 'available']);
+Route::post('/coupons/validate',          [CouponsController::class, 'validateCoupon']);
+Route::post('/contact',                   [ContactController::class, 'store'])->name('contact.store');
 
-// ── Cupones públicos
-Route::get('/coupons/available', [CouponsController::class, 'available']);
-Route::post('/coupons/validate', [CouponsController::class, 'validateCoupon']);
-
-// Enviar mensaje de contacto (público)
-Route::post('/contact', [ContactController::class, 'store'])
-    ->name('contact.store');
-
-// ── Protegido (con token Bearer)
+// ── Protegido (cookie Sanctum o Bearer token) ─────────────────────────────────
+// ⚠️  IMPORTANTE PARA SANCTUM SPA (cookie session):
+//     En AuthController::login() asegurate de llamar a Auth::login($user)
+//     ANTES de devolver la respuesta. Eso crea la sesión que usa la cookie.
+//
+//     Ejemplo:
+//       Auth::login($user);                     // ← REQUERIDO para cookie auth
+//       $token = $user->createToken('spa')->plainTextToken;
+//       return response()->json(['token' => $token, 'user' => $user]);
+//
 Route::middleware('auth:sanctum')->group(function () {
 
+    // ── Ruta /api/user — usada por AuthContext::checkSession() ──────────────
+    // Permite verificar si hay sesión activa al iniciar la app SPA.
+    // Alias de /api/auth/me para compatibilidad con Sanctum estándar.
+    Route::get('/user', [AuthController::class, 'me']);
+
     // Auth
-    Route::get('auth/me', [AuthController::class, 'me']);
+    Route::get('auth/me',      [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
     // Empresa
     Route::get('companies/me', [CompaniesController::class, 'me']);
-    Route::get('company', [CompaniesController::class, 'me']); // Alias legacy
+    Route::get('company',      [CompaniesController::class, 'me']); // alias legacy
 
-        // Listar mensajes de contacto
-    Route::get('/contact', [ContactController::class, 'index'])
-        ->name('contact.index');
+    // Contacto (admin)
+    Route::get('/contact',                   [ContactController::class, 'index'])->name('contact.index');
+    Route::get('/contact/{id}',              [ContactController::class, 'show'])->name('contact.show');
+    Route::patch('/contact/{id}/status',     [ContactController::class, 'updateStatus'])->name('contact.updateStatus');
+    Route::delete('/contact/{id}',           [ContactController::class, 'destroy'])->name('contact.destroy');
+    Route::get('/contact/stats/summary',     [ContactController::class, 'stats'])->name('contact.stats');
 
-    // Ver un mensaje específico
-    Route::get('/contact/{id}', [ContactController::class, 'show'])
-        ->name('contact.show');
-
-    // Actualizar estado de un mensaje
-    Route::patch('/contact/{id}/status', [ContactController::class, 'updateStatus'])
-        ->name('contact.updateStatus');
-
-    // Eliminar un mensaje
-    Route::delete('/contact/{id}', [ContactController::class, 'destroy'])
-        ->name('contact.destroy');
-
-    // Obtener estadísticas
-    Route::get('/contact/stats/summary', [ContactController::class, 'stats'])
-        ->name('contact.stats');
-
-        // ========================================
-    // ✅ REVIEWS (User actions)
-    // ========================================
-    Route::post('/products/{product}/reviews', [ReviewsController::class, 'store']);
-    Route::post('/reviews/{review}/helpful', [ReviewsController::class, 'markAsHelpful']);
+    // Reviews (user actions)
+    Route::post('/products/{product}/reviews',   [ReviewsController::class, 'store']);
+    Route::post('/reviews/{review}/helpful',     [ReviewsController::class, 'markAsHelpful']);
     Route::post('/reviews/{review}/not-helpful', [ReviewsController::class, 'markAsNotHelpful']);
 
-    // ========================================
-    // ✅ WISHLIST
-    // ========================================
+    // Wishlist
     Route::prefix('wishlist')->group(function () {
-        Route::get('/', [WishlistController::class, 'index']);
-        Route::post('/', [WishlistController::class, 'store']);
-        Route::put('/{wishlist}', [WishlistController::class, 'update']);
-        Route::delete('/{wishlist}', [WishlistController::class, 'destroy']);
+        Route::get('/',                [WishlistController::class, 'index']);
+        Route::post('/',               [WishlistController::class, 'store']);
+        Route::put('/{wishlist}',      [WishlistController::class, 'update']);
+        Route::delete('/{wishlist}',   [WishlistController::class, 'destroy']);
         Route::get('/check/{product}', [WishlistController::class, 'check']);
     });
 
-    // ========================================
-    // ✅ ORDER TRACKING (User can view their orders)
-    // ========================================
+    // Order tracking (user)
     Route::get('/orders/{order}/tracking', [OrderTrackingController::class, 'show']);
-    Route::get('/my-orders', [OrderTrackingController::class, 'myOrders']);
+    Route::get('/my-orders',               [OrderTrackingController::class, 'myOrders']);
 
-    // ========================================
-    // ✅ NOTIFICATIONS
-    // ========================================
+    // Notifications
     Route::prefix('notifications')->group(function () {
-        Route::get('/', [NotificationsController::class, 'index']);
-        Route::get('/unread-count', [NotificationsController::class, 'unreadCount']);
-        Route::post('/{notification}/read', [NotificationsController::class, 'markAsRead']);
-        Route::post('/mark-all-read', [NotificationsController::class, 'markAllAsRead']);
-        Route::delete('/{notification}', [NotificationsController::class, 'destroy']);
-
-        // Preferences
-        Route::get('/preferences', [NotificationsController::class, 'getPreferences']);
-        Route::put('/preferences', [NotificationsController::class, 'updatePreferences']);
+        Route::get('/',                             [NotificationsController::class, 'index']);
+        Route::get('/unread-count',                 [NotificationsController::class, 'unreadCount']);
+        Route::post('/{notification}/read',         [NotificationsController::class, 'markAsRead']);
+        Route::post('/mark-all-read',               [NotificationsController::class, 'markAllAsRead']);
+        Route::delete('/{notification}',            [NotificationsController::class, 'destroy']);
+        Route::get('/preferences',                  [NotificationsController::class, 'getPreferences']);
+        Route::put('/preferences',                  [NotificationsController::class, 'updatePreferences']);
     });
 
-    // ========================================
-    // ✅ DASHBOARD - Estadísticas y Analytics
-    // ========================================
+    // Dashboard
     Route::prefix('dashboard')->group(function () {
-        Route::get('/stats', [DashboardStatsController::class, 'getStats']);
-        Route::get('/charts', [DashboardStatsController::class, 'getChartData']);
-        Route::get('/recent-transactions', [DashboardStatsController::class, 'getRecentTransactions']);
-        Route::get('/export/pdf', [DashboardStatsController::class, 'exportPDF']);
-        Route::get('/layout', [DashboardStatsController::class, 'getLayout']);
-        Route::post('/layout', [DashboardStatsController::class, 'saveLayout']);
+        Route::get('/stats',                [DashboardStatsController::class, 'getStats']);
+        Route::get('/charts',               [DashboardStatsController::class, 'getChartData']);
+        Route::get('/recent-transactions',  [DashboardStatsController::class, 'getRecentTransactions']);
+        Route::get('/export/pdf',           [DashboardStatsController::class, 'exportPDF']);
+        Route::get('/layout',               [DashboardStatsController::class, 'getLayout']);
+        Route::post('/layout',              [DashboardStatsController::class, 'saveLayout']);
     });
 
-    // --- Admin only ---
+    // ── Admin only ────────────────────────────────────────────────────────────
     Route::middleware('role:Admin')->group(function () {
 
-        // Catálogos y auxiliares
-        Route::get('warehouses', [WarehousesController::class, 'index']);
+        // Almacenes
+        Route::get('warehouses',                              [WarehousesController::class, 'index']);
+        Route::get('warehouses/{warehouse}',                  [WarehousesController::class, 'show']);
+        Route::post('warehouses',                             [WarehousesController::class, 'store']);
+        Route::put('warehouses/{warehouse}',                  [WarehousesController::class, 'update']);
+        Route::delete('warehouses/{warehouse}',               [WarehousesController::class, 'destroy']);
+        Route::get('taxes',                                   [WarehousesController::class, 'taxes']);
+        Route::get('payment-methods',                         [WarehousesController::class, 'paymentMethods']);
 
         // Productos
         Route::apiResource('products', ProductsController::class);
-        Route::get('/products', [ProductsController::class, 'index']);
-        Route::post('/products', [ProductsController::class, 'store']);
-        Route::get('/products/{product}', [ProductsController::class, 'show']);
-        Route::put('/products/{product}', [ProductsController::class, 'update']);
-        Route::delete('/products/{product}', [ProductsController::class, 'destroy']);
-
-        // Stock por producto
-        Route::get('products/{product}/stock', [StockController::class, 'productStock']);
-        Route::get('stock/summary', [StockController::class, 'summary']);
-
-        // Imágenes
-        Route::get('/products/{product}/images', [ProductsController::class, 'listImages']);
-        Route::post('/products/{product}/images', [ProductsController::class, 'uploadImage']);
+        Route::get('products/{product}/stock',                [StockController::class, 'productStock']);
+        Route::get('stock/summary',                           [StockController::class, 'summary']);
+        Route::get('/products/{product}/images',              [ProductsController::class, 'listImages']);
+        Route::post('/products/{product}/images',             [ProductsController::class, 'uploadImage']);
         Route::post('/products/{product}/images/{image}/primary', [ProductsController::class, 'setImagePrimary']);
-        Route::delete('/products/{product}/images/{image}', [ProductsController::class, 'deleteImage']);
+        Route::delete('/products/{product}/images/{image}',   [ProductsController::class, 'deleteImage']);
 
-               // ========================================
-        // ✅ REVIEWS ADMIN
-        // ========================================
+        // Reviews admin
         Route::post('/reviews/{review}/vendor-response', [ReviewsController::class, 'storeVendorResponse']);
-        Route::put('/reviews/{review}/approve', [ReviewsController::class, 'approve']);
-        Route::delete('/reviews/{review}', [ReviewsController::class, 'destroy']);
+        Route::put('/reviews/{review}/approve',          [ReviewsController::class, 'approve']);
+        Route::delete('/reviews/{review}',               [ReviewsController::class, 'destroy']);
 
-        // ========================================
-        // ✅ COUPONS ADMIN
-        // ========================================
+        // Coupons admin
         Route::prefix('coupons')->group(function () {
-            Route::get('/', [CouponsController::class, 'index']);
-            Route::post('/', [CouponsController::class, 'store']);
-            Route::put('/{coupon}', [CouponsController::class, 'update']);
+            Route::get('/',             [CouponsController::class, 'index']);
+            Route::post('/',            [CouponsController::class, 'store']);
+            Route::put('/{coupon}',     [CouponsController::class, 'update']);
             Route::delete('/{coupon}', [CouponsController::class, 'destroy']);
             Route::get('/{coupon}/usage', [CouponsController::class, 'usage']);
         });
 
-        // ========================================
-        // ✅ ORDER TRACKING ADMIN
-        // ========================================
-        Route::post('/orders/{order}/tracking', [OrderTrackingController::class, 'addUpdate']);
-        Route::put('/orders/{order}/tracking/{tracking}', [OrderTrackingController::class, 'updateStatus']);
+        // Order tracking admin
+        Route::post('/orders/{order}/tracking',                   [OrderTrackingController::class, 'addUpdate']);
+        Route::put('/orders/{order}/tracking/{tracking}',         [OrderTrackingController::class, 'updateStatus']);
 
         // Clientes
         Route::apiResource('customers', CustomersController::class);
@@ -215,38 +186,31 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('employees', \App\Http\Controllers\EmployeesController::class)
             ->only(['index', 'show', 'store', 'update', 'destroy']);
 
-        // Colaboradores (Asistencias y Pagos)
+        // Colaboradores
         Route::apiResource('collaborators', CollaboratorsController::class)
             ->only(['index', 'show', 'store', 'update', 'destroy']);
         Route::apiResource('collaborator-attendances', CollaboratorAttendancesController::class)
             ->only(['index', 'store', 'update', 'destroy']);
         Route::post('collaborator-receipts/generate', [CollaboratorReceiptsController::class, 'generate']);
-        Route::get('collaborator-receipts/{id}', [CollaboratorReceiptsController::class, 'show']);
+        Route::get('collaborator-receipts/{id}',      [CollaboratorReceiptsController::class, 'show']);
 
         // Proveedores
         Route::apiResource('vendors', \App\Http\Controllers\VendorsController::class)
             ->only(['index', 'show', 'store', 'update', 'destroy']);
 
-        // Tipos de factura
-        Route::get('invoice-types', [\App\Http\Controllers\InvoiceTypesController::class, 'index']);
-
-        // Pagos
-        Route::get('payments', [\App\Http\Controllers\PaymentsController::class, 'index']);
-        Route::post('payments', [\App\Http\Controllers\PaymentsController::class, 'store']);
+        // Facturación
+        Route::get('invoice-types',   [\App\Http\Controllers\InvoiceTypesController::class, 'index']);
+        Route::get('payments',        [\App\Http\Controllers\PaymentsController::class, 'index']);
+        Route::post('payments',       [\App\Http\Controllers\PaymentsController::class, 'store']);
 
         // Recibos
-        Route::get('receipts', [\App\Http\Controllers\ReceiptsController::class, 'index']);
-        Route::post('receipts', [\App\Http\Controllers\ReceiptsController::class, 'store']);
+        Route::get('receipts',              [ReceiptsController::class, 'index']);
+        Route::post('receipts',             [ReceiptsController::class, 'store']);
+        Route::delete('receipts/{receipt}', [ReceiptsController::class, 'destroy']);
 
-        // Roles
+        // Roles / Taxes / Payment Methods
         Route::get('roles', [\App\Http\Controllers\RolesController::class, 'index']);
-
-        // Impuestos
-        Route::apiResource('taxes', \App\Http\Controllers\TaxesController::class)
-            ->only(['index', 'show', 'store', 'update', 'destroy']);
-
-        // Métodos de pago
-        Route::apiResource('payment-methods', \App\Http\Controllers\PaymentMethodsController::class)
+        Route::apiResource('taxes',           \App\Http\Controllers\TaxesController::class)
             ->only(['index', 'show', 'store', 'update', 'destroy']);
 
         // Compras
@@ -256,25 +220,20 @@ Route::middleware('auth:sanctum')->group(function () {
         // Ventas POS
         Route::apiResource('sales', SalesController::class)
             ->only(['index', 'show', 'store', 'update']);
-        Route::post('sales/{sale}/items', [SalesController::class, 'addItem']);
-        Route::post('sales/{sale}/confirm', [SalesController::class, 'confirm']);
-        Route::post('sales/{sale}/invoice', [SalesController::class, 'invoice']);
-        Route::post('sales/{sale}/cancel', [SalesController::class, 'cancel']);
+        Route::post('sales/{sale}/items',    [SalesController::class, 'addItem']);
+        Route::post('sales/{sale}/confirm',  [SalesController::class, 'confirm']);
+        Route::post('sales/{sale}/invoice',  [SalesController::class, 'invoice']);
+        Route::post('sales/{sale}/cancel',   [SalesController::class, 'cancel']);
         Route::post('sales/{sale}/receipts', [SalesController::class, 'receipts']);
-
-        // Recibos
-        Route::get('receipts', [ReceiptsController::class, 'index']);
-        Route::post('receipts', [ReceiptsController::class, 'store']);
-        Route::delete('receipts/{receipt}', [ReceiptsController::class, 'destroy']);
 
         // Facturas
         Route::apiResource('invoices', InvoicesController::class)
             ->only(['index', 'show', 'store']);
 
-        // Hub (POS + e-commerce)
-        Route::get('sales-hub', [SalesHubController::class, 'index']);
-        Route::get('sales-hub/{source}/{id}', [SalesHubController::class, 'show']);
-        Route::put('sales-hub/{source}/{id}', [SalesHubController::class, 'update']);
+        // Hub POS + e-commerce
+        Route::get('sales-hub',                       [SalesHubController::class, 'index']);
+        Route::get('sales-hub/{source}/{id}',         [SalesHubController::class, 'show']);
+        Route::put('sales-hub/{source}/{id}',         [SalesHubController::class, 'update']);
         Route::post('sales-hub/{source}/{id}/cancel', [SalesHubController::class, 'cancel']);
 
         // Categorías
@@ -284,7 +243,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('promotions', [PromotionsController::class, 'index']);
 
         // Empresa
-        Route::get('companies/me', [CompaniesController::class, 'me']);
         Route::get('companies/{company}', [CompaniesController::class, 'show']);
     });
 });

@@ -146,6 +146,35 @@ export const listProducts = async (params = {}) => {
   return unwrapRows(r).map(toUI);
 };
 
+/**
+ * Versión paginada — devuelve { items, total, lastPage, currentPage }
+ * Compatible con la respuesta del paginator de Laravel:
+ *   { current_page, data: [...], last_page, total, per_page }
+ */
+export const listProductsPaginated = async (params = {}) => {
+  const r = await firstOkGET(LIST_PATHS, params);
+  const d = r?.data;
+
+  // Laravel paginator: { data: [...], last_page, total, current_page }
+  if (d && Array.isArray(d.data) && d.last_page != null) {
+    return {
+      items:       d.data.map(toUI),
+      total:       d.total       ?? null,
+      lastPage:    d.last_page   ?? null,
+      currentPage: d.current_page ?? params.page ?? 1,
+    };
+  }
+
+  // Array plano (fallback: sin metadatos de paginación)
+  const items = Array.isArray(d) ? d : [];
+  return {
+    items:       items.map(toUI),
+    total:       null,
+    lastPage:    null,
+    currentPage: params.page ?? 1,
+  };
+};
+
 export const getProduct = async (id) => {
   const r = await firstOkGET(ONE_PATHS(id));
   return toUI(unwrapObj(r));

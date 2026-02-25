@@ -17,9 +17,9 @@ import ViewListIcon          from "@mui/icons-material/ViewList";
 import ImageIcon             from "@mui/icons-material/Image";
 import InventoryIcon         from "@mui/icons-material/Inventory2Outlined";
 
-import * as Products    from "../../services/productService";
-import CrearArticulo    from "./CrearArticulo";
-import EditarArticulo   from "./EditarArticulo";
+import * as Products  from "../../services/productService";
+import CrearArticulo  from "./CrearArticulo";
+import EditarArticulo from "./EditarArticulo";
 
 /* ─── Brand ─── */
 const B = {
@@ -30,7 +30,6 @@ const B = {
   blueSoft:"#7CA5C3",
 };
 
-/* ─── Productos por página ─── */
 const PAGE_SIZE = 20;
 
 const STATUS_TABS = [
@@ -237,23 +236,28 @@ function ProductCard({ product, viewMode, onEdit, onToggleActive, isDark }) {
 
 /* ══════════════════════════════════════════════
    HOOK — INFINITE SCROLL
+   ═══════════════════════════════════════════════
+   Usa listProductsPaginated que preserva last_page
+   y total del paginator de Laravel.
+   refreshKey permite forzar un reset desde afuera.
    ══════════════════════════════════════════════ */
-function useInfiniteProducts({ q, filterStatus }) {
+function useInfiniteProducts({ q, filterStatus, refreshKey }) {
   const [items, setItems]             = useState([]);
   const [page, setPage]               = useState(1);
   const [hasMore, setHasMore]         = useState(true);
-  const [loading, setLoading]         = useState(true);    // primera carga → skeleton completo
-  const [loadingMore, setLoadingMore] = useState(false);   // páginas siguientes → spinner
-  const [total, setTotal]             = useState(null);    // total real del backend (si lo devuelve)
+  const [loading, setLoading]         = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [total, setTotal]             = useState(null);
 
-  // Cuando cambia búsqueda o filtro → reset
+  // Reset cuando cambia búsqueda, filtro O refreshKey
   useEffect(() => {
     setItems([]);
     setPage(1);
     setHasMore(true);
     setTotal(null);
-  }, [q, filterStatus]);
+  }, [q, filterStatus, refreshKey]);
 
+  // Carga de cada página
   useEffect(() => {
     let cancelled = false;
 
@@ -266,36 +270,25 @@ function useInfiniteProducts({ q, filterStatus }) {
         if (filterStatus === "active")   params.is_active = true;
         if (filterStatus === "inactive") params.is_active = false;
 
-        const res = await Products.listProducts(params);
+        // listProductsPaginated devuelve { items, total, lastPage }
+        const { items: newItems, total: tot, lastPage } =
+          await Products.listProductsPaginated(params);
+
         if (cancelled) return;
 
-        /*
-         * Compatibilidad con las tres respuestas más comunes del backend:
-         *
-         *  A) Array plano        → [{ ... }, ...]
-         *  B) Laravel paginator  → { data: [], total, last_page }
-         *  C) Meta wrapper       → { data: [], meta: { total, last_page } }
-         */
-        let newItems  = [];
-        let morePages = false;
-
-        if (Array.isArray(res)) {
-          newItems  = res;
-          morePages = res.length >= PAGE_SIZE;
-        } else {
-          const data     = res.data            ?? [];
-          const lastPage = res.last_page        ?? res.meta?.last_page ?? null;
-          const tot      = res.total            ?? res.meta?.total     ?? null;
-
-          newItems  = data;
-          morePages = lastPage ? page < lastPage : data.length >= PAGE_SIZE;
-          if (tot !== null) setTotal(tot);
-        }
-
         setItems((prev) => page === 1 ? newItems : [...prev, ...newItems]);
-        setHasMore(morePages);
+
+        if (tot    !== null) setTotal(tot);
+
+        // Determinar si hay más páginas
+        if (lastPage !== null) {
+          setHasMore(page < lastPage);
+        } else {
+          // Fallback: si devolvió menos de PAGE_SIZE, no hay más
+          setHasMore(newItems.length >= PAGE_SIZE);
+        }
       } catch (e) {
-        console.error(e);
+        console.error("[useInfiniteProducts]", e);
         if (!cancelled) setHasMore(false);
       } finally {
         if (!cancelled) {
@@ -307,10 +300,12 @@ function useInfiniteProducts({ q, filterStatus }) {
 
     load();
     return () => { cancelled = true; };
-  }, [q, filterStatus, page]);
+  }, [q, filterStatus, refreshKey, page]);
 
   const loadMore = useCallback(() => {
-    if (!loadingMore && !loading && hasMore) setPage((p) => p + 1);
+    if (!loadingMore && !loading && hasMore) {
+      setPage((p) => p + 1);
+    }
   }, [loadingMore, loading, hasMore]);
 
   return { items, loading, loadingMore, hasMore, total, loadMore };
@@ -332,10 +327,16 @@ export default function ArticulosIndex() {
   const [openEditar, setOpenEditar]     = useState(false);
   const [editRow, setEditRow]           = useState(null);
 
-  const { items, loading, loadingMore, hasMore, total, loadMore } =
-    useInfiniteProducts({ q, filterStatus });
+  // refreshKey: incrementar fuerza reset completo del hook
+  const [refreshKey, setRefreshKey] = useState(0);
+  const forceRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
-  /* ── Sentinel para IntersectionObserver ── */
+  // ── UN SOLO hook ──────────────────────────────────────────────────────────
+  const { items, loading, loadingMore, hasMore, total, loadMore } =
+    useInfiniteProducts({ q, filterStatus, refreshKey });
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // Sentinel: div invisible al final del grid
   const sentinelRef = useRef(null);
 
   useEffect(() => {
@@ -343,12 +344,15 @@ export default function ArticulosIndex() {
     if (!el) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      ([entry]) => {
+        if (entry.isIntersecting) loadMore();
+      },
       { rootMargin: "300px", threshold: 0 }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
+    // loadMore está memoizado y cambia solo cuando hasMore/loading cambia
   }, [loadMore]);
 
   const textCol   = isDark ? "#E6EEF5" : "#1A202C";
@@ -357,21 +361,6 @@ export default function ArticulosIndex() {
   const surfaceBg = isDark ? "#172A36" : "#fff";
 
   useEffect(() => { if (smDown) setViewMode("grid"); }, [smDown]);
-
-  // Después de crear/editar/toggle → re-trigger forzando el reset del hook
-  const refresh = useCallback(() => setFilterStatus((s) => {
-    // Truco: si setFilterStatus recibe el mismo valor, React no re-renderiza,
-    // así que usamos un estado separado de "version" para forzar el reset.
-    return s;
-  }), []);
-
-  // Estado auxiliar para forzar refresh sin cambiar el filtro visible
-  const [refreshKey, setRefreshKey] = useState(0);
-  const forceRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
-
-  const { items: allItems, loading: allLoading, loadingMore: allLoadingMore,
-          hasMore: allHasMore, total: allTotal, loadMore: allLoadMore } =
-    useInfiniteProducts({ q, filterStatus, _key: refreshKey });
 
   const handleToggleActivo = async (row) => {
     try {
@@ -386,17 +375,26 @@ export default function ArticulosIndex() {
     lg: viewMode === "grid" ? 3 : 12,
   }), [viewMode]);
 
-  const countLabel = allTotal !== null
-    ? `${allItems.length} de ${allTotal}`
-    : `${allItems.length} producto${allItems.length !== 1 ? "s" : ""}`;
+  // Etiqueta del contador: "X de Y" si hay total, o solo "X productos"
+  const countLabel = total !== null
+    ? `${items.length} de ${total}`
+    : `${items.length} producto${items.length !== 1 ? "s" : ""}`;
 
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
 
       {/* ── Header ── */}
-      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "flex-start" }} spacing={1.5} mb={3}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ sm: "flex-start" }}
+        spacing={1.5} mb={3}
+      >
         <Box>
-          <Typography sx={{ fontSize: 22, fontWeight: 800, color: textCol, letterSpacing: "-0.02em", fontFamily: "Montserrat, sans-serif", lineHeight: 1.2 }}>
+          <Typography sx={{
+            fontSize: 22, fontWeight: 800, color: textCol,
+            letterSpacing: "-0.02em", fontFamily: "Montserrat, sans-serif", lineHeight: 1.2,
+          }}>
             Productos
           </Typography>
           <Typography sx={{ fontSize: 13, color: mutedCol, mt: 0.4 }}>
@@ -404,8 +402,11 @@ export default function ArticulosIndex() {
           </Typography>
         </Box>
 
-        <Button variant="contained" startIcon={<AddIcon sx={{ fontSize: "17px !important" }} />}
-          onClick={() => setOpenCrear(true)} fullWidth={smDown}
+        <Button
+          variant="contained"
+          startIcon={<AddIcon sx={{ fontSize: "17px !important" }} />}
+          onClick={() => setOpenCrear(true)}
+          fullWidth={smDown}
           sx={{
             background: `linear-gradient(90deg, ${B.blue}, ${B.teal})`,
             color: "#fff", fontFamily: "Montserrat, sans-serif",
@@ -426,13 +427,23 @@ export default function ArticulosIndex() {
           placeholder="Buscar por nombre, SKU o código de barras..."
           value={q} onChange={(e) => setQ(e.target.value)}
           fullWidth size="small"
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: mutedCol }} /></InputAdornment> }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 18, color: mutedCol }} />
+              </InputAdornment>
+            ),
+          }}
           sx={{ flex: 1, "& .MuiOutlinedInput-root": { borderRadius: "10px", bgcolor: surfaceBg, fontSize: 13.5 } }}
         />
 
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
           {/* Status filter */}
-          <Stack direction="row" sx={{ borderRadius: "10px", border: `1px solid ${borderCol}`, bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", p: 0.35, gap: 0.2 }}>
+          <Stack direction="row" sx={{
+            borderRadius: "10px", border: `1px solid ${borderCol}`,
+            bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+            p: 0.35, gap: 0.2,
+          }}>
             {STATUS_TABS.map(({ value, label }) => (
               <Box key={value} onClick={() => setFilterStatus(value)} sx={{
                 px: 1.25, py: 0.55, borderRadius: "7px",
@@ -441,7 +452,10 @@ export default function ArticulosIndex() {
                 background: filterStatus === value ? `linear-gradient(90deg, ${B.blue}, ${B.teal})` : "transparent",
                 color: filterStatus === value ? "#fff" : mutedCol,
                 transition: "all .15s",
-                "&:hover": { color: filterStatus === value ? "#fff" : textCol, bgcolor: filterStatus === value ? undefined : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
+                "&:hover": {
+                  color: filterStatus === value ? "#fff" : textCol,
+                  bgcolor: filterStatus === value ? undefined : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+                },
               }}>
                 {label}
               </Box>
@@ -450,16 +464,27 @@ export default function ArticulosIndex() {
 
           {/* View toggle */}
           {!smDown && (
-            <Stack direction="row" sx={{ borderRadius: "10px", border: `1px solid ${borderCol}`, bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", p: 0.35, gap: 0.2 }}>
-              {[{ value: "grid", Icon: GridViewIcon, label: "Grilla" }, { value: "list", Icon: ViewListIcon, label: "Lista" }].map(({ value, Icon, label }) => (
+            <Stack direction="row" sx={{
+              borderRadius: "10px", border: `1px solid ${borderCol}`,
+              bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+              p: 0.35, gap: 0.2,
+            }}>
+              {[
+                { value: "grid", Icon: GridViewIcon, label: "Grilla" },
+                { value: "list", Icon: ViewListIcon, label: "Lista"  },
+              ].map(({ value, Icon, label }) => (
                 <Tooltip key={value} title={label} arrow>
                   <Box onClick={() => setViewMode(value)} sx={{
                     width: 30, height: 30, borderRadius: "7px",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: "pointer",
                     background: viewMode === value ? `linear-gradient(90deg, ${B.blue}, ${B.teal})` : "transparent",
-                    color: viewMode === value ? "#fff" : mutedCol, transition: "all .15s",
-                    "&:hover": { color: viewMode === value ? "#fff" : textCol, bgcolor: viewMode === value ? undefined : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
+                    color: viewMode === value ? "#fff" : mutedCol,
+                    transition: "all .15s",
+                    "&:hover": {
+                      color: viewMode === value ? "#fff" : textCol,
+                      bgcolor: viewMode === value ? undefined : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+                    },
                   }}>
                     <Icon sx={{ fontSize: 17 }} />
                   </Box>
@@ -468,9 +493,13 @@ export default function ArticulosIndex() {
             </Stack>
           )}
 
-          {/* Counter */}
-          {!allLoading && allItems.length > 0 && (
-            <Box sx={{ px: 1.25, py: 0.5, borderRadius: "8px", bgcolor: alpha(B.blue, isDark ? 0.18 : 0.1), border: `1px solid ${alpha(B.blue, 0.25)}` }}>
+          {/* Contador */}
+          {!loading && items.length > 0 && (
+            <Box sx={{
+              px: 1.25, py: 0.5, borderRadius: "8px",
+              bgcolor: alpha(B.blue, isDark ? 0.18 : 0.1),
+              border: `1px solid ${alpha(B.blue, 0.25)}`,
+            }}>
               <Typography sx={{ fontSize: 12, fontWeight: 700, color: B.blue }}>
                 {countLabel}
               </Typography>
@@ -480,7 +509,8 @@ export default function ArticulosIndex() {
       </Stack>
 
       {/* ── Grid / Content ── */}
-      {allLoading ? (
+      {loading ? (
+        /* Skeleton inicial */
         <Grid container spacing={{ xs: 1.5, sm: 2 }}>
           {Array.from({ length: smDown ? 4 : 8 }).map((_, i) => (
             <Grid item {...gridCols} key={i}>
@@ -488,9 +518,15 @@ export default function ArticulosIndex() {
             </Grid>
           ))}
         </Grid>
-      ) : allItems.length === 0 ? (
+      ) : items.length === 0 ? (
+        /* Empty state */
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 8, px: 2, textAlign: "center" }}>
-          <Box sx={{ width: 72, height: 72, borderRadius: "18px", mb: 2.5, bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", border: `1px solid ${borderCol}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Box sx={{
+            width: 72, height: 72, borderRadius: "18px", mb: 2.5,
+            bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+            border: `1px solid ${borderCol}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
             <InventoryIcon sx={{ fontSize: 32, color: mutedCol }} />
           </Box>
           <Typography sx={{ fontSize: 16, fontWeight: 700, color: textCol, mb: 0.75 }}>
@@ -510,7 +546,7 @@ export default function ArticulosIndex() {
       ) : (
         <>
           <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-            {allItems.map((product) => (
+            {items.map((product) => (
               <Grid item {...gridCols} key={product.idArticulo || product.id}>
                 <ProductCard
                   product={product}
@@ -523,18 +559,23 @@ export default function ArticulosIndex() {
             ))}
 
             {/* Skeletons inline mientras carga la siguiente página */}
-            {allLoadingMore && Array.from({ length: smDown ? 2 : 4 }).map((_, i) => (
+            {loadingMore && Array.from({ length: smDown ? 2 : 4 }).map((_, i) => (
               <Grid item {...gridCols} key={`sk-more-${i}`}>
                 <ProductSkeleton isList={viewMode === "list"} isDark={isDark} />
               </Grid>
             ))}
           </Grid>
 
-          {/* ─ Sentinel invisible — dispara el observer ─ */}
+          {/*
+            ─ Sentinel ─────────────────────────────────────────────────────
+            Div invisible al final del grid.
+            El IntersectionObserver lo observa y dispara loadMore() cuando
+            entra en el viewport (con 300px de anticipación).
+          */}
           <Box ref={sentinelRef} sx={{ height: 1, mt: 1 }} />
 
-          {/* Spinner de carga */}
-          {allLoadingMore && (
+          {/* Spinner al final durante carga */}
+          {loadingMore && (
             <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 1.5, py: 2.5 }}>
               <CircularProgress size={18} sx={{ color: B.blue }} />
               <Typography sx={{ fontSize: 12.5, color: mutedCol, fontWeight: 600 }}>
@@ -544,7 +585,7 @@ export default function ArticulosIndex() {
           )}
 
           {/* Fin del catálogo */}
-          {!allHasMore && allItems.length > 0 && (
+          {!hasMore && !loadingMore && items.length > 0 && (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
               <Box sx={{
                 display: "flex", alignItems: "center", gap: 1.5,
@@ -554,8 +595,8 @@ export default function ArticulosIndex() {
               }}>
                 <Box sx={{ width: 24, height: 1, bgcolor: borderCol }} />
                 <Typography sx={{ fontSize: 12, fontWeight: 600, color: mutedCol }}>
-                  {allTotal !== null
-                    ? `${allTotal} producto${allTotal !== 1 ? "s" : ""} en total`
+                  {total !== null
+                    ? `${total} producto${total !== 1 ? "s" : ""} en total`
                     : "No hay más productos"}
                 </Typography>
                 <Box sx={{ width: 24, height: 1, bgcolor: borderCol }} />

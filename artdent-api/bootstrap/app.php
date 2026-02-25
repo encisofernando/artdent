@@ -1,4 +1,5 @@
 <?php
+// bootstrap/app.php
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,15 +15,23 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // CORS: Agregar dominios permitidos
+
+        // ── Sanctum SPA: detecta requests del frontend y autentica por cookie ──
+        // DEBE ir primero en el grupo api para que los requests del front
+        // se autentiquen con la session cookie y no requieran Bearer token.
+        $middleware->api(prepend: [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        ]);
+
+        // ── CSRF: excluir rutas de API (Sanctum usa XSRF-TOKEN header en vez) ──
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
 
-        // Alias de middlewares personalizados
+        // ── Alias de middlewares personalizados ──────────────────────────────
         $middleware->alias([
             'auth.optional' => OptionalSanctumAuth::class,
-            'role' => RoleMiddleware::class,
+            'role'          => RoleMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
