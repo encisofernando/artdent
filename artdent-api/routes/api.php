@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\DashboardStatsController;
 Route::prefix('auth')->group(function () {
     Route::post('/register',         [AuthController::class, 'register']);
     Route::post('/login',            [AuthController::class, 'login']);
+    Route::post('/refresh',         [AuthController::class, 'refresh']);   // ← NUEVO
     Route::post('/create-password',  [AuthController::class, 'createPassword']);
     Route::post('/password/forgot',  [AuthController::class, 'forgotPassword']);
 });
@@ -69,6 +70,8 @@ Route::get('/coupons/available',          [CouponsController::class, 'available'
 Route::post('/coupons/validate',          [CouponsController::class, 'validateCoupon']);
 Route::post('/contact',                   [ContactController::class, 'store'])->name('contact.store');
 
+Route::post('/collaborator-attendances/mark', [CollaboratorAttendancesController::class, 'markAttendance']);
+
 // ── Protegido (cookie Sanctum o Bearer token) ─────────────────────────────────
 // ⚠️  IMPORTANTE PARA SANCTUM SPA (cookie session):
 //     En AuthController::login() asegurate de llamar a Auth::login($user)
@@ -93,6 +96,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Empresa
     Route::get('companies/me', [CompaniesController::class, 'me']);
     Route::get('company',      [CompaniesController::class, 'me']); // alias legacy
+
+    Route::get('/attendance/generate-qr', [CollaboratorAttendancesController::class, 'generateDailyQr']);
 
     // Contacto (admin)
     Route::get('/contact',                   [ContactController::class, 'index'])->name('contact.index');

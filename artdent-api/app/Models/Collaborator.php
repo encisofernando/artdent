@@ -14,6 +14,7 @@ class Collaborator extends Model
         'hourly_rate',
         'is_active',
         'notes',
+        'faceio_fid',
     ];
 
     protected $casts = [

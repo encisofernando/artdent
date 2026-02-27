@@ -231,6 +231,7 @@ export default function Asistencias() {
             <Button variant="outlined" onClick={fetchRows}>
               Filtrar
             </Button>
+            
           </Stack>
         </Stack>
 

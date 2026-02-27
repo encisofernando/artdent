@@ -16,6 +16,9 @@ class CollaboratorAttendance extends Model
         'hours',
         'amount',
         'notes',
+        'method',
+        'ip_address',
+        'device_info',
     ];
 
     protected $casts = [

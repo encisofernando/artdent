@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 class CollaboratorAttendancesController extends Controller
 {
     public function __construct()
@@ -120,5 +121,96 @@ class CollaboratorAttendancesController extends Controller
         if ($userCompanyId && $resourceCompanyId && (int)$userCompanyId !== (int)$resourceCompanyId) {
             abort(403, 'No autorizado.');
         }
+    }
+
+    // ==================== GENERAR QR DINÁMICO ====================
+public function generateDailyQr(Request $request)
+{
+    $companyId = $request->user()->company_id;
+    $date      = now()->format('Y-m-d');
+
+    $token = Cache::remember("daily_qr_{$companyId}_{$date}", 86400, fn() => Str::uuid()->toString());
+
+    $qrUrl = route('attendance.kiosk', [
+        'token'      => $token,
+        'date'       => $date,
+        'company_id' => $companyId
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'qr_url'  => $qrUrl,
+        'token'   => $token,
+        'date'    => $date
+    ]);
+}
+
+    // ==================== MARCADO (QR + Facial) ====================
+    public function markAttendance(Request $request)
+    {
+        $data = $request->validate([
+            'token'       => 'required|string',
+            'date'        => 'required|date',
+            'company_id'  => 'required|integer',
+            'type'        => 'required|in:in,out',
+            'method'      => 'required|in:qr,face',
+            'faceio_fid'  => 'nullable|string',
+            'collaborator_id' => 'nullable|exists:collaborators,id',
+        ]);
+
+        // Validar token dinámico
+        if (Cache::get("daily_qr_{$data['company_id']}_{$data['date']}") !== $data['token']) {
+            return response()->json(['error' => 'QR inválido o expirado'], 403);
+        }
+
+        $collabId = $data['collaborator_id'];
+
+        // Si viene por rostro
+        if ($data['method'] === 'face' && $data['faceio_fid']) {
+            $collab = Collaborator::where('faceio_fid', $data['faceio_fid'])
+                ->where('company_id', $data['company_id'])
+                ->firstOrFail();
+            $collabId = $collab->id;
+        }
+
+        if (!$collabId) {
+            return response()->json(['error' => 'Colaborador no identificado'], 422);
+        }
+
+        $attendance = CollaboratorAttendance::firstOrNew([
+            'company_id'     => $data['company_id'],
+            'collaborator_id'=> $collabId,
+            'work_date'      => $data['date'],
+        ]);
+
+        $now = now()->format('H:i');
+
+        if ($data['type'] === 'in') {
+            $attendance->time_in = $now;
+        } else {
+            $attendance->time_out = $now;
+        }
+
+        $attendance->method      = $data['method'];
+        $attendance->ip_address  = $request->ip();
+        $attendance->device_info = $request->header('User-Agent');
+
+        // Recalcular horas y monto (reutilizamos tu método privado)
+        $collab = Collaborator::findOrFail($collabId);
+        [$hours, $amount] = $this->calcHoursAndAmount(
+            $attendance->time_in,
+            $attendance->time_out,
+            (float)$collab->hourly_rate
+        );
+
+        $attendance->hours  = $hours;
+        $attendance->amount = $amount;
+        $attendance->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $data['type'] === 'in' ? '✅ Entrada registrada' : '✅ Salida registrada',
+            'attendance' => $attendance->load('collaborator')
+        ]);
     }
 }

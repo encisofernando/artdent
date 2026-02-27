@@ -1,139 +1,235 @@
-import React, { useEffect, useState } from 'react';
+// src/scenes/clientes/ClienteFormEdit.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Button, Checkbox, FormControlLabel,
-  Grid, Box, CircularProgress, Snackbar, Alert
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import { tokens } from '../../theme';
-import { Customers } from '../../services';
+  Box,
+  Button,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Stack,
+  TextField,
+  Typography,
+  useMediaQuery,
+  useTheme,
+  Divider,
+  CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  Alert,
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import CloseIcon from "@mui/icons-material/Close";
+import * as Customers from "../../services/customerService";
 
-const emptyData = {
-  code: '',
-  name: '',
-  tax_id: '',
-  tax_condition: '',
-  email: '',
-  phone: '',
-  address: '',
-  city: '',
-  state: '',
-  zip: '',
-  credit_limit: 0,
-  is_active: 1,
+const B = {
+  blue: "#397B9C",
+  green: "#5AAD9C",
+  teal: "#49949C",
+  mint: "#ACD6CE",
+  soft: "#7CA5C3",
 };
 
-const ClienteFormEdit = ({ open, onClose, onClienteEditado, clienteEditado }) => {
+export default function ClienteFormEdit({ open, onClose, cliente, onUpdated }) {
   const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
+  const isDark = theme.palette.mode === "dark";
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const [formData, setFormData] = useState(emptyData);
-  const [loading, setLoading] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? (checked ? 1 : 0) : value }));
-  };
+  const bg = isDark ? "#0F2733" : "#FFFFFF";
+  const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const text = isDark ? "#E6EEF5" : "#111827";
+  const muted = isDark ? "rgba(230,238,245,0.55)" : "rgba(17,24,39,0.55)";
 
   useEffect(() => {
-    if (clienteEditado) {
-      setFormData({
-        code: clienteEditado.code || '',
-        name: clienteEditado.name || '',
-        tax_id: clienteEditado.tax_id || '',
-        tax_condition: clienteEditado.tax_condition || '',
-        email: clienteEditado.email || '',
-        phone: clienteEditado.phone || '',
-        address: clienteEditado.address || '',
-        city: clienteEditado.city || '',
-        state: clienteEditado.state || '',
-        zip: clienteEditado.zip || '',
-        credit_limit: clienteEditado.credit_limit ?? 0,
-        is_active: clienteEditado.is_active ?? 1,
-      });
-    } else {
-      setFormData(emptyData);
-    }
-  }, [clienteEditado]);
+    if (!cliente) return;
+    setForm({
+      id: cliente.id,
+      code: cliente.code ?? "",
+      name: cliente.name ?? "",
+      tax_id: cliente.tax_id ?? "",
+      tax_condition: cliente.tax_condition ?? "",
+      email: cliente.email ?? "",
+      phone: cliente.phone ?? "",
+      address: cliente.address ?? "",
+      city: cliente.city ?? "",
+      state: cliente.state ?? "",
+      zip: cliente.zip ?? "",
+      credit_limit: Number(cliente.credit_limit ?? 0),
+      is_active: cliente.is_active ? 1 : 0,
+    });
+    setSaving(false);
+    setError("");
+  }, [cliente]);
 
-  const handleSubmitEditar = async () => {
-    setLoading(true);
+  const canSave = useMemo(() => {
+    return String(form?.name || "").trim().length > 1;
+  }, [form?.name]);
+
+  const set = (k) => (e) => {
+    const v = e.target.type === "checkbox" ? (e.target.checked ? 1 : 0) : e.target.value;
+    setForm((p) => ({ ...p, [k]: v }));
+  };
+
+  const submit = async () => {
+    if (!form?.id || !canSave || saving) return;
+    setSaving(true);
+    setError("");
+
+    const payload = {
+      code: form.code,
+      name: form.name,
+      tax_id: form.tax_id,
+      tax_condition: form.tax_condition,
+      email: form.email,
+      phone: form.phone,
+      address: form.address,
+      city: form.city,
+      state: form.state,
+      zip: form.zip,
+      credit_limit: Number(form.credit_limit || 0),
+      is_active: form.is_active ? 1 : 0,
+    };
+
     try {
-      const payload = {
-        ...formData,
-        credit_limit: Number(formData.credit_limit || 0),
-        is_active: formData.is_active ? 1 : 0,
-      };
-      await Customers.updateCustomer(clienteEditado.id, payload);
-      setSnackbarMessage('Cliente editado con éxito');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      onClienteEditado?.();
-      onClose?.();
-    } catch (error) {
-      console.error('Error al editar cliente:', error);
-      setSnackbarMessage(error?.response?.data?.message || 'Error al editar el cliente');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+      if (Customers.updateCustomer) {
+        await Customers.updateCustomer(form.id, payload);
+      } else {
+        const res = await fetch(`/api/customers/${form.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Error al actualizar cliente");
+      }
+
+      onUpdated?.();
+    } catch (e) {
+      console.error("[ClienteFormEdit] update error:", e);
+      setError(e?.response?.data?.message || e?.message || "Error al actualizar el cliente");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleSnackbarClose = () => setSnackbarOpen(false);
+  if (!open) return null;
+  if (!form) return null;
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ backgroundColor: colors.primary[400], textAlign: 'center', fontSize: '1.5rem' }}>
-          Modificar Cliente
-        </DialogTitle>
-        <DialogContent sx={{ backgroundColor: colors.primary[400] }}>
-          <Box p={3} borderRadius={2}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}><TextField name="code" label="Código" fullWidth margin="normal" value={formData.code} onChange={handleChange} /></Grid>
-              <Grid item xs={12} sm={8}><TextField name="name" label="Nombre" fullWidth required margin="normal" value={formData.name} onChange={handleChange} /></Grid>
-
-              <Grid item xs={12} sm={6}><TextField name="tax_id" label="CUIT/CUIL" fullWidth margin="normal" value={formData.tax_id} onChange={handleChange} /></Grid>
-              <Grid item xs={12} sm={6}><TextField name="tax_condition" label="Condición IVA" fullWidth margin="normal" value={formData.tax_condition} onChange={handleChange} /></Grid>
-
-              <Grid item xs={12} sm={6}><TextField name="email" label="Email" fullWidth margin="normal" value={formData.email} onChange={handleChange} /></Grid>
-              <Grid item xs={12} sm={6}><TextField name="phone" label="Teléfono" fullWidth margin="normal" value={formData.phone} onChange={handleChange} /></Grid>
-
-              <Grid item xs={12} sm={8}><TextField name="address" label="Dirección" fullWidth margin="normal" value={formData.address} onChange={handleChange} /></Grid>
-              <Grid item xs={12} sm={4}><TextField name="zip" label="CP" fullWidth margin="normal" value={formData.zip} onChange={handleChange} /></Grid>
-
-              <Grid item xs={12} sm={6}><TextField name="city" label="Ciudad" fullWidth margin="normal" value={formData.city} onChange={handleChange} /></Grid>
-              <Grid item xs={12} sm={6}><TextField name="state" label="Provincia" fullWidth margin="normal" value={formData.state} onChange={handleChange} /></Grid>
-
-              <Grid item xs={12} sm={6}><TextField name="credit_limit" label="Límite de Cuenta Corriente" type="number" fullWidth margin="normal" value={formData.credit_limit} onChange={handleChange} /></Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControlLabel
-                  control={<Checkbox checked={!!formData.is_active} onChange={handleChange} name="is_active" />}
-                  label="Activo"
-                />
-              </Grid>
-            </Grid>
+      <DialogTitle
+        sx={{
+          bgcolor: bg,
+          color: text,
+          borderBottom: `1px solid ${border}`,
+          py: 1.5,
+        }}
+      >
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box>
+            <Typography sx={{ fontWeight: 900, fontSize: 16, lineHeight: 1.1 }}>Editar cliente</Typography>
+            <Typography sx={{ color: muted, fontSize: 12, mt: 0.25 }}>
+              {form.name || "—"}
+            </Typography>
           </Box>
-        </DialogContent>
-        <DialogActions sx={{ backgroundColor: colors.primary[400] }}>
-          <Button onClick={onClose} color="error">Cancelar</Button>
-          <Button onClick={handleSubmitEditar} color="secondary" disabled={loading}>
-            {loading ? <CircularProgress size={24} /> : 'Editar Cliente'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          <IconButton onClick={onClose} sx={{ borderRadius: 2, border: `1px solid ${border}` }}>
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
 
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
-        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      <DialogContent sx={{ bgcolor: bg, color: text, p: { xs: 1.5, md: 2 } }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 1.5, borderRadius: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box
+          sx={{
+            borderRadius: 3,
+            border: `1px solid ${border}`,
+            bgcolor: alpha("#FFFFFF", isDark ? 0.03 : 0.7),
+            p: 1.5,
+          }}
+        >
+          <Stack direction={{ xs: "column", md: "row" }} gap={1.25}>
+            <TextField label="Código" value={form.code} onChange={set("code")} fullWidth />
+            <TextField label="Nombre / Razón Social *" value={form.name} onChange={set("name")} fullWidth />
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} gap={1.25} mt={1.25}>
+            <TextField label="CUIT/CUIL" value={form.tax_id} onChange={set("tax_id")} fullWidth />
+            <TextField label="Condición IVA" value={form.tax_condition} onChange={set("tax_condition")} fullWidth />
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} gap={1.25} mt={1.25}>
+            <TextField label="Email" value={form.email} onChange={set("email")} fullWidth />
+            <TextField label="Teléfono" value={form.phone} onChange={set("phone")} fullWidth />
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} gap={1.25} mt={1.25}>
+            <TextField label="Dirección" value={form.address} onChange={set("address")} fullWidth />
+            <TextField label="CP" value={form.zip} onChange={set("zip")} sx={{ maxWidth: { md: 180 } }} fullWidth />
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} gap={1.25} mt={1.25}>
+            <TextField label="Ciudad" value={form.city} onChange={set("city")} fullWidth />
+            <TextField label="Provincia" value={form.state} onChange={set("state")} fullWidth />
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} gap={1.25} mt={1.25} alignItems={{ md: "center" }}>
+            <TextField
+              label="Límite Cuenta Corriente"
+              type="number"
+              value={form.credit_limit}
+              onChange={set("credit_limit")}
+              fullWidth
+            />
+            <FormControlLabel
+              control={<Checkbox checked={!!form.is_active} onChange={set("is_active")} />}
+              label="Activo"
+              sx={{ ml: { md: 0.5 } }}
+            />
+          </Stack>
+        </Box>
+
+        <Divider sx={{ my: 2, borderColor: border }} />
+
+        <Stack direction="row" justifyContent="flex-end" gap={1}>
+          <Button
+            variant="outlined"
+            onClick={onClose}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              borderColor: alpha(B.blue, 0.35),
+              color: text,
+            }}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={submit}
+            disabled={!canSave || saving}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 900,
+              bgcolor: B.blue,
+              "&:hover": { bgcolor: B.teal },
+              minWidth: 150,
+            }}
+          >
+            {saving ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Guardar"}
+          </Button>
+        </Stack>
+      </DialogContent>
     </>
   );
-};
-
-export default ClienteFormEdit;
+}

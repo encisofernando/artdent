@@ -1,4 +1,5 @@
 // src/components/BarChart.jsx
+import { useRef, useState, useEffect } from "react";
 import { useTheme } from "@mui/material";
 import { ResponsiveBar } from "@nivo/bar";
 import { tokens } from "../theme";
@@ -18,6 +19,20 @@ const BarChart = ({ isDashboard = false, data = null }) => {
   const theme  = useTheme();
   const colors = tokens(theme.palette.mode);
   const isDark = theme.palette.mode === "dark";
+
+  /* ── Guard: solo renderizar cuando el contenedor tiene ancho real ──
+     Nivo puede calcular width negativo si el layout CSS aún no se resolvió,
+     provocando el error "<rect> attribute width: A negative value is not valid".  */
+  const containerRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setReady(true);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const chartData = data && data.length > 0 ? data : mockBarData;
 
@@ -84,7 +99,8 @@ const BarChart = ({ isDashboard = false, data = null }) => {
   };
 
   return (
-    <ResponsiveBar
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      {ready && <ResponsiveBar
       data={chartData}
       theme={nivoTheme}
       keys={keys}
@@ -151,7 +167,8 @@ const BarChart = ({ isDashboard = false, data = null }) => {
       }
       role="application"
       ariaLabel="Gráfico de barras ArtDent"
-    />
+    />}
+    </div>
   );
 };
 

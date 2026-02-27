@@ -80,24 +80,45 @@ export const getStats = async () => {
 
 /**
  * Registrar recibos/cobros por la venta
- * 
- * @param {number} saleId 
- * @param {Array} receipts - [{payment_method_id, amount, receipt_date, reference}]
- * @returns 
+ *
+ * @param {number} saleId
+ * @param {Array}  receipts - [{ payment_method_id, amount, receipt_date, reference }]
  */
 export const registerReceipts = async (saleId, receipts = []) => {
   if (!receipts.length) return [];
-  
+
+  // Sanear payload: nunca enviar payment_method_id: null con tipo string
+  const clean = receipts.map((r) => ({
+    payment_method_id: typeof r.payment_method_id === "number" ? r.payment_method_id : null,
+    amount:            Number(r.amount) || 0,
+    receipt_date:      r.receipt_date ?? new Date().toISOString().split("T")[0],
+    reference:         r.reference ?? null,
+  }));
+
+  // Intento primario: endpoint bulk específico de la venta
   try {
-    const res = await api.post(`/sales/${saleId}/receipts`, { receipts });
+    const res = await api.post(`/sales/${saleId}/receipts`, { receipts: clean });
     return unwrap(res);
-  } catch (e) {
-    // Fallback: crear uno por uno si el endpoint bulk no existe
+  } catch (primaryErr) {
+    // Solo hace fallback si el endpoint bulk no existe (404) o no está implementado (500)
+    // Si fue 422 en el bulk es un error de datos — lo relanzamos para visibilidad
+    const status = primaryErr?.response?.status;
+    if (status === 422) {
+      console.warn("[registerReceipts] 422 en /sales/{id}/receipts:", primaryErr.response?.data);
+      throw primaryErr;
+    }
+
+    // Fallback: crear recibos uno a uno vía ReceiptsController
+    console.warn("[registerReceipts] Fallback a POST /receipts (status:", status, ")");
     const results = [];
-    for (const receipt of receipts) {
-      const body = { ...receipt, sale_id: saleId };
-      const res = await api.post("/receipts", body);
-      results.push(unwrap(res));
+    for (const receipt of clean) {
+      try {
+        const res = await api.post("/receipts", { ...receipt, sale_id: saleId });
+        results.push(unwrap(res));
+      } catch (fallbackErr) {
+        console.warn("[registerReceipts] Error en fallback individual:", fallbackErr?.response?.data);
+        // No relanzamos — el recibo es secundario, la venta ya fue creada
+      }
     }
     return results;
   }

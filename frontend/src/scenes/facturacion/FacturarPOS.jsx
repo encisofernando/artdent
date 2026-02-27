@@ -5,6 +5,7 @@ import {
   Typography, Dialog, DialogTitle, DialogContent, DialogActions,
   useMediaQuery, useTheme, Grid, Divider, Alert, Snackbar,
   Skeleton, CircularProgress, MenuItem, Chip, Tooltip,
+  Drawer, Fab, Badge,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import SearchIcon          from "@mui/icons-material/Search";
@@ -825,10 +826,208 @@ function ModalExito({ open, onClose, venta, onImprimir, onWhatsApp, onEmail, isD
 }
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
+// ─── CartPanel ─ compartido entre sidebar desktop y mobile Drawer ────────────
+function CartPanel({
+  items, itemCount, cliente, tipoComp, setTipoComp, tipoSelected,
+  totales, procesando, incItem, decItem, removeItem, clearCart,
+  setOpenCliente, handleCobrar,
+  isDark, borderCol, textCol, mutedCol, sidebarBg, hideHeader = false,
+}) {
+  return (
+    <>
+{!hideHeader && (
+<Box sx={{ px: 2, pt: 2, pb: 1.5, borderBottom: `1px solid ${borderCol}` }}>
+  <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+    <Stack direction="row" spacing={1} alignItems="center">
+      <ShoppingCartIcon sx={{ color: B.blue, fontSize: 18 }} />
+      <Typography sx={{ fontWeight: 800, fontSize: 14.5, fontFamily: "Montserrat, sans-serif", color: textCol }}>
+        Orden
+      </Typography>
+      {itemCount > 0 && (
+        <Box sx={{
+          px: 0.75, py: 0.1, borderRadius: "5px",
+          bgcolor: alpha(B.blue, isDark ? 0.2 : 0.1),
+          border: `1px solid ${alpha(B.blue, 0.25)}`,
+        }}>
+          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: B.blue }}>
+            {itemCount}
+          </Typography>
+        </Box>
+      )}
+    </Stack>
+    {items.length > 0 && (
+      <Button size="small" onClick={clearCart} sx={{
+        color: "#E63946", fontSize: 11.5, fontWeight: 600, textTransform: "none",
+        py: 0.25, px: 1, borderRadius: "7px",
+        "&:hover": { bgcolor: alpha("#E63946", 0.08) },
+      }}>
+        Limpiar
+      </Button>
+    )}
+  </Stack>
+
+  {/* Cliente */}
+  <Button
+    onClick={() => setOpenCliente(true)}
+    startIcon={<PersonIcon sx={{ fontSize: 15 }} />}
+    endIcon={!cliente ? <PersonAddIcon sx={{ fontSize: 14, opacity: 0.5 }} /> : undefined}
+    variant="outlined"
+    fullWidth size="small"
+    sx={{
+      mb: 1, borderRadius: "10px", textTransform: "none",
+      fontWeight: 600, fontSize: 12.5, py: 0.85,
+      justifyContent: "flex-start",
+      borderColor: cliente ? alpha(B.blue, 0.45) : borderCol,
+      color: cliente ? B.blue : mutedCol,
+      bgcolor: cliente ? alpha(B.blue, isDark ? 0.12 : 0.05) : "transparent",
+      "&:hover": { borderColor: B.blue, bgcolor: alpha(B.blue, isDark ? 0.15 : 0.06) },
+    }}
+  >
+    {cliente ? cliente.nombre : "Seleccionar cliente"}
+  </Button>
+
+  {/* Tipo comprobante */}
+  <Stack direction="row" spacing={0.5} mb={0.75}>
+    {TIPOS.map((t) => {
+      const sel = tipoComp === t.id;
+      return (
+        <Box key={t.id} onClick={() => setTipoComp(t.id)} sx={{
+          flex: 1, textAlign: "center", py: 0.6, borderRadius: "8px", cursor: "pointer",
+          border: `1.5px solid ${sel ? t.accentColor : borderCol}`,
+          background: sel ? alpha(t.accentColor, isDark ? 0.22 : 0.1) : "transparent",
+          transition: "all .13s",
+          "&:hover": { border: `1.5px solid ${t.accentColor}` },
+        }}>
+          <Typography sx={{
+            fontSize: 11, fontWeight: sel ? 800 : 500,
+            color: sel ? t.accentColor : mutedCol,
+            fontFamily: "Montserrat, sans-serif",
+          }}>
+            {t.id}
+          </Typography>
+        </Box>
+      );
+    })}
+  </Stack>
+  {tipoSelected && (
+    <Typography sx={{ fontSize: 10.5, color: mutedCol, textAlign: "center" }}>
+      {tipoSelected.label} — {tipoSelected.desc}
+      {["A","B","C"].includes(tipoComp) ? " · ARCA/AFIP" : ""}
+    </Typography>
+  )}
+</Box>
+
+)}
+{/* Cart items */}
+<Box sx={{
+  flex: 1, overflowY: "auto", px: 2, py: 1.5,
+  "&::-webkit-scrollbar": { width: 4 },
+  "&::-webkit-scrollbar-thumb": {
+    bgcolor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", borderRadius: 2,
+  },
+}}>
+  {items.length === 0 ? (
+    <Box sx={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", height: "100%", textAlign: "center",
+    }}>
+      <ShoppingCartIcon sx={{ fontSize: 38, color: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)", mb: 1.5 }} />
+      <Typography sx={{ fontSize: 13, fontWeight: 600, color: mutedCol }}>Carrito vacío</Typography>
+      <Typography sx={{ fontSize: 11.5, color: isDark ? "rgba(230,238,245,0.22)" : "rgba(26,32,44,0.22)", mt: 0.4 }}>
+        Hacé clic en un artículo para agregarlo
+      </Typography>
+    </Box>
+  ) : (
+    <Stack spacing={0.75}>
+      {items.map((item) => (
+        <CartRow
+          key={item.id} item={item}
+          onInc={incItem} onDec={decItem} onRemove={removeItem}
+          isDark={isDark}
+        />
+      ))}
+    </Stack>
+  )}
+</Box>
+
+{/* Totals + pay button */}
+{items.length > 0 && (
+  <Box sx={{ borderTop: `1px solid ${borderCol}`, px: 2, pt: 1.5, pb: 2 }}>
+    <Stack spacing={0.5} mb={1.5}>
+      {/* Neto — only for A/B */}
+      {["A","B"].includes(tipoComp) && (
+        <Stack direction="row" justifyContent="space-between">
+          <Typography sx={{ fontSize: 11.5, color: mutedCol }}>Subtotal neto</Typography>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: textCol }}>${fmt(totales.subtotal)}</Typography>
+        </Stack>
+      )}
+      {tipoComp !== "C" && totales.iva21 > 0 && (
+        <Stack direction="row" justifyContent="space-between">
+          <Typography sx={{ fontSize: 11.5, color: mutedCol }}>IVA 21%</Typography>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: textCol }}>${fmt(totales.iva21)}</Typography>
+        </Stack>
+      )}
+      {tipoComp !== "C" && totales.iva105 > 0 && (
+        <Stack direction="row" justifyContent="space-between">
+          <Typography sx={{ fontSize: 11.5, color: mutedCol }}>IVA 10.5%</Typography>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: textCol }}>${fmt(totales.iva105)}</Typography>
+        </Stack>
+      )}
+
+      <Divider sx={{ borderColor: borderCol, my: 0.5 }} />
+
+      <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+        <Typography sx={{ fontSize: 13, fontWeight: 800, color: textCol, fontFamily: "Montserrat, sans-serif", letterSpacing: "0.01em" }}>
+          TOTAL
+        </Typography>
+        <Typography sx={{
+          fontSize: 26, fontWeight: 800, color: B.blue,
+          fontFamily: "Montserrat, sans-serif", letterSpacing: "-0.02em",
+        }}>
+          ${fmt(totales.total)}
+        </Typography>
+      </Stack>
+    </Stack>
+
+    <Button
+      variant="contained"
+      fullWidth
+      onClick={handleCobrar}
+      disabled={procesando}
+      startIcon={
+        procesando
+          ? <CircularProgress size={17} sx={{ color: "#fff" }} />
+          : <ReceiptLongIcon sx={{ fontSize: "19px !important" }} />
+      }
+      sx={{
+        background: `linear-gradient(90deg, ${B.green}, ${B.teal})`,
+        color: "#fff", fontFamily: "Montserrat, sans-serif",
+        fontWeight: 800, fontSize: 15, textTransform: "none",
+        py: 1.4, borderRadius: "12px",
+        boxShadow: `0 6px 20px ${alpha(B.green, 0.42)}`,
+        "&:hover": {
+          background: `linear-gradient(90deg, ${B.teal}, ${B.blue})`,
+          boxShadow: `0 6px 24px ${alpha(B.teal, 0.48)}`,
+        },
+        "&:disabled": {
+          background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+          color: mutedCol, boxShadow: "none",
+        },
+      }}
+    >
+      {procesando ? "Procesando..." : `Cobrar $${fmt(totales.total)}`}
+    </Button>
+  </Box>
+)}
+    </>
+  );
+}
+
 export default function FacturarPOS() {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
   const mdDown = useMediaQuery(theme.breakpoints.down("md"));
+  const smDown = useMediaQuery(theme.breakpoints.down("sm"));
   const { sidebarWidth } = useSidebarContext();
   const topbarH = theme.mixins?.toolbar?.minHeight ? Number(theme.mixins.toolbar.minHeight) : 64;
 
@@ -839,6 +1038,9 @@ export default function FacturarPOS() {
   const surfaceBg = isDark ? "#0F1F2A" : "#F4F7FA";
   const cardBg    = isDark ? "#172A36" : "#fff";
   const sidebarBg = isDark ? "#0D1B24" : "#EEF3F8";
+
+  // ── Mobile cart drawer ──
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
 
   // ── Data state ──
   const [busca, setBusca]                   = useState("");
@@ -1201,197 +1403,143 @@ export default function FacturarPOS() {
           </Box>
         </Grid>
 
-        {/* ═══ RIGHT — Orden / Cart ══════════════════════════════════════════ */}
-        <Grid item xs={12} md={5} lg={4.5} sx={{
-          height: "100%", display: "flex", flexDirection: "column",
-          bgcolor: sidebarBg,
-        }}>
+        {/* ═══ RIGHT ─ Cart panel (desktop only) ══════════════════════════ */}
+        {!mdDown && (
+          <Grid item md={5} lg={4.5} sx={{
+            height: "100%", display: "flex", flexDirection: "column",
+            bgcolor: sidebarBg,
+          }}>
+            <CartPanel
+              items={items} itemCount={itemCount} cliente={cliente}
+              tipoComp={tipoComp} setTipoComp={setTipoComp} tipoSelected={tipoSelected}
+              totales={totales} procesando={procesando}
+              incItem={incItem} decItem={decItem} removeItem={removeItem} clearCart={clearCart}
+              setOpenCliente={setOpenCliente} handleCobrar={handleCobrar}
+              isDark={isDark} borderCol={borderCol} textCol={textCol}
+              mutedCol={mutedCol} sidebarBg={sidebarBg}
+            />
+          </Grid>
+        )}
+      </Grid>
 
-          {/* Order header */}
-          <Box sx={{ px: 2, pt: 2, pb: 1.5, borderBottom: `1px solid ${borderCol}` }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <ShoppingCartIcon sx={{ color: B.blue, fontSize: 18 }} />
-                <Typography sx={{ fontWeight: 800, fontSize: 14.5, fontFamily: "Montserrat, sans-serif", color: textCol }}>
-                  Orden
-                </Typography>
-                {itemCount > 0 && (
-                  <Box sx={{
-                    px: 0.75, py: 0.1, borderRadius: "5px",
-                    bgcolor: alpha(B.blue, isDark ? 0.2 : 0.1),
-                    border: `1px solid ${alpha(B.blue, 0.25)}`,
-                  }}>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: B.blue }}>
-                      {itemCount}
-                    </Typography>
-                  </Box>
-                )}
-              </Stack>
-              {items.length > 0 && (
-                <Button size="small" onClick={clearCart} sx={{
-                  color: "#E63946", fontSize: 11.5, fontWeight: 600, textTransform: "none",
-                  py: 0.25, px: 1, borderRadius: "7px",
-                  "&:hover": { bgcolor: alpha("#E63946", 0.08) },
-                }}>
-                  Limpiar
-                </Button>
-              )}
-            </Stack>
-
-            {/* Cliente */}
-            <Button
-              onClick={() => setOpenCliente(true)}
-              startIcon={<PersonIcon sx={{ fontSize: 15 }} />}
-              endIcon={!cliente ? <PersonAddIcon sx={{ fontSize: 14, opacity: 0.5 }} /> : undefined}
-              variant="outlined"
-              fullWidth size="small"
+      {/* ═══ MOBILE ─ FAB + Bottom Sheet ══════════════════════════════════ */}
+      {mdDown && (
+        <>
+          {/* FAB flotante con badge de cantidad */}
+          <Fab
+            onClick={() => setCartDrawerOpen(true)}
+            sx={{
+              position: "fixed",
+              bottom: 20, right: 16,
+              zIndex: 1200,
+              background: items.length > 0
+                ? `linear-gradient(135deg, ${B.green}, ${B.teal})`
+                : isDark ? "#1E3545" : "#DDE5ED",
+              color: items.length > 0 ? "#fff" : mutedCol,
+              boxShadow: items.length > 0
+                ? `0 6px 24px ${alpha(B.green, 0.5)}`
+                : "0 2px 8px rgba(0,0,0,0.2)",
+              width: 60, height: 60,
+              transition: "all .25s",
+            }}
+          >
+            <Badge
+              badgeContent={itemCount}
+              max={99}
               sx={{
-                mb: 1, borderRadius: "10px", textTransform: "none",
-                fontWeight: 600, fontSize: 12.5, py: 0.85,
-                justifyContent: "flex-start",
-                borderColor: cliente ? alpha(B.blue, 0.45) : borderCol,
-                color: cliente ? B.blue : mutedCol,
-                bgcolor: cliente ? alpha(B.blue, isDark ? 0.12 : 0.05) : "transparent",
-                "&:hover": { borderColor: B.blue, bgcolor: alpha(B.blue, isDark ? 0.15 : 0.06) },
+                "& .MuiBadge-badge": {
+                  bgcolor: items.length > 0 ? "#fff" : B.blue,
+                  color:   items.length > 0 ? B.green : "#fff",
+                  fontWeight: 800, fontSize: 10,
+                  minWidth: 18, height: 18, borderRadius: "9px",
+                  top: -2, right: -2,
+                },
               }}
             >
-              {cliente ? cliente.nombre : "Seleccionar cliente"}
-            </Button>
+              <ShoppingCartIcon sx={{ fontSize: 24 }} />
+            </Badge>
+          </Fab>
 
-            {/* Tipo comprobante */}
-            <Stack direction="row" spacing={0.5} mb={0.75}>
-              {TIPOS.map((t) => {
-                const sel = tipoComp === t.id;
-                return (
-                  <Box key={t.id} onClick={() => setTipoComp(t.id)} sx={{
-                    flex: 1, textAlign: "center", py: 0.6, borderRadius: "8px", cursor: "pointer",
-                    border: `1.5px solid ${sel ? t.accentColor : borderCol}`,
-                    background: sel ? alpha(t.accentColor, isDark ? 0.22 : 0.1) : "transparent",
-                    transition: "all .13s",
-                    "&:hover": { border: `1.5px solid ${t.accentColor}` },
-                  }}>
-                    <Typography sx={{
-                      fontSize: 11, fontWeight: sel ? 800 : 500,
-                      color: sel ? t.accentColor : mutedCol,
-                      fontFamily: "Montserrat, sans-serif",
-                    }}>
-                      {t.id}
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Stack>
-            {tipoSelected && (
-              <Typography sx={{ fontSize: 10.5, color: mutedCol, textAlign: "center" }}>
-                {tipoSelected.label} — {tipoSelected.desc}
-                {["A","B","C"].includes(tipoComp) ? " · ARCA/AFIP" : ""}
-              </Typography>
-            )}
-          </Box>
-
-          {/* Cart items */}
-          <Box sx={{
-            flex: 1, overflowY: "auto", px: 2, py: 1.5,
-            "&::-webkit-scrollbar": { width: 4 },
-            "&::-webkit-scrollbar-thumb": {
-              bgcolor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", borderRadius: 2,
-            },
-          }}>
-            {items.length === 0 ? (
+          {/* Bottom Sheet ─ 92vh máx para dejar un respiro visual */}
+          <Drawer
+            anchor="bottom"
+            open={cartDrawerOpen}
+            onClose={() => setCartDrawerOpen(false)}
+            PaperProps={{
+              sx: {
+                borderRadius: "20px 20px 0 0",
+                bgcolor: isDark ? "#0D1B24" : "#EEF3F8",
+                maxHeight: "92vh",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              },
+            }}
+          >
+            {/* Handle pill */}
+            <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5, pb: 0.5, flexShrink: 0 }}>
               <Box sx={{
-                display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", height: "100%", textAlign: "center",
-              }}>
-                <ShoppingCartIcon sx={{ fontSize: 38, color: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)", mb: 1.5 }} />
-                <Typography sx={{ fontSize: 13, fontWeight: 600, color: mutedCol }}>Carrito vacío</Typography>
-                <Typography sx={{ fontSize: 11.5, color: isDark ? "rgba(230,238,245,0.22)" : "rgba(26,32,44,0.22)", mt: 0.4 }}>
-                  Hacé clic en un artículo para agregarlo
-                </Typography>
-              </Box>
-            ) : (
-              <Stack spacing={0.75}>
-                {items.map((item) => (
-                  <CartRow
-                    key={item.id} item={item}
-                    onInc={incItem} onDec={decItem} onRemove={removeItem}
-                    isDark={isDark}
-                  />
-                ))}
-              </Stack>
-            )}
-          </Box>
+                width: 40, height: 4, borderRadius: 2,
+                bgcolor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+              }} />
+            </Box>
 
-          {/* Totals + pay button */}
-          {items.length > 0 && (
-            <Box sx={{ borderTop: `1px solid ${borderCol}`, px: 2, pt: 1.5, pb: 2 }}>
-              <Stack spacing={0.5} mb={1.5}>
-                {/* Neto — only for A/B */}
-                {["A","B"].includes(tipoComp) && (
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={{ fontSize: 11.5, color: mutedCol }}>Subtotal neto</Typography>
-                    <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: textCol }}>${fmt(totales.subtotal)}</Typography>
-                  </Stack>
-                )}
-                {tipoComp !== "C" && totales.iva21 > 0 && (
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={{ fontSize: 11.5, color: mutedCol }}>IVA 21%</Typography>
-                    <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: textCol }}>${fmt(totales.iva21)}</Typography>
-                  </Stack>
-                )}
-                {tipoComp !== "C" && totales.iva105 > 0 && (
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={{ fontSize: 11.5, color: mutedCol }}>IVA 10.5%</Typography>
-                    <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: textCol }}>${fmt(totales.iva105)}</Typography>
-                  </Stack>
-                )}
-
-                <Divider sx={{ borderColor: borderCol, my: 0.5 }} />
-
-                <Stack direction="row" justifyContent="space-between" alignItems="baseline">
-                  <Typography sx={{ fontSize: 13, fontWeight: 800, color: textCol, fontFamily: "Montserrat, sans-serif", letterSpacing: "0.01em" }}>
-                    TOTAL
+            {/* Header del drawer (propio, sin duplicar el de CartPanel) */}
+            <Box sx={{ px: 2, pb: 1, flexShrink: 0 }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <ShoppingCartIcon sx={{ color: B.blue, fontSize: 18 }} />
+                  <Typography sx={{ fontWeight: 800, fontSize: 15, fontFamily: "Montserrat, sans-serif", color: textCol }}>
+                    Orden
                   </Typography>
-                  <Typography sx={{
-                    fontSize: 26, fontWeight: 800, color: B.blue,
-                    fontFamily: "Montserrat, sans-serif", letterSpacing: "-0.02em",
-                  }}>
-                    ${fmt(totales.total)}
-                  </Typography>
+                  {itemCount > 0 && (
+                    <Box sx={{
+                      px: 0.75, py: 0.1, borderRadius: "5px",
+                      bgcolor: alpha(B.blue, isDark ? 0.2 : 0.1),
+                      border: `1px solid ${alpha(B.blue, 0.25)}`,
+                    }}>
+                      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: B.blue }}>
+                        {itemCount}
+                      </Typography>
+                    </Box>
+                  )}
+                </Stack>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  {items.length > 0 && (
+                    <Button size="small" onClick={clearCart} sx={{
+                      color: "#E63946", fontSize: 11.5, fontWeight: 600, textTransform: "none",
+                      py: 0.25, px: 1, borderRadius: "7px",
+                      "&:hover": { bgcolor: alpha("#E63946", 0.08) },
+                    }}>
+                      Limpiar
+                    </Button>
+                  )}
+                  <IconButton size="small" onClick={() => setCartDrawerOpen(false)}
+                    sx={{ color: mutedCol, "&:hover": { color: textCol } }}>
+                    <CloseIcon sx={{ fontSize: 19 }} />
+                  </IconButton>
                 </Stack>
               </Stack>
-
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleCobrar}
-                disabled={procesando}
-                startIcon={
-                  procesando
-                    ? <CircularProgress size={17} sx={{ color: "#fff" }} />
-                    : <ReceiptLongIcon sx={{ fontSize: "19px !important" }} />
-                }
-                sx={{
-                  background: `linear-gradient(90deg, ${B.green}, ${B.teal})`,
-                  color: "#fff", fontFamily: "Montserrat, sans-serif",
-                  fontWeight: 800, fontSize: 15, textTransform: "none",
-                  py: 1.4, borderRadius: "12px",
-                  boxShadow: `0 6px 20px ${alpha(B.green, 0.42)}`,
-                  "&:hover": {
-                    background: `linear-gradient(90deg, ${B.teal}, ${B.blue})`,
-                    boxShadow: `0 6px 24px ${alpha(B.teal, 0.48)}`,
-                  },
-                  "&:disabled": {
-                    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
-                    color: mutedCol, boxShadow: "none",
-                  },
-                }}
-              >
-                {procesando ? "Procesando..." : `Cobrar $${fmt(totales.total)}`}
-              </Button>
             </Box>
-          )}
-        </Grid>
-      </Grid>
+
+            {/* CartPanel ─ hideHeader para no duplicar el header ya definido arriba */}
+            <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <CartPanel
+                items={items} itemCount={itemCount} cliente={cliente}
+                tipoComp={tipoComp} setTipoComp={setTipoComp} tipoSelected={tipoSelected}
+                totales={totales} procesando={procesando}
+                incItem={incItem} decItem={decItem} removeItem={removeItem} clearCart={clearCart}
+                setOpenCliente={setOpenCliente}
+                handleCobrar={() => { setCartDrawerOpen(false); handleCobrar(); }}
+                isDark={isDark} borderCol={borderCol} textCol={textCol}
+                mutedCol={mutedCol} sidebarBg={sidebarBg}
+                hideHeader
+              />
+            </Box>
+          </Drawer>
+        </>
+      )}
+
 
       {/* ─── Modales ─────────────────────────────────────────────────────── */}
       <ModalCliente

@@ -513,23 +513,28 @@ const Dashboard = () => {
           )}
 
           {/* Refresh */}
-          <Tooltip title="Actualizar" arrow>
-            <IconButton
-              onClick={fetchDashboardData}
-              disabled={loading}
-              sx={{
-                width: 36, height: 36, borderRadius: "9px",
-                border: `1px solid ${borderCol}`,
-                color: mutedCol,
-                "&:hover": { color: textCol, bgcolor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
-                "&.Mui-disabled": { opacity: 0.4 },
-              }}
-            >
-              {loading
-                ? <CircularProgress size={16} sx={{ color: "inherit" }} />
-                : <RefreshIcon sx={{ fontSize: 18 }} />
-              }
-            </IconButton>
+          {/* ── FIX: cuando disabled=true, el button no emite eventos y MUI
+                 Tooltip no puede funcionar. Envolver en <span> resuelve el warning
+                 porque el span SÍ emite los eventos hover que necesita el Tooltip. ── */}
+          <Tooltip title={loading ? "Actualizando…" : "Actualizar"} arrow>
+            <span>
+              <IconButton
+                onClick={fetchDashboardData}
+                disabled={loading}
+                sx={{
+                  width: 36, height: 36, borderRadius: "9px",
+                  border: `1px solid ${borderCol}`,
+                  color: mutedCol,
+                  "&:hover": { color: textCol, bgcolor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
+                  "&.Mui-disabled": { opacity: 0.4 },
+                }}
+              >
+                {loading
+                  ? <CircularProgress size={16} sx={{ color: "inherit" }} />
+                  : <RefreshIcon sx={{ fontSize: 18 }} />
+                }
+              </IconButton>
+            </span>
           </Tooltip>
 
           {/* Export PDF */}

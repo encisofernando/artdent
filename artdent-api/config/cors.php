@@ -43,6 +43,8 @@ return [
         'http://localhost:3000',
         'http://localhost:4173',
         'http://127.0.0.1:5173',
+        'https://pos.artdent.com.ar',
+        'https://shop.artdent.com.ar',
     ],
 
     'allowed_origins_patterns' => [],

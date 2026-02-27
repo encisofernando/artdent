@@ -1,4 +1,5 @@
 // src/components/PieChart.jsx
+import { useRef, useState, useEffect } from "react";
 import { ResponsivePie } from "@nivo/pie";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
@@ -18,6 +19,17 @@ const PieChart = ({ data = null, isDashboard = false }) => {
   const theme  = useTheme();
   const colors = tokens(theme.palette.mode);
   const isDark = theme.palette.mode === "dark";
+
+  const containerRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setReady(true);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const chartData = data && data.length > 0 ? data : mockPieData;
 
@@ -50,7 +62,8 @@ const PieChart = ({ data = null, isDashboard = false }) => {
   };
 
   return (
-    <ResponsivePie
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      {ready && <ResponsivePie
       data={chartData}
       theme={nivoTheme}
       colors={({ index }) => BRAND_COLORS[index % BRAND_COLORS.length]}
@@ -105,7 +118,8 @@ const PieChart = ({ data = null, isDashboard = false }) => {
       ]}
       animate
       motionConfig="gentle"
-    />
+    />}
+    </div>
   );
 };
 

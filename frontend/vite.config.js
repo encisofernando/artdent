@@ -13,6 +13,11 @@ export default defineConfig({
     "process.env.NODE_ENV": JSON.stringify("development"),
   },
 
+  // ── FIX 2: Silenciar warning de chunks grandes (>500 kB) ───────────────────
+  build: {
+    chunkSizeWarningLimit: 5000, // 5 MB — ajusta si querés más estricto después de optimizar
+  },
+
   plugins: [
     react(),
 
@@ -67,6 +72,9 @@ export default defineConfig({
 
       // ── Workbox (Service Worker) ────────────────────────────────────────────
       workbox: {
+        // ── FIX 3: Aumentar límite para precachear chunks grandes ─────────────
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB (antes era 2 MB por default)
+
         runtimeCaching: [
           {
             // API Laravel: NetworkFirst (siempre intenta la red, cae a caché si offline)
@@ -99,6 +107,8 @@ export default defineConfig({
           /^\/sanctum\//,
           /^\/storage\//,
         ],
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

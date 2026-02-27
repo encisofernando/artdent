@@ -359,4 +359,39 @@ class SalesController extends Controller
 
         return response()->json($stats);
     }
+
+    /**
+     * Registrar recibos/cobros para una venta (bulk)
+     *
+     * POST /api/sales/{sale}/receipts
+     * Body: { receipts: [{ payment_method_id, amount, receipt_date, reference }] }
+     */
+    public function receipts(Request $request, Sale $sale)
+    {
+        $cid = $request->user()->company_id;
+
+        abort_unless($sale->company_id == $cid, 403, 'Forbidden');
+
+        $data = $request->validate([
+            'receipts'                        => 'required|array|min:1',
+            'receipts.*.payment_method_id'    => 'nullable|integer|exists:payment_methods,id',
+            'receipts.*.amount'               => 'required|numeric|min:0',
+            'receipts.*.receipt_date'         => 'nullable|date',
+            'receipts.*.reference'            => 'nullable|string|max:191',
+        ]);
+
+        $created = [];
+        foreach ($data['receipts'] as $r) {
+            $created[] = \App\Models\Receipt::create([
+                'company_id'        => $cid,
+                'sale_id'           => $sale->id,
+                'payment_method_id' => $r['payment_method_id'] ?? null,
+                'amount'            => $r['amount'],
+                'receipt_date'      => $r['receipt_date'] ?? now(),
+                'reference'         => $r['reference'] ?? null,
+            ]);
+        }
+
+        return response()->json($created, 201);
+    }
 }

@@ -1,77 +1,45 @@
 // src/services/api.js
-//
-// ─── MIGRACIÓN: Bearer token → Sanctum httpOnly cookie ───────────────────────
-//
-// El browser envía automáticamente la cookie laravel_session en cada request
-// gracias a `withCredentials: true`.
-// Axios lee la cookie XSRF-TOKEN (NO httpOnly) y la adjunta como header
-// X-XSRF-TOKEN en cada mutación (POST/PUT/PATCH/DELETE) automáticamente.
-//
-// Ya NO es necesario:
-//   localStorage.setItem("token", ...)
-//   api.defaults.headers.common["Authorization"] = `Bearer ${token}`
-//
-// ⚠️  PARA PRODUCCIÓN:
-//   - Front (pos.artdent.com.ar) y back (api.artdent.com.ar) deben compartir
-//     el dominio raíz artdent.com.ar.
-//   - SESSION_DOMAIN=.artdent.com.ar en .env del backend.
-//   - SESSION_SECURE_COOKIE=true (HTTPS obligatorio).
-//   - SANCTUM_STATEFUL_DOMAINS=pos.artdent.com.ar en .env del backend.
-// ─────────────────────────────────────────────────────────────────────────────
 
 import axios from "axios";
 
-// En desarrollo con el proxy de Vite (/api → localhost:8000/api), BASE_URL = ""
-// En producción, setear VITE_API_URL=https://api.artdent.com.ar
-const BASE_URL = import.meta.env.VITE_API_URL || "";
+// Solo el ORIGEN — sin /api
+// El interceptor de request lo agrega automáticamente a cada llamada.
+const ORIGIN = import.meta.env.VITE_API_URL ?? "";
 
 const api = axios.create({
-  baseURL: `${BASE_URL}/api`,
-  withCredentials: true,            // ← CRÍTICO: envía la session cookie
+  baseURL: ORIGIN,          // "https://api.artdent.com.ar"  (sin /api)
+  withCredentials: true,
   headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "X-Requested-With": "XMLHttpRequest", // Sanctum lo usa para detectar SPA
+    "Content-Type":     "application/json",
+    Accept:             "application/json",
+    "X-Requested-With": "XMLHttpRequest",
   },
 });
 
-// ─── CSRF: pedir la cookie antes del primer POST/PUT/PATCH/DELETE ────────────
-// Sanctum expone GET /sanctum/csrf-cookie que setea XSRF-TOKEN en el browser.
-// Axios lo lee y añade X-XSRF-TOKEN como header automáticamente.
+// ── Request interceptor: garantiza que toda llamada lleve /api/ ──────────────
+//
+// Problema que resuelve:
+//   axios.create({ baseURL: "https://host/api" }) + api.get("/users")
+//   → axios ignora el path del baseURL cuando la URL empieza con "/"
+//   → resultado: https://host/users   ← incorrecto
+//
+// Con este interceptor:
+//   api.get("/users")         → https://host/api/users   ✅
+//   api.get("/api/users")     → https://host/api/users   ✅  (no duplica)
+//   api.get("auth/refresh")   → https://host/api/auth/refresh  ✅
+//
+api.interceptors.request.use((config) => {
+  const url = config.url ?? "";
 
-let csrfReady = false;
-
-export const ensureCsrf = async () => {
-  if (csrfReady) return;
-  await axios.get(`${BASE_URL}/sanctum/csrf-cookie`, {
-    withCredentials: true,
-  });
-  csrfReady = true;
-};
-
-// ─── Interceptor de request: obtener CSRF antes de mutaciones ───────────────
-api.interceptors.request.use(async (config) => {
-  const method = (config.method || "").toLowerCase();
-  if (["post", "put", "patch", "delete"].includes(method)) {
-    await ensureCsrf();
+  if (!url.startsWith("/api") && !url.startsWith("api")) {
+    config.url = `/api/${url.replace(/^\//, "")}`;
   }
+
   return config;
 });
 
-// ─── Interceptor de response: manejar 401 (sesión expirada) ─────────────────
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      csrfReady = false; // resetear para el próximo login
-      if (!window.location.pathname.includes("/login") &&
-          window.location.pathname !== "/") {
-        // Redirigir a raíz (App.jsx muestra Login cuando user = null)
-        window.location.href = "/";
-      }
-    }
-    return Promise.reject(err);
-  }
-);
+// ⚠️  Sin interceptors de response aquí.
+//     authService.js registra el suyo (retry con refresh token).
+//     Dos interceptores 401 se pisan entre sí.
 
 export default api;

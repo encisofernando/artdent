@@ -1,5 +1,5 @@
 // src/components/LineChart.jsx
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { ResponsiveLine } from "@nivo/line";
 import { Box, Typography, useTheme } from "@mui/material";
 import { tokens } from "../theme";
@@ -33,6 +33,17 @@ const LineChart = ({ isCustomLineColors = false, isDashboard = false, data = nul
   const theme  = useTheme();
   const colors = tokens(theme.palette.mode);
   const isDark = theme.palette.mode === "dark";
+
+  const containerRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setReady(true);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const normalized = useMemo(() => normalizeLineData(data), [data]);
   const hasData    = normalized.length > 0;
@@ -108,7 +119,8 @@ const LineChart = ({ isCustomLineColors = false, isDashboard = false, data = nul
     : ({ index }) => BRAND_COLORS[index % BRAND_COLORS.length];
 
   return (
-    <ResponsiveLine
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      {ready && <ResponsiveLine
       data={chartData}
       theme={nivoTheme}
       colors={lineColors}
@@ -155,7 +167,7 @@ const LineChart = ({ isCustomLineColors = false, isDashboard = false, data = nul
       pointSize={isDashboard ? 4 : 8}
       pointColor={{ theme: "background" }}
       pointBorderWidth={2}
-      pointBorderColor={{ from: "serieColor" }}
+      pointBorderColor={{ from: "color", modifiers: [] }}
       /* ─── Línea ─── */
       lineWidth={2}
       useMesh
@@ -187,7 +199,8 @@ const LineChart = ({ isCustomLineColors = false, isDashboard = false, data = nul
               },
             ]
       }
-    />
+    />}
+    </div>
   );
 };
 

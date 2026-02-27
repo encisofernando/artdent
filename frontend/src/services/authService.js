@@ -1,112 +1,174 @@
 // src/services/authService.js
 //
-// ─── MIGRACIÓN: Bearer token en localStorage → Sanctum cookie session ────────
+// ─── Refresh Token Rotation ───────────────────────────────────────────────────
 //
-// Este archivo reemplaza el authService anterior que guardaba el token en
-// localStorage. Ahora la sesión vive en una cookie httpOnly gestionada por
-// el servidor (Laravel Sanctum).
+//  ┌─────────────────────────────────────────────────────────┐
+//  │  access_token   → RAM (variable JS)    vida: 15 min     │
+//  │  refresh_token  → cookie httpOnly      vida: 30 días    │
+//  └─────────────────────────────────────────────────────────┘
 //
-// ⚠️  REQUISITO EN AUTHCONTROLLER.PHP:
-//     El método login() del AuthController debe llamar a Auth::login($user)
-//     ADEMÁS de devolver el token (si querés mantener compat con Bearer).
-//     Eso crea la sesión de server side y setea la laravel_session cookie.
+//  FLUJO COMPLETO:
+//   1. login()       → servidor: access_token en JSON + cookie httpOnly
+//   2. requests      → Bearer {access_token} en header automáticamente
+//   3. token expira  → proactive refresh 1 min antes (timer)
+//   4. 401 recibido  → interceptor reactivo: refresca y reintenta
+//   5. refresh ok    → nuevo par de tokens, request original transparente
+//   6. logout()      → servidor invalida DB + borra cookie
 //
-//     Ejemplo mínimo en AuthController::login():
-//       $user = User::where('email', $request->email)->first();
-//       if (!$user || !Hash::check($request->password, $user->password)) {
-//           return response()->json(['message' => 'Credenciales incorrectas'], 401);
-//       }
-//       Auth::login($user);                      // ← AÑADIR ESTA LÍNEA
-//       $token = $user->createToken('spa')->plainTextToken;
-//       return response()->json(['token' => $token, 'user' => $user]);
-//
+//  El usuario NUNCA ve el login de nuevo mientras tenga actividad
+//  dentro de los 30 días de vida del refresh token.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import axios from "axios";
-import api, { ensureCsrf } from "./api";
+import api from "./api";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "";
+// ─── Estado en memoria ────────────────────────────────────────────────────────
+let _accessToken     = null;
+let _tokenExpiry     = null;    // Date
+let _refreshPromise  = null;    // deduplicar llamadas simultáneas
+let _refreshTimer    = null;    // proactive refresh timer
 
-const authService = {
-  /**
-   * Login con email + password.
-   *
-   * Flujo:
-   *  1. GET  /sanctum/csrf-cookie  → setea XSRF-TOKEN cookie
-   *  2. POST /api/auth/login       → AuthController valida credenciales,
-   *                                  llama Auth::login($user),
-   *                                  devuelve { token, user }
-   *  3. GET  /api/auth/me          → verifica sesión y devuelve user fresco
-   *
-   * Retorna el objeto user.
-   */
-  login: async ({ email, password }) => {
-    // Paso 1: obtener cookie CSRF (Sanctum la setea en el browser)
-    await ensureCsrf();
+// ─── Helpers internos ─────────────────────────────────────────────────────────
 
-    // Paso 2: POST al AuthController de este proyecto
-    // (ruta: POST /api/auth/login en api.php)
-    await api.post("/auth/login", { email, password });
+const setAccessToken = (token, expiresAt) => {
+  _accessToken = token;
+  _tokenExpiry = expiresAt ? new Date(expiresAt) : null;
 
-    // Paso 3: verificar sesión activa y obtener datos del usuario
-    const res = await api.get("/auth/me");
-    return res.data?.user ?? res.data;
-  },
+  if (token) {
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    _scheduleProactiveRefresh();
+  } else {
+    delete api.defaults.headers.common["Authorization"];
+    _clearTimer();
+  }
+};
 
-  /**
-   * Registro de nuevo usuario.
-   * Ruta: POST /api/auth/register en api.php
-   */
-  register: async ({ name, email, password, password_confirmation }) => {
-    await ensureCsrf();
+const _clearTimer = () => {
+  if (_refreshTimer) { clearTimeout(_refreshTimer); _refreshTimer = null; }
+};
 
-    await api.post("/auth/register", {
-      name, email, password, password_confirmation,
+/**
+ * Programa un refresh automático 60s antes de que expire el access token.
+ * Si el token ya expiró o expira en < 60s, refresca inmediatamente.
+ */
+const _scheduleProactiveRefresh = () => {
+  _clearTimer();
+  if (!_tokenExpiry) return;
+
+  const msLeft    = _tokenExpiry.getTime() - Date.now();
+  const refreshIn = msLeft - 60_000;
+
+  if (refreshIn <= 0) {
+    doRefresh().catch(() => {});
+    return;
+  }
+
+  _refreshTimer = setTimeout(() => {
+    doRefresh().catch(() => {
+      console.warn("[auth] Silent refresh failed — interceptor will handle next 401");
     });
+  }, refreshIn);
+};
 
-    const res = await api.get("/auth/me");
-    return res.data?.user ?? res.data;
-  },
+/**
+ * Llama POST /auth/refresh.
+ * Si hay un refresh en curso, devuelve la misma promesa (no lanza otro).
+ */
+const doRefresh = () => {
+  if (_refreshPromise) return _refreshPromise;
 
-  /**
-   * Cierra la sesión en el servidor e invalida la cookie.
-   * Ruta: POST /api/auth/logout en api.php
-   */
-  logout: async () => {
-    try {
-      await api.post("/auth/logout");
-    } finally {
-      // Redirigir al login pase lo que pase
-      window.location.href = "/";
+  _refreshPromise = api.post("/auth/refresh")
+    .then(({ data }) => {
+      setAccessToken(data.access_token, data.expires_at);
+      return data.access_token;
+    })
+    .catch((err) => {
+      setAccessToken(null, null);
+      throw err;
+    })
+    .finally(() => { _refreshPromise = null; });
+
+  return _refreshPromise;
+};
+
+// ─── Interceptor 401 reactivo ─────────────────────────────────────────────────
+// Se registra UNA sola vez al importar este módulo.
+api.interceptors.response.use(
+  (res) => res,
+  async (err) => {
+    const cfg = err.config;
+
+    if (
+      err.response?.status === 401 &&
+      !cfg._retry &&
+      !cfg.url?.includes("/auth/login") &&
+      !cfg.url?.includes("/auth/refresh")
+    ) {
+      cfg._retry = true;
+      try {
+        const newToken = await doRefresh();
+        cfg.headers["Authorization"] = `Bearer ${newToken}`;
+        return api(cfg);           // reintentar request original
+      } catch {
+        if (window.location.pathname !== "/") window.location.href = "/";
+      }
     }
+
+    return Promise.reject(err);
+  }
+);
+
+// ─── API pública ──────────────────────────────────────────────────────────────
+const authService = {
+
+  login: async ({ email, password }) => {
+    const { data } = await api.post("/auth/login", { email, password });
+    if (!data.access_token) throw new Error(data?.message || "Sin token.");
+    setAccessToken(data.access_token, data.expires_at);
+    return data.user;
+  },
+
+  register: async ({ name, email, password, password_confirmation }) => {
+    const { data } = await api.post("/auth/register", { name, email, password, password_confirmation });
+    if (!data.access_token) throw new Error(data?.message || "Sin token.");
+    setAccessToken(data.access_token, data.expires_at);
+    return data.user;
+  },
+
+  logout: async () => {
+    _clearTimer();
+    try { await api.post("/auth/logout"); } catch { /* igual limpiamos */ }
+    setAccessToken(null, null);
+    window.location.href = "/";
   },
 
   /**
-   * Verifica si hay sesión activa (cookie válida en el server).
-   * Se llama al montar la app (reemplaza el "check token en localStorage").
-   * Retorna el user o null.
-   *
-   * Ruta: GET /api/auth/me en api.php
+   * Llamado al arrancar la app (ej: en App.jsx o AuthContext).
+   * Intenta restaurar la sesión via cookie httpOnly sin pedirle nada al usuario.
    */
   checkSession: async () => {
+    // Caso 1: el tab nunca se cerró, el token sigue en RAM y es válido
+    if (_accessToken && _tokenExpiry && _tokenExpiry > new Date()) {
+      try {
+        const { data } = await api.get("/auth/me");
+        return data?.user ?? null;
+      } catch {
+        setAccessToken(null, null);
+        return null;
+      }
+    }
+
+    // Caso 2: recarga de página o nuevo tab → intentar refresh silencioso
     try {
-      const res = await api.get("/auth/me");
-      return res.data?.user ?? res.data ?? null;
+      await doRefresh();
+      const { data } = await api.get("/auth/me");
+      return data?.user ?? null;
     } catch {
-      return null;
+      return null;   // cookie expirada o no existe → mostrar login
     }
   },
 
-  /**
-   * Cambio de contraseña autenticado.
-   * (Podés implementar el endpoint en AuthController si lo necesitás)
-   */
-  changePassword: async ({ current_password, password, password_confirmation }) => {
-    const res = await api.put("/auth/password", {
-      current_password, password, password_confirmation,
-    });
-    return res.data;
-  },
+  getToken:   () => _accessToken,
+  isLoggedIn: () => !!_accessToken && (!_tokenExpiry || _tokenExpiry > new Date()),
 };
 
 export default authService;
