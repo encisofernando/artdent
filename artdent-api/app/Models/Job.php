@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Dentist;
 
 class Job extends Model
 {
@@ -16,7 +15,10 @@ class Job extends Model
         'clinic_id',
         'dentist_id',
         'patient_id',
-        'job_type_id',
+
+        // job_type_id ya NO se usa en Opción B (se reemplaza por job_items)
+        // 'job_type_id',
+
         'entry_date',
         'promised_date',
         'delivery_date',
@@ -45,11 +47,14 @@ class Job extends Model
         'total'          => 'decimal:2',
     ];
 
-    // ── Relaciones ────────────────────────────────────────────────────────────
     public function company()  { return $this->belongsTo(Company::class); }
     public function clinic()   { return $this->belongsTo(Clinic::class); }
     public function dentist()  { return $this->belongsTo(Dentist::class); }
     public function patient()  { return $this->belongsTo(Patient::class); }
-    public function jobType()  { return $this->belongsTo(JobType::class); }
-    public function costs()    { return $this->hasMany(Cost::class); }
+
+    // NUEVO: items
+    public function items()
+    {
+        return $this->hasMany(JobItem::class);
+    }
 }

@@ -74,7 +74,7 @@ export default function CuentasCorrientes() {
   useEffect(() => {
     const loadClientes = async () => {
       try {
-        const data = await getClients({ company_id: 1 });
+        const data = await getClients({ company_id: 2});
         setClientes(data);
       } catch (err) {
         console.error("Error cargando clientes:", err);
@@ -87,7 +87,7 @@ export default function CuentasCorrientes() {
     if (clienteSel) {
       const loadMovimientos = async () => {
         try {
-          const data = await getMovements({ company_id: 1, client_id: clienteSel.id });
+          const data = await getMovements({ company_id: 2,client_id: clienteSel.id });
           setMovimientos(data);
         } catch (err) {
           console.error("Error cargando movimientos:", err);
@@ -101,8 +101,22 @@ export default function CuentasCorrientes() {
 
   const guardar = async () => {
     try {
-      const newMovement = await createMovement({ ...form, client_id: clienteSel.id });
-      setMovimientos(prev => [...prev, newMovement]);
+      const payload = {
+        company_id: 2,
+        client_id: clienteSel.id,
+        date: form.date,
+        type: form.type === "Pago" ? "payment" : "charge",
+        amount: Number(form.amount || 0),
+        description: form.description || null,
+        method: form.method || null,
+        reference: form.reference || null,
+      };
+
+      const newMovement = await createMovement(payload);
+      // recargar listado para recalcular saldo correctamente
+      const data = await getMovements({ company_id: 2, client_id: clienteSel.id });
+      setMovimientos(data);
+
       setModalOpen(false);
     } catch (err) {
       console.error("Error guardando movimiento:", err);

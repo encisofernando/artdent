@@ -38,6 +38,7 @@ import LabCuentasCorrientes from "./scenes/laboratorio/CuentasCorrientes";
 import LabAranceles        from "./scenes/laboratorio/Aranceles";
 import LabCostos           from "./scenes/laboratorio/Costos";
 import LabPagos            from "./scenes/laboratorio/Pagos";
+import LabPacientes        from "./scenes/laboratorio/Pacientes";
 
 // ── Auth pages ───────────────────────────────────────────────────────────────
 import Login          from "./login/Login";
@@ -118,6 +119,7 @@ export default function App() {
               <Route path="/laboratorio/aranceles" element={<LabAranceles />} />
               <Route path="/laboratorio/costos"    element={<LabCostos />} />
               <Route path="/laboratorio/pagos"     element={<LabPagos />} />
+              <Route path="/laboratorio/pacientes" element={<LabPacientes />} />
 
               {/* Cualquier ruta desconocida → dashboard */}
               <Route path="*" element={<Navigate to="/" replace />} />

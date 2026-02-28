@@ -41,7 +41,10 @@ use App\Http\Controllers\PaymentController;     // → lab payments (lab-payment
 use App\Http\Controllers\CostController;        // → tabla costs
 use App\Http\Controllers\JobController;         // → tabla jobs
 use App\Http\Controllers\DentistController;    // → tabla dentists
+use App\Http\Controllers\MovementController;     // → tabla movements (histórico de cambios en jobs, costos, pagos, etc)
 
+
+use App\Http\Controllers\API\ClinicController;
 // ── Público (sin token/cookie) ────────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
     Route::post('/register',        [AuthController::class, 'register']);
@@ -265,5 +268,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('tariffs',      TariffController::class);
         Route::apiResource('lab-payments', PaymentController::class);
         Route::apiResource('costs',        CostController::class);
+        Route::apiResource('clinics', ClinicController::class);
+        Route::apiResource('movements', MovementController::class);
     });
 });

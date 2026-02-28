@@ -64,6 +64,7 @@ import MonetizationOnIcon     from "@mui/icons-material/MonetizationOn";
 import TrendingUpIcon         from "@mui/icons-material/TrendingUp";
 import PaymentsIcon           from "@mui/icons-material/Payments";
 import AssignmentIcon         from "@mui/icons-material/Assignment";
+import ListIcon               from "@mui/icons-material/List";
 
 import logoColor  from "../../assets/logo-artdent-color.png";
 import logoBlanco from "../../assets/logo-artdent-blanco.png";
@@ -134,11 +135,18 @@ const NAV_SECTIONS = [
           { title: "Consultar",    icon: <SearchIcon />,           path: "/laboratorio/consulta" },
         ],
       },
-      { title: "Clientes",         icon: <PeopleAltIcon />,        path: "/laboratorio/clientes" },
-      { title: "Cuentas Corrientes", icon: <AccountBalanceIcon />, path: "/laboratorio/ctacte" },
+      { 
+        title: "Clientes",         icon: <PeopleAltIcon />, key: "lab-clientes",
+        children: [
+          { title: "Lista", icon: <ListIcon />, path: "/laboratorio/clientes" },
+          { title: "Cuentas Corrientes", icon: <AccountBalanceIcon />, path: "/laboratorio/ctacte" },
+          { title: "Pagos",            icon: <PaymentsIcon />,         path: "/laboratorio/pagos" },
+        ],
+      },
+      { title: "Pacientes",        icon: <PersonIcon />,   path: "/laboratorio/pacientes" },
       { title: "Aranceles",        icon: <MonetizationOnIcon />,   path: "/laboratorio/aranceles" },
       { title: "Costos",           icon: <TrendingUpIcon />,       path: "/laboratorio/costos" },
-      { title: "Pagos",            icon: <PaymentsIcon />,         path: "/laboratorio/pagos" },
+      
     ],
   },
   {
