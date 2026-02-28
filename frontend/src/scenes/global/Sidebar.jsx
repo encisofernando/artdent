@@ -57,6 +57,13 @@ import SearchIcon             from "@mui/icons-material/Search";
 import CategoryIcon           from "@mui/icons-material/Category";
 import PersonIcon             from "@mui/icons-material/Person";
 import ApartmentIcon          from "@mui/icons-material/Apartment";
+import ScienceIcon            from "@mui/icons-material/Science";
+import PeopleAltIcon          from "@mui/icons-material/PeopleAlt";
+import AccountBalanceIcon     from "@mui/icons-material/AccountBalance";
+import MonetizationOnIcon     from "@mui/icons-material/MonetizationOn";
+import TrendingUpIcon         from "@mui/icons-material/TrendingUp";
+import PaymentsIcon           from "@mui/icons-material/Payments";
+import AssignmentIcon         from "@mui/icons-material/Assignment";
 
 import logoColor  from "../../assets/logo-artdent-color.png";
 import logoBlanco from "../../assets/logo-artdent-blanco.png";
@@ -115,6 +122,23 @@ const NAV_SECTIONS = [
           { title: "Consultar", icon: <SearchIcon />,           path: "/trabajos/consultar" },
         ],
       },
+    ],
+  },
+  {
+    label: "Laboratorio",
+    items: [
+      {
+        title: "Órdenes",  icon: <AssignmentIcon />, key: "lab-ordenes",
+        children: [
+          { title: "Nueva Orden",  icon: <AddCircleOutlineIcon />, path: "/laboratorio/ordenes" },
+          { title: "Consultar",    icon: <SearchIcon />,           path: "/laboratorio/consulta" },
+        ],
+      },
+      { title: "Clientes",         icon: <PeopleAltIcon />,        path: "/laboratorio/clientes" },
+      { title: "Cuentas Corrientes", icon: <AccountBalanceIcon />, path: "/laboratorio/ctacte" },
+      { title: "Aranceles",        icon: <MonetizationOnIcon />,   path: "/laboratorio/aranceles" },
+      { title: "Costos",           icon: <TrendingUpIcon />,       path: "/laboratorio/costos" },
+      { title: "Pagos",            icon: <PaymentsIcon />,         path: "/laboratorio/pagos" },
     ],
   },
   {
@@ -187,6 +211,7 @@ export default function Sidebar({ mobileOpen, onClose, isCollapsed, setIsCollaps
     if (path.startsWith("/proveedores"))                                                                       next.proveedores    = true;
     if (path.startsWith("/colaboradores"))                                                                     next.colaboradores  = true;
     if (path.startsWith("/trabajos"))                                                                         next.trabajos       = true;
+    if (path.startsWith("/laboratorio/ordenes") || path.startsWith("/laboratorio/consulta"))                 next["lab-ordenes"] = true;
     if (path.startsWith("/team")        || path.startsWith("/settings")   || path.startsWith("/categorias")) next.administracion = true;
     setOpenMenus((prev) => ({ ...prev, ...next }));
     if (isMobile && onClose) onClose();

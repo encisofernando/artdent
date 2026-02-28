@@ -30,6 +30,15 @@ import Colaboradores       from "./scenes/colaboradores/Colaboradores";
 import Asistencias         from "./scenes/colaboradores/Asistencias";
 import Recibos             from "./scenes/colaboradores/Recibos";
 
+// ── Laboratorio ──────────────────────────────────────────────────────────────
+import LabNuevaOrden       from "./scenes/laboratorio/OrdenTrabajo/index";
+import LabConsultaOrdenes  from "./scenes/laboratorio/OrdenTrabajo/consulta";
+import LabClientes         from "./scenes/laboratorio/Clientes";
+import LabCuentasCorrientes from "./scenes/laboratorio/CuentasCorrientes";
+import LabAranceles        from "./scenes/laboratorio/Aranceles";
+import LabCostos           from "./scenes/laboratorio/Costos";
+import LabPagos            from "./scenes/laboratorio/Pagos";
+
 // ── Auth pages ───────────────────────────────────────────────────────────────
 import Login          from "./login/Login";
 import Register       from "./login/Register";
@@ -100,6 +109,15 @@ export default function App() {
               <Route path="/colaboradores"             element={<Colaboradores />} />
               <Route path="/colaboradores/asistencias" element={<Asistencias />} />
               <Route path="/colaboradores/recibos"     element={<Recibos />} />
+
+              {/* ── Laboratorio ── */}
+              <Route path="/laboratorio/ordenes"   element={<LabNuevaOrden />} />
+              <Route path="/laboratorio/consulta"  element={<LabConsultaOrdenes />} />
+              <Route path="/laboratorio/clientes"  element={<LabClientes />} />
+              <Route path="/laboratorio/ctacte"    element={<LabCuentasCorrientes />} />
+              <Route path="/laboratorio/aranceles" element={<LabAranceles />} />
+              <Route path="/laboratorio/costos"    element={<LabCostos />} />
+              <Route path="/laboratorio/pagos"     element={<LabPagos />} />
 
               {/* Cualquier ruta desconocida → dashboard */}
               <Route path="*" element={<Navigate to="/" replace />} />

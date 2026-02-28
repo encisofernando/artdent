@@ -1,45 +1,58 @@
 // src/services/api.js
+//
+// ─── Instancia Axios para ARTDENT ─────────────────────────────────────────────
+//
+//  baseURL:
+//    - Local:      VITE_API_URL=""  → rutas relativas → Vite proxy → Laravel :8000
+//    - Producción: VITE_API_URL="https://api.artdent.com.ar" → directo al backend
+//
+//  Interceptor de request:
+//    Garantiza que toda llamada lleve el prefijo /api/ exactamente una vez,
+//    excepto /sanctum/* que no va bajo /api/ (es una ruta Laravel raíz).
+//
+//  Interceptor de response: NO definido aquí.
+//    authService.js registra el suyo propio (retry 401 + refresh token).
+//    Dos interceptores de response para 401 se pisan — uno solo.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import axios from "axios";
 
-// Solo el ORIGEN — sin /api
-// El interceptor de request lo agrega automáticamente a cada llamada.
+// Solo el origen, sin path. Vacío en local → rutas relativas → proxy de Vite.
 const ORIGIN = import.meta.env.VITE_API_URL ?? "";
 
 const api = axios.create({
-  baseURL: ORIGIN,          // "https://api.artdent.com.ar"  (sin /api)
-  withCredentials: true,
+  baseURL:         ORIGIN,
+  withCredentials: true,        // CRÍTICO: envía cookies de sesión Sanctum
+  timeout:         15_000,
   headers: {
     "Content-Type":     "application/json",
     Accept:             "application/json",
-    "X-Requested-With": "XMLHttpRequest",
+    "X-Requested-With": "XMLHttpRequest",  // Marca la request como AJAX (Sanctum lo usa)
   },
 });
 
-// ── Request interceptor: garantiza que toda llamada lleve /api/ ──────────────
+// ── Request interceptor: normaliza URLs ──────────────────────────────────────
 //
-// Problema que resuelve:
-//   axios.create({ baseURL: "https://host/api" }) + api.get("/users")
-//   → axios ignora el path del baseURL cuando la URL empieza con "/"
-//   → resultado: https://host/users   ← incorrecto
+//  Rutas de Sanctum  → NO prefijadas  →  /sanctum/csrf-cookie
+//  Todo lo demás     → prefijadas     →  /api/auth/login, /api/products, etc.
 //
-// Con este interceptor:
-//   api.get("/users")         → https://host/api/users   ✅
-//   api.get("/api/users")     → https://host/api/users   ✅  (no duplica)
-//   api.get("auth/refresh")   → https://host/api/auth/refresh  ✅
+//  Ejemplos:
+//    api.get("/auth/me")           →  /api/auth/me            ✅
+//    api.post("/auth/login")       →  /api/auth/login         ✅
+//    api.get("/sanctum/csrf-cookie") →  /sanctum/csrf-cookie  ✅ (sin /api/)
+//    api.get("/api/products")      →  /api/products           ✅ (no duplica)
 //
 api.interceptors.request.use((config) => {
   const url = config.url ?? "";
 
-  if (!url.startsWith("/api") && !url.startsWith("api")) {
+  const alreadyPrefixed = url.startsWith("/api/")  || url.startsWith("api/");
+  const isSanctum       = url.startsWith("/sanctum") || url.startsWith("sanctum");
+
+  if (!alreadyPrefixed && !isSanctum) {
     config.url = `/api/${url.replace(/^\//, "")}`;
   }
 
   return config;
 });
-
-// ⚠️  Sin interceptors de response aquí.
-//     authService.js registra el suyo (retry con refresh token).
-//     Dos interceptores 401 se pisan entre sí.
 
 export default api;
