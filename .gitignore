@@ -35,3 +35,8 @@ Thumbs.db
 .vscode/
 .idea/
 Antigravity.exe
+*.exe
+*.zip
+*.rar
+*.7z
+*.iso
