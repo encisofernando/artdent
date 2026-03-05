@@ -27,6 +27,10 @@ e-commerce/npm-debug.log*
 e-commerce/yarn-error.log*
 e-commerce/pnpm-lock.yaml
 
+# --- Backend (Laravel) ---
+artdent-crm/vendor/
+artdent-crm/node_modules/
+
 # --- Sistemas / IDE ---
 *.swp
 *.swo

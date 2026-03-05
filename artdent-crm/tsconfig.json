@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["resources/js/*"]
+    }
+  },
+  "include": ["resources/js/**/*.ts", "resources/js/**/*.tsx", "resources/js/Components/layout/Sidebar.jsx", "resources/js/Components/layout/Topbar.jsx", "resources/js/Pages/Dashboard/Index.jsx", "resources/js/Pages/Ventas/Index.jsx", "resources/js/Pages/Ventas/POS.jsx", "resources/js/Pages/Ventas/Show.jsx"]
+}
