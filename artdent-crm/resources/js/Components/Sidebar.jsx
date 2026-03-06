@@ -34,6 +34,7 @@ const NAV_SECTIONS = [
                 children: [
                     { title: "Nueva Venta", path: "/sales/create" },
                     { title: "Lista de Ventas", path: "/sales" },
+                    { title: "Facturación", path: "/invoices" },
                     { title: "Artículos", path: "/products" },
                 ],
             },
@@ -48,6 +49,7 @@ const NAV_SECTIONS = [
             {
                 title: "Proveedores", icon: Store, key: "proveedores",
                 children: [
+                    { title: "Directorio", path: "/vendors" },
                     { title: "Comprobantes", path: "/proveedores/comprobantes" },
                     { title: "Pagos", path: "/proveedores/pagos" },
                     { title: "Cta. Cte.", path: "/proveedores/ctacte" },
@@ -64,8 +66,8 @@ const NAV_SECTIONS = [
             {
                 title: "Trabajos", icon: Briefcase, key: "trabajos",
                 children: [
-                    { title: "Ingresar", path: "/trabajos/ingresar" },
-                    { title: "Consultar", path: "/trabajos/consultar" },
+                    { title: "Ingresar", path: "/jobs/create" },
+                    { title: "Consultar", path: "/jobs" },
                 ],
             },
         ],
@@ -107,7 +109,7 @@ const NAV_SECTIONS = [
             {
                 title: "Administración", icon: Settings, key: "administracion",
                 children: [
-                    { title: "Categorías", path: "/categorias" },
+                    { title: "Categorías", path: "/categorys" },
                     { title: "Usuarios", path: "/team" },
                     { title: "Empresa", path: "/settings" },
                 ],

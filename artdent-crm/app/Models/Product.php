@@ -79,27 +79,30 @@ class Product extends Model
 
 	protected $fillable = [
 		'company_id',
-		'vendor_id',
-		'category_id',
-		'tax_id',
-		'name',
-		'slug',
-		'sku',
-		'barcode',
-		'short_description',
-		'description',
-		'cost_price',
-		'price',
-		'compare_price',
-		'has_variants',
-		'track_stock',
-		'weight',
-		'is_active',
-		'is_featured',
-		'meta_title',
-		'meta_desc',
-		'tax_rate'
-	];
+		        'category_id',
+        'sub_category_id',
+        'tax_id',
+        'type', // 'standard', 'variable', 'digital', 'service'
+        'name',
+        'slug',
+        'sku',
+        'barcode',
+        'short_description',
+        'description',
+        'cost_price',
+        'price',
+        'compare_price',
+        'has_variants',
+        'track_stock',
+        'weight',
+        'is_active',
+        'is_featured',
+        'meta_title',
+        'meta_desc',
+        'tax_rate',
+        'company_id',
+        'vendor_id',
+    ];
 
 	public function category()
 	{

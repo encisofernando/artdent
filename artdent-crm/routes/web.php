@@ -138,6 +138,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('payment-methods', PaymentMethodController::class);
     Route::resource('product-attributes', ProductAttributeController::class);
     Route::resource('product-attribute-values', ProductAttributeValueController::class);
+    // Explicit POST route for updating products with multipart/form-data
+    Route::post('products/{product}', [ProductController::class, 'update'])->name('products.update');
     Route::resource('products', ProductController::class);
     Route::resource('product-images', ProductImageController::class);
     Route::resource('product-variants', ProductVariantController::class);

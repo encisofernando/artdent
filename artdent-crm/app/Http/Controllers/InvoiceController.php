@@ -3,63 +3,119 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\InvoiceType;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class InvoiceController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+
+        $query = Invoice::with('invoice_type');
+
+        if ($search) {
+            $query->where('recipient_name', 'like', "%{$search}%")
+                  ->orWhere('recipient_cuit', 'like', "%{$search}%")
+                  ->orWhere('number', 'like', "%{$search}%");
+        }
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $items = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
+
+        return Inertia::render('Invoice/Index', [
+            'items' => $items,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+            ]
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return Inertia::render('Invoice/Create', [
+            'invoiceTypes' => InvoiceType::all()
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'invoice_type_id' => 'required|exists:invoice_types,id',
+            'recipient_name' => 'required|string|max:255',
+            'recipient_cuit' => 'nullable|string|max:50',
+            'recipient_iva' => 'nullable|string|max:50',
+            'recipient_address' => 'nullable|string|max:255',
+            'point_sale' => 'nullable|integer',
+            'number' => 'nullable|integer',
+            'subtotal' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'tax_amount' => 'nullable|numeric|min:0',
+            'total' => 'nullable|numeric|min:0',
+            'status' => 'required|string|max:50',
+            'issued_at' => 'nullable|date',
+            'due_date' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $validated['company_id'] = auth()->user()->company_id ?? 1;
+        $validated['user_id'] = auth()->id();
+
+        Invoice::create($validated);
+
+        return redirect()->route('invoices.index')->with('success', 'Factura registrada exitosamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Invoice $invoice)
     {
-        //
+        $invoice->load('invoice_items', 'invoice_type');
+        return Inertia::render('Invoice/Show', [
+            'item' => $invoice
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Invoice $invoice)
     {
-        //
+        return Inertia::render('Invoice/Edit', [
+            'item' => $invoice,
+            'invoiceTypes' => InvoiceType::all()
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Invoice $invoice)
     {
-        //
+        $validated = $request->validate([
+            'invoice_type_id' => 'required|exists:invoice_types,id',
+            'recipient_name' => 'required|string|max:255',
+            'recipient_cuit' => 'nullable|string|max:50',
+            'recipient_iva' => 'nullable|string|max:50',
+            'recipient_address' => 'nullable|string|max:255',
+            'point_sale' => 'nullable|integer',
+            'number' => 'nullable|integer',
+            'subtotal' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'tax_amount' => 'nullable|numeric|min:0',
+            'total' => 'nullable|numeric|min:0',
+            'status' => 'required|string|max:50',
+            'issued_at' => 'nullable|date',
+            'due_date' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $invoice->update($validated);
+
+        return redirect()->route('invoices.index')->with('success', 'Factura actualizada exitosamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Invoice $invoice)
     {
-        //
+        $invoice->delete();
+        return redirect()->route('invoices.index')->with('success', 'Factura eliminada exitosamente.');
     }
 }

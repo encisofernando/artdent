@@ -22,7 +22,7 @@ const TIPOS = [
 ];
 
 export default function Create({ auth, products }) {
-    const { isDark } = useTheme();
+    const { isDark, sidebarCollapsed } = useTheme();
     const [busca, setBusca] = useState('');
     const [cart, setCart] = useState([]);
 
@@ -121,7 +121,7 @@ export default function Create({ auth, products }) {
     };
 
     const removeFromCart = (productId) => setCart(cart.filter(item => item.product_id !== productId));
-    const clearCart = () => { setCart([]); setData('customer_name', 'Consumidor Final'); setData('receipt_type', 'X'); };
+    const clearCart = () => { setCart([]); setData('customer_name', 'Consumidor Final'); setData('receipt_type', 'C'); };
 
     useEffect(() => {
         let total = 0, neto = 0;
@@ -155,21 +155,16 @@ export default function Create({ auth, products }) {
     const handleConfirmPayment = (e) => {
         e.preventDefault();
         const paid = Number(receivedAmount);
-        setData('paid_amount', paid);
-        setData('payment_method', paymentMethod);
 
-        router.post(route('sales.store'),
+        // El controller redirige a sales.show — Inertia navega automáticamente.
+        router.post(
+            route('sales.store'),
             { ...data, paid_amount: paid, payment_method: paymentMethod },
             {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setOpenPago(false);
-                    clearCart();
-                    alert("¡Cobro exitoso! Venta registrada y stock actualizado.");
-                },
                 onError: (errs) => {
-                    alert("Error en la validación: " + JSON.stringify(errs));
-                }
+                    const msg = errs?.error || Object.values(errs).join(' | ');
+                    alert('Error al registrar la venta: ' + msg);
+                },
             }
         );
     };
@@ -192,7 +187,9 @@ export default function Create({ auth, products }) {
             <Head title="Facturar POS" />
 
             {/* Container that takes remaining height. Fixed absolute position layout matching MUI. */}
-            <div className={`fixed inset-0 top-[65px] left-0 md:left-[250px] z-[5] flex flex-col lg:flex-row overflow-hidden ${surfaceBg} transition-all duration-300`}>
+            <div className={`fixed inset-0 top-16 left-0 z-[5] flex flex-col lg:flex-row overflow-hidden ${surfaceBg} transition-all duration-300
+                ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'}
+            `}>
 
                 {/* ═══ LEFT — Catálogo ══════════════════════════════════════════════ */}
                 <div className={`w-full lg:flex-1 h-full flex flex-col border-r ${borderCol}`}>
@@ -215,7 +212,11 @@ export default function Create({ auth, products }) {
                             )}
                         </div>
 
-                        <button className="w-10 h-10 rounded-[10px] flex items-center justify-center border-[1.5px] border-dashed border-[#397B9C66] text-[#397B9C] hover:bg-[#397B9C14] hover:border-solid transition-colors shrink-0">
+                        <button
+                            onClick={() => setOpenAltaProd(true)}
+                            title="Alta rápida de artículo"
+                            className="w-10 h-10 rounded-[10px] flex items-center justify-center border-[1.5px] border-dashed border-[#397B9C66] text-[#397B9C] hover:bg-[#397B9C14] hover:border-solid transition-colors shrink-0"
+                        >
                             <Plus size={18} />
                         </button>
                     </div>
@@ -433,6 +434,55 @@ export default function Create({ auth, products }) {
                 </div>
             </div>
 
+            {/* MODAL CLIENTE */}
+            {openCliente && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className={`w-full max-w-sm rounded-[16px] shadow-2xl flex flex-col overflow-hidden
+                        ${isDark ? 'bg-[#0F1F2A] border border-white/10' : 'bg-white border border-slate-200'}
+                    `}>
+                        <div className="flex items-center justify-between p-4 pb-2 border-b border-white/5">
+                            <div className="flex items-center gap-2">
+                                <User size={18} className="text-[#397B9C]" />
+                                <h3 className={`font-extrabold text-[15px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    Seleccionar Cliente
+                                </h3>
+                            </div>
+                            <button onClick={() => setOpenCliente(false)} className="opacity-50 hover:opacity-100">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div>
+                                <label className={`text-[11px] font-bold tracking-widest mb-1.5 block ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                    NOMBRE DEL CLIENTE
+                                </label>
+                                <input
+                                    type="text"
+                                    value={data.customer_name === 'Consumidor Final' ? '' : data.customer_name}
+                                    onChange={e => setData('customer_name', e.target.value || 'Consumidor Final')}
+                                    placeholder="Ej: Juan Pérez"
+                                    className={`w-full px-3 py-2 rounded-xl text-[13.5px] border outline-none
+                                        ${isDark ? 'bg-[#15232D] border-white/10 text-white focus:border-teal-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-teal-500'}
+                                    `}
+                                />
+                            </div>
+                            <button
+                                onClick={() => { setData('customer_name', 'Consumidor Final'); setData('customer_id', ''); setOpenCliente(false); }}
+                                className={`text-[12px] font-semibold ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'} transition-colors`}
+                            >
+                                ← Usar Consumidor Final
+                            </button>
+                        </div>
+                        <div className={`p-4 border-t ${isDark ? 'border-white/10' : 'border-black/5'} flex justify-end gap-2`}>
+                            <Button variant="ghost" className="rounded-xl" onClick={() => setOpenCliente(false)}>Cancelar</Button>
+                            <Button onClick={() => setOpenCliente(false)} className="px-6 rounded-xl text-white font-bold" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                                Confirmar
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* MODAL PAGO */}
             {openPago && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -532,7 +582,7 @@ export default function Create({ auth, products }) {
                         `}>
                         <div className="flex items-center justify-between p-4 pb-2 border-b border-white/5">
                             <div className="flex items-center gap-2">
-                                <Package size={18} style={{ color: tealColor }} />
+                                <Package size={18} style={{ color: B.teal }} />
                                 <h3 className={`font-extrabold text-[15px] ${isDark ? 'text-white' : 'text-slate-900'}`}>Alta rápida de artículo</h3>
                             </div>
                             <button onClick={() => setOpenAltaProd(false)} className="opacity-50 hover:opacity-100">

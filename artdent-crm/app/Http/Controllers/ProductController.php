@@ -18,10 +18,10 @@ class ProductController extends Controller
         $search = $request->input('search');
         $status = $request->input('status', 'all');
 
-        $query = \App\Models\Product::with('product_images'); // Eager load images
+        $query = \App\Models\Product::with('product_images');
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('sku', 'like', "%{$search}%")
                   ->orWhere('barcode', 'like', "%{$search}%");
@@ -34,14 +34,20 @@ class ProductController extends Controller
             $query->where('is_active', 0);
         }
 
-        $items = $query->paginate(15)->withQueryString();
+        $items = $query->paginate(20)->withQueryString();
+
+        // Infinite scroll: axios requests llegan con Accept: application/json
+        // Inertia no intercepta estas requests, así que devolvemos JSON directo.
+        if ($request->wantsJson()) {
+            return response()->json(['items' => $items]);
+        }
 
         return Inertia::render('Product/Index', [
-            'items' => $items,
+            'items'   => $items,
             'filters' => [
                 'search' => $search,
                 'status' => $status,
-            ]
+            ],
         ]);
     }
 
@@ -81,7 +87,8 @@ class ProductController extends Controller
             'meta_desc' => 'nullable|string',
             'tax_rate' => 'nullable|numeric',
             'stock_quantity' => 'nullable|numeric',
-            'images.*' => 'nullable|image|max:2048' // Validate uploaded images (max 2MB each)
+            'images.*' => 'nullable|image|max:2048', // Validate uploaded images (max 2MB each)
+            'variants' => 'nullable|json' // Variants data array encoded as JSON
         ]);
 
         if (empty($validated['company_id'])) {
@@ -130,6 +137,46 @@ class ProductController extends Controller
             return response()->json(['product' => $product, 'success' => 'Product created successfully.']);
         }
 
+        // --- VARIANTS PROCESSING ---
+        if (!empty($validated['has_variants']) && !empty($validated['variants'])) {
+            $variantsData = json_decode($validated['variants'], true);
+            if (is_array($variantsData)) {
+                foreach ($variantsData as $variantItem) {
+                    // 1. Create the variant
+                    $variant = \App\Models\ProductVariant::create([
+                        'product_id' => $product->id,
+                        'sku' => $variantItem['sku'] ?? null,
+                        'price' => $variantItem['price'] ?? $product->price,
+                        'cost_price' => $variantItem['cost_price'] ?? null,
+                        'is_active' => $variantItem['is_active'] ?? 1,
+                    ]);
+
+                    // 2. Process attributes "Color: Red", "Size: L"
+                    if (isset($variantItem['attributes']) && is_array($variantItem['attributes'])) {
+                        foreach ($variantItem['attributes'] as $attrName => $attrValueStr) {
+                            // Find or Create Attribute Name
+                            $attribute = \App\Models\ProductAttribute::firstOrCreate(
+                                ['name' => $attrName]
+                            );
+
+                            // Find or Create Attribute Value
+                            $attrValue = \App\Models\ProductAttributeValue::firstOrCreate([
+                                'attribute_id' => $attribute->id,
+                                'value' => $attrValueStr
+                            ]);
+
+                            // Link Variant + Value
+                            \App\Models\VariantAttributeValue::create([
+                                'variant_id' => $variant->id,
+                                'attribute_value_id' => $attrValue->id
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+        // ---------------------------
+
         return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }
 
@@ -146,7 +193,11 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        $product->load('product_images', 'stocks'); // Eager load images and stocks to show in the edit form
+        $product->load(
+            'product_images', 
+            'stocks',
+            'product_variants.variant_attribute_values.product_attribute_value.product_attribute'
+        ); // Eager load variants & relationships
         
         return Inertia::render('Product/Edit', [
             'item' => $product
@@ -181,7 +232,8 @@ class ProductController extends Controller
             'meta_desc' => 'nullable|string',
             'tax_rate' => 'nullable|numeric',
             'stock_quantity' => 'nullable|numeric',
-            'images.*' => 'nullable|image|max:2048' // Prevent non-images or large files
+            'images.*' => 'nullable|image|max:2048', // Prevent non-images or large files
+            'variants' => 'nullable|json' 
         ]);
 
         $product->update($validated);
@@ -233,6 +285,57 @@ class ProductController extends Controller
             }
         }
 
+        // --- VARIANTS PROCESSING ---
+        if (!empty($validated['has_variants']) && !empty($validated['variants'])) {
+            $variantsData = json_decode($validated['variants'], true);
+            if (is_array($variantsData)) {
+                $processedVariantIds = [];
+                
+                foreach ($variantsData as $variantItem) {
+                    // Update or Create the variant
+                    $variant = \App\Models\ProductVariant::updateOrCreate(
+                        [
+                            'product_id' => $product->id, 
+                            'id' => $variantItem['id'] ?? null // if no id, it creates a new one
+                        ],
+                        [
+                            'sku' => $variantItem['sku'] ?? null,
+                            'price' => $variantItem['price'] ?? $product->price,
+                            'cost_price' => $variantItem['cost_price'] ?? null,
+                            'is_active' => $variantItem['is_active'] ?? 1,
+                        ]
+                    );
+                    $processedVariantIds[] = $variant->id;
+
+                    // Sync attributes
+                    if (isset($variantItem['attributes']) && is_array($variantItem['attributes'])) {
+                        $variant->variant_attribute_values()->delete(); // Clear old to put new
+
+                        foreach ($variantItem['attributes'] as $attrName => $attrValueStr) {
+                            $attribute = \App\Models\ProductAttribute::firstOrCreate(['name' => $attrName]);
+                            $attrValue = \App\Models\ProductAttributeValue::firstOrCreate([
+                                'attribute_id' => $attribute->id,
+                                'value' => $attrValueStr
+                            ]);
+                            \App\Models\VariantAttributeValue::create([
+                                'variant_id' => $variant->id,
+                                'attribute_value_id' => $attrValue->id
+                            ]);
+                        }
+                    }
+                }
+
+                // Delete variants that were removed from the frontend table
+                \App\Models\ProductVariant::where('product_id', $product->id)
+                    ->whereNotIn('id', $processedVariantIds)
+                    ->delete();
+            }
+        } else {
+            // Un-checked "has_variants" toggle -> delete all
+            \App\Models\ProductVariant::where('product_id', $product->id)->delete();
+        }
+        // ---------------------------
+
         return redirect()->route('products.index')->with('success', 'Product updated successfully.');
     }
 
@@ -244,5 +347,59 @@ class ProductController extends Controller
     {
         $product->delete();
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+    }
+
+    /**
+     * Import products from CSV mapped data
+     */
+    public function importCsv(Request $request)
+    {
+        $request->validate([
+            'products' => 'required|array',
+            'products.*.name' => 'required|string',
+            'products.*.price' => 'required|numeric',
+        ]);
+
+        $imported = 0;
+
+        foreach ($request->products as $item) {
+            Product::updateOrCreate(
+                ['name' => $item['name']],
+                [
+                    'sku' => $item['sku'] ?? null,
+                    'cost_price' => isset($item['cost_price']) ? floatval(str_replace(',', '.', $item['cost_price'])) : 0,
+                    'price' => isset($item['price']) ? floatval(str_replace(',', '.', $item['price'])) : 0,
+                    'has_variants' => false,
+                    'is_active' => true,
+                    // map other common fields if they exist
+                ]
+            );
+            $imported++;
+        }
+
+        return response()->json(['imported' => $imported]);
+    }
+
+    /**
+     * Import products from raw SQL Script
+     */
+    public function importSql(Request $request)
+    {
+        $request->validate([
+            'sql_file' => 'required|file|mimetypes:text/plain,application/sql'
+        ]);
+
+        try {
+            $sql = file_get_contents($request->file('sql_file')->getRealPath());
+            
+            // Execute the raw SQL statements
+            // WARNING: This execute raw SQL. Ensure the input file is trusted.
+            \DB::unprepared($sql);
+
+            return response()->json(['message' => 'Script SQL ejecutado con éxito.']);
+        } catch (\Exception $e) {
+            \Log::error('SQL Import Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Error ejecutando el script. Revisa el log de Laravel.'], 500);
+        }
     }
 }
