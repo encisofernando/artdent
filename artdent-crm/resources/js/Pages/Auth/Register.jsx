@@ -3,7 +3,7 @@ import { useState } from "react"
 import GuestLayout from "@/Layouts/GuestLayout"
 import { Button } from "@/Components/ui/button"
 import { Input } from "@/Components/ui/input"
-import { Mail, User, Lock, Eye, EyeOff } from "lucide-react"
+import { Mail, User, Lock, Eye, EyeOff, Building } from "lucide-react"
 
 function FieldError({ message }) {
   if (!message) return null
@@ -12,6 +12,7 @@ function FieldError({ message }) {
 
 export default function Register() {
   const { data, setData, post, processing, errors, reset } = useForm({
+    company_name: "",
     name: "",
     email: "",
     password: "",
@@ -39,6 +40,27 @@ export default function Register() {
       </div>
 
       <form onSubmit={submit} className="space-y-4">
+        {/* Company Name */}
+        <div>
+          <label className="text-sm font-medium text-white/70">Nombre del Laboratorio / Clínica</label>
+          <div className="relative mt-2">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35">
+              <Building size={18} />
+            </span>
+            <Input
+              id="company_name"
+              name="company_name"
+              value={data.company_name}
+              autoComplete="organization"
+              autoFocus
+              onChange={(e) => setData("company_name", e.target.value)}
+              className="pl-10 bg-white/[0.04] border-white/10 text-white placeholder:text-white/25
+                         focus-visible:ring-2 focus-visible:ring-[rgba(172,214,206,0.7)]"
+            />
+          </div>
+          <FieldError message={errors.company_name} />
+        </div>
+
         {/* Nombre */}
         <div>
           <label className="text-sm font-medium text-white/70">Nombre completo</label>
@@ -51,7 +73,6 @@ export default function Register() {
               name="name"
               value={data.name}
               autoComplete="name"
-              autoFocus
               onChange={(e) => setData("name", e.target.value)}
               className="pl-10 bg-white/[0.04] border-white/10 text-white placeholder:text-white/25
                          focus-visible:ring-2 focus-visible:ring-[rgba(172,214,206,0.7)]"

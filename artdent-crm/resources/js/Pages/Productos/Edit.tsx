@@ -5,7 +5,7 @@ import { Link, useForm } from "@inertiajs/react"
 
 type Product = { id: number; sku?: string; name: string; price: number; track_stock?: boolean; min_stock?: number }
 
-export default function ProductosEdit({ product }: { product: Product }) {
+export default function ProductosEdit({ product }) {
   const { data, setData, put, processing, errors } = useForm({
     sku: product?.sku ?? "",
     name: product?.name ?? "",

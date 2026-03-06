@@ -1,61 +1,75 @@
-import { useEffect, useMemo, useState } from "react"
-import Sidebar from "@/Components/layout/Sidebar"
-import Topbar from "@/Components/layout/Topbar"
+import { useState, useEffect } from 'react';
+import Sidebar from '@/Components/Sidebar';
+import Topbar from '@/Components/Topbar';
+import { useTheme } from '@/Contexts/ThemeContext';
 
-export default function AuthenticatedLayout({ children }) {
-  const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+export default function AuthenticatedLayout({ user, header, children }) {
+  const { isDark } = useTheme();
+  const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
 
-  // Cerrar drawer mobile con ESC
+  // Cerrar el sidebar en mobile si se presiona Escape
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") setSidebarOpenMobile(false)
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [])
-
-  const leftOffset = useMemo(() => {
-    // desktop: 272 o 72
-    return collapsed ? 72 : 272
-  }, [collapsed])
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setSidebarOpenMobile(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Sidebar desktop */}
-      <div className="hidden md:block">
-        <Sidebar
-          variant="desktop"
-          collapsed={collapsed}
-          setCollapsed={setCollapsed}
-        />
+    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-300
+      ${isDark ? 'bg-slate-950 text-slate-300' : 'bg-slate-50 text-slate-800'}
+    `}>
+
+      {/* Sidebar Desktop */}
+      <div className="hidden lg:block shrink-0 transition-all duration-300">
+        <Sidebar />
       </div>
 
-      {/* Sidebar mobile (overlay) */}
-      <Sidebar
-        variant="mobile"
-        open={sidebarOpenMobile}
-        onClose={() => setSidebarOpenMobile(false)}
-        collapsed={false}
-        setCollapsed={() => {}}
-      />
+      {/* Overlay Mobile */}
+      {sidebarOpenMobile && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpenMobile(false)}
+        />
+      )}
 
-      {/* Main column */}
-      <div
-        className="min-h-screen flex flex-col"
-        style={{ marginLeft: leftOffset }}
+      {/* Sidebar Mobile */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:hidden
+                ${sidebarOpenMobile ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        {/* En mobile no hay offset */}
-        <style>{`@media (max-width: 767px){ div[style]{ margin-left:0 !important; } }`}</style>
+        <Sidebar className="h-full" />
+      </div>
 
+      {/* Contenido Principal */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Topbar */}
         <Topbar
-          onOpenSidebar={() => setSidebarOpenMobile(true)}
+          user={user}
+          onSidebarToggle={() => setSidebarOpenMobile(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-5 md:p-6">
-          {children}
+        {/* Área de scroll principal */}
+        <main className="flex-1 overflow-y-auto">
+          {/* Header opcional (retrocompatibilidad con Breeze por defecto) */}
+          {header && (
+            <header className={`shadow-sm border-b transition-colors
+                ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}
+            `}>
+              <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                {header}
+              </div>
+            </header>
+          )}
+
+          {/* Contenido de la página */}
+          <div className="p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>
-  )
+  );
 }
