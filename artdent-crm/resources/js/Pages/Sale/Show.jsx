@@ -55,119 +55,242 @@ function LogoIcon({ height = 32 }) {
     );
 }
 
-// ─── TICKET 80mm ─────────────────────────────────────────────────────────────
-function Ticket80({ sale }) {
+// ─── TICKET COMPARTIDO (80mm y 57mm) ────────────────────────────────────────
+// Estructura: logo → condición → sep → FACTURA X → datos → tabla → totales → pago → footer
+
+function TicketBase({ sale, widthMM = 80 }) {
+    const is57 = widthMM === 57;
     const items = sale.sale_items || [];
     const totalIVA = items.reduce((s, i) => s + Number(i.tax_amount || 0), 0);
+    const total = Number(sale.total || 0);
+    const clientName = sale.notes?.match(/Cliente:\s*(.+)/)?.[1]?.trim() || 'Consumidor Final';
+
+    // ── Datos derivados desde relaciones del backend ──────────────────────────
+    const receiptType = (sale.receipt_type || 'X').toUpperCase();
+    const company = sale.company || {};
+
+    // NRO COMPROBANTE: formato 00001-00000001
+    // Para X → punto de venta fijo '00001'
+    // Para A/B/C → companies.afip_point_sale (0-padded a 5 dígitos)
+    const pointSale = ['A', 'B', 'C'].includes(receiptType)
+        ? String(company.afip_point_sale ?? 1).padStart(5, '0')
+        : '00001';
+    // El sale_number ya viene formateado del backend, usarlo si tiene el formato
+    // sino construirlo desde el punto de venta y el número secuencial del id
+    const nroComp = sale.sale_number?.includes('-')
+        ? sale.sale_number  // ya viene en formato correcto del controller
+        : `${pointSale}-${String(sale.id ?? 1).padStart(8, '0')}`;
+
+    // IVA condition legible
+    const IVA_LABELS = {
+        responsable_inscripto: 'Responsable Inscripto',
+        monotributista: 'Responsable Monotributo',
+        exento: 'IVA Exento',
+        consumidor_final: 'Consumidor Final',
+    };
+    const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
+
+    // Medio de pago: primer pago de sale_payments, o fallback a payment_method
+    const primerPago = sale.sale_payments?.[0];
+    const medioPago = primerPago?.payment_method?.name
+        || sale.payment_method
+        || 'Efectivo';
+
+    // Cajero: usuario que hizo la venta
+    const cajero = sale.user?.name || sale.user?.email || 'Sistema';
+
+    // Título del comprobante según tipo
+    const tipoLabel = receiptType === 'X' ? 'TICKET X' : `FACTURA ${receiptType}`;
+
+    // Tipografías y tamaños escalados por ancho
+    const F = {
+        logo: is57 ? 28 : 36,
+        brand: is57 ? 13 : 15,   // "ARTDENT" fallback si no hay logo
+        cond: is57 ? 9 : 10,
+        head: is57 ? 10 : 11.5, // "FACTURA X"
+        label: is57 ? 8 : 9.5,
+        value: is57 ? 8 : 9.5,
+        th: is57 ? 7.5 : 8.5,
+        td: is57 ? 7.5 : 8.5,
+        total: is57 ? 12 : 14,
+        small: is57 ? 7 : 8,
+        footer: is57 ? 7 : 8,
+    };
+    const PAD = is57 ? '3mm 3mm' : '4mm 4mm';
+    const LINE = `1px solid #ccc`;
+    const DASH = `1px dashed #bbb`;
+
+    const Row = ({ label, value, bold = false }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: F.label, marginBottom: 2 }}>
+            <span style={{ fontWeight: bold ? 700 : 600, color: '#444', minWidth: is57 ? 60 : 80 }}>{label}</span>
+            <span style={{ fontWeight: bold ? 700 : 400, color: '#111', textAlign: 'right', flex: 1 }}>{value}</span>
+        </div>
+    );
+
     return (
-        <div id="print-zone" style={{ width: '80mm', fontFamily: "'Courier New', monospace", fontSize: '11px', color: '#111', padding: '4mm', background: '#fff', lineHeight: 1.4 }}>
-            <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-                    <img src="/assets/logo-artdent-color.png" alt="ArtDent" style={{ height: 36, objectFit: 'contain' }} />
-                </div>
-                <div style={{ borderTop: `2px solid ${AD.blue}`, borderBottom: `2px solid ${AD.blue}`, margin: '6px 0', padding: '3px 0', fontSize: 11, fontWeight: 'bold' }}>
-                    TICKET — {sale.sale_number}
-                </div>
-                <div style={{ fontSize: 10 }}>{fmtDateTime(sale.sold_at || sale.created_at)}</div>
+        <div id="print-zone" style={{
+            width: `${widthMM}mm`,
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: F.label,
+            color: '#111',
+            padding: PAD,
+            background: '#fff',
+            lineHeight: 1.45,
+            boxSizing: 'border-box',
+        }}>
+            {/* Franja superior de color */}
+            <div style={{
+                background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`,
+                height: is57 ? 3 : 4,
+                margin: `0 -${is57 ? 3 : 4}mm ${is57 ? 5 : 7}px`,
+            }} />
+
+            {/* ── LOGO ── */}
+            <div style={{ textAlign: 'center', marginBottom: is57 ? 5 : 7 }}>
+                <img
+                    src="/assets/logo-artdent-color.png"
+                    alt="ArtDent"
+                    style={{ height: F.logo, objectFit: 'contain', display: 'inline-block' }}
+                />
             </div>
-            {sale.notes && (
-                <div style={{ fontSize: 10, marginBottom: 6, borderBottom: '1px dashed #ccc', paddingBottom: 4 }}>
-                    {sale.notes.split('\n').map((l, i) => <div key={i}>{l}</div>)}
+
+            {/* Condición IVA */}
+            <div style={{ textAlign: 'center', fontSize: F.cond, color: '#555', marginBottom: is57 ? 5 : 6 }}>
+                {ivaLabel}
+            </div>
+
+            {/* Separador */}
+            <div style={{ borderTop: LINE, marginBottom: is57 ? 5 : 6 }} />
+
+            {/* ── TIPO DE COMPROBANTE ── */}
+            <div style={{
+                textAlign: 'center',
+                fontWeight: 900,
+                fontSize: F.head,
+                letterSpacing: 0.5,
+                marginBottom: is57 ? 6 : 8,
+                padding: `${is57 ? 3 : 4}px 0`,
+                borderTop: `2px solid ${AD.blue}`,
+                borderBottom: `2px solid ${AD.blue}`,
+                color: AD.blue,
+                fontFamily: "'Montserrat', sans-serif",
+            }}>
+                {tipoLabel}
+            </div>
+
+            {/* ── DATOS DEL COMPROBANTE ── */}
+            <div style={{ marginBottom: is57 ? 6 : 8 }}>
+                <Row label="NRO COMPROBANTE" value={nroComp} bold />
+                <Row
+                    label="FECHA"
+                    value={sale.sold_at
+                        ? `${fmtDate(sale.sold_at)}, ${new Date(sale.sold_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} p.m.`
+                        : fmtDate(sale.created_at)}
+                />
+                <Row label="CLIENTE" value={clientName} />
+            </div>
+
+            {/* Separador */}
+            <div style={{ borderTop: LINE, marginBottom: is57 ? 4 : 5 }} />
+
+            {/* ── TABLA DE ÍTEMS ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: F.th, marginBottom: is57 ? 4 : 6 }}>
+                <thead>
+                    <tr style={{ borderBottom: `1.5px solid ${AD.blue}` }}>
+                        {['Descripción', 'Can', 'Uni', 'Total'].map((h, i) => (
+                            <th key={h} style={{
+                                padding: `3px ${i === 0 ? 0 : 2}px`,
+                                textAlign: i === 0 ? 'left' : 'center',
+                                fontWeight: 700,
+                                fontSize: F.th,
+                                color: '#222',
+                                borderBottom: `1.5px solid ${AD.blue}`,
+                                whiteSpace: 'nowrap',
+                            }}>{h}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {items.map((item, i) => (
+                        <tr key={i} style={{ borderBottom: `1px solid #eee` }}>
+                            <td style={{ padding: `3px 0`, fontSize: F.td }}>{item.product_name}</td>
+                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td }}>{Number(item.quantity)}</td>
+                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td }}>{fmt(item.unit_price)}</td>
+                            <td style={{ padding: `3px 0`, textAlign: 'center', fontSize: F.td, fontWeight: 600 }}>{fmt(item.total)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {/* Cantidad de ítems */}
+            <div style={{ fontSize: F.small, color: '#666', marginBottom: is57 ? 5 : 6 }}>
+                Cantidad de ítems: {items.reduce((a, i) => a + Number(i.quantity || 1), 0)}
+            </div>
+
+            {/* Separador */}
+            <div style={{ borderTop: LINE, marginBottom: is57 ? 5 : 6 }} />
+
+            {/* ── TOTAL ── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: F.total, fontWeight: 900, marginBottom: is57 ? 6 : 8 }}>
+                <span>TOTAL</span>
+                <span style={{ color: AD.blue }}>$ {fmt(total)}</span>
+            </div>
+
+            {/* ── TRANSPARENCIA FISCAL ── */}
+            {totalIVA > 0 && (
+                <div style={{ marginBottom: is57 ? 5 : 7 }}>
+                    <div style={{ fontWeight: 700, fontSize: F.label, marginBottom: 3 }}>
+                        TRANSPARENCIA FISCAL
+                    </div>
+                    <Row label={`IVA 21%`} value={`$ ${fmt(totalIVA)}`} />
+                    <Row label="Otros Imp. Nac. Indirectos" value="$ 0,00" />
                 </div>
             )}
-            <div style={{ marginBottom: 6 }}>
-                <div style={{ borderBottom: '1px solid #ccc', paddingBottom: 2, marginBottom: 4, fontSize: 10, fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>DESCRIPCIÓN</span><span>IMPORTE</span>
-                </div>
-                {items.map((item, i) => (
-                    <div key={i} style={{ marginBottom: 4 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: 11 }}>{item.product_name}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#444' }}>
-                            <span>{Number(item.quantity)} × ${fmt(item.unit_price)}</span>
-                            <span style={{ fontWeight: 'bold', color: '#111' }}>${fmt(item.total)}</span>
-                        </div>
-                        {Number(item.discount) > 0 && <div style={{ fontSize: 9, color: '#e00', textAlign: 'right' }}>Dcto: -${fmt(item.discount)}</div>}
-                    </div>
-                ))}
-            </div>
-            <div style={{ borderTop: '2px solid #111', paddingTop: 4 }}>
-                {Number(sale.discount_amount) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                        <span>Descuento</span><span>-${fmt(sale.discount_amount)}</span>
-                    </div>
-                )}
-                {totalIVA > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                        <span>IVA Contenido</span><span>${fmt(totalIVA)}</span>
-                    </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 900, marginTop: 4, borderTop: '1px dashed #ccc', paddingTop: 4 }}>
-                    <span>TOTAL</span><span style={{ color: AD.blue }}>${fmt(sale.total)}</span>
-                </div>
-            </div>
-            <div style={{ marginTop: 6, fontSize: 10, borderTop: '1px dashed #ccc', paddingTop: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Recibido</span><span>${fmt(sale.paid_amount)}</span>
-                </div>
+
+            {/* Separador */}
+            <div style={{ borderTop: DASH, marginBottom: is57 ? 5 : 6 }} />
+
+            {/* ── MEDIO DE PAGO ── */}
+            <div style={{ marginBottom: is57 ? 5 : 7 }}>
+                <Row label="MEDIO DE PAGO" value={medioPago} />
+                <Row label="CAJERO" value={cajero} />
                 {Number(sale.change_amount) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                        <span>Vuelto</span><span>${fmt(sale.change_amount)}</span>
-                    </div>
+                    <Row label="VUELTO" value={`$ ${fmt(sale.change_amount)}`} bold />
                 )}
             </div>
-            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 9, color: '#888', borderTop: '1px dashed #ccc', paddingTop: 6 }}>
-                <div style={{ fontWeight: 'bold', color: AD.teal }}>¡Gracias por su visita!</div>
-                <div style={{ marginTop: 2, fontFamily: "'Montserrat', sans-serif" }}>Tu sonrisa, es nuestra prioridad.</div>
-                <div style={{ marginTop: 4, fontSize: 8 }}>Comprobante no válido como factura</div>
+
+            {/* Separador */}
+            <div style={{ borderTop: DASH, marginBottom: is57 ? 5 : 7 }} />
+
+            {/* ── FOOTER ── */}
+            <div style={{ textAlign: 'center', fontSize: F.footer, color: '#666' }}>
+                <div style={{ fontWeight: 700, color: AD.teal, fontFamily: "'Montserrat', sans-serif", marginBottom: 2 }}>
+                    Gracias por su compra.
+                </div>
+                <div style={{ fontSize: F.small - 1, marginTop: 2, color: '#aaa' }}>
+                    Comprobante no válido como factura
+                </div>
             </div>
+
+            {/* Franja inferior */}
+            <div style={{
+                background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`,
+                height: is57 ? 3 : 4,
+                margin: `${is57 ? 6 : 8}px -${is57 ? 3 : 4}mm 0`,
+            }} />
         </div>
     );
 }
 
-// ─── TICKET 57mm ─────────────────────────────────────────────────────────────
+function Ticket80({ sale }) {
+    return <TicketBase sale={sale} widthMM={80} />;
+}
+
 function Ticket57({ sale }) {
-    const items = sale.sale_items || [];
-    return (
-        <div id="print-zone" style={{ width: '57mm', fontFamily: "'Courier New', monospace", fontSize: '9px', color: '#111', padding: '3mm', background: '#fff', lineHeight: 1.35 }}>
-            <div style={{ textAlign: 'center', marginBottom: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3 }}>
-                    <img src="/assets/logo-artdent-color.png" alt="ArtDent" style={{ height: 26, objectFit: 'contain' }} />
-                </div>
-                <div style={{ borderTop: `1.5px solid ${AD.blue}`, borderBottom: `1.5px solid ${AD.blue}`, margin: '4px 0', padding: '2px 0', fontSize: 9, fontWeight: 'bold' }}>
-                    {sale.sale_number}
-                </div>
-                <div style={{ fontSize: 8 }}>{fmtDate(sale.sold_at || sale.created_at)}</div>
-            </div>
-            <div style={{ marginBottom: 5, borderBottom: '1px dashed #ccc', paddingBottom: 4 }}>
-                {items.map((item, i) => (
-                    <div key={i} style={{ marginBottom: 3 }}>
-                        <div style={{ fontWeight: 'bold' }}>{item.product_name}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8 }}>
-                            <span>{Number(item.quantity)}×${fmt(item.unit_price)}</span>
-                            <span style={{ fontWeight: 'bold' }}>${fmt(item.total)}</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 900, marginTop: 4 }}>
-                <span>TOTAL</span><span style={{ color: AD.blue }}>${fmt(sale.total)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, marginTop: 2 }}>
-                <span>Recibido</span><span>${fmt(sale.paid_amount)}</span>
-            </div>
-            {Number(sale.change_amount) > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, fontWeight: 'bold' }}>
-                    <span>Vuelto</span><span>${fmt(sale.change_amount)}</span>
-                </div>
-            )}
-            <div style={{ textAlign: 'center', marginTop: 8, fontSize: 7, color: '#999', borderTop: '1px dashed #ccc', paddingTop: 5 }}>
-                <div style={{ color: AD.teal, fontWeight: 'bold', fontFamily: "'Montserrat', sans-serif" }}>¡Gracias!</div>
-                <div style={{ fontSize: 6, marginTop: 2 }}>No válido como factura</div>
-            </div>
-        </div>
-    );
+    return <TicketBase sale={sale} widthMM={57} />;
 }
 
+// ─── FACTURA A4 ───────────────────────────────────────────────────────────────
 // ─── FACTURA A4 ───────────────────────────────────────────────────────────────
 function FacturaA4({ sale }) {
     const items = sale.sale_items || [];
@@ -392,27 +515,55 @@ export default function Show({ auth, sale }) {
     const { isDark } = useTheme();
     const [mode, setMode] = useState('a4');
 
-    const handlePrint = () => {
-        const el = document.getElementById('print-zone');
-        if (!el) return;
+    const handlePrint = async () => {
+        // Si es A4, usamos el flujo nativo del navegador para PDF
+        if (mode === 'a4') {
+            const el = document.getElementById('print-zone');
+            if (!el) return;
+            const win = window.open('', '_blank');
+            win.document.write(`<html><head><title>ArtDent — ${sale.sale_number}</title></head><body>${el.innerHTML}</body></html>`);
+            win.document.close();
+            setTimeout(() => { win.print(); win.close(); }, 500);
+            return;
+        }
 
-        const pageSize = mode === 'a4' ? 'A4' : mode === '80mm' ? '80mm 297mm' : '57mm 297mm';
-        const win = window.open('', '_blank', 'width=900,height=700');
-        win.document.write(`
-            <!DOCTYPE html><html><head>
-            <title>ArtDent — ${sale.sale_number}</title>
-            <base href="${window.location.origin}">
-            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-            <style>
-                @page { size: ${pageSize}; margin: 0; }
-                * { box-sizing: border-box; }
-                body { margin: 0; background: #fff; }
-                @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-            </style>
-            </head><body>${el.outerHTML}</body></html>
-        `);
-        win.document.close();
-        setTimeout(() => { win.focus(); win.print(); }, 700);
+        // Para Tickets (80mm / 57mm): Capturamos el diseño exacto
+        const printElement = document.getElementById('print-zone');
+        if (!printElement) return;
+
+        // Recopilamos los estilos de la página para que Electron los aplique al ticket
+        const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+            .map(style => style.outerHTML)
+            .join('');
+
+        const fullHTML = `
+        <html>
+            <head>
+                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
+                ${styles}
+                <style>
+                    body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; }
+                    #print-zone { width: 100% !important; box-shadow: none !important; margin: 0 !important; }
+                </style>
+            </head>
+            <body>${printElement.innerHTML}</body>
+        </html>
+    `;
+
+        try {
+            const response = await fetch('http://localhost:1234/print', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html: fullHTML, mode: mode })
+            });
+
+            if (!response.ok) {
+                const result = await response.json();
+                alert("Error en el servidor de impresión: " + result.error);
+            }
+        } catch (err) {
+            alert("⚠️ El gestor de impresión ArtDent no está activo. Por favor, inicie la aplicación.");
+        }
     };
 
     return (
@@ -462,8 +613,8 @@ export default function Show({ auth, sale }) {
                                 key={m.id}
                                 onClick={() => setMode(m.id)}
                                 className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${mode === m.id
-                                        ? isDark ? 'border-blue-500/50 bg-blue-900/20' : 'border-blue-300 bg-blue-50 shadow-sm'
-                                        : isDark ? 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                    ? isDark ? 'border-blue-500/50 bg-blue-900/20' : 'border-blue-300 bg-blue-50 shadow-sm'
+                                    : isDark ? 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                                     }`}
                             >
                                 <div className="flex items-center gap-3">

@@ -63,13 +63,6 @@ const NAV_SECTIONS = [
                     { title: "Recibos", path: "/colaboradores/recibos" },
                 ],
             },
-            {
-                title: "Trabajos", icon: Briefcase, key: "trabajos",
-                children: [
-                    { title: "Ingresar", path: "/jobs/create" },
-                    { title: "Consultar", path: "/jobs" },
-                ],
-            },
         ],
     },
     {
@@ -78,21 +71,19 @@ const NAV_SECTIONS = [
             {
                 title: "Órdenes", icon: AlignLeft, key: "lab-ordenes",
                 children: [
-                    { title: "Nueva Orden", path: "/laboratorio/ordenes" },
-                    { title: "Consultar", path: "/laboratorio/consulta" },
+                    { title: "Nueva Orden", path: "/jobs/create" },
+                    { title: "Consultar", path: "/jobs" },
                 ],
             },
             {
-                title: "Clientes", icon: Users, key: "lab-clientes",
+                title: "Clientes / Odont.", icon: Users, key: "lab-clientes",
                 children: [
-                    { title: "Lista", path: "/laboratorio/clientes" },
-                    { title: "Cuentas Corrientes", path: "/laboratorio/ctacte" },
-                    { title: "Pagos", path: "/laboratorio/pagos" },
+                    { title: "Lista de Odontólogos", path: "/dentists" },
+                    { title: "Pacientes", path: "/patients" },
+                    { title: "Cuentas Corrientes y Pagos", path: "/lab-account-moves" },
                 ],
             },
-            { title: "Pacientes", icon: Users, path: "/laboratorio/pacientes" },
-            { title: "Aranceles", icon: Banknote, path: "/laboratorio/aranceles" },
-            { title: "Costos", icon: BarChart3, path: "/laboratorio/costos" },
+            { title: "Aranceles y Costos", icon: Banknote, path: "/tariffs" },
         ],
     },
     {

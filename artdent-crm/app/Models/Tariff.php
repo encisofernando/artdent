@@ -57,6 +57,11 @@ class Tariff extends Model
 		return $this->belongsTo(Company::class);
 	}
 
+	public function costs()
+	{
+		return $this->hasMany(TariffCost::class);
+	}
+
 	public function dentists()
 	{
 		return $this->belongsToMany(Dentist::class, 'dentist_tariff_prices')

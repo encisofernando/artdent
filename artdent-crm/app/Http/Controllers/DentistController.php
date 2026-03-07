@@ -11,11 +11,25 @@ class DentistController extends Controller
     /**
      * Display a listing of the resource.
      */
-        public function index()
+    public function index(Request $request)
     {
-        $items = \App\Models\Dentist::paginate(10);
+        $query = \App\Models\Dentist::where('company_id', auth()->user()->company_id);
+
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('contact_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->orderBy('name', 'asc')->paginate(10)->withQueryString();
+
         return Inertia::render('Dentist/Index', [
-            'items' => $items
+            'items' => $items,
+            'filters' => $request->only(['search'])
         ]);
     }
 
@@ -30,32 +44,33 @@ class DentistController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-        public function store(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
-            'company_id' => 'nullable',
-            'code' => 'nullable',
-            'type' => 'nullable',
-            'name' => 'nullable',
-            'contact_name' => 'nullable',
-            'email' => 'nullable',
-            'phone' => 'nullable',
-            'phone_alt' => 'nullable',
-            'address' => 'nullable',
-            'city' => 'nullable',
-            'province' => 'nullable',
-            'cuit' => 'nullable',
-            'iva_condition' => 'nullable',
-            'license_number' => 'nullable',
-            'credit_limit' => 'nullable',
-            'payment_days' => 'nullable',
-            'is_active' => 'nullable',
-            'notes' => 'nullable'
+            'code' => 'nullable|string|max:50',
+            'type' => 'nullable|string|in:individual,clinic',
+            'name' => 'required|string|max:255',
+            'contact_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'phone_alt' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'cuit' => 'nullable|string|max:50',
+            'iva_condition' => 'nullable|string|in:responsable_inscripto,monotributista,exento,consumidor_final',
+            'license_number' => 'nullable|string|max:50',
+            'credit_limit' => 'nullable|numeric',
+            'payment_days' => 'nullable|integer',
+            'is_active' => 'nullable|boolean',
+            'notes' => 'nullable|string'
         ]);
+
+        $validated['company_id'] = auth()->user()->company_id;
 
         \App\Models\Dentist::create($validated);
 
-        return redirect()->route('dentists.index')->with('success', 'Dentist created successfully.');
+        return redirect()->route('dentists.index')->with('success', 'Odontólogo creado exitosamente.');
     }
 
     /**
@@ -69,50 +84,89 @@ class DentistController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-        public function edit(Dentist $dentist)
+    public function edit(Dentist $dentist)
     {
+        if ($dentist->company_id !== auth()->user()->company_id) {
+            abort(403);
+        }
+
+        // Fetch all active tariffs for the company
+        $tariffs = \App\Models\Tariff::where('company_id', auth()->user()->company_id)
+            ->where('is_active', true)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get();
+
+        // Fetch the custom prices assigned to this specific dentist
+        $customPrices = \App\Models\DentistTariffPrice::where('dentist_id', $dentist->id)
+            ->get()
+            ->keyBy('tariff_id');
+
         return Inertia::render('Dentist/Edit', [
-            'item' => $dentist
+            'item' => $dentist,
+            'tariffs' => $tariffs,
+            'customPrices' => $customPrices
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-        public function update(Request $request, Dentist $dentist)
+    public function update(Request $request, Dentist $dentist)
     {
+        // Enforce company scope
+        if ($dentist->company_id !== auth()->user()->company_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $validated = $request->validate([
-            'company_id' => 'nullable',
-            'code' => 'nullable',
-            'type' => 'nullable',
-            'name' => 'nullable',
-            'contact_name' => 'nullable',
-            'email' => 'nullable',
-            'phone' => 'nullable',
-            'phone_alt' => 'nullable',
-            'address' => 'nullable',
-            'city' => 'nullable',
-            'province' => 'nullable',
-            'cuit' => 'nullable',
-            'iva_condition' => 'nullable',
-            'license_number' => 'nullable',
-            'credit_limit' => 'nullable',
-            'payment_days' => 'nullable',
-            'is_active' => 'nullable',
-            'notes' => 'nullable'
+            'code' => 'nullable|string|max:50',
+            'type' => 'nullable|string|in:individual,clinic',
+            'name' => 'required|string|max:255',
+            'contact_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'phone_alt' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'cuit' => 'nullable|string|max:50',
+            'iva_condition' => 'nullable|string|in:responsable_inscripto,monotributista,exento,consumidor_final',
+            'license_number' => 'nullable|string|max:50',
+            'credit_limit' => 'nullable|numeric',
+            'payment_days' => 'nullable|integer',
+            'is_active' => 'nullable|boolean',
+            'notes' => 'nullable|string',
+            'custom_prices' => 'nullable|array', // New array of { tariff_id: id, price: amount }
+            'custom_prices.*.tariff_id' => 'required_with:custom_prices|integer|exists:tariffs,id',
+            'custom_prices.*.price' => 'required_with:custom_prices|numeric|min:0'
         ]);
 
         $dentist->update($validated);
 
-        return redirect()->route('dentists.index')->with('success', 'Dentist updated successfully.');
+        // Sync Custom Prices
+        if ($request->has('custom_prices')) {
+            $syncData = [];
+            foreach ($request->input('custom_prices') as $cp) {
+                if (isset($cp['price']) && $cp['price'] !== null && $cp['price'] !== '') {
+                    $syncData[$cp['tariff_id']] = ['price' => $cp['price']];
+                }
+            }
+            $dentist->tariffs()->sync($syncData);
+        }
+
+        return redirect()->route('dentists.index')->with('success', 'Odontólogo actualizado exitosamente.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-        public function destroy(Dentist $dentist)
+    public function destroy(Dentist $dentist)
     {
+        if ($dentist->company_id !== auth()->user()->company_id) {
+            abort(403);
+        }
         $dentist->delete();
-        return redirect()->route('dentists.index')->with('success', 'Dentist deleted successfully.');
+        return redirect()->route('dentists.index')->with('success', 'Odontólogo eliminado exitosamente.');
     }
 }

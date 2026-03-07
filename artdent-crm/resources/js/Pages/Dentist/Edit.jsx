@@ -1,14 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
+import { useTheme } from '@/Contexts/ThemeContext';
+import { Button } from '@/Components/ui/button';
+import { ArrowLeft, Save, Info, Building2, MapPin, Banknote, Search, X } from 'lucide-react';
 
-export default function Edit({ auth, item }) {
+export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
+    const { isDark } = useTheme();
+
+    // Initialize custom_prices array from the backend mapped data
+    const initialCustomPrices = tariffs.map(t => {
+        const cp = customPrices[t.id];
+        return {
+            tariff_id: t.id,
+            price: cp ? cp.price : ''
+        };
+    });
+
     const { data, setData, put, processing, errors } = useForm({
-        company_id: item.company_id || '',
-        code: item.code || '',
-        type: item.type || '',
+        type: item.type || 'individual',
         name: item.name || '',
         contact_name: item.contact_name || '',
+        code: item.code || '',
         email: item.email || '',
         phone: item.phone || '',
         phone_alt: item.phone_alt || '',
@@ -16,149 +29,497 @@ export default function Edit({ auth, item }) {
         city: item.city || '',
         province: item.province || '',
         cuit: item.cuit || '',
-        iva_condition: item.iva_condition || '',
+        iva_condition: item.iva_condition || 'consumidor_final',
         license_number: item.license_number || '',
         credit_limit: item.credit_limit || '',
-        payment_days: item.payment_days || '',
-        is_active: item.is_active || '',
+        payment_days: item.payment_days || 0,
+        is_active: item.is_active !== undefined ? item.is_active : 1,
         notes: item.notes || '',
+        custom_prices: initialCustomPrices
     });
+
+    const [tariffSearch, setTariffSearch] = useState('');
 
     const submit = (e) => {
         e.preventDefault();
         put(route('dentists.update', item.id));
     };
 
+    const handleCustomPriceChange = (tariffId, newValue) => {
+        const value = newValue === '' ? '' : Number(newValue);
+        const newPrices = data.custom_prices.map(cp => {
+            if (cp.tariff_id === tariffId) {
+                return { ...cp, price: value };
+            }
+            return cp;
+        });
+        setData('custom_prices', newPrices);
+    };
+
+    const clearCustomPrice = (tariffId) => {
+        handleCustomPriceChange(tariffId, '');
+    };
+
+    const inputClasses = `w-full rounded-xl border px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none placeholder-slate-400
+        ${isDark
+            ? 'bg-slate-800/50 border-slate-700 text-white focus:border-teal-500 focus:ring-teal-500/20'
+            : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-teal-500 focus:ring-teal-500/20'
+        }`;
+
+    const labelClasses = `block text-xs font-bold uppercase tracking-wider mb-1.5
+        ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: 'ARS',
+        }).format(amount);
+    };
+
+    const B = { blue: "#397B9C", teal: "#49949C" };
+
+    const filteredTariffs = tariffs.filter(t =>
+        t.name.toLowerCase().includes(tariffSearch.toLowerCase()) ||
+        (t.category && t.category.toLowerCase().includes(tariffSearch.toLowerCase()))
+    );
+
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Edit Dentist</h2>}
-        >
-            <Head title="Edit Dentist" />
+        <AuthenticatedLayout user={auth.user}>
+            <Head title={`Editar Odontólogo - ${item.name}`} />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            <form onSubmit={submit} className="space-y-6 max-w-2xl">
-                                <div>
-                            <label className="block font-medium text-sm text-gray-700">company_id</label>
-                            <input type="text" value={data.company_id || ''} onChange={e => setData('company_id', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.company_id && <div className="text-red-500 text-xs mt-1">{errors.company_id}</div>}
-                        </div>
+            <div className="flex flex-col gap-6 font-sans max-w-5xl mx-auto">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                            Editar Odontólogo
+                        </h1>
+                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Modificando a <strong>{item.name}</strong>
+                        </p>
+                    </div>
 
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">code</label>
-                            <input type="text" value={data.code || ''} onChange={e => setData('code', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.code && <div className="text-red-500 text-xs mt-1">{errors.code}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">type</label>
-                            <input type="text" value={data.type || ''} onChange={e => setData('type', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.type && <div className="text-red-500 text-xs mt-1">{errors.type}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">name</label>
-                            <input type="text" value={data.name || ''} onChange={e => setData('name', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">contact_name</label>
-                            <input type="text" value={data.contact_name || ''} onChange={e => setData('contact_name', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.contact_name && <div className="text-red-500 text-xs mt-1">{errors.contact_name}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">email</label>
-                            <input type="text" value={data.email || ''} onChange={e => setData('email', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">phone</label>
-                            <input type="text" value={data.phone || ''} onChange={e => setData('phone', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.phone && <div className="text-red-500 text-xs mt-1">{errors.phone}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">phone_alt</label>
-                            <input type="text" value={data.phone_alt || ''} onChange={e => setData('phone_alt', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.phone_alt && <div className="text-red-500 text-xs mt-1">{errors.phone_alt}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">address</label>
-                            <input type="text" value={data.address || ''} onChange={e => setData('address', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.address && <div className="text-red-500 text-xs mt-1">{errors.address}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">city</label>
-                            <input type="text" value={data.city || ''} onChange={e => setData('city', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.city && <div className="text-red-500 text-xs mt-1">{errors.city}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">province</label>
-                            <input type="text" value={data.province || ''} onChange={e => setData('province', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.province && <div className="text-red-500 text-xs mt-1">{errors.province}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">cuit</label>
-                            <input type="text" value={data.cuit || ''} onChange={e => setData('cuit', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.cuit && <div className="text-red-500 text-xs mt-1">{errors.cuit}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">iva_condition</label>
-                            <input type="text" value={data.iva_condition || ''} onChange={e => setData('iva_condition', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.iva_condition && <div className="text-red-500 text-xs mt-1">{errors.iva_condition}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">license_number</label>
-                            <input type="text" value={data.license_number || ''} onChange={e => setData('license_number', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.license_number && <div className="text-red-500 text-xs mt-1">{errors.license_number}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">credit_limit</label>
-                            <input type="text" value={data.credit_limit || ''} onChange={e => setData('credit_limit', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.credit_limit && <div className="text-red-500 text-xs mt-1">{errors.credit_limit}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">payment_days</label>
-                            <input type="text" value={data.payment_days || ''} onChange={e => setData('payment_days', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.payment_days && <div className="text-red-500 text-xs mt-1">{errors.payment_days}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">is_active</label>
-                            <input type="text" value={data.is_active || ''} onChange={e => setData('is_active', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.is_active && <div className="text-red-500 text-xs mt-1">{errors.is_active}</div>}
-                        </div>
-
-                        <div>
-                            <label className="block font-medium text-sm text-gray-700">notes</label>
-                            <input type="text" value={data.notes || ''} onChange={e => setData('notes', e.target.value)} className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" />
-                            {errors.notes && <div className="text-red-500 text-xs mt-1">{errors.notes}</div>}
-                        </div>
-                                
-                                <div className="flex items-center gap-4">
-                                    <button disabled={processing} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50">
-                                        Update
-                                    </button>
-                                    <Link href={route('dentists.index')} className="text-gray-600 hover:text-gray-900">Cancel</Link>
-                                </div>
-                            </form>
-                        </div>
+                    <div className="flex items-center gap-3">
+                        <Link href={route('dentists.index')}>
+                            <Button variant="outline" className={isDark ? "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : ""}>
+                                <ArrowLeft className="mr-2" size={16} />
+                                Volver
+                            </Button>
+                        </Link>
                     </div>
                 </div>
+
+                <form onSubmit={submit} className="flex flex-col gap-6">
+                    {/* Select Type */}
+                    <div className={`p-1.5 rounded-2xl flex border w-fit shadow-sm
+                        ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-200'}
+                    `}>
+                        <button
+                            type="button"
+                            onClick={() => setData('type', 'individual')}
+                            className={`px-6 py-2 rounded-xl text-sm font-bold transition-all
+                                ${data.type === 'individual'
+                                    ? (isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm')
+                                    : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800')}
+                            `}
+                        >
+                            Profesional
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setData('type', 'clinic')}
+                            className={`px-6 py-2 rounded-xl text-sm font-bold transition-all
+                                ${data.type === 'clinic'
+                                    ? (isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm')
+                                    : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800')}
+                            `}
+                        >
+                            Clínica / Centro
+                        </button>
+                    </div>
+
+                    {/* General Section */}
+                    <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
+                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                    `}>
+                        <div className={`flex items-center gap-2 mb-6 pb-2 border-b
+                            ${isDark ? 'border-slate-800' : 'border-slate-100'}
+                        `}>
+                            <Info size={18} style={{ color: B.teal }} />
+                            <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                Información Principal
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className={labelClasses}>
+                                    {data.type === 'individual' ? 'Nombre y Apellido *' : 'Nombre de la Clínica *'}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={data.name}
+                                    onChange={e => setData('name', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder={data.type === 'individual' ? "Dr. Juan Pérez" : "Centro Odontológico Salud"}
+                                    required
+                                />
+                                {errors.name && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.name}</div>}
+                            </div>
+
+                            {data.type === 'clinic' && (
+                                <div>
+                                    <label className={labelClasses}>Contacto Principal</label>
+                                    <input
+                                        type="text"
+                                        value={data.contact_name}
+                                        onChange={e => setData('contact_name', e.target.value)}
+                                        className={inputClasses}
+                                        placeholder="Nombre de la persona de contacto..."
+                                    />
+                                    {errors.contact_name && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.contact_name}</div>}
+                                </div>
+                            )}
+
+                            <div>
+                                <label className={labelClasses}>Código Interno / Matrícula</label>
+                                <input
+                                    type="text"
+                                    value={data.license_number}
+                                    onChange={e => setData('license_number', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Ej. MP-123456"
+                                />
+                                {errors.license_number && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.license_number}</div>}
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className={labelClasses}>Email</label>
+                                <input
+                                    type="email"
+                                    value={data.email}
+                                    onChange={e => setData('email', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="correo@ejemplo.com"
+                                />
+                                {errors.email && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.email}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Teléfono</label>
+                                <input
+                                    type="text"
+                                    value={data.phone}
+                                    onChange={e => setData('phone', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="+54 9 11 1234-5678"
+                                />
+                                {errors.phone && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.phone}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Teléfono Alternativo / WhatsApp</label>
+                                <input
+                                    type="text"
+                                    value={data.phone_alt}
+                                    onChange={e => setData('phone_alt', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="+54 9 11 8765-4321"
+                                />
+                                {errors.phone_alt && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.phone_alt}</div>}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Location & Billing Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors h-fit
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                        `}>
+                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b
+                                ${isDark ? 'border-slate-800' : 'border-slate-100'}
+                            `}>
+                                <MapPin size={18} style={{ color: B.teal }} />
+                                <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                    Ubicación
+                                </h2>
+                            </div>
+
+                            <div className="flex flex-col gap-6">
+                                <div>
+                                    <label className={labelClasses}>Dirección</label>
+                                    <input
+                                        type="text"
+                                        value={data.address}
+                                        onChange={e => setData('address', e.target.value)}
+                                        className={inputClasses}
+                                        placeholder="Av. Siempre Viva 123"
+                                    />
+                                    {errors.address && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.address}</div>}
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={labelClasses}>Ciudad</label>
+                                        <input
+                                            type="text"
+                                            value={data.city}
+                                            onChange={e => setData('city', e.target.value)}
+                                            className={inputClasses}
+                                            placeholder="CABA"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Provincia</label>
+                                        <input
+                                            type="text"
+                                            value={data.province}
+                                            onChange={e => setData('province', e.target.value)}
+                                            className={inputClasses}
+                                            placeholder="Buenos Aires"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors h-fit
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                        `}>
+                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b
+                                ${isDark ? 'border-slate-800' : 'border-slate-100'}
+                            `}>
+                                <Building2 size={18} style={{ color: B.teal }} />
+                                <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                    Facturación y Cuenta
+                                </h2>
+                            </div>
+
+                            <div className="flex flex-col gap-6">
+                                <div>
+                                    <label className={labelClasses}>CUIT / DNI</label>
+                                    <input
+                                        type="text"
+                                        value={data.cuit}
+                                        onChange={e => setData('cuit', e.target.value)}
+                                        className={inputClasses}
+                                        placeholder="20-12345678-9"
+                                    />
+                                    {errors.cuit && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.cuit}</div>}
+                                </div>
+                                <div>
+                                    <label className={labelClasses}>Condición frente al IVA</label>
+                                    <select
+                                        value={data.iva_condition}
+                                        onChange={e => setData('iva_condition', e.target.value)}
+                                        className={inputClasses}
+                                    >
+                                        <option value="consumidor_final">Consumidor Final</option>
+                                        <option value="responsable_inscripto">Responsable Inscripto</option>
+                                        <option value="monotributista">Monotributista</option>
+                                        <option value="exento">Exento</option>
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={labelClasses}>Días de Pago</label>
+                                        <input
+                                            type="number"
+                                            value={data.payment_days}
+                                            onChange={e => setData('payment_days', e.target.value)}
+                                            className={inputClasses}
+                                            placeholder="0"
+                                            min="0"
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">Días de plazo en C/C</p>
+                                    </div>
+                                    <div>
+                                        <label className={labelClasses}>Límite de Crédito</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={data.credit_limit}
+                                            onChange={e => setData('credit_limit', e.target.value)}
+                                            className={inputClasses}
+                                            placeholder="Opcional..."
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Active Toggle */}
+                                <div className="flex items-center mt-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                    <label className={`flex items-center cursor-pointer ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                        <div className="relative">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only"
+                                                checked={data.is_active === 1 || data.is_active === true}
+                                                onChange={e => setData('is_active', e.target.checked ? 1 : 0)}
+                                            />
+                                            <div className={`block w-10 h-6 rounded-full transition-colors ${(data.is_active === 1 || data.is_active === true)
+                                                ? 'bg-emerald-500'
+                                                : (isDark ? 'bg-slate-700' : 'bg-slate-300')
+                                                }`}></div>
+                                            <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${(data.is_active === 1 || data.is_active === true) ? 'transform translate-x-4' : ''
+                                                }`}></div>
+                                        </div>
+                                        <div className="ml-3 font-medium text-sm">
+                                            Cliente Activo
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
+                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                    `}>
+                        <label className={labelClasses}>Notas adicionales</label>
+                        <textarea
+                            value={data.notes}
+                            onChange={e => setData('notes', e.target.value)}
+                            className={inputClasses}
+                            placeholder="Preferencias del odontólogo, horarios de retiro, etc."
+                            rows="3"
+                        />
+                    </div>
+
+                    {/* Custom Tariffs Section */}
+                    <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
+                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                    `}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-2 border-b border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center gap-2">
+                                <Banknote size={18} style={{ color: B.teal }} />
+                                <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                    Precios Personalizados (Aranceles)
+                                </h2>
+                            </div>
+                            <div className={`flex items-center px-3 py-1.5 rounded-xl border transition-colors w-full sm:w-64
+                                ${isDark ? 'bg-slate-800/50 border-slate-700 focus-within:border-slate-500' : 'bg-slate-50 border-slate-200 focus-within:border-slate-400'}
+                            `}>
+                                <Search size={16} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar trabajo o categoría..."
+                                    value={tariffSearch}
+                                    onChange={(e) => setTariffSearch(e.target.value)}
+                                    className={`ml-2 bg-transparent border-none focus:ring-0 p-0 text-sm outline-none w-full
+                                        ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'}
+                                    `}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={`rounded-xl border overflow-hidden
+                            ${isDark ? 'border-slate-800' : 'border-slate-200'}
+                        `}>
+                            <div className="max-h-[400px] overflow-y-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className={`text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm
+                                        ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}
+                                    `}>
+                                        <tr>
+                                            <th className="px-4 py-3">Trabajo / Categoría</th>
+                                            <th className="px-4 py-3 text-right">Precio Base</th>
+                                            <th className="px-4 py-3">Precio Acordado (Personalizado)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredTariffs.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="3" className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                                                    No se encontraron aranceles activos.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredTariffs.map((t) => {
+                                                const currentCustom = data.custom_prices.find(cp => cp.tariff_id === t.id);
+                                                const hasCustomPrice = currentCustom && currentCustom.price !== '';
+
+                                                return (
+                                                    <tr key={t.id} className={`border-b last:border-0 transition-colors
+                                                        ${isDark ? 'border-slate-800 hover:bg-slate-800/40' : 'border-slate-200 hover:bg-slate-50/50'}
+                                                    `}>
+                                                        <td className="px-4 py-3">
+                                                            <div className="font-bold text-slate-900 dark:text-slate-200">{t.name}</div>
+                                                            {t.category && (
+                                                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.category}</div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <span className={`text-xs font-semibold px-2 py-1 rounded-md
+                                                                ${hasCustomPrice ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800'}`}
+                                                            >
+                                                                {formatCurrency(t.price)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-2 max-w-[200px]">
+                                                                <div className="relative flex-1">
+                                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 dark:text-slate-400 text-sm">
+                                                                        $
+                                                                    </div>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        placeholder="Usar precio base"
+                                                                        value={currentCustom ? currentCustom.price : ''}
+                                                                        onChange={(e) => handleCustomPriceChange(t.id, e.target.value)}
+                                                                        className={`w-full pl-7 pr-3 py-1.5 text-sm rounded-lg border transition-colors outline-none focus:ring-2 focus:ring-teal-500/20
+                                                                            ${isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-600 focus:border-teal-500'
+                                                                                : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-teal-500'}
+                                                                            ${hasCustomPrice ? 'border-teal-500/50 bg-teal-50/50 dark:bg-teal-900/10' : ''}
+                                                                        `}
+                                                                    />
+                                                                </div>
+                                                                {hasCustomPrice && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => clearCustomPrice(t.id)}
+                                                                        className="p-1.5 rounded-md text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                                        title="Restablecer a precio base"
+                                                                    >
+                                                                        <X size={14} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={`rounded-2xl border p-6 shadow-sm transition-colors flex justify-end gap-3
+                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                    `}>
+                        <Link href={route('dentists.index')}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className={isDark ? "bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" : ""}
+                            >
+                                Cancelar
+                            </Button>
+                        </Link>
+
+                        <Button
+                            type="submit"
+                            disabled={processing}
+                            style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
+                            className="text-white border-none shadow-md"
+                        >
+                            <Save className="mr-2" size={16} />
+                            Actualizar Odontólogo
+                        </Button>
+                    </div>
+                </form>
             </div>
         </AuthenticatedLayout>
     );

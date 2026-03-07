@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Job
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property int $dentist_id
@@ -38,7 +38,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
- * 
+ *
  * @property Company $company
  * @property Dentist $dentist
  * @property Patient|null $patient
@@ -55,6 +55,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Job extends Model
 {
 	use SoftDeletes;
+
 	protected $table = 'jobs';
 
 	protected $casts = [
@@ -70,7 +71,7 @@ class Job extends Model
 		'discount_amount' => 'float',
 		'total' => 'float',
 		'billed' => 'bool',
-		'invoice_id' => 'int'
+		'invoice_id' => 'int',
 	];
 
 	protected $fillable = [
@@ -93,8 +94,10 @@ class Job extends Model
 		'total',
 		'billed',
 		'invoice_id',
-		'notes'
+		'notes',
 	];
+
+	// ── Relaciones snake_case (originales) ────────────────────────────────────
 
 	public function company()
 	{
@@ -118,7 +121,7 @@ class Job extends Model
 
 	public function user()
 	{
-		return $this->belongsTo(User::class, 'assigned_user_id');
+		return $this->belongsTo(User::class , 'assigned_user_id');
 	}
 
 	public function job_attachments()
@@ -128,9 +131,9 @@ class Job extends Model
 
 	public function collaborators()
 	{
-		return $this->belongsToMany(Collaborator::class, 'job_collaborators')
-					->withPivot('id', 'assigned_by', 'role', 'assigned_at', 'completed_at', 'notes')
-					->withTimestamps();
+		return $this->belongsToMany(Collaborator::class , 'job_collaborators')
+			->withPivot('id', 'assigned_by', 'role', 'assigned_at', 'completed_at', 'notes')
+			->withTimestamps();
 	}
 
 	public function job_items()
@@ -146,5 +149,21 @@ class Job extends Model
 	public function job_teeths()
 	{
 		return $this->hasMany(JobTeeth::class);
+	}
+
+	// ── Alias camelCase — requeridos por JobController@show y @edit ───────────
+	// Laravel usa el nombre del método para eager loading:
+	//   $job->load(['jobType', 'items']) → requiere estos métodos
+
+	/** Alias de job_type() para eager loading camelCase */
+	public function jobType()
+	{
+		return $this->belongsTo(JobType::class);
+	}
+
+	/** Alias de job_items() — usado como 'items' en load([]) */
+	public function items()
+	{
+		return $this->hasMany(JobItem::class);
 	}
 }

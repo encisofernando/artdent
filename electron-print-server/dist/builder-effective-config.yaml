@@ -1,0 +1,10 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.artdent.print
+productName: ArtDentPrint
+win:
+  target: portable
+  icon: icon.png
+files: []
+electronVersion: 40.8.0

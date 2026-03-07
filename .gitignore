@@ -31,6 +31,8 @@ e-commerce/pnpm-lock.yaml
 artdent-crm/vendor/
 artdent-crm/node_modules/
 
+electron-print-server/node_modules/
+
 # --- Sistemas / IDE ---
 *.swp
 *.swo

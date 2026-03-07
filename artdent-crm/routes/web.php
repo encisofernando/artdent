@@ -76,22 +76,25 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VentasController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\HomeController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('login');
 });
 
-Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
-
-Route::middleware('auth')->group(function () {
-    // --- Auto-generated Resource Routes ---
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
+    
+    // Core Entities
+    Route::resource('products', ProductController::class);
+    Route::resource('customers', CustomerController::class);
+    Route::resource('ecommerce_orders', EcommerceOrderController::class);
+    Route::resource('dentists', DentistController::class);
+    Route::resource('patients', PatientController::class);
+    Route::resource('tariffs', TariffController::class);
+    Route::get('jobs/{job}/ticket', [JobController::class, 'ticket'])->name('jobs.ticket');
+    Route::resource('jobs', JobController::class);
+    Route::resource('sales', SaleController::class);
     Route::resource('branchs', BranchController::class);
     Route::resource('cash-drawers', CashDrawerController::class);
     Route::resource('cash-movements', CashMovementController::class);

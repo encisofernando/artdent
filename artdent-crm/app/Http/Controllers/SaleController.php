@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SalePayment;
+use App\Models\PaymentMethod;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
@@ -14,9 +16,6 @@ use Inertia\Inertia;
 
 class SaleController extends Controller
 {
-    /**
-     * Listado de ventas (Index Inertia)
-     */
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -45,9 +44,6 @@ class SaleController extends Controller
         ]);
     }
 
-    /**
-     * Formulario de nueva venta (POS)
-     */
     public function create()
     {
         $products = Product::with('product_images')
@@ -59,54 +55,53 @@ class SaleController extends Controller
         ]);
     }
 
-    /**
-     * Registrar venta POS
-     *
-     * Datos recibidos desde Create.jsx:
-     * {
-     *   customer_name, notes, receipt_type, payment_method,
-     *   items: [{ product_id, name, unit_price, tax_rate, quantity, discount, total }],
-     *   subtotal, discount_amount, tax_amount, total, paid_amount
-     * }
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'items'          => 'required|array|min:1',
+            'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.quantity'   => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.discount'   => 'nullable|numeric|min:0',
             'items.*.total'      => 'required|numeric|min:0',
-            'subtotal'       => 'nullable|numeric',
-            'discount_amount'=> 'nullable|numeric',
-            'tax_amount'     => 'nullable|numeric',
-            'total'          => 'required|numeric|min:0',
-            'paid_amount'    => 'required|numeric|min:0',
-            'payment_method' => 'nullable|string',
-            'receipt_type'   => 'nullable|string',
-            'notes'          => 'nullable|string',
-            'customer_name'  => 'nullable|string',
+            'subtotal'           => 'nullable|numeric',
+            'discount_amount'    => 'nullable|numeric',
+            'tax_amount'         => 'nullable|numeric',
+            'total'              => 'required|numeric|min:0',
+            'paid_amount'        => 'required|numeric|min:0',
+            'payment_method'     => 'nullable|string',
+            'receipt_type'       => 'nullable|string',
+            'notes'              => 'nullable|string',
+            'customer_name'      => 'nullable|string',
         ]);
 
         $companyId = auth()->user()->company_id ?? 1;
         $userId    = auth()->id();
 
-        // Obtener (o crear) warehouse de la company
         $warehouse = Warehouse::firstOrCreate(
             ['company_id' => $companyId],
             ['name' => 'Depósito Principal', 'code' => 'DEP-01', 'is_active' => true]
         );
 
-        // Generar número de venta único
-        $saleNumber = 'VNT-' . now()->format('Ymd') . '-' . now()->format('His')
-            . '-' . str_pad(Sale::where('company_id', $companyId)->count() + 1, 4, '0', STR_PAD_LEFT);
+        // ── Número de comprobante formato 00001-00000001 ──────────────────────
+        $receiptType = strtoupper($request->receipt_type ?? 'X');
+        $company     = \App\Models\Company::find($companyId);
+
+        // X → punto de venta fijo 00001 | A/B/C → companies.afip_point_sale
+        $pointSale = in_array($receiptType, ['A', 'B', 'C'])
+            ? str_pad($company?->afip_point_sale ?? 1, 5, '0', STR_PAD_LEFT)
+            : '00001';
+
+        $sequence   = Sale::where('company_id', $companyId)
+                          ->where('receipt_type', $receiptType)
+                          ->count() + 1;
+        $saleNumber = $pointSale . '-' . str_pad($sequence, 8, '0', STR_PAD_LEFT);
+        // ─────────────────────────────────────────────────────────────────────
 
         $paidAmount = (float) $request->paid_amount;
         $total      = (float) $request->total;
         $change     = max(0, $paidAmount - $total);
 
-        // Notas: guardar cliente si viene
         $notes = $request->notes ?? '';
         if (!empty($request->customer_name) && $request->customer_name !== 'Consumidor Final') {
             $notes = 'Cliente: ' . $request->customer_name . ($notes ? "\n" . $notes : '');
@@ -114,21 +109,31 @@ class SaleController extends Controller
 
         DB::beginTransaction();
         try {
-            // Crear la venta
             $sale = Sale::create([
                 'company_id'      => $companyId,
                 'user_id'         => $userId,
                 'sale_number'     => $saleNumber,
-                // FIX: status usa el ENUM real: draft|completed|cancelled|refunded
+                'receipt_type'    => $receiptType,
                 'status'          => 'completed',
-                'subtotal'        => $request->subtotal   ?? 0,
+                'subtotal'        => $request->subtotal        ?? 0,
                 'discount_amount' => $request->discount_amount ?? 0,
-                'tax_amount'      => $request->tax_amount  ?? 0,
+                'tax_amount'      => $request->tax_amount      ?? 0,
                 'total'           => $total,
                 'paid_amount'     => $paidAmount,
                 'change_amount'   => $change,
                 'notes'           => $notes,
                 'sold_at'         => now(),
+            ]);
+
+            // Registrar método de pago
+            $pm = PaymentMethod::where('name', $request->payment_method)
+                ->orWhere('type', $request->payment_method)
+                ->first();
+            SalePayment::create([
+                'sale_id'           => $sale->id,
+                'payment_method_id' => $pm?->id ?? null,
+                'amount'            => $paidAmount,
+                'paid_at'           => now(),
             ]);
 
             // Crear ítems y descontar stock
@@ -138,10 +143,9 @@ class SaleController extends Controller
                 $discount  = (float) ($item['discount'] ?? 0);
                 $lineTotal = (float) $item['total'];
                 $taxAmount = isset($item['tax_rate']) && $item['tax_rate'] > 0
-                    ? round($lineTotal - ($lineTotal / (1 + ($item['tax_rate']))), 2)
+                    ? round($lineTotal - ($lineTotal / (1 + $item['tax_rate'])), 2)
                     : 0;
 
-                // Snapshot del producto al momento de la venta
                 $product = Product::find($item['product_id']);
 
                 SaleItem::create([
@@ -156,18 +160,14 @@ class SaleController extends Controller
                     'total'        => $lineTotal,
                 ]);
 
-                // Movimiento de stock solo si el producto lleva trazabilidad
                 if ($product && $product->track_stock) {
                     $stock = Stock::firstOrCreate(
-                        [
-                            'product_id'   => $item['product_id'],
-                            'warehouse_id' => $warehouse->id,
-                        ],
+                        ['product_id' => $item['product_id'], 'warehouse_id' => $warehouse->id],
                         ['quantity' => 0]
                     );
 
                     $stockBefore = (float) $stock->quantity;
-                    $stockAfter  = $stockBefore - $qty;   // descuento
+                    $stockAfter  = $stockBefore - $qty;
 
                     $stock->update(['quantity' => $stockAfter]);
 
@@ -175,13 +175,10 @@ class SaleController extends Controller
                         'product_id'     => $item['product_id'],
                         'warehouse_id'   => $warehouse->id,
                         'user_id'        => $userId,
-                        // FIX: 'out' es el valor correcto del ENUM para una salida por venta
                         'type'           => 'out',
-                        // FIX: quantity siempre POSITIVA — el tipo 'out' indica la dirección
                         'quantity'       => $qty,
                         'stock_before'   => $stockBefore,
                         'stock_after'    => $stockAfter,
-                        // FIX: string corto, no App\Models\Sale::class
                         'reference_type' => 'sale',
                         'reference_id'   => $sale->id,
                         'note'           => "Venta POS {$saleNumber}",
@@ -200,10 +197,7 @@ class SaleController extends Controller
             \Log::error('SaleController@store error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
-
-            return back()->withErrors([
-                'error' => 'Error al registrar la venta: ' . $e->getMessage(),
-            ]);
+            throw $e;
         }
     }
 
@@ -212,16 +206,27 @@ class SaleController extends Controller
      */
     public function show(Sale $sale)
     {
-        $sale->load('sale_items');
+        // Todas las relaciones ya están definidas en el modelo Sale
+        $sale->load([
+            'sale_items',
+            'sale_payments.paymentMethod',
+            'company',
+            'user',
+        ]);
 
         return Inertia::render('Sale/Show', [
-            'sale' => $sale,
+            'sale' => array_merge($sale->toArray(), [
+                // Normalizar sale_payments para el frontend: { amount, payment_method: { name, type } }
+                'sale_payments' => $sale->sale_payments->map(fn($p) => [
+                    'amount'         => $p->amount,
+                    'payment_method' => $p->paymentMethod
+                        ? ['name' => $p->paymentMethod->name, 'type' => $p->paymentMethod->type]
+                        : null,
+                ]),
+            ]),
         ]);
     }
 
-    /**
-     * Cancelar venta y revertir stock
-     */
     public function destroy(Sale $sale)
     {
         if ($sale->status === 'cancelled') {
@@ -252,7 +257,7 @@ class SaleController extends Controller
                             'product_id'     => $item->product_id,
                             'warehouse_id'   => $warehouse->id,
                             'user_id'        => auth()->id(),
-                            'type'           => 'in',       // reversión = entrada
+                            'type'           => 'in',
                             'quantity'       => $item->quantity,
                             'stock_before'   => $stockBefore,
                             'stock_after'    => $stockAfter,
@@ -265,7 +270,6 @@ class SaleController extends Controller
             }
 
             $sale->update(['status' => 'cancelled']);
-
             DB::commit();
 
             return redirect()
