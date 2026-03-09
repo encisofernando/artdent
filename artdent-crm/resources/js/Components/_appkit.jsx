@@ -467,7 +467,7 @@ export function ProductCard({ product, cartItem, onAdd, isDark, D }) {
             )}
 
             {/* Image placeholder */}
-            <div className="h-[90px] flex items-center justify-center"
+            <div className="h-[90px] flex items-center justify-center relative"
                 style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
                 {product.image_url
                     ? <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
@@ -476,6 +476,17 @@ export function ProductCard({ product, cartItem, onAdd, isDark, D }) {
                         <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" />
                         <path d="M21 15l-5-5L5 21" /></svg>
                 }
+                {/* Stock badge — esquina inferior izquierda de la imagen */}
+                {product.track_stock && (
+                    <div className="absolute bottom-[5px] left-[6px] z-10 px-1.5 py-[2px] rounded-[5px] text-[9px] font-extrabold leading-none"
+                        style={{
+                            background: hasStock ? `${B.green}CC` : `${B.red}CC`,
+                            color: '#fff',
+                            backdropFilter: 'blur(4px)',
+                        }}>
+                        Stock: {Math.max(0, Math.round(product.stock_quantity ?? 0))}
+                    </div>
+                )}
             </div>
 
             {/* Info */}
@@ -487,7 +498,7 @@ export function ProductCard({ product, cartItem, onAdd, isDark, D }) {
                 <div className="text-[11.5px] font-bold leading-[1.25] mb-1.5 line-clamp-2" style={{ color: D.text }}>
                     {product.name}
                 </div>
-                <div className="text-[13px] font-extrabold" style={{ color: B.blue }}>
+                <div className="text-[16px] font-black" style={{ color: B.blue }}>
                     ${fmt(product.price)}
                 </div>
                 <div className="mt-1.5">

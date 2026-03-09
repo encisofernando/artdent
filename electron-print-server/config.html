@@ -31,15 +31,8 @@
             border-bottom: 2px solid var(--ad-blue);
         }
 
-        .header img {
-            height: 40px;
-        }
-
-        .header h2 {
-            margin: 0;
-            color: var(--ad-blue);
-            font-weight: 800;
-        }
+        .header img { height: 40px; }
+        .header h2 { margin: 0; color: var(--ad-blue); font-weight: 800; }
 
         .card {
             background: white;
@@ -66,34 +59,47 @@
             gap: 8px;
         }
 
-        .input-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
+        .form-group {
+            margin-bottom: 15px;
         }
 
-        input[type="number"] {
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input[type="number"], select {
             padding: 10px;
             border: 2px solid var(--ad-light);
             border-radius: 8px;
-            width: 100px;
+            width: 100%;
             outline: none;
+            box-sizing: border-box;
+            font-family: inherit;
         }
 
         button {
             background: linear-gradient(135deg, var(--ad-blue), var(--ad-teal));
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
+            width: 100%;
+            transition: opacity 0.2s;
         }
+
+        button:hover { opacity: 0.9; }
 
         button.btn-test {
             background: var(--ad-green);
             padding: 6px 12px;
             font-size: 0.75rem;
+            width: auto;
         }
 
         #log-container {
@@ -107,23 +113,10 @@
             font-size: 0.85rem;
         }
 
-        .log-entry {
-            border-bottom: 1px solid #2D3748;
-            padding: 2px 0;
-        }
-
-        .log-time {
-            color: var(--ad-green);
-            margin-right: 8px;
-        }
-
-        .error {
-            color: #FC8181;
-        }
-
-        .info {
-            color: #63B3ED;
-        }
+        .log-entry { border-bottom: 1px solid #2D3748; padding: 2px 0; }
+        .log-time { color: var(--ad-green); margin-right: 8px; }
+        .error { color: #FC8181; }
+        .info { color: #63B3ED; }
 
         .status-bar {
             font-size: 0.75rem;
@@ -141,12 +134,21 @@
     </div>
 
     <div class="card">
-        <div class="card-title">⚙️ Configuración de Conexión</div>
-        <div class="input-group" style="margin-top: 15px;">
-            <label for="portInput">Puerto:</label>
+        <div class="card-title">⚙️ Configuración General</div>
+        
+        <div class="form-group" style="margin-top: 15px;">
+            <label for="portInput">Puerto del Servidor:</label>
             <input type="number" id="portInput" placeholder="1234">
-            <button onclick="savePort()">Actualizar</button>
         </div>
+
+        <div class="form-group">
+            <label for="printerSelect">Impresora de Tickets:</label>
+            <select id="printerSelect">
+                <option value="">-- Usar predeterminada de Windows --</option>
+            </select>
+        </div>
+
+        <button onclick="saveConfig()">Guardar Configuración</button>
     </div>
 
     <div class="card">
@@ -155,18 +157,33 @@
             <button class="btn-test" onclick="sendTestPrint()">Imprimir Test</button>
         </div>
         <div id="log-container"></div>
-        <div class="status-bar">Servicio de impresión local activo en Formosa, Argentina</div>
+        <div class="status-bar">Servicio activo en Formosa, Argentina</div>
     </div>
 
     <script>
         const { ipcRenderer } = require('electron');
         const logContainer = document.getElementById('log-container');
         const portInput = document.getElementById('portInput');
+        const printerSelect = document.getElementById('printerSelect');
 
+        // Pedir datos iniciales al arrancar
         ipcRenderer.send('get-initial-data');
 
         ipcRenderer.on('initial-data', (event, data) => {
             portInput.value = data.port;
+            
+            // Limpiar y llenar el selector de impresoras
+            printerSelect.innerHTML = '<option value="">-- Usar predeterminada de Windows --</option>';
+            data.printers.forEach(printer => {
+                const option = document.createElement('option');
+                option.value = printer.name;
+                option.textContent = printer.name + (printer.isDefault ? ' (Predeterminada)' : '');
+                if (printer.name === data.printerName) {
+                    option.selected = true;
+                }
+                printerSelect.appendChild(option);
+            });
+
             updateLogUI(data.logs);
         });
 
@@ -182,13 +199,17 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        function savePort() {
-            const newPort = parseInt(portInput.value);
-            if (newPort > 1024 && newPort < 65535) {
-                ipcRenderer.send('save-port', newPort);
-                alert("Configuración guardada. Reinicie el servicio.");
+        function saveConfig() {
+            const data = {
+                port: parseInt(portInput.value),
+                printerName: printerSelect.value
+            };
+
+            if (data.port > 1024 && data.port < 65535) {
+                ipcRenderer.send('save-config', data);
+                alert("Configuración guardada satisfactoriamente. Reinicie el servicio para aplicar cambios de puerto.");
             } else {
-                alert("Puerto inválido.");
+                alert("Por favor, ingrese un puerto válido.");
             }
         }
 

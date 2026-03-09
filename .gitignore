@@ -46,3 +46,4 @@ Antigravity.exe
 *.rar
 *.7z
 *.iso
+electron-print-server/dist/*.msi

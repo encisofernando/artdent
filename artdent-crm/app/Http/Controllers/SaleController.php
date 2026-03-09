@@ -46,9 +46,14 @@ class SaleController extends Controller
 
     public function create()
     {
-        $products = Product::with('product_images')
+        $products = Product::with(['product_images', 'stocks'])
             ->where('is_active', 1)
-            ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants']);
+            ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
+            ->map(function ($p) {
+                $arr = $p->toArray();
+                $arr['stock_quantity'] = $p->stocks->sum('quantity');
+                return $arr;
+            });
 
         return Inertia::render('Sale/Create', [
             'products' => $products,
@@ -200,9 +205,14 @@ class SaleController extends Controller
             // post-cobro del frontend lo reciba en onSuccess → page.props.sale
             // (NO hacemos redirect para que preserveState funcione)
             return Inertia::render('Sale/Create', [
-                'products' => Product::with('product_images')
+                'products' => Product::with(['product_images', 'stocks'])
                     ->where('is_active', 1)
-                    ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants']),
+                    ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
+                    ->map(function ($p) {
+                        $arr = $p->toArray();
+                        $arr['stock_quantity'] = $p->stocks->sum('quantity');
+                        return $arr;
+                    }),
                 'sale' => array_merge($sale->toArray(), [
                     'sale_payments' => $sale->sale_payments->map(fn($p) => [
                         'amount'         => $p->amount,

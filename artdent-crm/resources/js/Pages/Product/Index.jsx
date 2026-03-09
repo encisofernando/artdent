@@ -306,6 +306,17 @@ function ProductCard({ item, isDark, B, onToggle }) {
                     <FileText size={40} className={isDark ? 'text-slate-700' : 'text-slate-300'} />
                 )}
 
+                {/* Stock badge — esquina inferior izquierda */}
+                {item.track_stock && item.stock_quantity !== undefined && (
+                    <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 rounded-md text-[10px] font-extrabold leading-none text-white"
+                        style={{
+                            background: item.stock_quantity > 0 ? 'rgba(90,173,156,0.88)' : 'rgba(230,57,70,0.88)',
+                            backdropFilter: 'blur(4px)',
+                        }}>
+                        Stock: {Math.round(item.stock_quantity)}
+                    </div>
+                )}
+
                 <div className="absolute top-2 right-2 z-20">
                     <Link href={route('products.edit', item.id)}>
                         <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors backdrop-blur-md
@@ -333,7 +344,7 @@ function ProductCard({ item, isDark, B, onToggle }) {
                                 Múltiples Opciones
                             </span>
                         ) : (
-                            <span className="text-lg font-extrabold" style={{ color: B.blue }}>
+                            <span className="text-2xl font-black" style={{ color: B.blue }}>
                                 ${Number(item.price || 0).toLocaleString('es-AR')}
                             </span>
                         )}

@@ -18,7 +18,7 @@ class ProductController extends Controller
         $search = $request->input('search');
         $status = $request->input('status', 'all');
 
-        $query = \App\Models\Product::with('product_images');
+        $query = \App\Models\Product::with(['product_images', 'stocks']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -39,8 +39,19 @@ class ProductController extends Controller
         // Infinite scroll: axios requests llegan con Accept: application/json
         // Inertia no intercepta estas requests, así que devolvemos JSON directo.
         if ($request->wantsJson()) {
+            // Mapear stock_quantity antes de responder
+            $items->getCollection()->transform(function ($p) {
+                $p->stock_quantity = $p->stocks->sum('quantity');
+                return $p;
+            });
             return response()->json(['items' => $items]);
         }
+
+        // Para Inertia SSR también mapeamos
+        $items->getCollection()->transform(function ($p) {
+            $p->stock_quantity = $p->stocks->sum('quantity');
+            return $p;
+        });
 
         return Inertia::render('Product/Index', [
             'items'   => $items,

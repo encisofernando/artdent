@@ -4,7 +4,16 @@ directories:
 appId: com.artdent.print
 productName: ArtDentPrint
 win:
-  target: portable
+  target:
+    - msi
   icon: icon.png
+  signAndEditExecutable: false
+msi:
+  oneClick: false
+  perMachine: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  shortcutName: ArtDent Print Service
 files: []
 electronVersion: 40.8.0

@@ -18,7 +18,8 @@ export default function Create({ auth, dentists, paymentMethods }) {
 
     const selectedDentist = dentists.find(d => d.id === parseInt(data.dentist_id));
     const currentBalance = selectedDentist?.lab_account?.balance || 0;
-
+    const projectedBalance =
+        currentBalance - (parseFloat(data.amount) || 0);
     const submit = (e) => {
         e.preventDefault();
         post(route('lab-account-moves.store'));
@@ -82,7 +83,7 @@ export default function Create({ auth, dentists, paymentMethods }) {
                                     <option value="">Seleccione un Odontólogo...</option>
                                     {dentists.map(d => (
                                         <option key={d.id} value={d.id}>
-                                            {d.name} {d.last_name || ''} - Saldo: {formatCurrency(d.lab_account?.balance || 0)}
+                                            {d.name} {d.last_name || ''} - Saldo: {formatCurrency(projectedBalance)}
                                         </option>
                                     ))}
                                 </select>

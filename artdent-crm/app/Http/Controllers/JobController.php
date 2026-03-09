@@ -9,6 +9,9 @@ use App\Models\Patient;
 use App\Models\JobType;
 use App\Models\Tariff;
 use App\Models\User;
+use App\Models\LabAccount;
+use App\Models\LabAccountMove;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -17,317 +20,197 @@ class JobController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->input('search');
-        $status = $request->input('status', 'all');
-        $companyId = auth()->user()->company_id ?? 1;
+        $query = Job::with(['dentist','patient','jobType']);
 
-        $query = Job::with(['dentist', 'patient', 'jobType'])
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at');
+        if ($request->search) {
+            $search = $request->search;
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('job_number', 'like', "%{$search}%")
-                  ->orWhereHas('dentist', fn($q) => $q->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('patient', fn($q) => $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%"));
+            $query->where(function($q) use ($search) {
+
+                $q->where('job_number','like',"%$search%")
+
+                ->orWhereHas('dentist', function($d) use ($search){
+                    $d->where('name','like',"%$search%");
+                })
+
+                ->orWhereHas('patient', function($p) use ($search){
+                    $p->where('name','like',"%$search%");
+                });
             });
         }
 
-        if ($status !== 'all') {
-            $query->where('status', $status);
+        if ($request->status && $request->status !== 'all') {
+            $query->where('status',$request->status);
         }
 
-        $items = $query->orderByDesc('received_at')->orderByDesc('id')->paginate(20)->withQueryString();
+        $items = $query
+            ->latest()
+            ->paginate(12)
+            ->withQueryString();
 
-        return Inertia::render('Job/Index', [
-            'items'   => $items,
-            'filters' => ['search' => $search, 'status' => $status],
+        return Inertia::render('Job/Index',[
+            'items' => $items,
+            'filters' => $request->only('search','status')
         ]);
     }
 
     public function create()
     {
-        $companyId = auth()->user()->company_id ?? 1;
-
-        return Inertia::render('Job/Create', [
-            'dentists' => Dentist::where('company_id', $companyId)->orderBy('name')->get(['id', 'name', 'contact_name']),
-            'patients' => Patient::whereHas('dentist', function($q) use ($companyId) {
-                $q->where('company_id', $companyId);
-            })->orderBy('name')->get(['id', 'name', 'dentist_id']),
-            'jobTypes' => JobType::where('company_id', $companyId)->orderBy('name')->get(['id', 'name', 'color']),
-            'users' => User::where('company_id', $companyId)->orderBy('name')->get(['id', 'name']),
-            'tariffs' => \App\Models\Tariff::where('company_id', $companyId)->where('is_active', true)->orderBy('name')->get()
+        return Inertia::render('Job/Create',[
+            'dentists' => Dentist::orderBy('name')->get(),
+            'patients' => Patient::orderBy('name')->get(),
+            'jobTypes' => JobType::orderBy('name')->get(),
+            'users' => User::orderBy('name')->get(),
+            'tariffs' => Tariff::orderBy('name')->get()
         ]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'dentist_id'       => 'required|integer|exists:dentists,id',
-            'patient_name'     => 'nullable|string|max:191',
-            'job_type_id'      => 'nullable|integer|exists:job_types,id',
-            'assigned_user_id' => 'nullable|integer|exists:users,id',
-            'status'           => 'nullable|string',
-            'priority'         => 'nullable|string',
-            'description'      => 'nullable|string',
-            'clinical_notes'   => 'nullable|string',
-            'shade'            => 'nullable|string|max:30',
-            'received_at'      => 'nullable|date',
-            'due_date'         => 'nullable|date',
-            'discount_amount'  => 'nullable|numeric|min:0',
-            'items'            => 'nullable|array',
-            'items.*.tariff_id'  => 'nullable|integer|exists:tariffs,id',
-            'items.*.description'=> 'required_with:items|string|max:255',
-            'items.*.quantity'   => 'required_with:items|numeric|min:0',
-            'items.*.unit_price' => 'required_with:items|numeric|min:0',
+        $data = $request->validate([
+            'dentist_id' => 'required|exists:dentists,id',
+            'patient_name' => 'nullable|string|max:255',
+            'job_type_id' => 'nullable|exists:job_types,id',
+
+            'assigned_user_id' => 'nullable|exists:users,id',
+
+            'status' => 'required|string',
+            'priority' => 'required|string',
+
+            'clinical_notes' => 'nullable|string',
+            'shade' => 'nullable|string',
+
+            'received_at' => 'required|date',
+            'due_date' => 'required|date',
+
+            'discount_amount' => 'nullable|numeric',
+
+            'items' => 'required|array|min:1',
+            'items.*.tariff_id' => 'required|exists:tariffs,id',
+            'items.*.description' => 'required|string',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit_price' => 'required|numeric|min:0',
+
+            'teeth' => 'nullable|array'
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        DB::transaction(function() use ($data) {
 
-        // ── Número de orden: TRB-0001, TRB-0002, ... TRB-1031 ────────────────
-        $lastJob = Job::where('company_id', $companyId)->orderBy('id', 'desc')->first();
-        $nextId = $lastJob ? $lastJob->id + 1 : 1;
-        $jobNumber = 'TRB-' . (1000 + $nextId);
+            $patient = null;
 
-        // Calcular totales
-        $items          = $request->items ?? [];
-        $subtotal       = collect($items)->sum(fn($i) => (float)$i['quantity'] * (float)$i['unit_price']);
-        $discountAmount = (float)($request->discount_amount ?? 0);
-        $total          = max(0, $subtotal - $discountAmount);
+            if (!empty($data['patient_name'])) {
 
-        // Resolver patient_id a partir del nombre (si se pasó uno existente)
-        $patientId = null;
-        if ($request->patient_name) {
-            $dentistId = $request->dentist_id;
-            $patient = Patient::where('company_id', $companyId)
-                ->where('dentist_id', $dentistId)
-                ->where(function ($q) use ($request) {
-                    $q->whereRaw("CONCAT(name, ' ', COALESCE(last_name,'')) LIKE ?", ['%' . trim($request->patient_name) . '%'])
-                      ->orWhere('name', 'like', '%' . $request->patient_name . '%');
-                })
-                ->first();
-            $patientId = $patient?->id;
-        }
-
-        DB::beginTransaction();
-        try {
-            $job = Job::create([
-                'company_id'       => $companyId,
-                'dentist_id'       => $request->dentist_id,
-                'patient_id'       => $patientId,
-                'job_type_id'      => $request->job_type_id ?: null,
-                'assigned_user_id' => $request->assigned_user_id ?: null,
-                'job_number'       => $jobNumber,
-                'status'           => $request->status     ?? 'received',
-                'priority'         => $request->priority   ?? 'normal',
-                'description'      => $request->description,
-                'clinical_notes'   => $request->clinical_notes,
-                'shade'            => $request->shade,
-                'received_at'      => $request->received_at ?? now()->toDateString(),
-                'due_date'         => $request->due_date,
-                'subtotal'         => $subtotal,
-                'discount_amount'  => $discountAmount,
-                'total'            => $total,
-            ]);
-
-            foreach ($items as $item) {
-                $lineTotal = (float)$item['quantity'] * (float)$item['unit_price'];
-                JobItem::create([
-                    'job_id'      => $job->id,
-                    'tariff_id'   => $item['tariff_id'] ?: null,
-                    'description' => $item['description'],
-                    'quantity'    => $item['quantity'],
-                    'unit_price'  => $item['unit_price'],
-                    'discount'    => 0,
-                    'total'       => $lineTotal,
+                $patient = Patient::firstOrCreate([
+                    'name' => $data['patient_name'],
+                    'dentist_id' => $data['dentist_id']
                 ]);
             }
 
-            DB::commit();
+            $subtotal = 0;
 
-            return redirect()
-                ->route('jobs.show', $job->id)
-                ->with('success', "Orden {$jobNumber} registrada correctamente.");
+            foreach ($data['items'] as $item) {
 
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            \Log::error('JobController@store: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    public function show(Job $job)
-    {
-        $job->load([
-            'dentist',
-            'patient',
-            'jobType',
-            'user',         // técnico — relation via assigned_user_id
-            'items',        // job_items table
-        ]);
-
-        return Inertia::render('Job/Show', [
-            'item' => array_merge($job->toArray(), [
-                // Renombrar para consistencia con el frontend
-                'job_type'  => $job->jobType,
-                'job_items' => $job->items,
-                'user'      => $job->user,
-            ]),
-        ]);
-    }
-
-    public function ticket(Job $job)
-    {
-        if ($job->company_id !== (auth()->user()->company_id ?? 1)) {
-            abort(403);
-        }
-        $job->load(['dentist', 'patient', 'jobType', 'user', 'items']);
-        return Inertia::render('Job/Ticket', [
-            'item' => array_merge($job->toArray(), [
-                'job_type'  => $job->jobType,
-                'job_items' => $job->items,
-                'user'      => $job->user,
-            ]),
-        ]);
-    }
-
-    public function edit(Job $job)
-    {
-        $companyId = auth()->user()->company_id ?? 1;
-
-        $job->load(['dentist', 'patient', 'jobType', 'items']);
-
-        return Inertia::render('Job/Edit', [
-            'item'     => array_merge($job->toArray(), [
-                'job_items' => $job->items,
-            ]),
-            'dentists' => Dentist::where('company_id', $companyId)->orderBy('name')->get(['id', 'name', 'type', 'address', 'cuit']),
-            'patients' => Patient::orderBy('name')->get(['id', 'name']),
-            'jobTypes' => JobType::where('company_id', $companyId)->orderBy('name')->get(['id', 'name']),
-            'users'    => User::where('company_id', $companyId)->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
-            'tariffs'  => Tariff::where('company_id', $companyId)->where('is_active', 1)->orderBy('name')->get(['id', 'name', 'price']),
-        ]);
-    }
-
-    public function update(Request $request, Job $job)
-    {
-        $request->validate([
-            'dentist_id'       => 'required|integer|exists:dentists,id',
-            'patient_name'     => 'nullable|string|max:191',
-            'job_type_id'      => 'nullable|integer|exists:job_types,id',
-            'assigned_user_id' => 'nullable|integer|exists:users,id',
-            'status'           => 'nullable|string',
-            'priority'         => 'nullable|string',
-            'description'      => 'nullable|string',
-            'clinical_notes'   => 'nullable|string',
-            'shade'            => 'nullable|string|max:30',
-            'received_at'      => 'nullable|date',
-            'due_date'         => 'nullable|date',
-            'discount_amount'  => 'nullable|numeric|min:0',
-            'items'            => 'nullable|array',
-            'items.*.description'=> 'required_with:items|string',
-            'items.*.quantity'   => 'required_with:items|numeric|min:0',
-            'items.*.unit_price' => 'required_with:items|numeric|min:0',
-        ]);
-
-        $items          = $request->items ?? [];
-        $subtotal       = collect($items)->sum(fn($i) => (float)$i['quantity'] * (float)$i['unit_price']);
-        $discountAmount = (float)($request->discount_amount ?? 0);
-        $total          = max(0, $subtotal - $discountAmount);
-
-        DB::beginTransaction();
-        try {
-            $job->update([
-                'dentist_id'       => $request->dentist_id,
-                'job_type_id'      => $request->job_type_id ?: null,
-                'assigned_user_id' => $request->assigned_user_id ?: null,
-                'status'           => $request->status   ?? $job->status,
-                'priority'         => $request->priority ?? $job->priority,
-                'description'      => $request->description,
-                'clinical_notes'   => $request->clinical_notes,
-                'shade'            => $request->shade,
-                'received_at'      => $request->received_at ?? $job->received_at,
-                'due_date'         => $request->due_date,
-                'subtotal'         => $subtotal,
-                'discount_amount'  => $discountAmount,
-                'total'            => $total,
-            ]);
-
-            // Reemplazar ítems si se envían
-            if (!empty($items)) {
-                $job->items()->delete();
-                foreach ($items as $item) {
-                    $lineTotal = (float)$item['quantity'] * (float)$item['unit_price'];
-                    JobItem::create([
-                        'job_id'      => $job->id,
-                        'tariff_id'   => $item['tariff_id'] ?: null,
-                        'description' => $item['description'],
-                        'quantity'    => $item['quantity'],
-                        'unit_price'  => $item['unit_price'],
-                        'discount'    => 0,
-                        'total'       => $lineTotal,
-                    ]);
-                }
+                $subtotal += $item['quantity'] * $item['unit_price'];
             }
 
-            DB::commit();
+            $discount = $data['discount_amount'] ?? 0;
 
-            return redirect()
-                ->route('jobs.show', $job->id)
-                ->with('success', "Orden {$job->job_number} actualizada.");
+            $total = $subtotal - $discount;
 
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            throw $e;
+            $job = Job::create([
+                'dentist_id' => $data['dentist_id'],
+                'patient_id' => $patient?->id,
+                'job_type_id' => $data['job_type_id'] ?? null,
+                'assigned_user_id' => $data['assigned_user_id'] ?? null,
+                'status' => $data['status'],
+                'priority' => $data['priority'],
+                'clinical_notes' => $data['clinical_notes'] ?? null,
+                'shade' => $data['shade'] ?? null,
+                'received_at' => $data['received_at'],
+                'due_date' => $data['due_date'],
+                'discount_amount' => $discount,
+                'subtotal' => $subtotal,
+                'total' => $total
+            ]);
+
+            foreach ($data['items'] as $item) {
+
+                JobItem::create([
+                    'job_id' => $job->id,
+                    'tariff_id' => $item['tariff_id'],
+                    'description' => $item['description'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'total' => $item['quantity'] * $item['unit_price']
+                ]);
+            }
+
+            $this->chargeAccountIfNeeded($job);
+        });
+
+        return redirect()
+            ->route('jobs.index')
+            ->with('success','Trabajo registrado correctamente');
+    }
+
+    protected function chargeAccountIfNeeded(Job $job)
+    {
+        if ($job->total <= 0) {
+            return;
         }
+
+        $alreadyCharged = LabAccountMove::where('reference_type', Job::class)
+            ->where('reference_id', $job->id)
+            ->where('type', LabAccountMove::TYPE_CHARGE)
+            ->exists();
+
+        if ($alreadyCharged) {
+            return;
+        }
+
+        $account = LabAccount::firstOrCreate(
+            ['dentist_id' => $job->dentist_id],
+            ['balance' => 0]
+        );
+
+        $account->balance += $job->total;
+        $account->save();
+
+        LabAccountMove::create([
+            'lab_account_id' => $account->id,
+            'user_id' => auth()->id(),
+            'type' => LabAccountMove::TYPE_CHARGE,
+            'amount' => $job->total,
+            'balance_after' => $account->balance,
+            'description' => 'Cargo por orden '.$job->job_number,
+            'reference_type' => Job::class,
+            'reference_id' => $job->id,
+            'move_date' => now()
+        ]);
     }
 
     public function destroy(Job $job)
     {
-        $job->delete();
-
-        return redirect()
-            ->route('jobs.index')
-            ->with('success', "Orden {$job->job_number} eliminada.");
-    }
-
-    /**
-     * Charge the lab account if the job is delivered and hasn't been billed yet.
-     */
-    protected function chargeAccountIfNeeded(Job $job)
-    {
-        // Solo cargamos a la cuenta si está entregado (delivered) o listo (ready) y no ha sido cobrado (billed)
-        if ($job->billed || $job->total <= 0) {
-            return;
-        }
-
-        if (!in_array($job->status, ['delivered', 'ready'])) {
-            return;
-        }
-
         DB::transaction(function () use ($job) {
-            $account = LabAccount::firstOrCreate(
-                ['dentist_id' => $job->dentist_id],
-                ['balance'    => 0]
-            );
 
-            $newBalance = $account->balance + $job->total;
-            $account->update(['balance' => $newBalance]);
+            $move = LabAccountMove::where('reference_type', Job::class)
+                ->where('reference_id', $job->id)
+                ->where('type', LabAccountMove::TYPE_CHARGE)
+                ->first();
 
-            LabAccountMove::create([
-                'lab_account_id' => $account->id,
-                'user_id'        => auth()->id() ?? 1,
-                'type'           => 'debit', // Cargo a la cuenta (Aumenta la deuda del doctor/clínica)
-                'amount'         => $job->total,
-                'balance_after'  => $newBalance,
-                'description'    => "Cargo por Trabajo Terminado / Entregado: {$job->job_number}",
-                'reference_type' => Job::class,
-                'reference_id'   => $job->id,
-                'move_date'      => now()->toDateString(),
-            ]);
+            if ($move) {
 
-            $job->update(['billed' => true]);
+                $account = $move->account;
+
+                $account->balance -= $move->amount;
+                $account->save();
+
+                $move->delete();
+            }
+
+            $job->delete();
         });
+
+        return back()->with('success','Trabajo eliminado');
     }
 }

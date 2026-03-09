@@ -12,8 +12,19 @@
     "appId": "com.artdent.print",
     "productName": "ArtDentPrint",
     "win": {
-      "target": "portable",
-      "icon": "icon.png"
+      "target": [
+        "msi"
+      ],
+      "icon": "icon.png",
+      "signAndEditExecutable": false
+    },
+    "msi": {
+      "oneClick": false,
+      "perMachine": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "shortcutName": "ArtDent Print Service"
     }
   },
   "dependencies": {
