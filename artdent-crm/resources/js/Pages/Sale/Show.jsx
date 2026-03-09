@@ -102,60 +102,55 @@ function TicketBase({ sale, widthMM = 80 }) {
     // Título del comprobante según tipo
     const tipoLabel = receiptType === 'X' ? 'TICKET X' : `FACTURA ${receiptType}`;
 
-    // Tipografías y tamaños escalados por ancho
+    // Tipografías optimizadas para 57mm/80mm sin desbordar
     const F = {
         logo: is57 ? 28 : 36,
-        brand: is57 ? 13 : 15,   // "ARTDENT" fallback si no hay logo
+        brand: is57 ? 13 : 15,
         cond: is57 ? 9 : 10,
-        head: is57 ? 10 : 11.5, // "FACTURA X"
-        label: is57 ? 8 : 9.5,
-        value: is57 ? 8 : 9.5,
-        th: is57 ? 7.5 : 8.5,
-        td: is57 ? 7.5 : 8.5,
-        total: is57 ? 12 : 14,
+        head: is57 ? 11 : 14,   // "FACTURA X"
+        label: is57 ? 8 : 10,   // Textos base 
+        value: is57 ? 8 : 10,
+        th: is57 ? 7.5 : 9,     // Tabla head
+        td: is57 ? 7.5 : 9,     // Tabla base
+        total: is57 ? 12 : 16,  // Total
         small: is57 ? 7 : 8,
         footer: is57 ? 7 : 8,
     };
-    const PAD = is57 ? '3mm 3mm' : '4mm 4mm';
-    const LINE = `1px solid #ccc`;
-    const DASH = `1px dashed #bbb`;
+    const PAD = '0'; // Thermal printers have unprintable margins physically
+    const LINE = `2px solid #000`; // Higher contrast line for thermal
+    const DASH = `2px dashed #000`; // Higher contrast dashed line
 
     const Row = ({ label, value, bold = false }) => (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: F.label, marginBottom: 2 }}>
-            <span style={{ fontWeight: bold ? 700 : 600, color: '#444', minWidth: is57 ? 60 : 80 }}>{label}</span>
-            <span style={{ fontWeight: bold ? 700 : 400, color: '#111', textAlign: 'right', flex: 1 }}>{value}</span>
+        <div style={{ fontSize: `${F.label}pt`, marginBottom: 3, wordWrap: 'break-word', lineHeight: 1.25 }}>
+            <span style={{ fontWeight: 700, color: '#000', marginRight: 4 }}>{label}:</span>
+            <span style={{ fontWeight: bold ? 900 : 500, color: '#000' }}>{value}</span>
         </div>
     );
 
+    const pxWidth = is57 ? 50 : 74; // Native true-printable widths in mm
+
     return (
         <div id="print-zone" style={{
-            width: `${widthMM}mm`,
-            fontFamily: "'Montserrat', sans-serif",
-            fontSize: F.label,
-            color: '#111',
+            width: `${pxWidth}mm`,
+            fontFamily: "'Courier New', Courier, monospace", // Better for thermal printers
+            fontSize: `${F.label}pt`,
+            color: '#000', // Pure black text
             padding: PAD,
             background: '#fff',
             lineHeight: 1.45,
             boxSizing: 'border-box',
         }}>
-            {/* Franja superior de color */}
-            <div style={{
-                background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`,
-                height: is57 ? 3 : 4,
-                margin: `0 -${is57 ? 3 : 4}mm ${is57 ? 5 : 7}px`,
-            }} />
-
             {/* ── LOGO ── */}
-            <div style={{ textAlign: 'center', marginBottom: is57 ? 5 : 7 }}>
+            <div style={{ textAlign: 'center', marginBottom: is57 ? 5 : 7, marginTop: 5 }}>
                 <img
-                    src="/assets/logo-artdent-color.png"
+                    src="/assets/logo-artdent-negro.png" // Pure black & white logo
                     alt="ArtDent"
                     style={{ height: F.logo, objectFit: 'contain', display: 'inline-block' }}
                 />
             </div>
 
             {/* Condición IVA */}
-            <div style={{ textAlign: 'center', fontSize: F.cond, color: '#555', marginBottom: is57 ? 5 : 6 }}>
+            <div style={{ textAlign: 'center', fontSize: F.cond, fontWeight: 700, color: '#000', marginBottom: is57 ? 5 : 6 }}>
                 {ivaLabel}
             </div>
 
@@ -170,10 +165,10 @@ function TicketBase({ sale, widthMM = 80 }) {
                 letterSpacing: 0.5,
                 marginBottom: is57 ? 6 : 8,
                 padding: `${is57 ? 3 : 4}px 0`,
-                borderTop: `2px solid ${AD.blue}`,
-                borderBottom: `2px solid ${AD.blue}`,
-                color: AD.blue,
-                fontFamily: "'Montserrat', sans-serif",
+                borderTop: `2px solid #000`, // Pure black border
+                borderBottom: `2px solid #000`,
+                color: '#000', // Pure black text
+                fontFamily: "'Courier New', Courier, monospace",
             }}>
                 {tipoLabel}
             </div>
@@ -184,7 +179,7 @@ function TicketBase({ sale, widthMM = 80 }) {
                 <Row
                     label="FECHA"
                     value={sale.sold_at
-                        ? `${fmtDate(sale.sold_at)}, ${new Date(sale.sold_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} p.m.`
+                        ? `${fmtDate(sale.sold_at)}, ${new Date(sale.sold_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
                         : fmtDate(sale.created_at)}
                 />
                 <Row label="CLIENTE" value={clientName} />
@@ -196,15 +191,15 @@ function TicketBase({ sale, widthMM = 80 }) {
             {/* ── TABLA DE ÍTEMS ── */}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: F.th, marginBottom: is57 ? 4 : 6 }}>
                 <thead>
-                    <tr style={{ borderBottom: `1.5px solid ${AD.blue}` }}>
+                    <tr style={{ borderBottom: `2px solid #000` }}>
                         {['Descripción', 'Can', 'Uni', 'Total'].map((h, i) => (
                             <th key={h} style={{
                                 padding: `3px ${i === 0 ? 0 : 2}px`,
                                 textAlign: i === 0 ? 'left' : 'center',
-                                fontWeight: 700,
+                                fontWeight: 900,
                                 fontSize: F.th,
-                                color: '#222',
-                                borderBottom: `1.5px solid ${AD.blue}`,
+                                color: '#000',
+                                borderBottom: `2px solid #000`,
                                 whiteSpace: 'nowrap',
                             }}>{h}</th>
                         ))}
@@ -212,18 +207,18 @@ function TicketBase({ sale, widthMM = 80 }) {
                 </thead>
                 <tbody>
                     {items.map((item, i) => (
-                        <tr key={i} style={{ borderBottom: `1px solid #eee` }}>
-                            <td style={{ padding: `3px 0`, fontSize: F.td }}>{item.product_name}</td>
-                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td }}>{Number(item.quantity)}</td>
-                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td }}>{fmt(item.unit_price)}</td>
-                            <td style={{ padding: `3px 0`, textAlign: 'center', fontSize: F.td, fontWeight: 600 }}>{fmt(item.total)}</td>
+                        <tr key={i} style={{ borderBottom: `1px solid #000` }}>
+                            <td style={{ padding: `3px 0`, fontSize: F.td, fontWeight: 600, color: '#000' }}>{item.product_name}</td>
+                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td, fontWeight: 700, color: '#000' }}>{Number(item.quantity)}</td>
+                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td, fontWeight: 600, color: '#000' }}>{fmt(item.unit_price)}</td>
+                            <td style={{ padding: `3px 0`, textAlign: 'center', fontSize: F.td, fontWeight: 900, color: '#000' }}>{fmt(item.total)}</td>
                         </tr>
                     ))}
                 </tbody>
             </table>
 
             {/* Cantidad de ítems */}
-            <div style={{ fontSize: F.small, color: '#666', marginBottom: is57 ? 5 : 6 }}>
+            <div style={{ fontSize: F.small, color: '#000', fontWeight: 700, marginBottom: is57 ? 5 : 6 }}>
                 Cantidad de ítems: {items.reduce((a, i) => a + Number(i.quantity || 1), 0)}
             </div>
 
@@ -233,7 +228,7 @@ function TicketBase({ sale, widthMM = 80 }) {
             {/* ── TOTAL ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: F.total, fontWeight: 900, marginBottom: is57 ? 6 : 8 }}>
                 <span>TOTAL</span>
-                <span style={{ color: AD.blue }}>$ {fmt(total)}</span>
+                <span style={{ color: '#000' }}>$ {fmt(total)}</span>
             </div>
 
             {/* ── TRANSPARENCIA FISCAL ── */}
@@ -263,21 +258,15 @@ function TicketBase({ sale, widthMM = 80 }) {
             <div style={{ borderTop: DASH, marginBottom: is57 ? 5 : 7 }} />
 
             {/* ── FOOTER ── */}
-            <div style={{ textAlign: 'center', fontSize: F.footer, color: '#666' }}>
-                <div style={{ fontWeight: 700, color: AD.teal, fontFamily: "'Montserrat', sans-serif", marginBottom: 2 }}>
+            <div style={{ textAlign: 'center', fontSize: F.footer, color: '#000', fontWeight: 600 }}>
+                <div style={{ fontWeight: 900, color: '#000', fontFamily: "'Courier New', Courier, monospace", marginBottom: 2 }}>
                     Gracias por su compra.
                 </div>
-                <div style={{ fontSize: F.small - 1, marginTop: 2, color: '#aaa' }}>
+                <div style={{ fontSize: F.small - 1, marginTop: 2, color: '#000', fontWeight: 500 }}>
                     Comprobante no válido como factura
                 </div>
             </div>
 
-            {/* Franja inferior */}
-            <div style={{
-                background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`,
-                height: is57 ? 3 : 4,
-                margin: `${is57 ? 6 : 8}px -${is57 ? 3 : 4}mm 0`,
-            }} />
         </div>
     );
 }
@@ -536,17 +525,28 @@ export default function Show({ auth, sale }) {
             .map(style => style.outerHTML)
             .join('');
 
+        const scale = mode === '57mm' ? '0.90' : '1';
+
         const fullHTML = `
         <html>
             <head>
+                <base href="${window.location.origin}">
                 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
                 ${styles}
                 <style>
+                    @page { margin: 0; size: auto; }
                     body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; }
-                    #print-zone { width: 100% !important; box-shadow: none !important; margin: 0 !important; }
+                    #print-zone { 
+                        width: ${printElement.style.width} !important; 
+                        max-width: ${printElement.style.width} !important; 
+                        box-shadow: none !important; margin: 0 !important; 
+                        box-sizing: border-box; 
+                        transform: scale(${scale}); 
+                        transform-origin: top left;
+                    }
                 </style>
             </head>
-            <body>${printElement.innerHTML}</body>
+            <body>${printElement.outerHTML}</body>
         </html>
     `;
 

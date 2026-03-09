@@ -188,9 +188,33 @@ class SaleController extends Controller
 
             DB::commit();
 
-            return redirect()
-                ->route('sales.show', $sale->id)
-                ->with('success', "Venta {$saleNumber} registrada correctamente.");
+            // Cargar relaciones para el modal post-venta del frontend
+            $sale->load([
+                'sale_items',
+                'sale_payments.paymentMethod',
+                'company',
+                'user',
+            ]);
+
+            // Retornamos Sale/Create con el prop 'sale' para que el modal
+            // post-cobro del frontend lo reciba en onSuccess → page.props.sale
+            // (NO hacemos redirect para que preserveState funcione)
+            return Inertia::render('Sale/Create', [
+                'products' => Product::with('product_images')
+                    ->where('is_active', 1)
+                    ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants']),
+                'sale' => array_merge($sale->toArray(), [
+                    'sale_payments' => $sale->sale_payments->map(fn($p) => [
+                        'amount'         => $p->amount,
+                        'payment_method' => $p->paymentMethod
+                            ? ['name' => $p->paymentMethod->name, 'type' => $p->paymentMethod->type]
+                            : null,
+                    ]),
+                    // Alias para el TicketBase del frontend
+                    'customer_name' => $request->customer_name ?? 'Consumidor Final',
+                    'items'         => $sale->sale_items->toArray(),
+                ]),
+            ]);
 
         } catch (\Throwable $e) {
             DB::rollBack();

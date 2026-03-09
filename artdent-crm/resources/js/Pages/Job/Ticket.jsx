@@ -19,100 +19,108 @@ function TicketBase({ job, widthMM = 80 }) {
     const patient = job.patient || {};
     const ticketNum = (job.job_number || '').replace(/[^0-9]/g, '') || job.job_number || '—';
 
-    const F = { logo: is54 ? 26 : 34, label: is54 ? 8 : 9.5, value: is54 ? 8 : 9.5, th: is54 ? 7.5 : 8.5, td: is54 ? 7.5 : 8.5, total: is54 ? 12 : 14, small: is54 ? 7 : 8, ticketN: is54 ? 12 : 14 };
-    const PAD = is54 ? '3mm' : '4mm';
+    const F = {
+        logo: is54 ? 28 : 36,
+        label: is54 ? 8 : 10,   // Textos base
+        value: is54 ? 8 : 10,
+        th: is54 ? 7.5 : 9,     // Tabla head
+        td: is54 ? 7.5 : 9,     // Tabla base
+        total: is54 ? 12 : 16,  // Total
+        small: is54 ? 7 : 8,
+        ticketN: is54 ? 11 : 14 // "TICKET X"
+    };
+    const PAD = '0'; // Thermal printers have unprintable margins physically
+
+    const pxWidth = is54 ? 50 : 74; // Native true-printable widths in mm
+
+    const Row = ({ label, value, bold = false }) => (
+        <div style={{ fontSize: `${F.label}pt`, marginBottom: 3, wordWrap: 'break-word', lineHeight: 1.25 }}>
+            <span style={{ fontWeight: 700, color: '#000', marginRight: 4 }}>{label}:</span>
+            <span style={{ fontWeight: bold ? 900 : 500, color: '#000' }}>{value}</span>
+        </div>
+    );
 
     return (
-        <div id="print-zone" style={{ width: `${widthMM}mm`, fontFamily: "'Montserrat', sans-serif", fontSize: F.label, color: '#111', padding: PAD, background: '#fff', lineHeight: 1.45, boxSizing: 'border-box' }}>
+        <div id="print-zone" style={{ width: `${pxWidth}mm`, fontFamily: "'Courier New', Courier, monospace", fontSize: `${F.label}pt`, color: '#000', padding: PAD, background: '#fff', lineHeight: 1.45, boxSizing: 'border-box' }}>
             {/* Top stripe */}
             <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: is54 ? 3 : 4, margin: `0 -${is54 ? 3 : 4}mm ${is54 ? 5 : 7}px` }} />
 
             {/* Logo */}
-            <div style={{ textAlign: 'center', marginBottom: is54 ? 5 : 7 }}>
-                <img src="/assets/logo-artdent-color.png" alt="ArtDent" style={{ height: F.logo, objectFit: 'contain', display: 'inline-block' }} />
+            <div style={{ textAlign: 'center', marginBottom: is54 ? 5 : 7, marginTop: 5 }}>
+                <img src="/assets/logo-artdent-negro.png" alt="ArtDent" style={{ height: F.logo, objectFit: 'contain', display: 'inline-block' }} />
             </div>
 
-            <div style={{ textAlign: 'center', fontSize: F.small + 1, fontWeight: 700, color: '#444', letterSpacing: 0.3, marginBottom: is54 ? 5 : 7 }}>
+            <div style={{ textAlign: 'center', fontSize: F.small + 1, fontWeight: 700, color: '#000', letterSpacing: 0.3, marginBottom: is54 ? 5 : 7 }}>
                 DOCUMENTO NO VÁLIDO COMO FACTURA
             </div>
 
-            <div style={{ borderTop: '1px solid #ccc', marginBottom: is54 ? 5 : 6 }} />
+            <div style={{ borderTop: '2px solid #000', marginBottom: is54 ? 5 : 6 }} />
 
-            {/* Ticket # + Fecha */}
+            {/* Ticket # */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: is54 ? 6 : 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: F.label, fontWeight: 600 }}>Ticket:</span>
-                    <div style={{ border: '1.5px solid #333', padding: '2px 10px', fontWeight: 900, fontSize: F.ticketN, minWidth: is54 ? 44 : 56, textAlign: 'center' }}>{ticketNum}</div>
-                </div>
-                <div style={{ fontSize: F.label }}>
-                    <span style={{ fontWeight: 600 }}>Fec: </span>{fmtDate(job.received_at)}
+                    <span style={{ fontSize: F.label, fontWeight: 900, color: '#000' }}>Ticket:</span>
+                    <div style={{ border: '2px solid #000', padding: '2px 10px', fontWeight: 900, color: '#000', fontSize: F.ticketN, minWidth: is54 ? 44 : 56, textAlign: 'center' }}>{ticketNum}</div>
                 </div>
             </div>
 
             {/* Cliente */}
             <div style={{ marginBottom: is54 ? 6 : 8 }}>
-                {[
-                    { label: 'Dr/a.', value: dentist.last_name ? `${dentist.last_name?.toUpperCase()} ${dentist.name || ''}`.trim() : dentist.name },
-                    { label: 'Dir.', value: dentist.address },
-                    { label: 'C.U.I.T.', value: dentist.cuit },
-                    { label: 'Pac.', value: patient.name ? `${patient.name} ${patient.last_name || ''}`.trim().toUpperCase() : null },
-                ].filter(r => r.value).map(({ label, value }) => (
-                    <div key={label || value} style={{ display: 'flex', gap: 4, marginBottom: 2, fontSize: F.label, lineHeight: 1.4 }}>
-                        <span style={{ fontWeight: 700, minWidth: is54 ? 38 : 46, flexShrink: 0 }}>{label}:</span>
-                        <span style={{ flex: 1, wordBreak: 'break-word', fontWeight: 400 }}>{value}</span>
-                    </div>
-                ))}
+                <Row label="FECHA" value={fmtDate(job.created_at)} />
+                <Row label="PACIENTE" value={patient?.name || '—'} />
+                {dentist && (
+                    <Row label="DR(A)" value={dentist.name || dentist.email || '—'} />
+                )}
             </div>
 
-            <div style={{ borderTop: '1px solid #ccc', marginBottom: is54 ? 4 : 5 }} />
+            <div style={{ borderTop: '2px solid #000', marginBottom: is54 ? 4 : 5 }} />
 
             {/* Tabla */}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: F.th, marginBottom: is54 ? 4 : 6 }}>
                 <thead>
-                    <tr style={{ borderBottom: `1.5px solid ${AD.blue}`, borderTop: `1.5px solid ${AD.blue}` }}>
-                        <th style={{ padding: '3px 2px', textAlign: 'left', fontWeight: 700, width: '50%' }}>Descripción</th>
-                        <th style={{ padding: '3px 2px', textAlign: 'center', fontWeight: 700, width: '16%' }}>Can</th>
-                        <th style={{ padding: '3px 2px', textAlign: 'center', fontWeight: 700, width: '16%' }}>Uni</th>
-                        <th style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 700, width: '18%' }}>Total</th>
+                    <tr style={{ borderBottom: `2px solid #000`, borderTop: `2px solid #000` }}>
+                        <th style={{ padding: '3px 2px', textAlign: 'left', fontWeight: 900, color: '#000', width: '50%' }}>Descripción</th>
+                        <th style={{ padding: '3px 2px', textAlign: 'center', fontWeight: 900, color: '#000', width: '16%' }}>Can</th>
+                        <th style={{ padding: '3px 2px', textAlign: 'center', fontWeight: 900, color: '#000', width: '16%' }}>Uni</th>
+                        <th style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 900, color: '#000', width: '18%' }}>Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {items.length > 0 ? items.map((it, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '3px 2px', fontSize: F.td }}>{it.description}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td }}>{Number(it.quantity)}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td }}>{fmt(it.unit_price)}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 600, fontSize: F.td }}>{fmt(it.total || it.unit_price * it.quantity)}</td>
+                        <tr key={i} style={{ borderBottom: '1px solid #000' }}>
+                            <td style={{ padding: '3px 2px', fontSize: F.td, fontWeight: 600, color: '#000' }}>{it.description}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 700, color: '#000' }}>{Number(it.quantity)}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 600, color: '#000' }}>{fmt(it.unit_price)}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 900, fontSize: F.td, color: '#000' }}>{fmt(it.total || it.unit_price * it.quantity)}</td>
                         </tr>
                     )) : (
-                        <tr style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '3px 2px', fontSize: F.td }}>{job.job_type?.name || job.description || 'Trabajo de laboratorio'}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td }}>1</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td }}>{fmt(total)}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 600, fontSize: F.td }}>{fmt(total)}</td>
+                        <tr style={{ borderBottom: '1px solid #000' }}>
+                            <td style={{ padding: '3px 2px', fontSize: F.td, fontWeight: 600, color: '#000' }}>{job.job_type?.name || job.description || 'Trabajo de laboratorio'}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 700, color: '#000' }}>1</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 600, color: '#000' }}>{fmt(total)}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 900, fontSize: F.td, color: '#000' }}>{fmt(total)}</td>
                         </tr>
                     )}
                 </tbody>
             </table>
 
-            <div style={{ borderTop: '1px solid #ccc', marginBottom: is54 ? 4 : 5 }} />
+            <div style={{ borderTop: '2px solid #000', marginBottom: is54 ? 4 : 5 }} />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: F.total, fontWeight: 900, marginBottom: is54 ? 4 : 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: F.total, fontWeight: 900, color: '#000', marginBottom: is54 ? 4 : 6 }}>
                 <span>Total del Ticket:</span>
-                <span style={{ color: AD.blue }}>{fmt(total)}</span>
+                <span style={{ color: '#000' }}>{fmt(total)}</span>
             </div>
 
-            {job.shade && <div style={{ fontSize: F.small, color: '#555', marginBottom: 3 }}><span style={{ fontWeight: 700 }}>Tono/Color: </span>{job.shade}</div>}
-            {job.due_date && <div style={{ fontSize: F.small, color: '#555', marginBottom: is54 ? 4 : 5 }}><span style={{ fontWeight: 700 }}>Entrega: </span>{fmtDate(job.due_date)}</div>}
+            {job.shade && <div style={{ fontSize: F.small, color: '#000', marginBottom: 3 }}><span style={{ fontWeight: 900 }}>Tono/Color: </span><span style={{ fontWeight: 600 }}>{job.shade}</span></div>}
+            {job.due_date && <div style={{ fontSize: F.small, color: '#000', marginBottom: is54 ? 4 : 5 }}><span style={{ fontWeight: 900 }}>Entrega: </span><span style={{ fontWeight: 600 }}>{fmtDate(job.due_date)}</span></div>}
 
-            <div style={{ borderTop: '1px dashed #bbb', margin: `${is54 ? 5 : 7}px 0 ${is54 ? 4 : 5}px` }} />
+            <div style={{ borderTop: '2px dashed #000', margin: `${is54 ? 5 : 7}px 0 ${is54 ? 4 : 5}px` }} />
 
             <div style={{ textAlign: 'center', fontSize: F.small }}>
-                <div style={{ fontWeight: 700, color: AD.teal, fontFamily: "'Montserrat', sans-serif", marginBottom: 2, fontSize: F.small + 1 }}>Tu sonrisa, es nuestra prioridad.</div>
-                <div style={{ color: '#aaa', marginTop: 2 }}>ArtDent Laboratorio Odontológico</div>
+                <div style={{ fontWeight: 900, color: '#000', fontFamily: "'Courier New', Courier, monospace", marginBottom: 2, fontSize: F.small + 1 }}>Tu sonrisa, es nuestra prioridad.</div>
+                <div style={{ color: '#000', marginTop: 2, fontWeight: 600 }}>ArtDent Laboratorio Odontológico</div>
             </div>
 
-            <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: is54 ? 3 : 4, margin: `${is54 ? 6 : 8}px -${is54 ? 3 : 4}mm 0` }} />
         </div>
     );
 }
@@ -285,17 +293,28 @@ export default function Ticket({ item }) {
             .map(style => style.outerHTML)
             .join('');
 
+        const scale = mode === '54mm' ? '0.90' : '1';
+
         const fullHTML = `
         <html>
             <head>
+                <base href="${window.location.origin}">
                 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
                 ${styles}
                 <style>
+                    @page { margin: 0; size: auto; }
                     body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; }
-                    #print-zone { width: 100% !important; box-shadow: none !important; margin: 0 !important; }
+                    #print-zone { 
+                        width: ${printElement.style.width} !important; 
+                        max-width: ${printElement.style.width} !important; 
+                        box-shadow: none !important; margin: 0 !important; 
+                        box-sizing: border-box; 
+                        transform: scale(${scale}); 
+                        transform-origin: top left;
+                    }
                 </style>
             </head>
-            <body>${printElement.innerHTML}</body>
+            <body>${printElement.outerHTML}</body>
         </html>
     `;
 

@@ -7,18 +7,23 @@
     width: 6px;
     height: 6px;
   }
+
   .styled-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .styled-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-slate-300 rounded-full;
   }
+
   .dark .styled-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-slate-700;
   }
+
   .styled-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-[#397B9C];
   }
+
   .dark .styled-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-[#49949C];
   }
@@ -29,19 +34,46 @@
     width: 8px;
     height: 8px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     @apply bg-slate-300 rounded-full border-2 border-transparent bg-clip-padding;
   }
+
   .dark ::-webkit-scrollbar-thumb {
     @apply bg-slate-700/60;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-[#397B9C];
   }
+
   .dark ::-webkit-scrollbar-thumb:hover {
     @apply bg-[#49949C];
   }
 }
+
+/* Safe area para notch/home indicator en iOS */
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Scrollbar minimalista para los paneles */
+.styled-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.styled-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.styled-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+/* Fuente Montserrat (ya la tenés via Google Fonts en los .jsx) */

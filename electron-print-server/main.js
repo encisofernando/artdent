@@ -28,10 +28,13 @@ function addLog(message, type = 'info') {
 function executePrint(html, mode, res = null) {
     workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     workerWindow.webContents.once('did-finish-load', () => {
-        const widthMicrons = (mode === '57mm' || mode === '54mm') ? 57000 : 80000;
+        // 57mm roll = 50mm printable area (50000 microns)
+        // 80mm roll = 74mm printable area (74000 microns)
+        const widthMicrons = (mode === '57mm' || mode === '54mm') ? 50000 : 74000;
         workerWindow.webContents.print({
             silent: true,
             printBackground: true,
+            margins: { marginType: 'none' }, // <-- Elimina margenes por defecto del sistema
             pageSize: { width: widthMicrons, height: 200000 }
         }, (success, error) => {
             if (!success) {
