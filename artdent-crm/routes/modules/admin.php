@@ -39,3 +39,11 @@ Route::resource('invoice-items', InvoiceItemController::class);
 Route::resource('invoice-types', InvoiceTypeController::class);
 
 Route::resource('variant-attribute-values', VariantAttributeValueController::class);
+
+// Gestión de Tokens API (Sanctum) — Administración → API
+use App\Http\Controllers\ApiTokenController;
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('api-tokens',           [ApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::post('api-tokens',          [ApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('api-tokens/{token}',[ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+});

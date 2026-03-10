@@ -29,4 +29,7 @@ Route::middleware(['auth'])->group(function () {
 
 });
 
+// Panel de asignación — usa auth:sanctum (Bearer token) fuera del grupo de sesión
+require __DIR__.'/modules/assign-panel.php';
+
 require __DIR__.'/auth.php';

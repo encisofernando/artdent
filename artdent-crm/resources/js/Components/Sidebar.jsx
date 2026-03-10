@@ -20,6 +20,7 @@ import {
     MessageSquare,
     RefreshCcw,
     Truck,
+    Key,
 } from 'lucide-react';
 
 const NAV_SECTIONS = [
@@ -114,6 +115,7 @@ const NAV_SECTIONS = [
                     { title: "Categorías", path: "/categorys" },
                     { title: "Usuarios", path: "/team" },
                     { title: "Empresa", path: "/settings" },
+                    { title: "API", path: "/admin/api-tokens" },
                 ],
             },
         ],
