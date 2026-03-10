@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Product
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property int|null $vendor_id
@@ -39,7 +39,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
  * @property float|null $tax_rate
- * 
  * @property Category|null $category
  * @property Company $company
  * @property Tax|null $tax
@@ -53,36 +52,37 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Collection|StockMovement[] $stock_movements
  * @property Collection|Stock[] $stocks
  * @property Collection|Wishlist[] $wishlists
- *
- * @package App\Models
  */
 class Product extends Model
 {
-	use SoftDeletes;
-	protected $table = 'products';
+    use SoftDeletes;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'vendor_id' => 'int',
-		'category_id' => 'int',
-		'tax_id' => 'int',
-		'cost_price' => 'float',
-		'price' => 'float',
-		'compare_price' => 'float',
-		'has_variants' => 'bool',
-		'track_stock' => 'bool',
-		'weight' => 'float',
-		'is_active' => 'bool',
-		'is_featured' => 'bool',
-		'tax_rate' => 'float'
-	];
+    protected $table = 'products';
 
-	protected $fillable = [
-		'company_id',
-		        'category_id',
-        'sub_category_id',
+    protected $casts = [
+        'company_id' => 'int',
+        'vendor_id' => 'int',
+        'category_id' => 'int',
+        'tax_id' => 'int',
+        'cost_price' => 'float',
+        'price' => 'float',
+        'compare_price' => 'float',
+        'has_variants' => 'bool',
+        'track_stock' => 'bool',
+        'weight' => 'float',
+        'is_active' => 'bool',
+        'is_featured' => 'bool',
+        'internal_use' => 'bool',
+        'tax_rate' => 'float',
+    ];
+
+    protected $fillable = [
+        'company_id',
+        'vendor_id',
+        'category_id',
         'tax_id',
-        'type', // 'standard', 'variable', 'digital', 'service'
+        'product_type',
+        'internal_use',
         'name',
         'slug',
         'sku',
@@ -100,72 +100,70 @@ class Product extends Model
         'meta_title',
         'meta_desc',
         'tax_rate',
-        'company_id',
-        'vendor_id',
     ];
 
-	public function category()
-	{
-		return $this->belongsTo(Category::class);
-	}
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function tax()
-	{
-		return $this->belongsTo(Tax::class);
-	}
+    public function tax()
+    {
+        return $this->belongsTo(Tax::class);
+    }
 
-	public function vendor()
-	{
-		return $this->belongsTo(Vendor::class);
-	}
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
 
-	public function ecommerce_order_items()
-	{
-		return $this->hasMany(EcommerceOrderItem::class);
-	}
+    public function ecommerce_order_items()
+    {
+        return $this->hasMany(EcommerceOrderItem::class);
+    }
 
-	public function product_images()
-	{
-		return $this->hasMany(ProductImage::class);
-	}
+    public function product_images()
+    {
+        return $this->hasMany(ProductImage::class);
+    }
 
-	public function product_variants()
-	{
-		return $this->hasMany(ProductVariant::class);
-	}
+    public function product_variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
 
-	public function purchase_items()
-	{
-		return $this->hasMany(PurchaseItem::class);
-	}
+    public function purchase_items()
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
 
-	public function reviews()
-	{
-		return $this->hasMany(Review::class);
-	}
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
 
-	public function sale_items()
-	{
-		return $this->hasMany(SaleItem::class);
-	}
+    public function sale_items()
+    {
+        return $this->hasMany(SaleItem::class);
+    }
 
-	public function stock_movements()
-	{
-		return $this->hasMany(StockMovement::class);
-	}
+    public function stock_movements()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
 
-	public function stocks()
-	{
-		return $this->hasMany(Stock::class);
-	}
+    public function stocks()
+    {
+        return $this->hasMany(Stock::class);
+    }
 
-	public function wishlists()
-	{
-		return $this->hasMany(Wishlist::class);
-	}
+    public function wishlists()
+    {
+        return $this->hasMany(Wishlist::class);
+    }
 }

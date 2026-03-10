@@ -13,6 +13,11 @@ export default function Edit({ auth, item, dentists }) {
         birth_date: item.birth_date ? item.birth_date.split('T')[0] : '', // Format datetime to date
         gender: item.gender || '',
         phone: item.phone || '',
+        email: item.email || '',
+        dni: item.dni || '',
+        address: item.address || '',
+        city: item.city || '',
+        province: item.province || '',
         notes: item.notes || ''
     });
 
@@ -154,6 +159,66 @@ export default function Edit({ auth, item, dentists }) {
                                     placeholder="+54 9 11 1234-5678"
                                 />
                                 {errors.phone && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.phone}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Email</label>
+                                <input
+                                    type="email"
+                                    value={data.email}
+                                    onChange={e => setData('email', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="correo@ejemplo.com"
+                                />
+                                {errors.email && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.email}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>DNI</label>
+                                <input
+                                    type="text"
+                                    value={data.dni}
+                                    onChange={e => setData('dni', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="12.345.678"
+                                />
+                                {errors.dni && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dni}</div>}
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className={labelClasses}>Dirección</label>
+                                <input
+                                    type="text"
+                                    value={data.address}
+                                    onChange={e => setData('address', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Av. Siempre Viva 123"
+                                />
+                                {errors.address && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.address}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Ciudad</label>
+                                <input
+                                    type="text"
+                                    value={data.city}
+                                    onChange={e => setData('city', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="CABA"
+                                />
+                                {errors.city && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.city}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Provincia</label>
+                                <input
+                                    type="text"
+                                    value={data.province}
+                                    onChange={e => setData('province', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Buenos Aires"
+                                />
+                                {errors.province && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.province}</div>}
                             </div>
                         </div>
                     </div>

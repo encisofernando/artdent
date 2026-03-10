@@ -33,34 +33,32 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon|null $sold_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- *
  * @property Branch|null $branch
  * @property Company $company
  * @property User|null $user
  * @property CashSession|null $cash_session
  * @property Collection|SaleItem[] $sale_items
  * @property Collection|SalePayment[] $sale_payments
- *
- * @package App\Models
  */
 class Sale extends Model
 {
     protected $table = 'sales';
 
     protected $casts = [
-        'company_id'      => 'int',
-        'branch_id'       => 'int',
+        'company_id' => 'int',
+        'branch_id' => 'int',
         'cash_session_id' => 'int',
-        'user_id'         => 'int',
-        'crm_client_id'   => 'int',
-        'invoice_id'      => 'int',
-        'subtotal'        => 'float',
+        'user_id' => 'int',
+        'crm_client_id' => 'int',
+        'dentist_id' => 'int',
+        'invoice_id' => 'int',
+        'subtotal' => 'float',
         'discount_amount' => 'float',
-        'tax_amount'      => 'float',
-        'total'           => 'float',
-        'paid_amount'     => 'float',
-        'change_amount'   => 'float',
-        'sold_at'         => 'datetime',
+        'tax_amount' => 'float',
+        'total' => 'float',
+        'paid_amount' => 'float',
+        'change_amount' => 'float',
+        'sold_at' => 'datetime',
     ];
 
     protected $fillable = [
@@ -69,9 +67,11 @@ class Sale extends Model
         'cash_session_id',
         'user_id',
         'crm_client_id',
+        'dentist_id',
+        'sale_type',
         'invoice_id',
         'sale_number',
-        'receipt_type',   // ← agregado
+        'receipt_type',
         'status',
         'subtotal',
         'discount_amount',
@@ -111,5 +111,10 @@ class Sale extends Model
     public function sale_payments()
     {
         return $this->hasMany(SalePayment::class);
+    }
+
+    public function dentist()
+    {
+        return $this->belongsTo(Dentist::class);
     }
 }

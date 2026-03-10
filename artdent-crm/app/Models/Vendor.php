@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Vendor
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property string $name
@@ -28,54 +28,57 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
- * 
  * @property Company $company
  * @property Collection|Expense[] $expenses
  * @property Collection|Product[] $products
  * @property Collection|Purchase[] $purchases
- *
- * @package App\Models
  */
 class Vendor extends Model
 {
-	use SoftDeletes;
-	protected $table = 'vendors';
+    use SoftDeletes;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'is_active' => 'bool'
-	];
+    protected $table = 'vendors';
 
-	protected $fillable = [
-		'company_id',
-		'name',
-		'contact_name',
-		'email',
-		'phone',
-		'address',
-		'cuit',
-		'iva_condition',
-		'notes',
-		'is_active'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'is_active' => 'bool',
+    ];
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    protected $fillable = [
+        'company_id',
+        'name',
+        'contact_name',
+        'email',
+        'phone',
+        'whatsapp',
+        'website',
+        'address',
+        'city',
+        'province',
+        'payment_terms',
+        'cuit',
+        'iva_condition',
+        'notes',
+        'is_active',
+    ];
 
-	public function expenses()
-	{
-		return $this->hasMany(Expense::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function products()
-	{
-		return $this->hasMany(Product::class);
-	}
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
+    }
 
-	public function purchases()
-	{
-		return $this->hasMany(Purchase::class);
-	}
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
+    }
 }

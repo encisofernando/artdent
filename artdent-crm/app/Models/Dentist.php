@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Dentist
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property string|null $code
@@ -36,72 +36,97 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
- * 
  * @property Company $company
  * @property Collection|Tariff[] $tariffs
  * @property Collection|Job[] $jobs
  * @property LabAccount|null $lab_account
  * @property Collection|Patient[] $patients
- *
- * @package App\Models
  */
 class Dentist extends Model
 {
-	use SoftDeletes;
-	protected $table = 'dentists';
+    use SoftDeletes;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'credit_limit' => 'float',
-		'payment_days' => 'int',
-		'is_active' => 'bool'
-	];
+    protected $table = 'dentists';
 
-	protected $fillable = [
-		'company_id',
-		'code',
-		'type',
-		'name',
-		'contact_name',
-		'email',
-		'phone',
-		'phone_alt',
-		'address',
-		'city',
-		'province',
-		'cuit',
-		'iva_condition',
-		'license_number',
-		'credit_limit',
-		'payment_days',
-		'is_active',
-		'notes'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'credit_limit' => 'float',
+        'payment_days' => 'int',
+        'discount_pct' => 'float',
+        'is_active' => 'bool',
+        'last_order_at' => 'datetime',
+    ];
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    protected $fillable = [
+        'company_id',
+        'code',
+        'type',
+        'name',
+        'contact_name',
+        'email',
+        'phone',
+        'phone_alt',
+        'whatsapp',
+        'specialty',
+        'zone',
+        'instagram',
+        'website',
+        'source',
+        'discount_pct',
+        'preferred_delivery_day',
+        'last_order_at',
+        'address',
+        'city',
+        'province',
+        'postal_code',
+        'cuit',
+        'iva_condition',
+        'license_number',
+        'credit_limit',
+        'payment_days',
+        'is_active',
+        'notes',
+    ];
 
-	public function tariffs()
-	{
-		return $this->belongsToMany(Tariff::class, 'dentist_tariff_prices')
-					->withPivot('id', 'price')
-					->withTimestamps();
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function jobs()
-	{
-		return $this->hasMany(Job::class);
-	}
+    public function tariffs()
+    {
+        return $this->belongsToMany(Tariff::class, 'dentist_tariff_prices')
+            ->withPivot('id', 'price')
+            ->withTimestamps();
+    }
 
-	public function lab_account()
-	{
-		return $this->hasOne(LabAccount::class);
-	}
+    public function jobs()
+    {
+        return $this->hasMany(Job::class);
+    }
 
-	public function patients()
-	{
-		return $this->hasMany(Patient::class);
-	}
+    public function lab_account()
+    {
+        return $this->hasOne(LabAccount::class);
+    }
+
+    public function patients()
+    {
+        return $this->hasMany(Patient::class);
+    }
+
+    public function crm_interactions()
+    {
+        return $this->hasMany(CrmInteraction::class);
+    }
+
+    public function delivery_routes()
+    {
+        return $this->hasMany(DentistDeliveryRoute::class);
+    }
+
+    public function supply_sales()
+    {
+        return $this->hasMany(Sale::class)->where('sale_type', 'lab_supply');
+    }
 }

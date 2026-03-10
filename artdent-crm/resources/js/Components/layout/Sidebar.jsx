@@ -1,260 +1,265 @@
-import { useEffect, useMemo, useState } from "react"
-import { Link, usePage } from "@inertiajs/react"
+import { useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+import { useTheme } from '@/Contexts/ThemeContext';
 import {
-  BarChart3, Building2, ClipboardList, CreditCard, FileText, FlaskConical, Home,
-  LayoutDashboard, Package, Settings, ShoppingCart, Users, Wrench, ChevronDown, ChevronRight, X
-} from "lucide-react"
+    LayoutDashboard,
+    Banknote,
+    Users,
+    Store,
+    BadgeCheck,
+    Briefcase,
+    Beaker,
+    BarChart3,
+    Settings,
+    ChevronDown,
+    ChevronRight,
+    Search,
+    Receipt,
+    List,
+    AlignLeft,
+    MessageSquare,
+    RefreshCcw,
+    Truck,
+} from 'lucide-react';
 
-const SIDEBAR_WIDTH = 272
-const COLLAPSED_WIDTH = 72
-
-const NAV = [
-  { section: null, items: [{ title: "Panel General", icon: Home, href: "/dashboard" }] },
-  {
-    section: "Gestión",
-    items: [
-      {
-        title: "Ventas", icon: CreditCard, key: "ventas",
-        children: [
-          { title: "POS", icon: ShoppingCart, href: "/ventas/pos" },
-          { title: "Lista de Ventas", icon: FileText, href: "/ventas" },
-          { title: "Productos", icon: Package, href: "/productos" },
+const NAV_SECTIONS = [
+    {
+        label: null,
+        items: [
+            { title: "Panel General", icon: LayoutDashboard, path: "/dashboard" },
         ],
-      },
-      {
-        title: "Clientes", icon: Users, key: "clientes",
-        children: [
-          { title: "Lista", icon: ClipboardList, href: "/clientes" },
+    },
+    {
+        label: "Gestión",
+        items: [
+            {
+                title: "Ventas", icon: Banknote, key: "ventas",
+                children: [
+                    { title: "Nueva Venta", path: "/sales/create" },
+                    { title: "Lista de Ventas", path: "/sales" },
+                    { title: "Facturación", path: "/invoices" },
+                    { title: "Artículos", path: "/products" },
+                ],
+            },
+            {
+                title: "Clientes", icon: Users, key: "clientes",
+                children: [
+                    { title: "Lista de Clientes", path: "/customers" },
+                    { title: "Cta. Cte.", path: "/ctacte" },
+                    { title: "Pagos", path: "/pagoscte" },
+                ],
+            },
+            {
+                title: "Proveedores", icon: Store, key: "proveedores",
+                children: [
+                    { title: "Directorio", path: "/vendors" },
+                    { title: "Comprobantes", path: "/proveedores/comprobantes" },
+                    { title: "Pagos", path: "/proveedores/pagos" },
+                    { title: "Cta. Cte.", path: "/proveedores/ctacte" },
+                ],
+            },
+            {
+                title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
+                children: [
+                    { title: "Lista", path: "/colaboradores" },
+                    { title: "Asistencias", path: "/colaboradores/asistencias" },
+                    { title: "Recibos", path: "/colaboradores/recibos" },
+                ],
+            },
         ],
-      },
-      {
-        title: "Compras", icon: FileText, href: "/compras",
-      },
-      {
-        title: "Stock", icon: Package, href: "/stock",
-      },
-    ],
-  },
-  {
-    section: "Laboratorio",
-    items: [
-      { title: "Jobs", icon: FlaskConical, href: "/laboratorio" },
-    ],
-  },
-  {
-    section: "Análisis",
-    items: [
-      { title: "Reportes", icon: BarChart3, href: "/reportes" },
-    ],
-  },
-  {
-    section: "Sistema",
-    items: [
-      { title: "Empresa", icon: Building2, href: "/settings" },
-      { title: "Administración", icon: Settings, href: "/admin" },
-    ],
-  },
-]
+    },
+    {
+        label: "Laboratorio",
+        items: [
+            {
+                title: "Órdenes", icon: AlignLeft, key: "lab-ordenes",
+                children: [
+                    { title: "Nueva Orden", path: "/jobs/create" },
+                    { title: "Consultar", path: "/jobs" },
+                    { title: "Rehacimientos", path: "/job-remakes" },
+                ],
+            },
+            {
+                title: "Clientes / Odont.", icon: Users, key: "lab-clientes",
+                children: [
+                    { title: "Lista de Odontólogos", path: "/dentists" },
+                    { title: "Pacientes", path: "/patients" },
+                    { title: "Rutas de Entrega", path: "/dentist-delivery-routes" },
+                    { title: "Cuentas Corrientes y Pagos", path: "/lab-account-moves" },
+                ],
+            },
+            { title: "Aranceles y Costos", icon: Banknote, path: "/tariffs" },
+        ],
+    },
+    {
+        label: "CRM",
+        items: [
+            { title: "Interacciones", icon: MessageSquare, path: "/crm-interactions" },
+        ],
+    },
+    {
+        label: "Análisis",
+        items: [
+            { title: "Estadísticas", icon: BarChart3, path: "/estadisticas" },
+            { title: "Reportes", icon: Receipt, path: "/reportes" },
+            { title: "Operaciones", icon: Search, path: "/operaciones" },
+        ],
+    },
+    {
+        label: "Sistema",
+        items: [
+            {
+                title: "Administración", icon: Settings, key: "administracion",
+                children: [
+                    { title: "Categorías", path: "/categorys" },
+                    { title: "Usuarios", path: "/team" },
+                    { title: "Empresa", path: "/settings" },
+                ],
+            },
+        ],
+    },
+];
 
-function isActive(url, href) {
-  return url === href || url.startsWith(href + "/")
-}
+export default function Sidebar({ className = "" }) {
+    const { url } = usePage();
+    const { sidebarCollapsed, isDark, toggleSidebar } = useTheme();
+    const [openMenus, setOpenMenus] = useState({});
 
-export default function Sidebar({
-  variant, // "desktop" | "mobile"
-  collapsed,
-  setCollapsed,
-  open,
-  onClose,
-}) {
-  const { url } = usePage()
-  const isMobile = variant === "mobile"
+    const toggleMenu = (key) => {
+        if (sidebarCollapsed) return;
+        setOpenMenus(prev => ({ ...prev, [key]: !prev[key] }));
+    };
 
-  const [openMenus, setOpenMenus] = useState({})
+    const isActive = (path) => url.startsWith(path);
+    const isAnyChildActive = (children) => children?.some(c => isActive(c.path));
 
-  useEffect(() => {
-    // auto-open básico según url
-    const next = {}
-    if (url.startsWith("/ventas")) next.ventas = true
-    if (url.startsWith("/clientes")) next.clientes = true
-    setOpenMenus((prev) => ({ ...prev, ...next }))
-
-    if (isMobile && onClose) onClose()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url])
-
-  const width = isMobile ? SIDEBAR_WIDTH : (collapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH)
-
-  const container = (
-    <aside
-      className="h-screen border-r border-black/5 dark:border-white/10 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100"
-      style={{ width }}
-    >
-      {/* Header */}
-      <div className="h-16 px-3 flex items-center justify-between border-b border-black/5 dark:border-white/10">
-        {!collapsed || isMobile ? (
-          <>
-            <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
-              <img
-                src="/brand/logo-artdent-color.png"
-                alt="ArtDent"
-                className="h-9 w-auto"
-              />
-            </Link>
-
-            <button
-              type="button"
-              className="h-9 w-9 rounded-lg grid place-items-center text-slate-600/80 hover:bg-black/[0.04] dark:text-slate-200/70 dark:hover:bg-white/[0.06]"
-              onClick={() => (isMobile ? onClose?.() : setCollapsed(true))}
-              aria-label={isMobile ? "Cerrar menú" : "Colapsar sidebar"}
-            >
-              {isMobile ? <X size={18} /> : <ChevronRight size={18} />}
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="mx-auto h-10 w-10 rounded-xl grid place-items-center hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-            onClick={() => setCollapsed(false)}
-            aria-label="Expandir sidebar"
-            title="Expandir"
-          >
-            <div className="h-9 w-9 rounded-lg grid place-items-center text-white font-extrabold"
-                 style={{ background: "linear-gradient(135deg,#397B9C,#5AAD9C)" }}>
-              AD
-            </div>
-          </button>
-        )}
-      </div>
-
-      {/* Nav */}
-      <div className="h-[calc(100vh-64px)] overflow-y-auto py-2">
-        {NAV.map((sec, idx) => (
-          <div key={idx} className="mb-2">
-            {sec.section && (!collapsed || isMobile) && (
-              <div className="px-4 pt-3 pb-2 text-[10.5px] font-bold tracking-[0.12em] uppercase text-slate-500/70 dark:text-[rgba(172,214,206,0.55)]">
-                {sec.section}
-              </div>
-            )}
-
-            <div className="px-2 space-y-1">
-              {sec.items.map((item) => {
-                const Icon = item.icon
-                const hasChildren = Array.isArray(item.children) && item.children.length > 0
-
-                if (!hasChildren) {
-                  const active = isActive(url, item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={[
-                        "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition",
-                        active
-                          ? "bg-[rgba(57,123,156,0.10)] dark:bg-[rgba(57,123,156,0.18)] text-slate-900 dark:text-[rgba(172,214,206,0.95)]"
-                          : "text-slate-700/85 dark:text-slate-100/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
-                        collapsed && !isMobile ? "justify-center px-0" : "",
-                      ].join(" ")}
-                      title={collapsed && !isMobile ? item.title : undefined}
-                    >
-                      {active && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r bg-[#5AAD9C]" />
-                      )}
-                      <Icon size={18} className="shrink-0" />
-                      {(!collapsed || isMobile) && <span className="font-medium">{item.title}</span>}
-                    </Link>
-                  )
-                }
-
-                // parent
-                const open = !!openMenus[item.key]
-                const anyActive = item.children.some((c) => isActive(url, c.href))
-
-                return (
-                  <div key={item.key}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenMenus((p) => ({ ...p, [item.key]: !p[item.key] }))}
-                      className={[
-                        "w-full flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition",
-                        anyActive
-                          ? "text-slate-900 dark:text-[rgba(172,214,206,0.95)]"
-                          : "text-slate-700/85 dark:text-slate-100/80",
-                        "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
-                        collapsed && !isMobile ? "justify-center px-0" : "",
-                      ].join(" ")}
-                      title={collapsed && !isMobile ? item.title : undefined}
-                    >
-                      <Icon size={18} className="shrink-0" />
-                      {(!collapsed || isMobile) && (
-                        <>
-                          <span className="flex-1 text-left font-medium">{item.title}</span>
-                          <ChevronDown size={16} className={`opacity-70 transition ${open ? "rotate-180" : ""}`} />
-                        </>
-                      )}
-                    </button>
-
-                    {(!collapsed || isMobile) && open && (
-                      <div className="mt-1 ml-5 pl-3 border-l border-black/10 dark:border-white/10 space-y-1">
-                        {item.children.map((c) => {
-                          const CIcon = c.icon
-                          const active = isActive(url, c.href)
-                          return (
-                            <Link
-                              key={c.href}
-                              href={c.href}
-                              className={[
-                                "flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition",
-                                active
-                                  ? "bg-[rgba(57,123,156,0.10)] dark:bg-[rgba(57,123,156,0.18)] text-slate-900 dark:text-[rgba(172,214,206,0.95)]"
-                                  : "text-slate-700/80 dark:text-slate-100/75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
-                              ].join(" ")}
-                            >
-                              <CIcon size={16} className="shrink-0 opacity-90" />
-                              <span className="font-medium">{c.title}</span>
-                            </Link>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer */}
-      {(!collapsed || isMobile) && (
-        <div className="border-t border-black/5 dark:border-white/10 px-4 py-3 text-xs text-slate-500/70 dark:text-slate-300/50">
-          © {new Date().getFullYear()} ArtDent · Back Office
-        </div>
-      )}
-    </aside>
-  )
-
-  // Mobile overlay wrapper
-  if (isMobile) {
-    if (!open) return null
     return (
-      <div className="fixed inset-0 z-[60] md:hidden">
-        <div
-          className="absolute inset-0 bg-black/35"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-        <div className="absolute left-0 top-0 h-full shadow-[4px_0_24px_rgba(0,0,0,0.30)]">
-          {container}
-        </div>
-      </div>
-    )
-  }
+        <aside
+            className={`transition-all duration-300 ease-in-out flex flex-col h-screen shadow-xl z-20 shrink-0
+            ${isDark ? 'bg-slate-900 border-r border-slate-800 text-slate-300'
+                    : 'bg-white border-r border-slate-200 text-slate-600'}
+            ${sidebarCollapsed ? 'w-20' : 'w-64'}
+            ${className}`}
+        >
+            {/* Logo Header */}
+            <div className={`h-16 flex items-center border-b shrink-0 px-4 transition-colors relative
+                ${isDark ? 'border-slate-800' : 'border-slate-100'}
+                ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}
+            >
+                {!sidebarCollapsed ? (
+                    <img
+                        src={isDark ? "/assets/logo-artdent-blanco.png" : "/assets/logo-artdent-color.png"}
+                        alt="ArtDent"
+                        className="h-8 object-contain transition-all"
+                    />
+                ) : (
+                    <img
+                        src="/assets/logo-artdent-icon.png"
+                        alt="AD"
+                        className="h-8 w-8 rounded-md object-cover transition-all"
+                    />
+                )}
 
-  // Desktop fixed sidebar
-  return (
-    <div className="fixed left-0 top-0 z-40">
-      {container}
-    </div>
-  )
+                {/* Desktop Collapse Toggle */}
+                <button
+                    onClick={toggleSidebar}
+                    className={`hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full items-center justify-center border shadow-sm transition-colors z-50
+                        ${isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                            : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'}
+                    `}
+                >
+                    <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${!sidebarCollapsed ? 'rotate-180' : ''}`} />
+                </button>
+            </div>
+
+            {/* Nav Links */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-thin scrollbar-thumb-slate-700">
+                <nav className="space-y-6">
+                    {NAV_SECTIONS.map((section, idx) => (
+                        <div key={idx} className={sidebarCollapsed ? "px-2" : "px-3"}>
+                            {!sidebarCollapsed && section.label && (
+                                <h3 className="px-3 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    {section.label}
+                                </h3>
+                            )}
+                            <ul className="space-y-1">
+                                {section.items.map((item) => {
+                                    const expanded = openMenus[item.key] || isAnyChildActive(item.children);
+                                    const activeNode = isActive(item.path) || isAnyChildActive(item.children);
+
+                                    if (item.children) {
+                                        return (
+                                            <li key={item.key}>
+                                                <button
+                                                    onClick={() => toggleMenu(item.key)}
+                                                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                                                        ${sidebarCollapsed ? 'justify-center' : 'justify-between'}
+                                                        ${activeNode ? (isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 text-emerald-600')
+                                                            : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-slate-50 hover:text-emerald-700')}`}
+                                                    title={sidebarCollapsed ? item.title : undefined}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <item.icon className={`h-5 w-5 shrink-0 ${activeNode ? 'text-emerald-400' : 'text-slate-400'}`} />
+                                                        {!sidebarCollapsed && <span className="truncate">{item.title}</span>}
+                                                    </div>
+                                                    {!sidebarCollapsed && (expanded ? <ChevronDown className="h-4 w-4 opacity-50 shrink-0" /> : <ChevronRight className="h-4 w-4 opacity-50 shrink-0" />)}
+                                                </button>
+
+                                                {expanded && !sidebarCollapsed && (
+                                                    <ul className="mt-1 ml-4 pl-4 border-l border-slate-700 space-y-1">
+                                                        {item.children.map(child => {
+                                                            const childActive = isActive(child.path);
+                                                            return (
+                                                                <li key={child.path}>
+                                                                    <Link
+                                                                        href={child.path}
+                                                                        className={`block px-3 py-2 text-sm rounded-md transition-colors truncate
+                                                                            ${childActive ? 'bg-emerald-500/10 text-emerald-500 font-semibold' : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-600 hover:bg-slate-50 hover:text-emerald-700')}`}
+                                                                    >
+                                                                        {child.title}
+                                                                    </Link>
+                                                                </li>
+                                                            )
+                                                        })}
+                                                    </ul>
+                                                )}
+                                            </li>
+                                        )
+                                    }
+
+                                    return (
+                                        <li key={item.path}>
+                                            <Link
+                                                href={item.path}
+                                                className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors relative
+                                                    ${sidebarCollapsed ? 'justify-center' : ''}
+                                                    ${isActive(item.path) ? (isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 text-emerald-600')
+                                                        : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-slate-50 hover:text-emerald-700')}`}
+                                                title={sidebarCollapsed ? item.title : undefined}
+                                            >
+                                                {isActive(item.path) && (
+                                                    <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-emerald-500 rounded-r-md"></div>
+                                                )}
+                                                <item.icon className={`h-5 w-5 shrink-0 ${isActive(item.path) ? 'text-emerald-400' : 'text-slate-400'}`} />
+                                                {!sidebarCollapsed && <span className="truncate">{item.title}</span>}
+                                            </Link>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+                        </div>
+                    ))}
+                </nav>
+            </div>
+
+            {/* Footer */}
+            {!sidebarCollapsed && (
+                <div className="p-4 border-t border-slate-800 shrink-0">
+                    <p className="text-xs text-slate-500 text-center truncate">
+                        © {new Date().getFullYear()} ArtDent
+                    </p>
+                </div>
+            )}
+        </aside>
+    );
 }

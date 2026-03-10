@@ -16,7 +16,10 @@ import {
     Search,
     Receipt,
     List,
-    AlignLeft
+    AlignLeft,
+    MessageSquare,
+    RefreshCcw,
+    Truck,
 } from 'lucide-react';
 
 const NAV_SECTIONS = [
@@ -73,6 +76,7 @@ const NAV_SECTIONS = [
                 children: [
                     { title: "Nueva Orden", path: "/jobs/create" },
                     { title: "Consultar", path: "/jobs" },
+                    { title: "Rehacimientos", path: "/job-remakes" },
                 ],
             },
             {
@@ -80,10 +84,17 @@ const NAV_SECTIONS = [
                 children: [
                     { title: "Lista de Odontólogos", path: "/dentists" },
                     { title: "Pacientes", path: "/patients" },
+                    { title: "Rutas de Entrega", path: "/dentist-delivery-routes" },
                     { title: "Cuentas Corrientes y Pagos", path: "/lab-account-moves" },
                 ],
             },
             { title: "Aranceles y Costos", icon: Banknote, path: "/tariffs" },
+        ],
+    },
+    {
+        label: "CRM",
+        items: [
+            { title: "Interacciones", icon: MessageSquare, path: "/crm-interactions" },
         ],
     },
     {

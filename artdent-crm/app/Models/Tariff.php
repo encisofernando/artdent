@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class Tariff
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property string|null $code
@@ -24,53 +24,57 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool|null $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * 
  * @property Company $company
  * @property Collection|Dentist[] $dentists
  * @property Collection|JobItem[] $job_items
- *
- * @package App\Models
  */
 class Tariff extends Model
 {
-	protected $table = 'tariffs';
+    protected $table = 'tariffs';
 
-	protected $casts = [
-		'company_id' => 'int',
-		'price' => 'float',
-		'is_active' => 'bool'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'price' => 'float',
+        'is_active' => 'bool',
+        'min_days' => 'int',
+        'tooth_count' => 'int',
+        'urgency_multiplier' => 'float',
+    ];
 
-	protected $fillable = [
-		'company_id',
-		'code',
-		'name',
-		'category',
-		'price',
-		'unit',
-		'description',
-		'is_active'
-	];
+    protected $fillable = [
+        'company_id',
+        'code',
+        'name',
+        'category',
+        'lab_sector',
+        'min_days',
+        'urgency_multiplier',
+        'tooth_count',
+        'price',
+        'unit',
+        'description',
+        'is_active',
+    ];
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function costs()
-	{
-		return $this->hasMany(TariffCost::class);
-	}
+    public function costs()
+    {
+        return $this->hasMany(TariffCost::class);
+    }
 
-	public function dentists()
-	{
-		return $this->belongsToMany(Dentist::class, 'dentist_tariff_prices')
-					->withPivot('id', 'price')
-					->withTimestamps();
-	}
+    public function dentists()
+    {
+        return $this->belongsToMany(Dentist::class, 'dentist_tariff_prices')
+            ->withPivot('id', 'price')
+            ->withTimestamps();
+    }
 
-	public function job_items()
-	{
-		return $this->hasMany(JobItem::class);
-	}
+    public function job_items()
+    {
+        return $this->hasMany(JobItem::class);
+    }
 }

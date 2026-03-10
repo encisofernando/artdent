@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Patient;
 use App\Models\Dentist;
+use App\Models\Patient;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,7 +16,7 @@ class PatientController extends Controller
     {
         // Enforce company scope via dentist relationship
         $companyId = auth()->user()->company_id;
-        
+
         $query = Patient::whereHas('dentist', function ($q) use ($companyId) {
             $q->where('company_id', $companyId);
         })->with('dentist');
@@ -25,7 +25,7 @@ class PatientController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
@@ -37,14 +37,14 @@ class PatientController extends Controller
 
         // Get dentists for the filter dropdown
         $dentists = Dentist::where('company_id', $companyId)
-                           ->where('is_active', true)
-                           ->orderBy('name', 'asc')
-                           ->get(['id', 'name']);
+            ->where('is_active', true)
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name']);
 
         return Inertia::render('Patient/Index', [
             'items' => $items,
             'dentists' => $dentists,
-            'filters' => $request->only(['search', 'dentist_id'])
+            'filters' => $request->only(['search', 'dentist_id']),
         ]);
     }
 
@@ -55,12 +55,12 @@ class PatientController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $dentists = Dentist::where('company_id', $companyId)
-                           ->where('is_active', true)
-                           ->orderBy('name', 'asc')
-                           ->get(['id', 'name', 'code']);
+            ->where('is_active', true)
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name', 'code']);
 
         return Inertia::render('Patient/Create', [
-            'dentists' => $dentists
+            'dentists' => $dentists,
         ]);
     }
 
@@ -74,8 +74,13 @@ class PatientController extends Controller
             'name' => 'required|string|max:255',
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|string|in:Masculino,Femenino,Otro',
-            'phone' => 'nullable|string|max:50',
-            'notes' => 'nullable|string'
+            'phone' => 'nullable|string|max:64',
+            'email' => 'nullable|email|max:191',
+            'dni' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'notes' => 'nullable|string',
         ]);
 
         // Security check: ensure the dentist belongs to the user's company
@@ -101,13 +106,13 @@ class PatientController extends Controller
 
         $companyId = auth()->user()->company_id;
         $dentists = Dentist::where('company_id', $companyId)
-                           ->where('is_active', true)
-                           ->orderBy('name', 'asc')
-                           ->get(['id', 'name', 'code']);
+            ->where('is_active', true)
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name', 'code']);
 
         return Inertia::render('Patient/Edit', [
             'item' => $patient,
-            'dentists' => $dentists
+            'dentists' => $dentists,
         ]);
     }
 
@@ -126,8 +131,13 @@ class PatientController extends Controller
             'name' => 'required|string|max:255',
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|string|in:Masculino,Femenino,Otro',
-            'phone' => 'nullable|string|max:50',
-            'notes' => 'nullable|string'
+            'phone' => 'nullable|string|max:64',
+            'email' => 'nullable|email|max:191',
+            'dni' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'notes' => 'nullable|string',
         ]);
 
         // Security check on target dentist
@@ -150,6 +160,7 @@ class PatientController extends Controller
             abort(403);
         }
         $patient->delete();
+
         return redirect()->route('patients.index')->with('success', 'Paciente eliminado exitosamente.');
     }
 }

@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, Info, Building2, MapPin, Banknote, Search, X } from 'lucide-react';
+import { ArrowLeft, Save, Info, Building2, MapPin, Banknote, Search, X, Briefcase } from 'lucide-react';
 
 export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
     const { isDark } = useTheme();
@@ -25,9 +25,11 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
         email: item.email || '',
         phone: item.phone || '',
         phone_alt: item.phone_alt || '',
+        whatsapp: item.whatsapp || '',
         address: item.address || '',
         city: item.city || '',
         province: item.province || '',
+        postal_code: item.postal_code || '',
         cuit: item.cuit || '',
         iva_condition: item.iva_condition || 'consumidor_final',
         license_number: item.license_number || '',
@@ -35,6 +37,13 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
         payment_days: item.payment_days || 0,
         is_active: item.is_active !== undefined ? item.is_active : 1,
         notes: item.notes || '',
+        specialty: item.specialty || '',
+        zone: item.zone || '',
+        instagram: item.instagram || '',
+        website: item.website || '',
+        source: item.source || '',
+        discount_pct: item.discount_pct || '',
+        preferred_delivery_day: item.preferred_delivery_day || '',
         custom_prices: initialCustomPrices
     });
 
@@ -218,7 +227,7 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
                             </div>
 
                             <div>
-                                <label className={labelClasses}>Teléfono Alternativo / WhatsApp</label>
+                                <label className={labelClasses}>Teléfono Alternativo</label>
                                 <input
                                     type="text"
                                     value={data.phone_alt}
@@ -227,6 +236,18 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
                                     placeholder="+54 9 11 8765-4321"
                                 />
                                 {errors.phone_alt && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.phone_alt}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>WhatsApp</label>
+                                <input
+                                    type="text"
+                                    value={data.whatsapp}
+                                    onChange={e => setData('whatsapp', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="+54 9 11 1234-5678"
+                                />
+                                {errors.whatsapp && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.whatsapp}</div>}
                             </div>
                         </div>
                     </div>
@@ -278,6 +299,17 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
                                             placeholder="Buenos Aires"
                                         />
                                     </div>
+                                </div>
+                                <div>
+                                    <label className={labelClasses}>Código Postal</label>
+                                    <input
+                                        type="text"
+                                        value={data.postal_code}
+                                        onChange={e => setData('postal_code', e.target.value)}
+                                        className={inputClasses}
+                                        placeholder="1425"
+                                    />
+                                    {errors.postal_code && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.postal_code}</div>}
                                 </div>
                             </div>
                         </div>
@@ -383,6 +415,121 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
                             placeholder="Preferencias del odontólogo, horarios de retiro, etc."
                             rows="3"
                         />
+                    </div>
+
+                    {/* CRM Section */}
+                    <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
+                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                    `}>
+                        <div className={`flex items-center gap-2 mb-6 pb-2 border-b
+                            ${isDark ? 'border-slate-800' : 'border-slate-100'}
+                        `}>
+                            <Briefcase size={18} style={{ color: B.teal }} />
+                            <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                Perfil CRM y Comercial
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className={labelClasses}>Especialidad</label>
+                                <input
+                                    type="text"
+                                    value={data.specialty}
+                                    onChange={e => setData('specialty', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Ej. Ortodoncia, Implantología..."
+                                />
+                                {errors.specialty && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.specialty}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Zona</label>
+                                <input
+                                    type="text"
+                                    value={data.zone}
+                                    onChange={e => setData('zone', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Ej. Norte, Sur, Centro..."
+                                />
+                                {errors.zone && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.zone}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Instagram</label>
+                                <input
+                                    type="text"
+                                    value={data.instagram}
+                                    onChange={e => setData('instagram', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="@usuario"
+                                />
+                                {errors.instagram && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.instagram}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Sitio Web</label>
+                                <input
+                                    type="text"
+                                    value={data.website}
+                                    onChange={e => setData('website', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="https://..."
+                                />
+                                {errors.website && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.website}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Origen / Fuente</label>
+                                <select
+                                    value={data.source}
+                                    onChange={e => setData('source', e.target.value)}
+                                    className={inputClasses}
+                                >
+                                    <option value="">Seleccionar...</option>
+                                    <option value="referido">Referido</option>
+                                    <option value="publicidad">Publicidad</option>
+                                    <option value="espontaneo">Espontáneo</option>
+                                    <option value="red_social">Red Social</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                                {errors.source && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.source}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Descuento (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    value={data.discount_pct}
+                                    onChange={e => setData('discount_pct', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="0.00"
+                                />
+                                {errors.discount_pct && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.discount_pct}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>Día de Entrega Preferido</label>
+                                <select
+                                    value={data.preferred_delivery_day}
+                                    onChange={e => setData('preferred_delivery_day', e.target.value)}
+                                    className={inputClasses}
+                                >
+                                    <option value="">Sin preferencia</option>
+                                    <option value="1">Lunes</option>
+                                    <option value="2">Martes</option>
+                                    <option value="3">Miércoles</option>
+                                    <option value="4">Jueves</option>
+                                    <option value="5">Viernes</option>
+                                    <option value="6">Sábado</option>
+                                    <option value="7">Domingo</option>
+                                </select>
+                                {errors.preferred_delivery_day && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.preferred_delivery_day}</div>}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Custom Tariffs Section */}

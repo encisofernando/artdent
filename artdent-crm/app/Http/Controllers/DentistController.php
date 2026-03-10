@@ -17,11 +17,11 @@ class DentistController extends Controller
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('contact_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('contact_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
@@ -29,14 +29,14 @@ class DentistController extends Controller
 
         return Inertia::render('Dentist/Index', [
             'items' => $items,
-            'filters' => $request->only(['search'])
+            'filters' => $request->only(['search']),
         ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-        public function create()
+    public function create()
     {
         return Inertia::render('Dentist/Create');
     }
@@ -52,18 +52,27 @@ class DentistController extends Controller
             'name' => 'required|string|max:255',
             'contact_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:50',
-            'phone_alt' => 'nullable|string|max:50',
+            'phone' => 'nullable|string|max:64',
+            'phone_alt' => 'nullable|string|max:64',
+            'whatsapp' => 'nullable|string|max:64',
+            'specialty' => 'nullable|string|max:100',
+            'zone' => 'nullable|string|max:100',
+            'instagram' => 'nullable|string|max:100',
+            'website' => 'nullable|url|max:255',
+            'source' => 'nullable|string|in:referido,publicidad,espontaneo,red_social,otro',
+            'discount_pct' => 'nullable|numeric|min:0|max:100',
+            'preferred_delivery_day' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
             'province' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
             'cuit' => 'nullable|string|max:50',
             'iva_condition' => 'nullable|string|in:responsable_inscripto,monotributista,exento,consumidor_final',
             'license_number' => 'nullable|string|max:50',
             'credit_limit' => 'nullable|numeric',
             'payment_days' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string',
         ]);
 
         $validated['company_id'] = auth()->user()->company_id;
@@ -105,7 +114,7 @@ class DentistController extends Controller
         return Inertia::render('Dentist/Edit', [
             'item' => $dentist,
             'tariffs' => $tariffs,
-            'customPrices' => $customPrices
+            'customPrices' => $customPrices,
         ]);
     }
 
@@ -125,11 +134,20 @@ class DentistController extends Controller
             'name' => 'required|string|max:255',
             'contact_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:50',
-            'phone_alt' => 'nullable|string|max:50',
+            'phone' => 'nullable|string|max:64',
+            'phone_alt' => 'nullable|string|max:64',
+            'whatsapp' => 'nullable|string|max:64',
+            'specialty' => 'nullable|string|max:100',
+            'zone' => 'nullable|string|max:100',
+            'instagram' => 'nullable|string|max:100',
+            'website' => 'nullable|url|max:255',
+            'source' => 'nullable|string|in:referido,publicidad,espontaneo,red_social,otro',
+            'discount_pct' => 'nullable|numeric|min:0|max:100',
+            'preferred_delivery_day' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
             'province' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
             'cuit' => 'nullable|string|max:50',
             'iva_condition' => 'nullable|string|in:responsable_inscripto,monotributista,exento,consumidor_final',
             'license_number' => 'nullable|string|max:50',
@@ -137,9 +155,9 @@ class DentistController extends Controller
             'payment_days' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
             'notes' => 'nullable|string',
-            'custom_prices' => 'nullable|array', // New array of { tariff_id: id, price: amount }
+            'custom_prices' => 'nullable|array',
             'custom_prices.*.tariff_id' => 'required_with:custom_prices|integer|exists:tariffs,id',
-            'custom_prices.*.price' => 'required_with:custom_prices|numeric|min:0'
+            'custom_prices.*.price' => 'required_with:custom_prices|numeric|min:0',
         ]);
 
         $dentist->update($validated);
@@ -167,6 +185,7 @@ class DentistController extends Controller
             abort(403);
         }
         $dentist->delete();
+
         return redirect()->route('dentists.index')->with('success', 'Odontólogo eliminado exitosamente.');
     }
 }

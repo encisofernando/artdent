@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Patient
- * 
+ *
  * @property int $id
  * @property int $dentist_id
  * @property string $name
@@ -24,38 +24,41 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
- * 
  * @property Dentist $dentist
  * @property Collection|Job[] $jobs
- *
- * @package App\Models
  */
 class Patient extends Model
 {
-	use SoftDeletes;
-	protected $table = 'patients';
+    use SoftDeletes;
 
-	protected $casts = [
-		'dentist_id' => 'int',
-		'birth_date' => 'datetime'
-	];
+    protected $table = 'patients';
 
-	protected $fillable = [
-		'dentist_id',
-		'name',
-		'birth_date',
-		'gender',
-		'phone',
-		'notes'
-	];
+    protected $casts = [
+        'dentist_id' => 'int',
+        'birth_date' => 'datetime',
+    ];
 
-	public function dentist()
-	{
-		return $this->belongsTo(Dentist::class);
-	}
+    protected $fillable = [
+        'dentist_id',
+        'name',
+        'birth_date',
+        'gender',
+        'phone',
+        'email',
+        'dni',
+        'address',
+        'city',
+        'province',
+        'notes',
+    ];
 
-	public function jobs()
-	{
-		return $this->hasMany(Job::class);
-	}
+    public function dentist()
+    {
+        return $this->belongsTo(Dentist::class);
+    }
+
+    public function jobs()
+    {
+        return $this->hasMany(Job::class);
+    }
 }
