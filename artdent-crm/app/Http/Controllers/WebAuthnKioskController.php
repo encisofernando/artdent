@@ -93,91 +93,107 @@ class WebAuthnKioskController extends Controller
         $storedChallenge = session('webauthn_reg_challenge');
         $storedCollaboratorId = session('webauthn_reg_collaborator');
 
-        if (! $storedChallenge || $storedCollaboratorId !== $collaborator->id) {
+        if (! $storedChallenge || (int) $storedCollaboratorId !== $collaborator->id) {
             return response()->json(['error' => 'Sesión de registro inválida. Intentá de nuevo.'], 422);
         }
 
-        // Parse and verify clientDataJSON
-        $clientDataJSON = $this->base64urlDecode($request->input('response.clientDataJSON'));
-        $clientData = json_decode($clientDataJSON, true);
+        try {
+            // Parse and verify clientDataJSON
+            $clientDataJSON = $this->base64urlDecode($request->input('response.clientDataJSON'));
+            $clientData = json_decode($clientDataJSON, true);
 
-        if ($clientData['type'] !== 'webauthn.create') {
-            return response()->json(['error' => 'Tipo de operación WebAuthn inválido.'], 422);
-        }
+            if (! is_array($clientData)) {
+                return response()->json(['error' => 'clientDataJSON inválido.'], 422);
+            }
 
-        $receivedChallenge = $clientData['challenge'];
-        $expectedChallenge = $this->base64url(base64_decode($storedChallenge));
+            if (($clientData['type'] ?? '') !== 'webauthn.create') {
+                return response()->json(['error' => 'Tipo de operación WebAuthn inválido.'], 422);
+            }
 
-        if (! hash_equals($expectedChallenge, $receivedChallenge)) {
-            return response()->json(['error' => 'Challenge de registro inválido.'], 422);
-        }
+            $receivedChallenge = $clientData['challenge'] ?? '';
+            $expectedChallenge = $this->base64url(base64_decode($storedChallenge));
 
-        $origin = $clientData['origin'] ?? '';
-        $appUrl = rtrim(config('app.url'), '/');
-        if ($origin !== $appUrl) {
-            return response()->json(['error' => "Origen inválido: {$origin}"], 422);
-        }
+            if (! hash_equals($expectedChallenge, $receivedChallenge)) {
+                return response()->json(['error' => 'Challenge de registro inválido.'], 422);
+            }
 
-        // Parse attestationObject (CBOR)
-        $attestationObject = $this->base64urlDecode($request->input('response.attestationObject'));
-        $decoder = Decoder::create();
-        $stream = new \CBOR\StringStream($attestationObject);
-        $decoded = $decoder->decode($stream);
+            $origin = $clientData['origin'] ?? '';
+            $appUrl = rtrim(config('app.url'), '/');
+            if ($origin !== $appUrl) {
+                return response()->json(['error' => "Origen inválido: {$origin}"], 422);
+            }
 
-        if (! $decoded instanceof MapObject) {
-            return response()->json(['error' => 'Objeto de attestation inválido.'], 422);
-        }
+            // Parse attestationObject (CBOR)
+            $attestationObject = $this->base64urlDecode($request->input('response.attestationObject'));
+            $decoder = Decoder::create();
+            $stream = new \CBOR\StringStream($attestationObject);
+            $decoded = $decoder->decode($stream);
 
-        $normalized = $decoded->normalize();
-        $authDataBin = $normalized['authData'] ?? null;
+            if (! $decoded instanceof MapObject) {
+                return response()->json(['error' => 'Objeto de attestation inválido.'], 422);
+            }
 
-        if (! $authDataBin) {
-            return response()->json(['error' => 'authData ausente en attestation.'], 422);
-        }
+            $normalized = $decoded->normalize();
+            $authDataBin = $normalized['authData'] ?? null;
 
-        // Parse authData using the library
-        $authDataLoader = AuthenticatorDataLoader::create();
-        $authData = $authDataLoader->load($authDataBin);
+            if (! $authDataBin) {
+                return response()->json(['error' => 'authData ausente en attestation.'], 422);
+            }
 
-        // Verify rpIdHash
-        $expectedRpIdHash = hash('sha256', $this->rpId(), true);
-        if (! hash_equals($expectedRpIdHash, $authData->rpIdHash)) {
-            return response()->json(['error' => 'RP ID hash inválido.'], 422);
-        }
+            // Parse authData using the library
+            $authDataLoader = AuthenticatorDataLoader::create();
+            $authData = $authDataLoader->load($authDataBin);
 
-        if (! $authData->isUserPresent() || ! $authData->isUserVerified()) {
-            return response()->json(['error' => 'El autenticador no verificó la presencia del usuario.'], 422);
-        }
+            // Verify rpIdHash
+            $expectedRpIdHash = hash('sha256', $this->rpId(), true);
+            if (! hash_equals($expectedRpIdHash, $authData->rpIdHash)) {
+                return response()->json(['error' => 'RP ID hash inválido.'], 422);
+            }
 
-        $attestedData = $authData->attestedCredentialData;
-        if (! $attestedData) {
-            return response()->json(['error' => 'No se encontraron datos de credencial.'], 422);
-        }
+            if (! $authData->isUserPresent() || ! $authData->isUserVerified()) {
+                return response()->json(['error' => 'El autenticador no verificó la presencia del usuario.'], 422);
+            }
 
-        $credentialId = $this->base64url($attestedData->credentialId);
-        $publicKeyCbor = $attestedData->credentialPublicKey;
+            $attestedData = $authData->attestedCredentialData;
+            if (! $attestedData) {
+                return response()->json(['error' => 'No se encontraron datos de credencial.'], 422);
+            }
 
-        // Store the credential (one per collaborator per device, replace if same credential_id)
-        CollaboratorWebAuthnCredential::updateOrCreate(
-            [
-                'collaborator_id' => $collaborator->id,
+            $credentialId = $this->base64url($attestedData->credentialId);
+            $publicKeyCbor = $attestedData->credentialPublicKey;
+
+            if (! $publicKeyCbor) {
+                return response()->json(['error' => 'Clave pública ausente en la credencial.'], 422);
+            }
+
+            // Store the credential (one per collaborator per device, replace if same credential_id)
+            CollaboratorWebAuthnCredential::updateOrCreate(
+                [
+                    'collaborator_id' => $collaborator->id,
+                    'credential_id' => $credentialId,
+                ],
+                [
+                    'public_key' => base64_encode($publicKeyCbor),
+                    'sign_count' => $authData->signCount,
+                    'device_label' => $request->input('device_label') ?: 'Dispositivo',
+                    'user_handle' => $this->base64url("collab-{$collaborator->id}"),
+                ]
+            );
+
+            session()->forget(['webauthn_reg_challenge', 'webauthn_reg_collaborator']);
+
+            return response()->json([
+                'success' => true,
                 'credential_id' => $credentialId,
-            ],
-            [
-                'public_key' => base64_encode($publicKeyCbor),
-                'sign_count' => $authData->signCount,
-                'device_label' => $request->input('device_label') ?: 'Dispositivo',
-                'user_handle' => $this->base64url("collab-{$collaborator->id}"),
-            ]
-        );
+                'collaborator' => $collaborator->name,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => 'Datos de credencial inválidos: '.$e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            report($e);
 
-        session()->forget(['webauthn_reg_challenge', 'webauthn_reg_collaborator']);
-
-        return response()->json([
-            'success' => true,
-            'credential_id' => $credentialId,
-            'collaborator' => $collaborator->name,
-        ]);
+            return response()->json(['error' => 'Error al procesar la credencial WebAuthn. Intentá de nuevo.'], 422);
+        }
     }
 
     /**
@@ -216,105 +232,117 @@ class WebAuthnKioskController extends Controller
             return response()->json(['error' => 'No hay sesión de autenticación activa.'], 422);
         }
 
-        // Parse and verify clientDataJSON
-        $clientDataJSON = $this->base64urlDecode($request->input('response.clientDataJSON'));
-        $clientData = json_decode($clientDataJSON, true);
-
-        if ($clientData['type'] !== 'webauthn.get') {
-            return response()->json(['error' => 'Tipo de operación WebAuthn inválido.'], 422);
-        }
-
-        $receivedChallenge = $clientData['challenge'];
-        $expectedChallenge = $this->base64url(base64_decode($storedChallenge));
-
-        if (! hash_equals($expectedChallenge, $receivedChallenge)) {
-            return response()->json(['error' => 'Challenge de autenticación inválido.'], 422);
-        }
-
-        $origin = $clientData['origin'] ?? '';
-        $appUrl = rtrim(config('app.url'), '/');
-        if ($origin !== $appUrl) {
-            return response()->json(['error' => "Origen inválido: {$origin}"], 422);
-        }
-
-        session()->forget('webauthn_auth_challenge');
-
-        // Find the credential
-        $credentialId = $request->input('id');
-        $credential = CollaboratorWebAuthnCredential::where('credential_id', $credentialId)->first();
-
-        if (! $credential) {
-            return response()->json(['error' => 'Huella no reconocida. Registrá el dispositivo primero.'], 422);
-        }
-
-        $collaborator = Collaborator::where('id', $credential->collaborator_id)
-            ->where('is_active', true)
-            ->first();
-
-        if (! $collaborator) {
-            return response()->json(['error' => 'Colaborador inactivo o no encontrado.'], 422);
-        }
-
-        // Parse authData
-        $authDataBin = $this->base64urlDecode($request->input('response.authenticatorData'));
-        $authDataLoader = AuthenticatorDataLoader::create();
-        $authData = $authDataLoader->load($authDataBin);
-
-        // Verify rpIdHash
-        $expectedRpIdHash = hash('sha256', $this->rpId(), true);
-        if (! hash_equals($expectedRpIdHash, $authData->rpIdHash)) {
-            return response()->json(['error' => 'RP ID hash inválido.'], 422);
-        }
-
-        if (! $authData->isUserPresent() || ! $authData->isUserVerified()) {
-            return response()->json(['error' => 'Verificación biométrica fallida.'], 422);
-        }
-
-        // Verify signature
-        $signatureBin = $this->base64urlDecode($request->input('response.signature'));
-        $clientDataHash = hash('sha256', $clientDataJSON, true);
-        $verificationData = $authDataBin.$clientDataHash;
-
-        $publicKeyCbor = base64_decode($credential->public_key);
-        $decoder = Decoder::create();
-        $stream = new \CBOR\StringStream($publicKeyCbor);
-        $cborKey = $decoder->decode($stream);
-
-        if (! $cborKey instanceof MapObject) {
-            return response()->json(['error' => 'Clave pública almacenada inválida.'], 422);
-        }
-
-        $keyData = $cborKey->normalize();
-        $keyType = $keyData[Key::TYPE] ?? null;
-
-        $verified = false;
-
         try {
-            if ($keyType === Key::TYPE_EC2 || $keyType === '2') {
-                $ec2Key = Ec2Key::create($this->normalizeKeyData($keyData));
-                $algo = ES256::create();
-                $verified = $algo->verify($verificationData, $ec2Key, $signatureBin);
-            } elseif ($keyType === Key::TYPE_RSA || $keyType === '3') {
-                $rsaKey = RsaKey::create($this->normalizeKeyData($keyData));
-                $algo = RS256::create();
-                $verified = $algo->verify($verificationData, $rsaKey, $signatureBin);
+            // Parse and verify clientDataJSON
+            $clientDataJSON = $this->base64urlDecode($request->input('response.clientDataJSON'));
+            $clientData = json_decode($clientDataJSON, true);
+
+            if (! is_array($clientData)) {
+                return response()->json(['error' => 'clientDataJSON inválido.'], 422);
             }
-        } catch (\Throwable) {
+
+            if (($clientData['type'] ?? '') !== 'webauthn.get') {
+                return response()->json(['error' => 'Tipo de operación WebAuthn inválido.'], 422);
+            }
+
+            $receivedChallenge = $clientData['challenge'] ?? '';
+            $expectedChallenge = $this->base64url(base64_decode($storedChallenge));
+
+            if (! hash_equals($expectedChallenge, $receivedChallenge)) {
+                return response()->json(['error' => 'Challenge de autenticación inválido.'], 422);
+            }
+
+            $origin = $clientData['origin'] ?? '';
+            $appUrl = rtrim(config('app.url'), '/');
+            if ($origin !== $appUrl) {
+                return response()->json(['error' => "Origen inválido: {$origin}"], 422);
+            }
+
+            session()->forget('webauthn_auth_challenge');
+
+            // Find the credential
+            $credentialId = $request->input('id');
+            $credential = CollaboratorWebAuthnCredential::where('credential_id', $credentialId)->first();
+
+            if (! $credential) {
+                return response()->json(['error' => 'Huella no reconocida. Registrá el dispositivo primero.'], 422);
+            }
+
+            $collaborator = Collaborator::where('id', $credential->collaborator_id)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $collaborator) {
+                return response()->json(['error' => 'Colaborador inactivo o no encontrado.'], 422);
+            }
+
+            // Parse authData
+            $authDataBin = $this->base64urlDecode($request->input('response.authenticatorData'));
+            $authDataLoader = AuthenticatorDataLoader::create();
+            $authData = $authDataLoader->load($authDataBin);
+
+            // Verify rpIdHash
+            $expectedRpIdHash = hash('sha256', $this->rpId(), true);
+            if (! hash_equals($expectedRpIdHash, $authData->rpIdHash)) {
+                return response()->json(['error' => 'RP ID hash inválido.'], 422);
+            }
+
+            if (! $authData->isUserPresent() || ! $authData->isUserVerified()) {
+                return response()->json(['error' => 'Verificación biométrica fallida.'], 422);
+            }
+
+            // Verify signature
+            $signatureBin = $this->base64urlDecode($request->input('response.signature'));
+            $clientDataHash = hash('sha256', $clientDataJSON, true);
+            $verificationData = $authDataBin.$clientDataHash;
+
+            $publicKeyCbor = base64_decode($credential->public_key);
+            $decoder = Decoder::create();
+            $stream = new \CBOR\StringStream($publicKeyCbor);
+            $cborKey = $decoder->decode($stream);
+
+            if (! $cborKey instanceof MapObject) {
+                return response()->json(['error' => 'Clave pública almacenada inválida.'], 422);
+            }
+
+            $keyData = $cborKey->normalize();
+            $keyType = $keyData[Key::TYPE] ?? null;
+
             $verified = false;
+
+            try {
+                if ($keyType === Key::TYPE_EC2 || $keyType === '2') {
+                    $ec2Key = Ec2Key::create($this->normalizeKeyData($keyData));
+                    $algo = ES256::create();
+                    $verified = $algo->verify($verificationData, $ec2Key, $signatureBin);
+                } elseif ($keyType === Key::TYPE_RSA || $keyType === '3') {
+                    $rsaKey = RsaKey::create($this->normalizeKeyData($keyData));
+                    $algo = RS256::create();
+                    $verified = $algo->verify($verificationData, $rsaKey, $signatureBin);
+                }
+            } catch (\Throwable) {
+                $verified = false;
+            }
+
+            if (! $verified) {
+                return response()->json(['error' => 'Firma biométrica inválida. Intentá de nuevo.'], 422);
+            }
+
+            // Update sign_count (replay attack prevention)
+            if ($authData->signCount > 0 && $authData->signCount <= $credential->sign_count) {
+                return response()->json(['error' => 'Contador de firma inválido. Posible ataque de réplica.'], 422);
+            }
+
+            $credential->update(['sign_count' => $authData->signCount]);
+
+            return $this->recordAttendance($request, $collaborator);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => 'Datos de autenticación inválidos: '.$e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => 'Error al verificar la huella. Intentá de nuevo.'], 422);
         }
-
-        if (! $verified) {
-            return response()->json(['error' => 'Firma biométrica inválida. Intentá de nuevo.'], 422);
-        }
-
-        // Update sign_count (replay attack prevention)
-        if ($authData->signCount > 0 && $authData->signCount <= $credential->sign_count) {
-            return response()->json(['error' => 'Contador de firma inválido. Posible ataque de réplica.'], 422);
-        }
-
-        $credential->update(['sign_count' => $authData->signCount]);
-
-        return $this->recordAttendance($request, $collaborator);
     }
 
     /**
