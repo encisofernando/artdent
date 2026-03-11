@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft, Save, BriefcaseMedical, User as UserIcon, Calendar,
-    FileText, Activity, Layers, Receipt, PlusCircle, Trash2, ShieldPlus
+    FileText, Activity, Layers, Receipt, PlusCircle, Trash2, ShieldPlus,
+    Users
 } from 'lucide-react';
 import Odontogram from '@/Components/Odontogram';
+import SearchableSelect from '@/Components/SearchableSelect';
 
-export default function Edit({ auth, item, dentists, patients, jobTypes, users, tariffs }) {
+export default function Edit({ auth, item, dentists, patients, jobTypes, collaborators, tariffs }) {
     const { isDark } = useTheme();
 
     const [isOdontogramOpen, setIsOdontogramOpen] = useState(false);
 
-    // Prepare initial items and teeth
     const initialItems = (item.job_items || []).map(i => ({
-        id: i.id, // Keep track of existing IDs
+        id: i.id,
         tariff_id: i.tariff_id || '',
         description: i.description || '',
         quantity: i.quantity || 1,
@@ -47,15 +48,13 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
         teeth: initialTeeth
     });
 
-    // Generate Derived Values
     const filteredPatients = data.dentist_id
         ? patients.filter(p => p.dentist_id === parseInt(data.dentist_id))
         : patients;
 
-    const subtotal = data.items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.unit_price)), 0);
+    const subtotal = data.items.reduce((acc, i) => acc + (Number(i.quantity) * Number(i.unit_price)), 0);
     const total = subtotal - Number(data.discount_amount);
 
-    // Item Management
     const addItem = () => {
         setData('items', [...data.items, { tariff_id: '', description: '', quantity: 1, unit_price: 0 }]);
     };
@@ -70,7 +69,6 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
         const newItems = [...data.items];
         newItems[index][field] = value;
 
-        // Auto-fill price and description when tariff changes
         if (field === 'tariff_id' && value) {
             const selectedTariff = tariffs.find(t => t.id === parseInt(value));
             if (selectedTariff) {
@@ -87,21 +85,48 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
         put(route('jobs.update', item.id));
     };
 
-    // Styling helpers
     const inputClasses = `w-full rounded-xl border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none placeholder-slate-400
         ${isDark
             ? 'bg-slate-800/50 border-slate-700 text-white focus:border-teal-500 focus:ring-teal-500/20'
             : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-teal-500 focus:ring-teal-500/20'
         }`;
 
+
     const labelClasses = `block text-xs font-bold uppercase tracking-wider mb-1.5
         ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
-    };
+    const formatCurrency = (amount) =>
+        new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
 
     const B = { blue: "#397B9C", teal: "#49949C" };
+
+    const dentistOptions = dentists.map(d => ({ value: d.id, label: d.name }));
+    const tariffOptions = tariffs.map(t => ({ value: t.id, label: `${t.name}  $${Number(t.price).toLocaleString('es-AR')}` }));
+    const jobTypeOptions = [{ value: '', label: 'Categoría General...' }, ...jobTypes.map(jt => ({ value: jt.id, label: jt.name }))];
+    const collaboratorOptions = collaborators.map(c => ({ value: c.id, label: c.name }));
+    const statusOptions = [
+        { value: 'received', label: 'Pendiente' },
+        { value: 'in_progress', label: 'En Proceso' },
+        { value: 'quality_check', label: 'En Prueba' },
+        { value: 'ready', label: 'Terminado' },
+        { value: 'delivered', label: 'Entregado' },
+        { value: 'cancelled', label: 'Cancelado' },
+    ];
+    const priorityOptions = [
+        { value: 'normal', label: 'Normal' },
+        { value: 'urgent', label: 'Urgente' },
+        { value: 'rush', label: 'Extra Urgente' },
+    ];
+
+    const statusLabels = {
+        received: 'Pendiente',
+        in_progress: 'En Proceso',
+        quality_check: 'En Prueba',
+        ready: 'Terminado',
+        delivered: 'Entregado',
+        cancelled: 'Cancelado',
+    };
+
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -116,41 +141,30 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                 Editar Orden #{item.job_number}
                             </h1>
                             <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase ${isDark ? 'bg-slate-800 text-teal-400' : 'bg-teal-50 text-teal-600'}`}>
-                                {data.status === 'received' && 'Pendiente'}
-                                {data.status === 'in_progress' && 'En Proceso'}
-                                {data.status === 'quality_check' && 'En Prueba'}
-                                {data.status === 'ready' && 'Terminado'}
-                                {data.status === 'delivered' && 'Entregado'}
-                                {data.status === 'cancelled' && 'Cancelado'}
+                                {statusLabels[data.status] ?? data.status}
                             </span>
                         </div>
                         <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             Modifica los detalles del trabajo enviado por el odontólogo.
                         </p>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                        <Link href={route('jobs.index')}>
-                            <Button variant="outline" className={isDark ? "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : ""}>
-                                <ArrowLeft className="mr-2" size={16} />
-                                Volver a la Lista
-                            </Button>
-                        </Link>
-                    </div>
+                    <Link href={route('jobs.index')}>
+                        <Button variant="outline" className={isDark ? "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : ""}>
+                            <ArrowLeft className="mr-2" size={16} />
+                            Volver a la Lista
+                        </Button>
+                    </Link>
                 </div>
 
                 <form onSubmit={submit} className="flex flex-col xl:flex-row gap-6">
 
-                    {/* Left Column: Form Details */}
+                    {/* Left Column */}
                     <div className="flex-1 flex flex-col gap-6">
 
                         {/* 1. Cliente y Paciente */}
                         <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
-                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
-                        `}>
-                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b
-                                ${isDark ? 'border-slate-800' : 'border-slate-100'}
-                            `}>
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
+                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                                 <UserIcon size={18} style={{ color: B.teal }} />
                                 <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                     Cliente y Paciente
@@ -160,22 +174,14 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className={labelClasses}>Odontólogo / Clínica *</label>
-                                    <select
+                                    <SearchableSelect
+                                        options={dentistOptions}
                                         value={data.dentist_id}
-                                        onChange={e => {
-                                            setData('dentist_id', e.target.value);
-                                            // Reset patient if dentist changes
-                                            setData('patient_name', '');
-                                        }}
-                                        className={inputClasses}
+                                        onChange={val => { setData('dentist_id', val); setData('patient_name', ''); }}
+                                        placeholder="Buscar odontólogo..."
                                         required
-                                    >
-                                        <option value="">Seleccione un Odontólogo...</option>
-                                        {dentists.map(d => (
-                                            <option key={d.id} value={d.id}>{d.name} {d.contact_name ? `(${d.contact_name})` : ''}</option>
-                                        ))}
-                                    </select>
-                                    {errors.dentist_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dentist_id}</div>}
+                                        error={errors.dentist_id}
+                                    />
                                 </div>
 
                                 <div>
@@ -187,7 +193,7 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                         onChange={e => setData('patient_name', e.target.value)}
                                         className={inputClasses}
                                         disabled={!data.dentist_id}
-                                        placeholder={data.dentist_id ? "Nombre del paciente (se creará si no existe)..." : "Seleccione un odontólogo primero"}
+                                        placeholder={data.dentist_id ? "Nombre del paciente..." : "Seleccione un odontólogo primero"}
                                     />
                                     <datalist id="patients-list-edit">
                                         {filteredPatients.map(p => (
@@ -199,13 +205,10 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                             </div>
                         </div>
 
-                        {/* 2. Detalles del Trabajo */}
+                        {/* 2. Especificaciones del Trabajo */}
                         <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
-                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
-                        `}>
-                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b justify-between
-                                ${isDark ? 'border-slate-800' : 'border-slate-100'}
-                            `}>
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
+                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b justify-between ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                                 <div className="flex items-center gap-2">
                                     <BriefcaseMedical size={18} style={{ color: B.teal }} />
                                     <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
@@ -222,7 +225,6 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                 </button>
                             </div>
 
-                            {/* Teeth Selection Preview */}
                             {data.teeth.length > 0 ? (
                                 <div className="mb-6 p-4 rounded-xl border border-teal-500/30 bg-teal-500/5">
                                     <div className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 mb-2">
@@ -247,17 +249,13 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className={labelClasses}>Tipo de Trabajo</label>
-                                    <select
+                                    <SearchableSelect
+                                        options={jobTypeOptions}
                                         value={data.job_type_id}
-                                        onChange={e => setData('job_type_id', e.target.value)}
-                                        className={inputClasses}
-                                    >
-                                        <option value="">Categoría General...</option>
-                                        {jobTypes.map(jt => (
-                                            <option key={jt.id} value={jt.id}>{jt.name}</option>
-                                        ))}
-                                    </select>
-                                    {errors.job_type_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.job_type_id}</div>}
+                                        onChange={val => setData('job_type_id', val)}
+                                        placeholder="Categoría General..."
+                                        error={errors.job_type_id}
+                                    />
                                 </div>
 
                                 <div className="lg:col-span-2">
@@ -286,13 +284,10 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                             </div>
                         </div>
 
-                        {/* 3. Items / Aranceles */}
+                        {/* 3. Trabajos a Facturar */}
                         <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
-                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
-                        `}>
-                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b justify-between
-                                ${isDark ? 'border-slate-800' : 'border-slate-100'}
-                            `}>
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
+                            <div className={`flex items-center gap-2 mb-6 pb-2 border-b justify-between ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                                 <div className="flex items-center gap-2">
                                     <Layers size={18} style={{ color: B.teal }} />
                                     <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
@@ -319,75 +314,66 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                     <p className="text-sm text-slate-500 dark:text-slate-400">No hay aranceles en esta orden.</p>
                                 </div>
                             ) : (
-                                <div className="flex flex-col gap-4">
-                                    <div className="hidden md:grid grid-cols-12 gap-4 px-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                        <div className="col-span-5 border-r border-slate-200 dark:border-slate-700">Arancel / Descripción</div>
-                                        <div className="col-span-2 text-center border-r border-slate-200 dark:border-slate-700">Cant.</div>
-                                        <div className="col-span-2 text-right border-r border-slate-200 dark:border-slate-700 pr-2">Precio U.</div>
+                                <div className="flex flex-col gap-3">
+                                    {/* Header */}
+                                    <div className="hidden md:grid grid-cols-12 gap-3 px-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                        <div className="col-span-5">Arancel / Descripción</div>
+                                        <div className="col-span-2 text-center">Cant.</div>
+                                        <div className="col-span-2 text-right pr-2">Precio U.</div>
                                         <div className="col-span-2 text-right pr-2">Subtotal</div>
-                                        <div className="col-span-1 border-slate-200 dark:border-slate-700"></div>
+                                        <div className="col-span-1"></div>
                                     </div>
 
-                                    {data.items.map((item, index) => (
-                                        <div key={index} className={`relative flex flex-col md:grid md:grid-cols-12 gap-4 items-center p-4 md:p-2 rounded-xl border md:border-transparent md:border-b
-                                            ${isDark ? 'border-slate-700/50 bg-slate-800/20 md:bg-transparent md:border-b-slate-800' : 'border-slate-200 bg-slate-50/50 md:bg-transparent md:border-b-slate-100'}
-                                        `}>
-                                            <div className="col-span-5 w-full space-y-2">
-                                                <select
-                                                    value={item.tariff_id}
-                                                    onChange={e => handleItemChange(index, 'tariff_id', e.target.value)}
-                                                    className={inputClasses}
+                                    {data.items.map((itm, index) => (
+                                        <div key={index} className={`relative flex flex-col md:grid md:grid-cols-12 gap-3 items-start p-4 md:p-2 rounded-xl border md:border-transparent md:border-b
+                                            ${isDark ? 'border-slate-700/50 bg-slate-800/20 md:bg-transparent md:border-b-slate-800' : 'border-slate-200 bg-slate-50/50 md:bg-transparent md:border-b-slate-100'}`}>
+
+                                            {/* Arancel selector */}
+                                            <div className="col-span-5 w-full">
+                                                <span className="md:hidden text-[10px] font-bold uppercase text-slate-500 mb-1 block">Arancel</span>
+                                                <SearchableSelect
+                                                    options={tariffOptions}
+                                                    value={itm.tariff_id}
+                                                    onChange={val => handleItemChange(index, 'tariff_id', val)}
+                                                    placeholder="Buscar arancel..."
                                                     required
-                                                >
-                                                    <option value="">Seleccionar Lista de Precios...</option>
-                                                    {tariffs.map(t => (
-                                                        <option key={t.id} value={t.id}>{t.name} (Base: ${t.price})</option>
-                                                    ))}
-                                                </select>
-                                                <input
-                                                    type="text"
-                                                    value={item.description}
-                                                    onChange={e => handleItemChange(index, 'description', e.target.value)}
-                                                    className={`${inputClasses} text-xs`}
-                                                    placeholder="Detalle adicional..."
-                                                    required
+                                                    error={errors[`items.${index}.tariff_id`]}
                                                 />
-                                                {errors[`items.${index}.tariff_id`] && <div className="text-red-500 text-[10px]">{errors[`items.${index}.tariff_id`]}</div>}
                                             </div>
 
+                                            {/* Cantidad — sin flechas */}
                                             <div className="col-span-2 w-full flex items-center md:justify-center">
-                                                <span className="md:hidden text-xs font-bold text-slate-500 w-24">Cant:</span>
+                                                <span className="md:hidden text-[10px] font-bold uppercase text-slate-500 w-20">Cant:</span>
                                                 <input
                                                     type="number"
-                                                    value={item.quantity}
+                                                    value={itm.quantity}
                                                     onChange={e => handleItemChange(index, 'quantity', e.target.value)}
-                                                    className={`${inputClasses} text-center`}
-                                                    step="0.01"
-                                                    min="0.01"
+                                                    className={`${inputClasses} text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                                                    min="1"
+                                                    step="1"
                                                     required
                                                 />
                                             </div>
 
-                                            <div className="col-span-2 w-full flex items-center md:justify-end relative">
-                                                <span className="md:hidden text-xs font-bold text-slate-500 w-24">Precio:</span>
-                                                <div className="absolute inset-y-0 left-0 pl-3 md:pl-2 flex items-center pointer-events-none md:hidden">
-                                                    <span className="text-slate-400 text-sm">$</span>
-                                                </div>
+                                            {/* Precio unitario — sin flechas */}
+                                            <div className="col-span-2 w-full flex items-center md:justify-end">
+                                                <span className="md:hidden text-[10px] font-bold uppercase text-slate-500 w-20">Precio:</span>
                                                 <input
                                                     type="number"
-                                                    value={item.unit_price}
+                                                    value={itm.unit_price}
                                                     onChange={e => handleItemChange(index, 'unit_price', e.target.value)}
-                                                    className={`${inputClasses} text-right pl-6 md:pl-2`}
-                                                    step="0.01"
+                                                    className={`${inputClasses} text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                                                     min="0"
                                                     required
                                                 />
                                             </div>
 
-                                            <div className="col-span-2 w-full flex items-center md:justify-end text-sm font-bold opacity-80 pl-24 md:pl-0 text-slate-700 dark:text-slate-300">
-                                                {formatCurrency(Number(item.quantity) * Number(item.unit_price))}
+                                            {/* Subtotal */}
+                                            <div className="col-span-2 w-full flex items-center md:justify-end text-sm font-bold opacity-80 pl-20 md:pl-0 text-slate-700 dark:text-slate-300">
+                                                {formatCurrency(Number(itm.quantity) * Number(itm.unit_price))}
                                             </div>
 
+                                            {/* Eliminar */}
                                             <div className="col-span-1 w-full md:w-auto absolute top-4 right-4 md:static flex justify-end">
                                                 <button
                                                     type="button"
@@ -401,17 +387,15 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                     ))}
                                 </div>
                             )}
-
                         </div>
                     </div>
 
-                    {/* Right Column: Status & Timeline */}
+                    {/* Right Column */}
                     <div className="w-full xl:w-96 flex flex-col gap-6">
 
-                        {/* Status Panel */}
+                        {/* Estado y Tiempos */}
                         <div className={`rounded-2xl border shadow-sm transition-colors overflow-hidden
-                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
-                        `}>
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
                             <div className={`p-6 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                                 <div className="flex items-center gap-2 mb-4">
                                     <Activity size={18} style={{ color: B.blue }} />
@@ -423,30 +407,36 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                 <div className="flex flex-col gap-4">
                                     <div>
                                         <label className={labelClasses}>Estado Actual *</label>
-                                        <select
+                                        <SearchableSelect
+                                            options={statusOptions}
                                             value={data.status}
-                                            onChange={e => setData('status', e.target.value)}
-                                            className={`${inputClasses} font-bold`}
-                                        >
-                                            <option value="received">Pendiente</option>
-                                            <option value="in_progress">En Proceso</option>
-                                            <option value="quality_check">En Prueba</option>
-                                            <option value="ready">Terminado</option>
-                                            <option value="delivered">Entregado</option>
-                                            <option value="cancelled">Cancelado</option>
-                                        </select>
+                                            onChange={val => setData('status', val)}
+                                            placeholder="Seleccionar estado..."
+                                        />
                                     </div>
                                     <div>
                                         <label className={labelClasses}>Prioridad</label>
-                                        <select
+                                        <SearchableSelect
+                                            options={priorityOptions}
                                             value={data.priority}
-                                            onChange={e => setData('priority', e.target.value)}
-                                            className={`${inputClasses} ${data.priority === 'Urgente' ? 'text-red-500 font-bold border-red-500/50' : ''}`}
-                                        >
-                                            <option value="normal">Normal</option>
-                                            <option value="urgent">Urgente</option>
-                                            <option value="rush">Extra Urgente / Baja</option>
-                                        </select>
+                                            onChange={val => setData('priority', val)}
+                                            placeholder="Seleccionar prioridad..."
+                                        />
+                                    </div>
+
+                                    {/* Colaborador asignado */}
+                                    <div>
+                                        <label className={labelClasses}>
+                                            <Users size={11} className="inline mr-1" />
+                                            Colaborador Asignado
+                                        </label>
+                                        <SearchableSelect
+                                            options={collaboratorOptions}
+                                            value={data.assigned_user_id}
+                                            onChange={val => setData('assigned_user_id', val)}
+                                            placeholder="Asignar colaborador..."
+                                            error={errors.assigned_user_id}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -480,16 +470,27 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                         {errors.due_date && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.due_date}</div>}
                                     </div>
                                 </div>
+                                {data.status === 'delivered' && (
+                                    <div className="flex items-start gap-3">
+                                        <Calendar className="mt-0.5 text-emerald-500" size={16} />
+                                        <div className="flex-1">
+                                            <label className={labelClasses}>Fecha Entrega Real</label>
+                                            <input
+                                                type="date"
+                                                value={data.delivered_at}
+                                                onChange={e => setData('delivered_at', e.target.value)}
+                                                className={inputClasses}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Summary Panel */}
+                        {/* Resumen */}
                         <div className={`rounded-2xl border p-6 shadow-sm transition-colors
-                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
-                        `}>
-                            <div className={`flex items-center gap-2 mb-4 pb-2 border-b
-                                ${isDark ? 'border-slate-800' : 'border-slate-100'}
-                            `}>
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
+                            <div className={`flex items-center gap-2 mb-4 pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                                 <FileText size={18} style={{ color: B.teal }} />
                                 <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                     Resumen
@@ -507,12 +508,11 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                                         type="number"
                                         value={data.discount_amount}
                                         onChange={e => setData('discount_amount', e.target.value)}
-                                        className="w-24 text-right rounded-md border-slate-200 dark:border-slate-700 bg-transparent text-sm py-1 px-2 focus:ring-1"
+                                        className="w-24 text-right rounded-md border border-slate-200 dark:border-slate-700 bg-transparent text-sm py-1 px-2 focus:ring-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     />
                                 </div>
                                 <div className={`flex justify-between items-center pt-3 border-t font-extrabold text-lg
-                                    ${isDark ? 'border-slate-800 text-teal-400' : 'border-slate-200 text-teal-700'}
-                                `}>
+                                    ${isDark ? 'border-slate-800 text-teal-400' : 'border-slate-200 text-teal-700'}`}>
                                     <span>Total:</span>
                                     <span>{formatCurrency(total)}</span>
                                 </div>
@@ -530,16 +530,13 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, users, 
                         </div>
                     </div>
                 </form>
-
             </div>
 
             <Odontogram
                 open={isOdontogramOpen}
                 onClose={() => setIsOdontogramOpen(false)}
                 initialValue={data.teeth}
-                onSelect={(selections) => {
-                    setData('teeth', selections);
-                }}
+                onSelect={(selections) => setData('teeth', selections)}
             />
         </AuthenticatedLayout>
     );

@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Building2, WalletCards, FileText } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Create({ auth, dentists, paymentMethods }) {
     const { isDark } = useTheme();
@@ -18,12 +19,25 @@ export default function Create({ auth, dentists, paymentMethods }) {
 
     const selectedDentist = dentists.find(d => d.id === parseInt(data.dentist_id));
     const currentBalance = selectedDentist?.lab_account?.balance || 0;
-    const projectedBalance =
-        currentBalance - (parseFloat(data.amount) || 0);
+
     const submit = (e) => {
         e.preventDefault();
         post(route('lab-account-moves.store'));
     };
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
+    };
+
+    const dentistOptions = dentists.map(d => ({
+        value: d.id,
+        label: `${d.name}${d.last_name ? ' ' + d.last_name : ''} — Saldo: ${formatCurrency(d.lab_account?.balance || 0)}`
+    }));
+
+    const paymentMethodOptions = paymentMethods.map(pm => ({
+        value: pm.id,
+        label: pm.name
+    }));
 
     const inputClasses = `w-full rounded-xl border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none placeholder-slate-400
         ${isDark
@@ -33,10 +47,6 @@ export default function Create({ auth, dentists, paymentMethods }) {
 
     const labelClasses = `block text-xs font-bold uppercase tracking-wider mb-1.5
         ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
-    };
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -74,19 +84,14 @@ export default function Create({ auth, dentists, paymentMethods }) {
                             </div>
                             <div>
                                 <label className={labelClasses}>Odontólogo / Clínica *</label>
-                                <select
+                                <SearchableSelect
+                                    options={dentistOptions}
                                     value={data.dentist_id}
-                                    onChange={e => setData('dentist_id', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={val => setData('dentist_id', val)}
+                                    placeholder="Seleccione un Odontólogo..."
                                     required
-                                >
-                                    <option value="">Seleccione un Odontólogo...</option>
-                                    {dentists.map(d => (
-                                        <option key={d.id} value={d.id}>
-                                            {d.name} {d.last_name || ''} - Saldo: {formatCurrency(projectedBalance)}
-                                        </option>
-                                    ))}
-                                </select>
+                                    error={errors.dentist_id}
+                                />
                                 {errors.dentist_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dentist_id}</div>}
                             </div>
 
@@ -115,12 +120,12 @@ export default function Create({ auth, dentists, paymentMethods }) {
                                     <label className={labelClasses}>Monto a Acreditar ($) *</label>
                                     <input
                                         type="number"
-                                        step="0.01"
-                                        min="0.01"
+                                        step="1"
+                                        min="1"
                                         value={data.amount}
                                         onChange={e => setData('amount', e.target.value)}
                                         className={`${inputClasses} font-bold text-lg text-emerald-600 dark:text-emerald-400`}
-                                        placeholder="0.00"
+                                        placeholder="0"
                                         required
                                     />
                                     {errors.amount && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.amount}</div>}
@@ -140,17 +145,14 @@ export default function Create({ auth, dentists, paymentMethods }) {
 
                                 <div className="md:col-span-2">
                                     <label className={labelClasses}>Método de Pago *</label>
-                                    <select
+                                    <SearchableSelect
+                                        options={paymentMethodOptions}
                                         value={data.payment_method_id}
-                                        onChange={e => setData('payment_method_id', e.target.value)}
-                                        className={inputClasses}
+                                        onChange={val => setData('payment_method_id', val)}
+                                        placeholder="Seleccionar método..."
                                         required
-                                    >
-                                        <option value="">Seleccionar método...</option>
-                                        {paymentMethods.map(pm => (
-                                            <option key={pm.id} value={pm.id}>{pm.name}</option>
-                                        ))}
-                                    </select>
+                                        error={errors.payment_method_id}
+                                    />
                                     {errors.payment_method_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.payment_method_id}</div>}
                                 </div>
 

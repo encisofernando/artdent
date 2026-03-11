@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Job;
 use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
-use App\Models\JobCollaborator;
+use App\Models\Job;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -30,13 +29,13 @@ class CollaboratorAssignController extends Controller
      */
     public function unassignedJobs(Request $request)
     {
-        $jobs = Job::with(['dentist', 'patient', 'job_type', 'collaborators'])
+        $jobs = Job::with(['dentist', 'patient', 'job_type', 'job_items', 'collaborators'])
             ->where('company_id', $this->companyId($request))
             ->whereIn('status', ['pending', 'received', 'in_progress', 'en_proceso', 'pendiente'])
             ->whereDoesntHave('collaborators')
             ->orderBy('due_date')
             ->get()
-            ->map(fn($job) => $this->formatJob($job));
+            ->map(fn ($job) => $this->formatJob($job));
 
         return response()->json(['data' => $jobs]);
     }
@@ -47,13 +46,13 @@ class CollaboratorAssignController extends Controller
      */
     public function assignedJobs(Request $request)
     {
-        $jobs = Job::with(['dentist', 'patient', 'job_type', 'collaborators'])
+        $jobs = Job::with(['dentist', 'patient', 'job_type', 'job_items', 'collaborators'])
             ->where('company_id', $this->companyId($request))
             ->whereIn('status', ['pending', 'received', 'in_progress', 'en_proceso', 'pendiente'])
             ->whereHas('collaborators')
             ->orderBy('due_date')
             ->get()
-            ->map(fn($job) => $this->formatJob($job));
+            ->map(fn ($job) => $this->formatJob($job));
 
         return response()->json(['data' => $jobs]);
     }
@@ -77,11 +76,11 @@ class CollaboratorAssignController extends Controller
             ->whereIn('id', $presentIds)
             ->orderBy('name')
             ->get()
-            ->map(fn($c) => [
-                'id'        => $c->id,
-                'name'      => $c->name,
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
                 'specialty' => $c->specialty,
-                'initials'  => $this->initials($c->name),
+                'initials' => $this->initials($c->name),
             ]);
 
         return response()->json(['data' => $collaborators]);
@@ -103,7 +102,7 @@ class CollaboratorAssignController extends Controller
             ->where('collaborator_id', $request->collaborator_id)
             ->exists();
 
-        if (!$already) {
+        if (! $already) {
             $job->collaborators()->attach($request->collaborator_id, [
                 'assigned_by' => auth()->id(),
                 'assigned_at' => now(),
@@ -120,7 +119,7 @@ class CollaboratorAssignController extends Controller
 
         return response()->json([
             'message' => 'Colaborador asignado correctamente.',
-            'data'    => $this->formatJob($job),
+            'data' => $this->formatJob($job),
         ]);
     }
 
@@ -152,31 +151,33 @@ class CollaboratorAssignController extends Controller
     private function formatJob(Job $job): array
     {
         return [
-            'id'          => $job->id,
-            'job_number'  => $job->job_number,
-            'status'      => $job->status,
-            'priority'    => $job->priority,
-            'description' => $job->description,
-            'shade'       => $job->shade,
-            'due_date'    => $job->due_date?->toDateString(),
+            'id' => $job->id,
+            'job_number' => $job->job_number,
+            'status' => $job->status,
+            'priority' => $job->priority,
+            'shade' => $job->shade,
+            'due_date' => $job->due_date?->toDateString(),
             'received_at' => $job->received_at?->toDateString(),
-            'dentist'     => $job->dentist ? [
-                'id'   => $job->dentist->id,
+            'dentist' => $job->dentist ? [
+                'id' => $job->dentist->id,
                 'name' => $job->dentist->name,
             ] : null,
-            'patient'     => $job->patient ? [
-                'id'   => $job->patient->id,
+            'patient' => $job->patient ? [
+                'id' => $job->patient->id,
                 'name' => $job->patient->name,
             ] : null,
-            'job_type'    => $job->job_type ? [
-                'id'   => $job->job_type->id,
+            'job_type' => $job->job_type ? [
+                'id' => $job->job_type->id,
                 'name' => $job->job_type->name,
             ] : null,
-            'collaborators' => $job->collaborators->map(fn($c) => [
-                'id'        => $c->id,
-                'name'      => $c->name,
+            'description' => $job->job_type
+                ? $job->description
+                : ($job->job_items->first()?->description ?? $job->description),
+            'collaborators' => $job->collaborators->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
                 'specialty' => $c->specialty,
-                'initials'  => $this->initials($c->name),
+                'initials' => $this->initials($c->name),
             ])->values(),
         ];
     }
@@ -185,8 +186,9 @@ class CollaboratorAssignController extends Controller
     {
         $parts = array_filter(explode(' ', trim($name)));
         if (count($parts) >= 2) {
-            return strtoupper(mb_substr($parts[0], 0, 1) . mb_substr($parts[1], 0, 1));
+            return strtoupper(mb_substr($parts[0], 0, 1).mb_substr($parts[1], 0, 1));
         }
+
         return strtoupper(mb_substr($name, 0, 2));
     }
 }

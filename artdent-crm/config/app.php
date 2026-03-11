@@ -123,4 +123,8 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'lab_allowed_ips' => env('LAB_ALLOWED_IPS', '127.0.0.1,::1'),
+
+    'kiosk_token' => env('KIOSK_TOKEN'),
+
 ];

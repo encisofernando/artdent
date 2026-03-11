@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(vendor/bin/pint --dirty)"
+      "Bash(vendor/bin/pint --dirty)",
+      "Bash(grep -E \"\\\\.\\(php|sql\\)$\")",
+      "Bash(python3 -c \":*)",
+      "Bash(node -e \":*)",
+      "Bash(php artisan:*)",
+      "Bash(\"/c/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm/.env\":*)",
+      "Bash(curl -L -o tiny_face_detector_model-weights_manifest.json \"https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/tiny_face_detector_model-weights_manifest.json\")",
+      "Bash(curl -L -o face_landmark_68_tiny_model-weights_manifest.json \"https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/face_landmark_68_tiny_model-weights_manifest.json\")",
+      "Bash(curl -L -o tiny_face_detector_model-weights_manifest.json \"https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/tiny_face_detector_model-weights_manifest.json\")",
+      "Bash(curl -L -o tiny_face_detector_model-shard1 \"https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/tiny_face_detector_model-shard1\")",
+      "Bash(curl -L -o face_landmark_68_tiny_model-shard1 \"https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/face_landmark_68_tiny_model-shard1\")",
+      "Bash(npm install:*)",
+      "Bash(./vendor/bin/pint --dirty app/Services/CompreFaceService.php)",
+      "Bash(composer require:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(php -l app/Http/Controllers/WebAuthnKioskController.php app/Models/CollaboratorWebAuthnCredential.php app/Http/Controllers/CollaboratorController.php)"
     ]
   }
 }

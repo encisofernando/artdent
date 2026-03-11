@@ -62,9 +62,10 @@ const NAV_SECTIONS = [
             {
                 title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
                 children: [
-                    { title: "Lista", path: "/colaboradores" },
-                    { title: "Asistencias", path: "/colaboradores/asistencias" },
-                    { title: "Recibos", path: "/colaboradores/recibos" },
+                    { title: "Lista", path: "/collaborators" },
+                    { title: "Asistencias", path: "/collaborator-attendances" },
+                    { title: "Recibos", path: "/collaborator-receipts" },
+                    { title: "Kiosk de Fichaje", path: "/attendance-kiosk", external: true },
                 ],
             },
         ],
@@ -213,15 +214,19 @@ export default function Sidebar({ className = "" }) {
                                                     <ul className="mt-1 ml-4 pl-4 border-l border-slate-700 space-y-1">
                                                         {item.children.map(child => {
                                                             const childActive = isActive(child.path);
+                                                            const childClass = `block px-3 py-2 text-sm rounded-md transition-colors truncate
+                                                                ${childActive ? 'bg-emerald-500/10 text-emerald-500 font-semibold' : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-600 hover:bg-slate-50 hover:text-emerald-700')}`;
                                                             return (
                                                                 <li key={child.path}>
-                                                                    <Link
-                                                                        href={child.path}
-                                                                        className={`block px-3 py-2 text-sm rounded-md transition-colors truncate
-                                                                            ${childActive ? 'bg-emerald-500/10 text-emerald-500 font-semibold' : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-600 hover:bg-slate-50 hover:text-emerald-700')}`}
-                                                                    >
-                                                                        {child.title}
-                                                                    </Link>
+                                                                    {child.external ? (
+                                                                        <a href={child.path} target="_blank" rel="noopener noreferrer" className={childClass}>
+                                                                            {child.title}
+                                                                        </a>
+                                                                    ) : (
+                                                                        <Link href={child.path} className={childClass}>
+                                                                            {child.title}
+                                                                        </Link>
+                                                                    )}
                                                                 </li>
                                                             )
                                                         })}

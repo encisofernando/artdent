@@ -110,6 +110,11 @@ class Dentist extends Model
         return $this->hasOne(LabAccount::class);
     }
 
+    public function labAccount()
+    {
+        return $this->hasOne(LabAccount::class);
+    }
+
     public function patients()
     {
         return $this->hasMany(Patient::class);

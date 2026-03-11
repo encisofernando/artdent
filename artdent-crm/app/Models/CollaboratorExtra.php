@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class CollaboratorExtra
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property int $collaborator_id
@@ -20,32 +20,29 @@ use Illuminate\Database\Eloquent\Model;
  * @property float $amount
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * 
  * @property Collaborator $collaborator
- *
- * @package App\Models
  */
 class CollaboratorExtra extends Model
 {
-	protected $table = 'collaborator_extras';
+    protected $table = 'collaborator_extras';
 
-	protected $casts = [
-		'company_id' => 'int',
-		'collaborator_id' => 'int',
-		'date' => 'datetime',
-		'amount' => 'float'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'collaborator_id' => 'int',
+        'date' => 'date:Y-m-d',
+        'amount' => 'float',
+    ];
 
-	protected $fillable = [
-		'company_id',
-		'collaborator_id',
-		'date',
-		'concept',
-		'amount'
-	];
+    protected $fillable = [
+        'company_id',
+        'collaborator_id',
+        'date',
+        'concept',
+        'amount',
+    ];
 
-	public function collaborator()
-	{
-		return $this->belongsTo(Collaborator::class);
-	}
+    public function collaborator()
+    {
+        return $this->belongsTo(Collaborator::class);
+    }
 }

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class CollaboratorAttendance
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property int $collaborator_id
@@ -27,54 +27,53 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool|null $is_absent
  * @property string|null $absence_reason
  * @property string|null $notes
+ * @property string|null $photo_path
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * 
  * @property Collaborator $collaborator
  * @property Company $company
- *
- * @package App\Models
  */
 class CollaboratorAttendance extends Model
 {
-	protected $table = 'collaborator_attendances';
+    protected $table = 'collaborator_attendances';
 
-	protected $casts = [
-		'company_id' => 'int',
-		'collaborator_id' => 'int',
-		'work_date' => 'datetime',
-		'time_in' => 'datetime',
-		'time_out' => 'datetime',
-		'hours' => 'float',
-		'hourly_rate_snap' => 'float',
-		'amount' => 'float',
-		'is_absent' => 'bool'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'collaborator_id' => 'int',
+        'work_date' => 'date:Y-m-d',
+        'time_in' => 'datetime:H:i:s',
+        'time_out' => 'datetime:H:i:s',
+        'hours' => 'float',
+        'hourly_rate_snap' => 'float',
+        'amount' => 'float',
+        'is_absent' => 'bool',
+    ];
 
-	protected $fillable = [
-		'company_id',
-		'collaborator_id',
-		'work_date',
-		'time_in',
-		'time_out',
-		'hours',
-		'hourly_rate_snap',
-		'amount',
-		'method',
-		'ip_address',
-		'device_info',
-		'is_absent',
-		'absence_reason',
-		'notes'
-	];
+    protected $fillable = [
+        'company_id',
+        'collaborator_id',
+        'work_date',
+        'time_in',
+        'time_out',
+        'hours',
+        'hourly_rate_snap',
+        'amount',
+        'method',
+        'ip_address',
+        'device_info',
+        'is_absent',
+        'absence_reason',
+        'notes',
+        'photo_path',
+    ];
 
-	public function collaborator()
-	{
-		return $this->belongsTo(Collaborator::class);
-	}
+    public function collaborator()
+    {
+        return $this->belongsTo(Collaborator::class);
+    }
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 }

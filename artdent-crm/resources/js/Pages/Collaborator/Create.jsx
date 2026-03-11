@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, Info, UserRound, DollarSign } from 'lucide-react';
+import { ArrowLeft, Save, UserRound, DollarSign, ScanFace } from 'lucide-react';
 
 export default function Create({ auth }) {
     const { isDark } = useTheme();
@@ -13,8 +13,10 @@ export default function Create({ auth }) {
         email: '',
         phone: '',
         address: '',
+        birth_date: '',
         specialty: '',
         hourly_rate: '',
+        faceio_fid: '',
         is_active: 1,
         notes: '',
     });
@@ -143,6 +145,17 @@ export default function Create({ auth }) {
                                 />
                                 {errors.address && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.address}</div>}
                             </div>
+
+                            <div className="md:col-span-1">
+                                <label className={labelClasses}>Fecha de Nacimiento</label>
+                                <input
+                                    type="date"
+                                    value={data.birth_date}
+                                    onChange={e => setData('birth_date', e.target.value)}
+                                    className={inputClasses}
+                                />
+                                {errors.birth_date && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.birth_date}</div>}
+                            </div>
                         </div>
                     </div>
 
@@ -170,11 +183,12 @@ export default function Create({ auth }) {
                                     </div>
                                     <input
                                         type="number"
-                                        step="0.01"
+                                        step="1"
+                                        min="0"
                                         value={data.hourly_rate}
                                         onChange={e => setData('hourly_rate', e.target.value)}
                                         className={`${inputClasses} pl-8`}
-                                        placeholder="0.00"
+                                        placeholder="0"
                                     />
                                 </div>
                                 {errors.hourly_rate && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.hourly_rate}</div>}
@@ -216,6 +230,35 @@ export default function Create({ auth }) {
                                 />
                                 {errors.notes && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.notes}</div>}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* FaceIO */}
+                    <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
+                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
+                    `}>
+                        <div className={`flex items-center gap-2 mb-6 pb-2 border-b
+                            ${isDark ? 'border-slate-800' : 'border-slate-100'}
+                        `}>
+                            <ScanFace size={18} style={{ color: B.teal }} />
+                            <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                Fichaje Biométrico
+                            </h2>
+                        </div>
+
+                        <div>
+                            <label className={labelClasses}>FaceIO Face ID</label>
+                            <input
+                                type="text"
+                                value={data.faceio_fid}
+                                onChange={e => setData('faceio_fid', e.target.value)}
+                                className={inputClasses}
+                                placeholder="Identificador único asignado por FaceIO"
+                            />
+                            {errors.faceio_fid && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.faceio_fid}</div>}
+                            <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                Se asigna automáticamente al registrar el rostro en el sistema de fichaje.
+                            </p>
                         </div>
                     </div>
 

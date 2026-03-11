@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Collaborator
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property string $name
@@ -30,72 +30,70 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
- * 
  * @property Company $company
  * @property Collection|CollaboratorAttendance[] $collaborator_attendances
  * @property Collection|CollaboratorDiscount[] $collaborator_discounts
  * @property Collection|CollaboratorExtra[] $collaborator_extras
  * @property Collection|CollaboratorReceipt[] $collaborator_receipts
  * @property Collection|Job[] $jobs
- *
- * @package App\Models
  */
 class Collaborator extends Model
 {
-	use SoftDeletes;
-	protected $table = 'collaborators';
+    use SoftDeletes;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'birth_date' => 'datetime',
-		'hourly_rate' => 'float',
-		'is_active' => 'bool'
-	];
+    protected $table = 'collaborators';
 
-	protected $fillable = [
-		'company_id',
-		'name',
-		'document',
-		'email',
-		'phone',
-		'address',
-		'birth_date',
-		'hourly_rate',
-		'specialty',
-		'faceio_fid',
-		'is_active',
-		'notes'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'birth_date' => 'date:Y-m-d',
+        'hourly_rate' => 'float',
+        'is_active' => 'bool',
+    ];
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    protected $fillable = [
+        'company_id',
+        'name',
+        'document',
+        'email',
+        'phone',
+        'address',
+        'birth_date',
+        'hourly_rate',
+        'specialty',
+        'faceio_fid',
+        'is_active',
+        'notes',
+    ];
 
-	public function collaborator_attendances()
-	{
-		return $this->hasMany(CollaboratorAttendance::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function collaborator_discounts()
-	{
-		return $this->hasMany(CollaboratorDiscount::class);
-	}
+    public function collaborator_attendances()
+    {
+        return $this->hasMany(CollaboratorAttendance::class);
+    }
 
-	public function collaborator_extras()
-	{
-		return $this->hasMany(CollaboratorExtra::class);
-	}
+    public function collaborator_discounts()
+    {
+        return $this->hasMany(CollaboratorDiscount::class);
+    }
 
-	public function collaborator_receipts()
-	{
-		return $this->hasMany(CollaboratorReceipt::class);
-	}
+    public function collaborator_extras()
+    {
+        return $this->hasMany(CollaboratorExtra::class);
+    }
 
-	public function jobs()
-	{
-		return $this->belongsToMany(Job::class, 'job_collaborators')
-					->withPivot('id', 'assigned_by', 'role', 'assigned_at', 'completed_at', 'notes')
-					->withTimestamps();
-	}
+    public function collaborator_receipts()
+    {
+        return $this->hasMany(CollaboratorReceipt::class);
+    }
+
+    public function jobs()
+    {
+        return $this->belongsToMany(Job::class, 'job_collaborators')
+            ->withPivot('id', 'assigned_by', 'role', 'assigned_at', 'completed_at', 'notes')
+            ->withTimestamps();
+    }
 }
