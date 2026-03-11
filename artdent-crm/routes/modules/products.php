@@ -14,7 +14,9 @@ Route::post('products/import-csv', [ProductController::class, 'importCsv'])->nam
 Route::post('products/import-sql', [ProductController::class, 'importSql'])->name('products.import-sql');
 
 // Update vía multipart/form-data (imágenes) — también antes del resource
-Route::post('products/{product}', [ProductController::class, 'update'])->name('products.update.multipart');
+Route::match(['post', 'put'], 'products/{product}', [ProductController::class, 'update'])->name('products.update');
+
+Route::resource('products', ProductController::class)->except(['update']);
 
 Route::resource('products', ProductController::class)->except(['update']);
 
