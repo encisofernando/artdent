@@ -110,7 +110,7 @@ class AttendanceKioskController extends Controller
 
         if (! $attendance->time_out) {
             // Clock OUT — calculate hours
-            $timeIn = Carbon::parse("{$today} {$attendance->time_in}");
+            $timeIn = Carbon::parse("{$today} {$attendance->getRawOriginal('time_in')}");
             $timeOut = Carbon::now();
             $hours = round($timeOut->diffInMinutes($timeIn) / 60, 2);
             $amount = round($hours * $attendance->hourly_rate_snap, 2);

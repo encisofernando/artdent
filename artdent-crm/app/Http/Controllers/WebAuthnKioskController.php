@@ -292,8 +292,11 @@ class WebAuthnKioskController extends Controller
         try {
             if ($keyType === Key::TYPE_EC2 || $keyType === '2') {
                 $ec2Key = Ec2Key::create($this->normalizeKeyData($keyData));
-                $algo = ES256::create();
-                $verified = $algo->verify($verificationData, $ec2Key, $signatureBin);
+                // WebAuthn ECDSA assertion signatures are DER-encoded (per spec).
+                // The cose-lib ECDSA::verify() expects raw IEEE P1363 (r||s) and would
+                // fail with "Invalid signature length". Use openssl_verify directly
+                // so that OpenSSL handles the DER signature natively.
+                $verified = openssl_verify($verificationData, $signatureBin, $ec2Key->toPublic()->asPEM(), OPENSSL_ALGO_SHA256) === 1;
             } elseif ($keyType === Key::TYPE_RSA || $keyType === '3') {
                 $rsaKey = RsaKey::create($this->normalizeKeyData($keyData));
                 $algo = RS256::create();
@@ -366,7 +369,7 @@ class WebAuthnKioskController extends Controller
         }
 
         if (! $attendance->time_out) {
-            $timeIn = Carbon::parse("{$today} {$attendance->time_in}");
+            $timeIn = Carbon::parse("{$today} {$attendance->getRawOriginal('time_in')}");
             $timeOut = Carbon::now();
             $hours = round($timeOut->diffInMinutes($timeIn) / 60, 2);
             $amount = round($hours * $attendance->hourly_rate_snap, 2);

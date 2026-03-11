@@ -16,7 +16,16 @@
       "Bash(./vendor/bin/pint --dirty app/Services/CompreFaceService.php)",
       "Bash(composer require:*)",
       "Bash(grep -v \"^$\")",
-      "Bash(php -l app/Http/Controllers/WebAuthnKioskController.php app/Models/CollaboratorWebAuthnCredential.php app/Http/Controllers/CollaboratorController.php)"
+      "Bash(php -l app/Http/Controllers/WebAuthnKioskController.php app/Models/CollaboratorWebAuthnCredential.php app/Http/Controllers/CollaboratorController.php)",
+      "Bash(xargs grep:*)",
+      "Bash(vendor/bin/pint --dirty app/Http/Controllers/WebAuthnKioskController.php)",
+      "Bash(php -l app/Http/Controllers/WebAuthnKioskController.php)",
+      "Bash(php -r \"var_dump\\(function_exists\\(''openssl_verify''\\), defined\\(''OPENSSL_ALGO_SHA256''\\)\\);\")",
+      "Bash(grep -n \"migrations\\\\|INSERT INTO \\\\`migrations\" /c/Users/Usuario/Documents/SOFTWARE/artdent/artdent.sql)",
+      "Bash(vendor/bin/pint --dirty app/Http/Controllers/WebAuthnKioskController.php app/Http/Controllers/AttendanceKioskController.php)",
+      "Bash(python3 /tmp/write_attendance.py)",
+      "Bash(/c/Python314/python /tmp/write_attendance.py)",
+      "Bash(npm run:*)"
     ]
   }
 }
