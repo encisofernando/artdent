@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ARTDENT | Página en construcción</title>
+  <meta name="description" content="Sitio oficial de ARTDENT. Estamos trabajando para lanzar una nueva experiencia.">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon-artdent.png">
+  <link rel="icon" type="image/x-icon" href="favicon-artdent.ico">
+
+  <!-- Tipografía -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --azul-primario: #397B9C;
+      --verde-primario: #5AAD9C;
+      --azul-suave: #7CA5C3;
+      --cian-oscuro: #4A949C;
+      --bg-azul: #DAE6F0;
+      --bg-verde: #DAEEE3;
+      --texto: #1F2937;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Montserrat", sans-serif;
+      color: var(--texto);
+      background: linear-gradient(135deg, var(--bg-azul), var(--bg-verde));
+      display: grid;
+      place-items: center;
+    }
+
+    .card {
+      width: min(960px, 92vw);
+      background: #ffffffcc;
+      backdrop-filter: blur(8px);
+      border-radius: 28px;
+      padding: clamp(20px, 4vw, 48px);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, .08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .brand img {
+      height: clamp(56px, 10vw, 100px);
+      width: auto;
+      display: block;
+    }
+
+    .headline {
+      margin: 0;
+      font-weight: 800;
+      font-size: clamp(28px, 4vw, 44px);
+      color: var(--azul-primario);
+    }
+
+    .sub {
+      margin: 6px 0 20px 0;
+      font-size: clamp(14px, 2.4vw, 18px);
+      color: var(--cian-oscuro);
+      font-weight: 600;
+    }
+
+    .countdown {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(80px, 1fr));
+      gap: 16px;
+      margin: 26px 0 10px;
+    }
+
+    .unit {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .04);
+    }
+
+    .num {
+      font-weight: 800;
+      font-size: clamp(28px, 6vw, 48px);
+      line-height: 1;
+      color: var(--azul-primario);
+    }
+
+    .label {
+      margin-top: 6px;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    .tagline {
+      margin-top: 22px;
+      display: grid;
+      gap: 6px;
+      color: #374151;
+      font-size: clamp(14px, 2.2vw, 16px);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--azul-primario), var(--verde-primario));
+      color: white;
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .cta {
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .btn.primary {
+      background: var(--azul-primario);
+      color: white;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--azul-primario);
+      border: 2px solid var(--azul-primario);
+    }
+
+    footer {
+      margin-top: 28px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card" role="main">
+    <div class="brand">
+      <img src="logo-artdent.png" alt="ARTDENT Logo" />
+      <span class="badge">Sitio en construcción</span>
+    </div>
+
+    <h1 class="headline">Muy pronto</h1>
+    <p class="sub">Estamos preparando una nueva experiencia.</p>
+
+    <section aria-label="Cuenta regresiva">
+      <div class="countdown" aria-live="polite">
+        <div class="unit">
+          <div class="num" id="d">--</div>
+          <div class="label">Días</div>
+        </div>
+        <div class="unit">
+          <div class="num" id="h">--</div>
+          <div class="label">Horas</div>
+        </div>
+        <div class="unit">
+          <div class="num" id="m">--</div>
+          <div class="label">Minutos</div>
+        </div>
+        <div class="unit">
+          <div class="num" id="s">--</div>
+          <div class="label">Segundos</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="tagline">
+      <span>Tu sonrisa, es nuestra prioridad.</span>
+      <span>El arte de crear para toda la vida.</span>
+    </div>
+
+    <div class="cta">
+      <a class="btn primary" href="https://wa.me/543704840737" target="_blank">WhatsApp</a>
+      <a class="btn ghost" href="https://www.instagram.com/artdentformosa?igsh=MTV5NHIwZmtjanNpNQ=="
+        target="_blank">Instagram</a>
+    </div>
+
+    <footer>© <span id="year"></span> ARTDENT · Todos los derechos reservados.</footer>
+  </main>
+
+  <script>
+    const target = new Date("2026-04-06T00:00:00").getTime();
+    const d = document.getElementById("d");
+    const h = document.getElementById("h");
+    const m = document.getElementById("m");
+    const s = document.getElementById("s");
+    const year = document.getElementById("year");
+    year.textContent = new Date().getFullYear();
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function tick() {
+      const now = Date.now();
+      const distance = target - now;
+      if (distance <= 0) {
+        d.textContent = "00"; h.textContent = "00"; m.textContent = "00"; s.textContent = "00";
+        document.querySelector(".sub").textContent = "¡Ya estamos en línea!";
+        return;
+      }
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      d.textContent = days;
+      h.textContent = pad(hours);
+      m.textContent = pad(minutes);
+      s.textContent = pad(seconds);
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+
+</html>
