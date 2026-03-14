@@ -229,6 +229,9 @@ export default function Create({ auth, products }) {
     const [savingProd, setSavingProd]     = useState(false);
     const [prodError, setProdError]       = useState('');
 
+    // Variant picker
+    const [variantProduct, setVariantProduct] = useState(null); // product whose variants are being picked
+
     // Post-sale modal
     const [postSale, setPostSale]         = useState(null);  // sale object returned from server
     const [postSaleOpen, setPostSaleOpen] = useState(false);
@@ -271,31 +274,58 @@ export default function Create({ auth, products }) {
 
     // ── Cart actions ─────────────────────────────────────────
     const addToCart = (product) => {
-        const existing = cart.find(i => i.product_id === product.id);
+        // Products with variants require variant selection first
+        if (product.has_variants && product.variants?.length > 0) {
+            setVariantProduct(product);
+            return;
+        }
+
+        const key      = `${product.id}_0`;
+        const existing = cart.find(i => i.cartKey === key);
         const price    = Number(product.price);
         const taxRate  = Number(product.tax_rate || 21) / 100;
 
         if (existing) {
-            updateQty(product.id, existing.quantity + 1);
+            updateQty(key, existing.quantity + 1);
         } else {
             setCart(prev => [...prev, {
-                product_id: product.id, name: product.name,
-                unit_price: price, tax_rate: taxRate,
+                cartKey: key, product_id: product.id, variant_id: null,
+                name: product.name, unit_price: price, tax_rate: taxRate,
                 quantity: 1, discount: 0, total: price,
             }]);
         }
     };
 
-    const updateQty = (productId, qty) => {
-        if (qty <= 0) return removeFromCart(productId);
-        setCart(prev => prev.map(i => i.product_id === productId
+    const addVariantToCart = (product, variant) => {
+        const key      = `${product.id}_${variant.id}`;
+        const existing = cart.find(i => i.cartKey === key);
+        const price    = Number(variant.price || product.price);
+        const taxRate  = Number(product.tax_rate || 21) / 100;
+
+        if (existing) {
+            updateQty(key, existing.quantity + 1);
+        } else {
+            setCart(prev => [...prev, {
+                cartKey: key, product_id: product.id, variant_id: variant.id,
+                variant_sku: variant.sku,
+                name: `${product.name} — ${variant.label}`,
+                unit_price: price, tax_rate: taxRate,
+                quantity: 1, discount: 0, total: price,
+            }]);
+        }
+        setVariantProduct(null);
+    };
+
+    const updateQty = (cartKey, qty) => {
+        if (qty <= 0) return removeFromCart(cartKey);
+        setCart(prev => prev.map(i => i.cartKey === cartKey
             ? { ...i, quantity: qty, total: i.unit_price * qty - i.discount }
             : i
         ));
     };
 
-    const removeFromCart = (productId) =>
-        setCart(prev => prev.filter(i => i.product_id !== productId));
+    const removeFromCart = (cartKey) =>
+        setCart(prev => prev.filter(i => i.cartKey !== cartKey));
 
     const clearCart = () => {
         setCart([]);
@@ -530,7 +560,7 @@ export default function Create({ auth, products }) {
                 ) : (
                     <div className="space-y-2">
                         {cart.map(item => (
-                            <div key={item.product_id}
+                            <div key={item.cartKey}
                                 className="flex items-center gap-3 p-[8px_10px] rounded-[10px]"
                                 style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${D.border}` }}>
                                 <div className="flex-1 min-w-0">
@@ -543,7 +573,7 @@ export default function Create({ auth, products }) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">
-                                    <button onClick={() => updateQty(item.product_id, item.quantity - 1)}
+                                    <button onClick={() => updateQty(item.cartKey, item.quantity - 1)}
                                         className="w-[26px] h-[26px] rounded-lg flex items-center justify-center transition-colors"
                                         style={{ background: 'rgba(255,255,255,0.08)' }}>
                                         <Minus size={12} color={D.text} />
@@ -551,12 +581,12 @@ export default function Create({ auth, products }) {
                                     <span className="w-5 text-center text-[12px] font-extrabold" style={{ color: D.text }}>
                                         {item.quantity}
                                     </span>
-                                    <button onClick={() => updateQty(item.product_id, item.quantity + 1)}
+                                    <button onClick={() => updateQty(item.cartKey, item.quantity + 1)}
                                         className="w-[26px] h-[26px] rounded-lg flex items-center justify-center transition-colors"
                                         style={{ background: 'rgba(255,255,255,0.08)' }}>
                                         <Plus size={12} color={D.text} />
                                     </button>
-                                    <button onClick={() => removeFromCart(item.product_id)}
+                                    <button onClick={() => removeFromCart(item.cartKey)}
                                         className="w-[26px] h-[26px] ml-1 rounded-lg flex items-center justify-center"
                                         style={{ color: B.red }}>
                                         <Trash2 size={13} />
@@ -720,6 +750,86 @@ export default function Create({ auth, products }) {
                     <CartPanel inSheet />
                 </div>
             </BottomSheet>
+
+            {/* ═══ MODAL VARIANTES ════════════════════════════════════════════ */}
+            <Modal
+                open={!!variantProduct}
+                onClose={() => setVariantProduct(null)}
+                title={variantProduct?.name ?? ''}
+                maxWidth={500}
+                D={D}
+            >
+                {variantProduct && (() => {
+                    const available = (variantProduct.variants ?? []).filter(v =>
+                        v.is_active && (!variantProduct.track_stock || (v.stock_quantity ?? 0) > 0)
+                    );
+
+                    if (available.length === 0) {
+                        return (
+                            <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
+                                <Package size={30} style={{ color: D.muted }} />
+                                <p className="font-bold text-[13px]" style={{ color: D.text }}>Sin stock disponible</p>
+                                <p className="text-[12px]" style={{ color: D.muted }}>Ninguna variante tiene stock actualmente</p>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div
+                            className="grid grid-cols-2 gap-2 overflow-y-auto"
+                            style={{ maxHeight: '58vh' }}
+                        >
+                            {available.map(variant => {
+                                const inCart = cart.some(i => i.variant_id === variant.id);
+                                const cartQty = cart.find(i => i.variant_id === variant.id)?.quantity ?? 0;
+                                return (
+                                    <button
+                                        key={variant.id}
+                                        onClick={() => addVariantToCart(variantProduct, variant)}
+                                        className="flex flex-col gap-1.5 w-full px-3 py-2.5 rounded-xl text-left transition-all active:scale-[0.97]"
+                                        style={{
+                                            background: inCart ? `${B.green}1a` : D.input,
+                                            border: `1.5px solid ${inCart ? B.green : D.inputBorder ?? D.border}`,
+                                        }}
+                                    >
+                                        {/* Variant name + in-cart badge */}
+                                        <div className="flex items-start justify-between gap-1">
+                                            <span className="text-[12px] font-bold leading-snug" style={{ color: D.text }}>
+                                                {variant.label}
+                                            </span>
+                                            {inCart && (
+                                                <span className="shrink-0 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full"
+                                                    style={{ background: `${B.green}33`, color: B.green }}>
+                                                    ×{cartQty}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Price + stock */}
+                                        <div className="flex items-center justify-between gap-1">
+                                            <span className="text-[13px] font-extrabold" style={{ color: B.blue }}>
+                                                ${fmt(variant.price)}
+                                            </span>
+                                            {variantProduct.track_stock && (
+                                                <span className="text-[10px] font-semibold" style={{ color: D.muted }}>
+                                                    Stock {variant.stock_quantity}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* SKU */}
+                                        {variant.sku && (
+                                            <span className="text-[10px] font-mono truncate" style={{ color: D.placeholder ?? D.muted }}>
+                                                {variant.sku}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    );
+                })()}
+            </Modal>
 
             {/* ═══ MODAL CLIENTE ══════════════════════════════════════════════ */}
             <Modal open={clienteOpen} onClose={() => setClienteOpen(false)} title="Seleccionar Cliente" D={D}

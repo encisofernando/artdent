@@ -3,7 +3,7 @@ import { Button } from '@/Components/ui/button';
 import { Plus, X, ListTree, RefreshCcw } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 
-export default function VariantGenerator({ variantsData = [], onVariantsChange, hidePrices = false }) {
+export default function VariantGenerator({ variantsData = [], onVariantsChange, hidePrices = false, trackStock = false }) {
     const { isDark } = useTheme();
     
     // options structure: [{ id: 1, name: 'Color', values: ['Red', 'Blue'] }]
@@ -102,6 +102,7 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                 sku: '',
                 price: '',
                 cost_price: '',
+                stock_quantity: '',
                 is_active: 1
             };
         });
@@ -199,6 +200,9 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                                             <th className="px-4 py-3 w-32">Costo (Opcional)</th>
                                         </>
                                     )}
+                                    {trackStock && (
+                                        <th className="px-4 py-3 w-28">Stock</th>
+                                    )}
                                     <th className="px-4 py-3 text-center">Activo</th>
                                 </tr>
                             </thead>
@@ -241,9 +245,22 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                                                 </td>
                                             </>
                                         )}
+                                        {trackStock && (
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    min="0"
+                                                    className={`w-full text-xs px-2 py-1 rounded border focus:ring-1 focus:outline-none ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300'}`}
+                                                    value={variant.stock_quantity ?? ''}
+                                                    onChange={(e) => updateVariantField(index, 'stock_quantity', e.target.value)}
+                                                    placeholder="0"
+                                                />
+                                            </td>
+                                        )}
                                         <td className="px-4 py-2 text-center">
-                                            <input 
-                                                type="checkbox" 
+                                            <input
+                                                type="checkbox"
                                                 checked={variant.is_active === 1 || variant.is_active === true}
                                                 onChange={(e) => updateVariantField(index, 'is_active', e.target.checked ? 1 : 0)}
                                                 className="w-4 h-4 text-teal-600 bg-slate-100 border-slate-300 rounded focus:ring-teal-500"

@@ -3,63 +3,43 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductImage;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProductImageController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(ProductImage $productImage)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(ProductImage $productImage)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, ProductImage $productImage)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
+     * Remove the specified image from storage and from the database.
+     * Called via DELETE /product-images/{productImage} (API o Inertia).
+     *
+     * Tras eliminar, si la imagen era portada y quedan más imágenes del
+     * producto, se promueve automáticamente la de menor sort_order.
      */
     public function destroy(ProductImage $productImage)
     {
-        //
+        $product = $productImage->product;
+
+        // Borrar archivo físico
+        $relativePath = ltrim(str_replace('/storage/', '', $productImage->url), '/');
+        if (Storage::disk('public')->exists($relativePath)) {
+            Storage::disk('public')->delete($relativePath);
+        }
+
+        $wasCover = (bool) $productImage->is_cover;
+
+        $productImage->delete();
+
+        // Si la imagen borrada era la portada, promover la siguiente
+        if ($wasCover && $product) {
+            $next = $product->product_images()->orderBy('sort_order')->first();
+            if ($next) {
+                $next->update(['is_cover' => 1]);
+            }
+        }
+
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return back()->with('success', 'Imagen eliminada.');
     }
 }

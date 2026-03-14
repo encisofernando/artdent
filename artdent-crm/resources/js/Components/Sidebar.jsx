@@ -38,7 +38,7 @@ const NAV_SECTIONS = [
                 children: [
                     { title: "Nueva Venta", path: "/sales/create" },
                     { title: "Lista de Ventas", path: "/sales" },
-                    { title: "Facturación", path: "/invoices" },
+                    { title: "Presupuesto", path: "/invoices" },
                     { title: "Artículos", path: "/products" },
                 ],
             },
@@ -142,7 +142,7 @@ export default function Sidebar({ className = "" }) {
             className={`transition-all duration-300 ease-in-out flex flex-col h-screen shadow-xl z-20 shrink-0
             ${isDark ? 'bg-slate-900 border-r border-slate-800 text-slate-300'
                     : 'bg-white border-r border-slate-200 text-slate-600'}
-            ${sidebarCollapsed ? 'w-20' : 'w-64'} 
+            ${sidebarCollapsed ? 'w-20' : 'w-64'}
             ${className}`}
         >
             {/* Logo Header */}
@@ -196,7 +196,7 @@ export default function Sidebar({ className = "" }) {
                                             <li key={item.key}>
                                                 <button
                                                     onClick={() => toggleMenu(item.key)}
-                                                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors 
+                                                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
                                                         ${sidebarCollapsed ? 'justify-center' : 'justify-between'}
                                                         ${activeNode ? (isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 text-emerald-600')
                                                             : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-slate-50 hover:text-emerald-700')}`}

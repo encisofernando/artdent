@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2, Star } from 'lucide-react';
+import {
+    ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2,
+    Star, X, Video, GripVertical, Trash2,
+} from 'lucide-react';
 import VariantGenerator from '@/Components/VariantGenerator';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
-// ─── shared atoms (same as Create) ───────────────────────────────
+// ─── atoms ─────────────────────────────────────────────────────────────────
+
 function SectionCard({ icon: Icon, title, children, isDark }) {
     return (
         <div className={`rounded-2xl border overflow-hidden transition-colors
@@ -83,24 +87,192 @@ function Toggle({ checked, onChange, label, color = 'blue', isDark }) {
     );
 }
 
-function PriceInput({ label, value, onChange, error, isDark, required }) {
+// ─── MediaDropZone ──────────────────────────────────────────────────────────
+
+function MediaDropZone({ accept, multiple, onFiles, isDark, icon: Icon, label, hint }) {
+    const inputRef = useRef(null);
+    const [dragging, setDragging] = useState(false);
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const files = e.dataTransfer.files;
+        if (files?.length) onFiles(files);
+    };
+
     return (
-        <Field label={label} error={error}>
-            <div className="relative">
-                <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
-                    ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>$</span>
-                <Input isDark={isDark} type="number" step="0.01" value={value}
-                    onChange={onChange} placeholder="0,00" required={required} className="pl-7 font-mono"
-                />
+        <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={`rounded-xl border-2 border-dashed px-4 py-5 text-center transition-all cursor-pointer select-none
+                ${dragging
+                    ? 'border-teal-400 scale-[1.01] ' + (isDark ? 'bg-teal-900/20' : 'bg-teal-50')
+                    : isDark ? 'border-slate-700 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'
+                }`}
+        >
+            <input
+                ref={inputRef}
+                type="file"
+                accept={accept}
+                multiple={multiple}
+                className="hidden"
+                onChange={e => { if (e.target.files?.length) onFiles(e.target.files); e.target.value = ''; }}
+            />
+            <div className="flex flex-col items-center gap-2 pointer-events-none">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center
+                    ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}
+                >
+                    <Icon size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                </div>
+                <span className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</span>
+                {hint && <span className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{hint}</span>}
             </div>
-        </Field>
+        </div>
     );
 }
 
-// ─── main ──────────────────────────────────────────────────────
+// ─── ImageDragGrid ──────────────────────────────────────────────────────────
+// Funciona para imágenes existentes (tienen .id y .url) y para pendientes (tienen .uid y .preview).
+
+function ImageDragGrid({ images, onReorder, onRemove, isDark, label }) {
+    const dragIdx = useRef(null);
+
+    if (!images.length) return null;
+
+    const handlers = (i) => ({
+        draggable: true,
+        onDragStart: () => { dragIdx.current = i; },
+        onDragOver: (e) => e.preventDefault(),
+        onDrop: (e) => {
+            e.preventDefault();
+            const from = dragIdx.current;
+            if (from === null || from === i) return;
+            const arr = [...images];
+            const [moved] = arr.splice(from, 1);
+            arr.splice(i, 0, moved);
+            dragIdx.current = null;
+            onReorder(arr);
+        },
+    });
+
+    return (
+        <div className="flex flex-col gap-2">
+            {label && (
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+                {images.map((img, i) => {
+                    const src = img.url || img.preview;
+                    const key = img.id ?? img.uid;
+                    const isCover = i === 0;
+
+                    return (
+                        <div
+                            key={key}
+                            {...handlers(i)}
+                            className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 cursor-grab active:cursor-grabbing group transition-transform active:scale-95
+                                ${isCover
+                                    ? (isDark ? 'border-teal-500' : 'border-teal-400')
+                                    : (isDark ? 'border-slate-700' : 'border-slate-200')
+                                }`}
+                        >
+                            <img src={src} alt="" className="w-full h-full object-cover pointer-events-none" />
+
+                            {/* grip hint */}
+                            <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-80 transition-opacity">
+                                <GripVertical size={12} className="text-white drop-shadow" />
+                            </div>
+
+                            {/* portada badge */}
+                            {isCover && (
+                                <div className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 py-0.5"
+                                    style={{ background: `${B.teal}cc` }}
+                                >
+                                    <Star size={7} className="text-white" fill="white" />
+                                    <span className="text-[8px] font-black text-white tracking-wider">PORTADA</span>
+                                </div>
+                            )}
+
+                            {/* delete */}
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onRemove(i); }}
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                            >
+                                <X size={10} />
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ─── PriceBlock ─────────────────────────────────────────────────────────────
+
+function PriceBlock({ isDark, cost, onCostChange, price, onPriceChange, marginPct, onMarginChange, errors }) {
+    return (
+        <div className="grid grid-cols-3 gap-3">
+            <Field label="Precio Costo" error={errors?.cost_price}>
+                <div className="relative">
+                    <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
+                        ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>$</span>
+                    <Input
+                        isDark={isDark} type="number" step="0.01"
+                        value={cost} onChange={e => onCostChange(e.target.value)}
+                        placeholder="0,00" className="pl-7 font-mono"
+                    />
+                </div>
+            </Field>
+
+            <Field label="Margen %">
+                <div className="relative">
+                    <Input
+                        isDark={isDark} type="number" step="0.01"
+                        value={marginPct} onChange={e => onMarginChange(e.target.value)}
+                        placeholder="0,00" className="pr-8 font-mono"
+                    />
+                    <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
+                        ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>%</span>
+                </div>
+            </Field>
+
+            <Field label="Precio Venta *" error={errors?.price}>
+                <div className="relative">
+                    <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
+                        ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>$</span>
+                    <Input
+                        isDark={isDark} type="number" step="0.01"
+                        value={price} onChange={e => onPriceChange(e.target.value)}
+                        placeholder="0,00" required className="pl-7 font-mono"
+                    />
+                </div>
+            </Field>
+        </div>
+    );
+}
+
+// ─── main ──────────────────────────────────────────────────────────────────
+
 export default function Edit({ auth, item }) {
     const { isDark } = useTheme();
 
+    // ── imágenes existentes en state local (para reorder + delete sin useForm) ──
+    const [existingImages, setExistingImages] = useState(
+        [...(item.product_images || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    );
+    const [deletedImageIds, setDeletedImageIds] = useState([]);
+
+    // ── imágenes nuevas pendientes ────────────────────────────────────────────
+    const [pendingImages, setPendingImages] = useState([]);
+
+    // ── video ─────────────────────────────────────────────────────────────────
+    const [pendingVideo, setPendingVideo] = useState(null);
+
+    // ── form ──────────────────────────────────────────────────────────────────
     const { data, setData, post, processing, errors, transform } = useForm({
         name: item.name || '',
         sku: item.sku || '',
@@ -118,6 +290,7 @@ export default function Edit({ auth, item }) {
             sku: v.sku,
             price: v.price || '',
             cost_price: v.cost_price || '',
+            stock_quantity: v.stocks?.length > 0 ? v.stocks[0].quantity : '',
             is_active: v.is_active,
             attributes: v.variant_attribute_values?.reduce((acc, curr) => {
                 acc[curr.product_attribute_value.product_attribute.name] = curr.product_attribute_value.value;
@@ -126,9 +299,92 @@ export default function Edit({ auth, item }) {
         })) ?? [],
         track_stock: item.track_stock !== undefined ? item.track_stock : 1,
         stock_quantity: item.stocks?.length > 0 ? item.stocks[0].quantity : '',
-        images: null,
+        images: [],
+        video: null,
     });
 
+    // ── margin % (local, no se envía al backend) ──────────────────────────────
+    const [marginPct, setMarginPct] = useState(() => {
+        const cost  = parseFloat(item.cost_price);
+        const price = parseFloat(item.price);
+        if (!isNaN(cost) && cost > 0 && !isNaN(price) && price > 0) {
+            return ((price / cost - 1) * 100).toFixed(2);
+        }
+        return '';
+    });
+
+    // ── handlers existentes ───────────────────────────────────────────────────
+    const removeExisting = (idx) => {
+        const img = existingImages[idx];
+        setDeletedImageIds(prev => [...prev, img.id]);
+        setExistingImages(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    // ── handlers nuevas imágenes ──────────────────────────────────────────────
+    const addImages = (files) => {
+        const newItems = Array.from(files).map(f => ({
+            uid: Math.random().toString(36).slice(2),
+            file: f,
+            preview: URL.createObjectURL(f),
+        }));
+        const updated = [...pendingImages, ...newItems];
+        setPendingImages(updated);
+        setData('images', updated.map(p => p.file));
+    };
+
+    const removePending = (idx) => {
+        const updated = pendingImages.filter((_, i) => i !== idx);
+        setPendingImages(updated);
+        setData('images', updated.map(p => p.file));
+    };
+
+    const reorderPending = (newArr) => {
+        setPendingImages(newArr);
+        setData('images', newArr.map(p => p.file));
+    };
+
+    // ── handlers video ────────────────────────────────────────────────────────
+    const addVideo = (files) => {
+        const f = files[0];
+        if (!f) return;
+        setPendingVideo({ file: f, name: f.name });
+        setData('video', f);
+    };
+
+    const removeVideo = () => {
+        setPendingVideo(null);
+        setData('video', null);
+    };
+
+    // ── price / margin ────────────────────────────────────────────────────────
+    const handleCostChange = (val) => {
+        setData('cost_price', val);
+        const cost = parseFloat(val);
+        const pct  = parseFloat(marginPct);
+        if (!isNaN(cost) && cost > 0 && !isNaN(pct)) {
+            setData('price', (cost * (1 + pct / 100)).toFixed(2));
+        }
+    };
+
+    const handlePriceChange = (val) => {
+        setData('price', val);
+        const cost  = parseFloat(data.cost_price);
+        const price = parseFloat(val);
+        if (!isNaN(cost) && cost > 0 && !isNaN(price) && price > 0) {
+            setMarginPct(((price / cost - 1) * 100).toFixed(2));
+        }
+    };
+
+    const handleMarginChange = (val) => {
+        setMarginPct(val);
+        const cost = parseFloat(data.cost_price);
+        const pct  = parseFloat(val);
+        if (!isNaN(cost) && cost > 0 && !isNaN(pct)) {
+            setData('price', (cost * (1 + pct / 100)).toFixed(2));
+        }
+    };
+
+    // ── submit ────────────────────────────────────────────────────────────────
     const submit = (e) => {
         e.preventDefault();
         transform((f) => ({
@@ -138,17 +394,31 @@ export default function Edit({ auth, item }) {
                     ...v,
                     price: f.same_price_for_variants ? f.price : v.price,
                     cost_price: f.same_price_for_variants ? f.cost_price : v.cost_price,
+                    stock_quantity: f.track_stock ? v.stock_quantity : undefined,
                 })))
                 : null,
+            // orden de las imágenes existentes (array de ids en el nuevo orden)
+            image_sort: existingImages.map(img => img.id),
+            // ids de las imágenes a eliminar
+            deleted_image_ids: deletedImageIds,
+            // primera imagen existente (o primera nueva si no quedan existentes) es la portada
+            cover_image_id: existingImages[0]?.id ?? null,
             _method: 'put',
         }));
         post(route('products.update', item.id), { forceFormData: true });
     };
 
-    const hasVariants = data.has_variants === 1 || data.has_variants === true;
-    const trackStock = data.track_stock === 1 || data.track_stock === true;
-    const isActive = data.is_active === 1 || data.is_active === true;
+    // ── eliminar producto ─────────────────────────────────────────────────────
+    const handleDelete = () => {
+        if (!window.confirm(`¿Eliminar "${item.name}"?\n\nEsta acción eliminará el producto y todos sus datos. No se puede deshacer.`)) return;
+        router.delete(route('products.destroy', item.id));
+    };
 
+    const hasVariants = data.has_variants === 1 || data.has_variants === true;
+    const trackStock  = data.track_stock === 1  || data.track_stock === true;
+    const isActive    = data.is_active === 1    || data.is_active === true;
+
+    // ── render ────────────────────────────────────────────────────────────────
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title={`Editar · ${item.name}`} />
@@ -178,13 +448,30 @@ export default function Edit({ auth, item }) {
                         </div>
                     </div>
 
-                    <button type="submit" form="edit-form" disabled={processing}
-                        className="hidden sm:flex items-center gap-2 h-9 px-5 rounded-xl text-white text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-60"
-                        style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}
-                    >
-                        {processing ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                        Actualizar
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Eliminar (desktop) */}
+                        <button
+                            type="button"
+                            onClick={handleDelete}
+                            className={`hidden sm:flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-bold border transition-all active:scale-95
+                                ${isDark
+                                    ? 'bg-red-900/20 border-red-800/40 text-red-400 hover:bg-red-900/40'
+                                    : 'bg-red-50 border-red-200 text-red-500 hover:bg-red-100'
+                                }`}
+                        >
+                            <Trash2 size={14} />
+                            Eliminar
+                        </button>
+
+                        {/* Guardar (desktop) */}
+                        <button type="submit" form="edit-form" disabled={processing}
+                            className="hidden sm:flex items-center gap-2 h-9 px-5 rounded-xl text-white text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-60"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}
+                        >
+                            {processing ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                            Actualizar
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -209,56 +496,93 @@ export default function Edit({ auth, item }) {
                     </div>
                 </SectionCard>
 
-                {/* ── imágenes ── */}
-                <SectionCard icon={Image} title="Imágenes" isDark={isDark}>
-                    {/* current images */}
-                    {item.product_images?.length > 0 && (
-                        <div className="mb-4">
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Actuales</p>
-                            <div className="flex gap-2 overflow-x-auto pb-1">
-                                {item.product_images.map(img => (
-                                    <div key={img.id} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border
-                                        ${isDark ? 'border-slate-700' : 'border-slate-100'}"
-                                    >
-                                        <img src={img.url} alt="" className="w-full h-full object-cover" />
-                                        {img.is_cover && (
-                                            <div className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 bg-blue-600/80 py-0.5">
-                                                <Star size={8} className="text-white" fill="white" />
-                                                <span className="text-[8px] font-black text-white tracking-wider">PORTADA</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                {/* ── multimedia ── */}
+                <SectionCard icon={Image} title="Multimedia" isDark={isDark}>
+                    <div className="flex flex-col gap-4">
 
-                    {/* upload new */}
-                    <Field label="Agregar Imágenes" error={errors['images.0']}>
-                        <div className={`rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors
-                            ${isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'}`}
-                        >
-                            <input type="file" multiple accept="image/*"
-                                onChange={e => setData('images', Array.from(e.target.files))}
-                                className="hidden" id="img-upload-edit"
+                        {/* imágenes existentes — drag to reorder, X to delete */}
+                        {existingImages.length > 0 && (
+                            <ImageDragGrid
+                                images={existingImages}
+                                onReorder={setExistingImages}
+                                onRemove={removeExisting}
+                                isDark={isDark}
+                                label="Imágenes actuales · arrastrá para reordenar"
                             />
-                            <label htmlFor="img-upload-edit" className="cursor-pointer flex flex-col items-center gap-2">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-                                    ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}
+                        )}
+
+                        {/* imágenes nuevas pendientes */}
+                        {pendingImages.length > 0 && (
+                            <ImageDragGrid
+                                images={pendingImages}
+                                onReorder={reorderPending}
+                                onRemove={removePending}
+                                isDark={isDark}
+                                label="Nuevas imágenes"
+                            />
+                        )}
+
+                        {/* zona de drop para agregar imágenes */}
+                        <Field label="Agregar imágenes" error={errors['images.0']}>
+                            <MediaDropZone
+                                accept="image/*"
+                                multiple
+                                onFiles={addImages}
+                                isDark={isDark}
+                                icon={Image}
+                                label="Arrastrá imágenes aquí o tocá para seleccionar"
+                                hint="Se añaden a las existentes · JPG, PNG, WEBP · Máx. 2 MB"
+                            />
+                        </Field>
+
+                        {/* video */}
+                        <Field label="Video del producto (opcional)" error={errors.video}>
+                            {/* video existente */}
+                            {item.video_url && !pendingVideo && (
+                                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border mb-2
+                                    ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
                                 >
-                                    <Image size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                                    <Video size={18} style={{ color: B.teal }} className="shrink-0" />
+                                    <span className={`text-sm font-medium truncate flex-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                        Video actual
+                                    </span>
+                                    <a href={item.video_url} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs font-bold underline mr-2"
+                                        style={{ color: B.teal }}
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        Ver
+                                    </a>
                                 </div>
-                                <span className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    {data.images?.length
-                                        ? `${data.images.length} imagen${data.images.length > 1 ? 'es' : ''} nueva${data.images.length > 1 ? 's' : ''}`
-                                        : 'Tocá para agregar más'}
-                                </span>
-                                <span className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                                    Se añaden a las existentes · JPG, PNG, WEBP
-                                </span>
-                            </label>
-                        </div>
-                    </Field>
+                            )}
+
+                            {pendingVideo ? (
+                                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border
+                                    ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
+                                >
+                                    <Video size={18} style={{ color: B.teal }} className="shrink-0" />
+                                    <span className={`text-sm font-medium truncate flex-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                        {pendingVideo.name}
+                                    </span>
+                                    <button type="button" onClick={removeVideo}
+                                        className="w-6 h-6 rounded-full bg-red-500/15 text-red-500 flex items-center justify-center hover:bg-red-500/25 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <MediaDropZone
+                                    accept="video/*"
+                                    multiple={false}
+                                    onFiles={addVideo}
+                                    isDark={isDark}
+                                    icon={Video}
+                                    label={item.video_url ? 'Reemplazar video' : 'Arrastrá un video o tocá para seleccionar'}
+                                    hint="MP4, MOV, WEBM · Máx. 50 MB"
+                                />
+                            )}
+                        </Field>
+                    </div>
                 </SectionCard>
 
                 {/* ── inventario ── */}
@@ -290,7 +614,7 @@ export default function Edit({ auth, item }) {
                             />
                         </div>
 
-                        {trackStock && (
+                        {trackStock && !hasVariants && (
                             <Field label="Stock Actual" error={errors.stock_quantity}>
                                 <Input isDark={isDark} type="number" value={data.stock_quantity}
                                     onChange={e => setData('stock_quantity', e.target.value)}
@@ -320,39 +644,50 @@ export default function Edit({ auth, item }) {
                                     />
                                 </div>
                                 {data.same_price_for_variants && (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <PriceInput label="Precio Público *" isDark={isDark} value={data.price}
-                                            onChange={e => setData('price', e.target.value)} error={errors.price} required
-                                        />
-                                        <PriceInput label="Precio de Costo" isDark={isDark} value={data.cost_price}
-                                            onChange={e => setData('cost_price', e.target.value)} error={errors.cost_price}
-                                        />
-                                    </div>
+                                    <PriceBlock
+                                        isDark={isDark}
+                                        cost={data.cost_price}    onCostChange={handleCostChange}
+                                        price={data.price}        onPriceChange={handlePriceChange}
+                                        marginPct={marginPct}     onMarginChange={handleMarginChange}
+                                        errors={errors}
+                                    />
                                 )}
                                 <VariantGenerator
                                     variantsData={data.variants}
                                     onVariantsChange={(v) => setData('variants', v)}
                                     hidePrices={data.same_price_for_variants}
+                                    trackStock={trackStock}
                                 />
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 gap-3">
-                                <PriceInput label="Precio Público *" isDark={isDark} value={data.price}
-                                    onChange={e => setData('price', e.target.value)} error={errors.price} required
-                                />
-                                <PriceInput label="Precio de Costo" isDark={isDark} value={data.cost_price}
-                                    onChange={e => setData('cost_price', e.target.value)} error={errors.cost_price}
-                                />
-                            </div>
+                            <PriceBlock
+                                isDark={isDark}
+                                cost={data.cost_price}    onCostChange={handleCostChange}
+                                price={data.price}        onPriceChange={handlePriceChange}
+                                marginPct={marginPct}     onMarginChange={handleMarginChange}
+                                errors={errors}
+                            />
                         )}
                     </div>
                 </SectionCard>
             </form>
 
-            {/* mobile save FAB */}
-            <div className="fixed bottom-6 inset-x-4 sm:hidden z-50">
+            {/* mobile bottom bar: guardar + eliminar */}
+            <div className="fixed bottom-6 inset-x-4 sm:hidden z-50 flex gap-3">
+                <button
+                    type="button"
+                    onClick={handleDelete}
+                    className={`flex items-center justify-center gap-2 h-14 px-5 rounded-2xl font-bold shadow-xl transition-all active:scale-[0.98] border
+                        ${isDark
+                            ? 'bg-red-900/30 border-red-800/50 text-red-400'
+                            : 'bg-red-50 border-red-200 text-red-500'
+                        }`}
+                >
+                    <Trash2 size={18} />
+                </button>
+
                 <button type="submit" form="edit-form" disabled={processing}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold shadow-2xl shadow-blue-900/30 transition-all active:scale-[0.98] disabled:opacity-60"
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold shadow-2xl shadow-blue-900/30 transition-all active:scale-[0.98] disabled:opacity-60"
                     style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}
                 >
                     {processing ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}

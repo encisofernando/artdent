@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
-use App\Models\PaymentMethod;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
@@ -39,19 +39,46 @@ class SaleController extends Controller
         }
 
         return Inertia::render('Sale/Index', [
-            'items'   => $items,
+            'items' => $items,
             'filters' => ['search' => $search, 'status' => $status],
         ]);
     }
 
     public function create()
     {
-        $products = Product::with(['product_images', 'stocks'])
+        $products = Product::with([
+            'product_images',
+            'stocks',
+            'product_variants' => fn ($q) => $q->where('is_active', 1)->orderBy('id'),
+            'product_variants.stocks',
+            'product_variants.variant_attribute_values.product_attribute_value.product_attribute',
+        ])
             ->where('is_active', 1)
             ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
             ->map(function ($p) {
                 $arr = $p->toArray();
-                $arr['stock_quantity'] = $p->stocks->sum('quantity');
+                $arr['image'] = $p->product_images->first()?->url ?? null;
+                $variantsMapped = $p->product_variants->map(function ($v) {
+                    $label = $v->variant_attribute_values
+                        ->map(fn ($vav) => $vav->product_attribute_value->value)
+                        ->join(' / ');
+
+                    return [
+                        'id' => $v->id,
+                        'sku' => $v->sku,
+                        'price' => (float) $v->price,
+                        'is_active' => $v->is_active,
+                        'label' => $label,
+                        'stock_quantity' => $v->stocks->sum('quantity'),
+                    ];
+                })->values();
+
+                // For variant products, total stock = sum of all variant stocks
+                $arr['stock_quantity'] = $p->has_variants
+                    ? $variantsMapped->sum('stock_quantity')
+                    : $p->stocks->whereNull('variant_id')->sum('quantity');
+                $arr['variants'] = $variantsMapped;
+
                 return $arr;
             });
 
@@ -63,25 +90,26 @@ class SaleController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'items'              => 'required|array|min:1',
+            'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.quantity'   => 'required|numeric|min:0.001',
+            'items.*.variant_id' => 'nullable|integer|exists:product_variants,id',
+            'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
-            'items.*.discount'   => 'nullable|numeric|min:0',
-            'items.*.total'      => 'required|numeric|min:0',
-            'subtotal'           => 'nullable|numeric',
-            'discount_amount'    => 'nullable|numeric',
-            'tax_amount'         => 'nullable|numeric',
-            'total'              => 'required|numeric|min:0',
-            'paid_amount'        => 'required|numeric|min:0',
-            'payment_method'     => 'nullable|string',
-            'receipt_type'       => 'nullable|string',
-            'notes'              => 'nullable|string',
-            'customer_name'      => 'nullable|string',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.total' => 'required|numeric|min:0',
+            'subtotal' => 'nullable|numeric',
+            'discount_amount' => 'nullable|numeric',
+            'tax_amount' => 'nullable|numeric',
+            'total' => 'required|numeric|min:0',
+            'paid_amount' => 'required|numeric|min:0',
+            'payment_method' => 'nullable|string',
+            'receipt_type' => 'nullable|string',
+            'notes' => 'nullable|string',
+            'customer_name' => 'nullable|string',
         ]);
 
         $companyId = auth()->user()->company_id ?? 1;
-        $userId    = auth()->id();
+        $userId = auth()->id();
 
         $warehouse = Warehouse::firstOrCreate(
             ['company_id' => $companyId],
@@ -90,44 +118,44 @@ class SaleController extends Controller
 
         // ── Número de comprobante formato 00001-00000001 ──────────────────────
         $receiptType = strtoupper($request->receipt_type ?? 'X');
-        $company     = \App\Models\Company::find($companyId);
+        $company = \App\Models\Company::find($companyId);
 
         // X → punto de venta fijo 00001 | A/B/C → companies.afip_point_sale
         $pointSale = in_array($receiptType, ['A', 'B', 'C'])
             ? str_pad($company?->afip_point_sale ?? 1, 5, '0', STR_PAD_LEFT)
             : '00001';
 
-        $sequence   = Sale::where('company_id', $companyId)
-                          ->where('receipt_type', $receiptType)
-                          ->count() + 1;
-        $saleNumber = $pointSale . '-' . str_pad($sequence, 8, '0', STR_PAD_LEFT);
+        $sequence = Sale::where('company_id', $companyId)
+            ->where('receipt_type', $receiptType)
+            ->count() + 1;
+        $saleNumber = $pointSale.'-'.str_pad($sequence, 8, '0', STR_PAD_LEFT);
         // ─────────────────────────────────────────────────────────────────────
 
         $paidAmount = (float) $request->paid_amount;
-        $total      = (float) $request->total;
-        $change     = max(0, $paidAmount - $total);
+        $total = (float) $request->total;
+        $change = max(0, $paidAmount - $total);
 
         $notes = $request->notes ?? '';
-        if (!empty($request->customer_name) && $request->customer_name !== 'Consumidor Final') {
-            $notes = 'Cliente: ' . $request->customer_name . ($notes ? "\n" . $notes : '');
+        if (! empty($request->customer_name) && $request->customer_name !== 'Consumidor Final') {
+            $notes = 'Cliente: '.$request->customer_name.($notes ? "\n".$notes : '');
         }
 
         DB::beginTransaction();
         try {
             $sale = Sale::create([
-                'company_id'      => $companyId,
-                'user_id'         => $userId,
-                'sale_number'     => $saleNumber,
-                'receipt_type'    => $receiptType,
-                'status'          => 'completed',
-                'subtotal'        => $request->subtotal        ?? 0,
+                'company_id' => $companyId,
+                'user_id' => $userId,
+                'sale_number' => $saleNumber,
+                'receipt_type' => $receiptType,
+                'status' => 'completed',
+                'subtotal' => $request->subtotal ?? 0,
                 'discount_amount' => $request->discount_amount ?? 0,
-                'tax_amount'      => $request->tax_amount      ?? 0,
-                'total'           => $total,
-                'paid_amount'     => $paidAmount,
-                'change_amount'   => $change,
-                'notes'           => $notes,
-                'sold_at'         => now(),
+                'tax_amount' => $request->tax_amount ?? 0,
+                'total' => $total,
+                'paid_amount' => $paidAmount,
+                'change_amount' => $change,
+                'notes' => $notes,
+                'sold_at' => now(),
             ]);
 
             // Registrar método de pago
@@ -135,58 +163,61 @@ class SaleController extends Controller
                 ->orWhere('type', $request->payment_method)
                 ->first();
             SalePayment::create([
-                'sale_id'           => $sale->id,
+                'sale_id' => $sale->id,
                 'payment_method_id' => $pm?->id ?? null,
-                'amount'            => $paidAmount,
-                'paid_at'           => now(),
+                'amount' => $paidAmount,
+                'paid_at' => now(),
             ]);
 
             // Crear ítems y descontar stock
             foreach ($request->items as $item) {
-                $qty       = (float) $item['quantity'];
+                $qty = (float) $item['quantity'];
                 $unitPrice = (float) $item['unit_price'];
-                $discount  = (float) ($item['discount'] ?? 0);
+                $discount = (float) ($item['discount'] ?? 0);
                 $lineTotal = (float) $item['total'];
                 $taxAmount = isset($item['tax_rate']) && $item['tax_rate'] > 0
                     ? round($lineTotal - ($lineTotal / (1 + $item['tax_rate'])), 2)
                     : 0;
 
                 $product = Product::find($item['product_id']);
+                $variantId = isset($item['variant_id']) ? (int) $item['variant_id'] : null;
 
                 SaleItem::create([
-                    'sale_id'      => $sale->id,
-                    'product_id'   => $item['product_id'],
+                    'sale_id' => $sale->id,
+                    'product_id' => $item['product_id'],
+                    'variant_id' => $variantId,
                     'product_name' => $item['name'] ?? ($product->name ?? 'Producto'),
-                    'sku'          => $product->sku ?? null,
-                    'quantity'     => $qty,
-                    'unit_price'   => $unitPrice,
-                    'discount'     => $discount,
-                    'tax_amount'   => $taxAmount,
-                    'total'        => $lineTotal,
+                    'sku' => $item['variant_sku'] ?? $product->sku ?? null,
+                    'quantity' => $qty,
+                    'unit_price' => $unitPrice,
+                    'discount' => $discount,
+                    'tax_amount' => $taxAmount,
+                    'total' => $lineTotal,
                 ]);
 
                 if ($product && $product->track_stock) {
                     $stock = Stock::firstOrCreate(
-                        ['product_id' => $item['product_id'], 'warehouse_id' => $warehouse->id],
+                        ['product_id' => $item['product_id'], 'variant_id' => $variantId, 'warehouse_id' => $warehouse->id],
                         ['quantity' => 0]
                     );
 
                     $stockBefore = (float) $stock->quantity;
-                    $stockAfter  = $stockBefore - $qty;
+                    $stockAfter = $stockBefore - $qty;
 
                     $stock->update(['quantity' => $stockAfter]);
 
                     StockMovement::create([
-                        'product_id'     => $item['product_id'],
-                        'warehouse_id'   => $warehouse->id,
-                        'user_id'        => $userId,
-                        'type'           => 'out',
-                        'quantity'       => $qty,
-                        'stock_before'   => $stockBefore,
-                        'stock_after'    => $stockAfter,
+                        'product_id' => $item['product_id'],
+                        'variant_id' => $variantId,
+                        'warehouse_id' => $warehouse->id,
+                        'user_id' => $userId,
+                        'type' => 'out',
+                        'quantity' => $qty,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
                         'reference_type' => 'sale',
-                        'reference_id'   => $sale->id,
-                        'note'           => "Venta POS {$saleNumber}",
+                        'reference_id' => $sale->id,
+                        'note' => "Venta POS {$saleNumber}",
                     ]);
                 }
             }
@@ -205,30 +236,56 @@ class SaleController extends Controller
             // post-cobro del frontend lo reciba en onSuccess → page.props.sale
             // (NO hacemos redirect para que preserveState funcione)
             return Inertia::render('Sale/Create', [
-                'products' => Product::with(['product_images', 'stocks'])
+                'products' => Product::with([
+                    'product_images',
+                    'stocks',
+                    'product_variants' => fn ($q) => $q->where('is_active', 1)->orderBy('id'),
+                    'product_variants.stocks',
+                    'product_variants.variant_attribute_values.product_attribute_value.product_attribute',
+                ])
                     ->where('is_active', 1)
                     ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
                     ->map(function ($p) {
                         $arr = $p->toArray();
-                        $arr['stock_quantity'] = $p->stocks->sum('quantity');
+                        $arr['image'] = $p->product_images->first()?->url ?? null;
+                        $variantsMapped = $p->product_variants->map(function ($v) {
+                            $label = $v->variant_attribute_values
+                                ->map(fn ($vav) => $vav->product_attribute_value->value)
+                                ->join(' / ');
+
+                            return [
+                                'id' => $v->id,
+                                'sku' => $v->sku,
+                                'price' => (float) $v->price,
+                                'is_active' => $v->is_active,
+                                'label' => $label,
+                                'stock_quantity' => $v->stocks->sum('quantity'),
+                            ];
+                        })->values();
+
+                        $arr['stock_quantity'] = $p->has_variants
+                            ? $variantsMapped->sum('stock_quantity')
+                            : $p->stocks->whereNull('variant_id')->sum('quantity');
+                        $arr['variants'] = $variantsMapped;
+
                         return $arr;
                     }),
                 'sale' => array_merge($sale->toArray(), [
-                    'sale_payments' => $sale->sale_payments->map(fn($p) => [
-                        'amount'         => $p->amount,
+                    'sale_payments' => $sale->sale_payments->map(fn ($p) => [
+                        'amount' => $p->amount,
                         'payment_method' => $p->paymentMethod
                             ? ['name' => $p->paymentMethod->name, 'type' => $p->paymentMethod->type]
                             : null,
                     ]),
                     // Alias para el TicketBase del frontend
                     'customer_name' => $request->customer_name ?? 'Consumidor Final',
-                    'items'         => $sale->sale_items->toArray(),
+                    'items' => $sale->sale_items->toArray(),
                 ]),
             ]);
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            \Log::error('SaleController@store error: ' . $e->getMessage(), [
+            \Log::error('SaleController@store error: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
@@ -251,8 +308,8 @@ class SaleController extends Controller
         return Inertia::render('Sale/Show', [
             'sale' => array_merge($sale->toArray(), [
                 // Normalizar sale_payments para el frontend: { amount, payment_method: { name, type } }
-                'sale_payments' => $sale->sale_payments->map(fn($p) => [
-                    'amount'         => $p->amount,
+                'sale_payments' => $sale->sale_payments->map(fn ($p) => [
+                    'amount' => $p->amount,
                     'payment_method' => $p->paymentMethod
                         ? ['name' => $p->paymentMethod->name, 'type' => $p->paymentMethod->type]
                         : null,
@@ -277,27 +334,30 @@ class SaleController extends Controller
                     $product = Product::find($item->product_id);
 
                     if ($product && $product->track_stock) {
+                        $cancelVariantId = $item->variant_id ?? null;
+
                         $stock = Stock::firstOrCreate(
-                            ['product_id' => $item->product_id, 'warehouse_id' => $warehouse->id],
+                            ['product_id' => $item->product_id, 'variant_id' => $cancelVariantId, 'warehouse_id' => $warehouse->id],
                             ['quantity' => 0]
                         );
 
                         $stockBefore = (float) $stock->quantity;
-                        $stockAfter  = $stockBefore + $item->quantity;
+                        $stockAfter = $stockBefore + $item->quantity;
 
                         $stock->update(['quantity' => $stockAfter]);
 
                         StockMovement::create([
-                            'product_id'     => $item->product_id,
-                            'warehouse_id'   => $warehouse->id,
-                            'user_id'        => auth()->id(),
-                            'type'           => 'in',
-                            'quantity'       => $item->quantity,
-                            'stock_before'   => $stockBefore,
-                            'stock_after'    => $stockAfter,
+                            'product_id' => $item->product_id,
+                            'variant_id' => $cancelVariantId,
+                            'warehouse_id' => $warehouse->id,
+                            'user_id' => auth()->id(),
+                            'type' => 'in',
+                            'quantity' => $item->quantity,
+                            'stock_before' => $stockBefore,
+                            'stock_after' => $stockAfter,
                             'reference_type' => 'sale_cancellation',
-                            'reference_id'   => $sale->id,
-                            'note'           => "Cancelación venta {$sale->sale_number}",
+                            'reference_id' => $sale->id,
+                            'note' => "Cancelación venta {$sale->sale_number}",
                         ]);
                     }
                 }
@@ -312,7 +372,8 @@ class SaleController extends Controller
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al cancelar: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Error al cancelar: '.$e->getMessage()]);
         }
     }
 }

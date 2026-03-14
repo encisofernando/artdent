@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Power, Box as BoxIcon, FileText, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit, Power, Box as BoxIcon, FileText, Loader2, Trash2 } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import ImportExportModal from './ImportExportModal';
 import axios from 'axios';
 
 // Helper: fetch a page as plain JSON (bypasses Inertia).
-// El controller devuelve JSON cuando detecta Accept: application/json
-// y NO viene el header X-Inertia:true.
 async function fetchPage(search, status, page) {
     const { data } = await axios.get(route('products.index'), {
         params: { search, status, page },
@@ -18,7 +16,6 @@ async function fetchPage(search, status, page) {
             'X-Requested-With': 'XMLHttpRequest',
         },
     });
-    // El controller devuelve { items: PaginatorObject }
     return data.items;
 }
 
@@ -30,7 +27,6 @@ export default function Index({ auth, items, filters }) {
     const [status, setStatus] = useState(filters?.status || 'all');
     const [debouncedSearch, setDebouncedSearch] = useState(search);
 
-    // Infinite scroll state — se inicializa con los datos SSR de Inertia
     const [products, setProducts] = useState(items?.data || []);
     const [currentPage, setCurrentPage] = useState(items?.current_page || 1);
     const [lastPage, setLastPage] = useState(items?.last_page || 1);
@@ -50,7 +46,6 @@ export default function Index({ auth, items, filters }) {
 
     // ── Resetear lista cuando cambian los filtros ────────────────────────────
     useEffect(() => {
-        // No ejecutar en el montaje inicial si los filtros coinciden con la SSR
         const isInitial =
             debouncedSearch === (filters?.search || '') &&
             status === (filters?.status || 'all');
@@ -94,7 +89,7 @@ export default function Index({ auth, items, filters }) {
 
         const observer = new IntersectionObserver(
             ([entry]) => { if (entry.isIntersecting) loadMore(); },
-            { rootMargin: '300px' }   // empieza a cargar 300px antes del final
+            { rootMargin: '300px' }
         );
         observer.observe(el);
         return () => observer.disconnect();
@@ -119,6 +114,24 @@ export default function Index({ auth, items, filters }) {
                     ),
             }
         );
+    };
+
+    // ── Eliminar producto ─────────────────────────────────────────────────────
+    const deleteProduct = (item) => {
+        if (!window.confirm(`¿Eliminar "${item.name}"?\n\nEsta acción no se puede deshacer.`)) return;
+
+        // optimistic remove
+        setProducts(prev => prev.filter(p => p.id !== item.id));
+        setTotalItems(prev => prev - 1);
+
+        router.delete(route('products.destroy', item.id), {
+            preserveScroll: true,
+            onError: () => {
+                // revert on failure
+                setProducts(prev => [...prev, item]);
+                setTotalItems(prev => prev + 1);
+            },
+        });
     };
 
     const hasMore = currentPage < lastPage;
@@ -245,6 +258,7 @@ export default function Index({ auth, items, filters }) {
                                 isDark={isDark}
                                 B={B}
                                 onToggle={toggleStatus}
+                                onDelete={deleteProduct}
                             />
                         ))}
 
@@ -255,7 +269,7 @@ export default function Index({ auth, items, filters }) {
                     </div>
                 )}
 
-                {/* Sentinel invisible — el observer lo vigila */}
+                {/* Sentinel invisible */}
                 <div ref={sentinelRef} className="h-1 w-full" />
 
                 {/* Mensaje de fin */}
@@ -271,7 +285,7 @@ export default function Index({ auth, items, filters }) {
 
 /* ── Sub-componentes ────────────────────────────────────────────────────── */
 
-function ProductCard({ item, isDark, B, onToggle }) {
+function ProductCard({ item, isDark, B, onToggle, onDelete }) {
     return (
         <div className={`relative flex flex-col rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md
             ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/60'}
@@ -306,7 +320,7 @@ function ProductCard({ item, isDark, B, onToggle }) {
                     <FileText size={40} className={isDark ? 'text-slate-700' : 'text-slate-300'} />
                 )}
 
-                {/* Stock badge — esquina inferior izquierda */}
+                {/* Stock badge */}
                 {item.track_stock && item.stock_quantity !== undefined && (
                     <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 rounded-md text-[10px] font-extrabold leading-none text-white"
                         style={{
@@ -317,7 +331,8 @@ function ProductCard({ item, isDark, B, onToggle }) {
                     </div>
                 )}
 
-                <div className="absolute top-2 right-2 z-20">
+                {/* Acciones: editar + eliminar */}
+                <div className="absolute top-2 right-2 z-20 flex gap-1">
                     <Link href={route('products.edit', item.id)}>
                         <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors backdrop-blur-md
                             ${isDark ? 'bg-slate-900/80 text-slate-300 hover:text-white border border-slate-700' : 'bg-white/90 text-slate-500 hover:text-slate-900 border border-slate-200 shadow-sm'}
@@ -325,6 +340,14 @@ function ProductCard({ item, isDark, B, onToggle }) {
                             <Edit size={14} />
                         </button>
                     </Link>
+                    <button
+                        onClick={() => onDelete(item)}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors backdrop-blur-md
+                            ${isDark ? 'bg-slate-900/80 text-red-400 hover:text-red-300 hover:bg-red-900/30 border border-slate-700' : 'bg-white/90 text-red-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 shadow-sm'}
+                        `}
+                    >
+                        <Trash2 size={14} />
+                    </button>
                 </div>
             </div>
 

@@ -1,0 +1,1 @@
+import{j as n}from"./app-QTuJnQmz.js";import{c as o}from"./button-C6l64ay-.js";function i({className:t,...r}){return n.jsx("input",{className:o("h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-artdent-mint",t),...r})}export{i as I};

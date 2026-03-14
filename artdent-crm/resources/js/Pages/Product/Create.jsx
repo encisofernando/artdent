@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2 } from 'lucide-react';
+import {
+    ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2,
+    Star, X, Video, GripVertical, Percent,
+} from 'lucide-react';
 import VariantGenerator from '@/Components/VariantGenerator';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
-// ─── shared atoms ──────────────────────────────────────────────
+// ─── atoms ─────────────────────────────────────────────────────────────────
+
 function SectionCard({ icon: Icon, title, children, isDark }) {
     return (
         <div className={`rounded-2xl border overflow-hidden transition-colors
@@ -33,9 +37,7 @@ function SectionCard({ icon: Icon, title, children, isDark }) {
 function Field({ label, error, children }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                {label}
-            </label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{label}</label>
             {children}
             {error && <p className="text-red-500 text-xs font-medium">{error}</p>}
         </div>
@@ -69,11 +71,7 @@ function Textarea({ isDark, ...props }) {
 }
 
 function Toggle({ checked, onChange, label, color = 'blue', isDark }) {
-    const colors = {
-        blue: 'bg-blue-500',
-        emerald: 'bg-emerald-500',
-        purple: 'bg-purple-500',
-    };
+    const colors = { blue: 'bg-blue-500', emerald: 'bg-emerald-500', purple: 'bg-purple-500' };
     return (
         <label className={`flex items-center justify-between gap-3 cursor-pointer py-1
             ${isDark ? 'text-slate-300' : 'text-slate-700'}`}
@@ -82,38 +80,183 @@ function Toggle({ checked, onChange, label, color = 'blue', isDark }) {
             <div className="relative shrink-0">
                 <input type="checkbox" className="sr-only" checked={checked} onChange={onChange} />
                 <div className={`w-11 h-6 rounded-full transition-colors duration-200
-                    ${checked ? colors[color] : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`}
-                />
+                    ${checked ? colors[color] : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`} />
                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200
-                    ${checked ? 'translate-x-5' : 'translate-x-0'}`}
-                />
+                    ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
         </label>
     );
 }
 
-function PriceInput({ label, value, onChange, error, isDark, required }) {
+// ─── MediaDropZone ──────────────────────────────────────────────────────────
+// Zona de drop que acepta archivos por click o arrastre desde el sistema.
+
+function MediaDropZone({ accept, multiple, onFiles, isDark, icon: Icon, label, hint }) {
+    const inputRef = useRef(null);
+    const [dragging, setDragging] = useState(false);
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const files = e.dataTransfer.files;
+        if (files?.length) onFiles(files);
+    };
+
     return (
-        <Field label={label} error={error}>
-            <div className="relative">
-                <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
-                    ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>$</span>
-                <Input
-                    isDark={isDark}
-                    type="number"
-                    step="0.01"
-                    value={value}
-                    onChange={onChange}
-                    placeholder="0,00"
-                    required={required}
-                    className="pl-7 font-mono"
-                />
+        <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={`rounded-xl border-2 border-dashed px-4 py-5 text-center transition-all cursor-pointer select-none
+                ${dragging
+                    ? 'border-teal-400 scale-[1.01] ' + (isDark ? 'bg-teal-900/20' : 'bg-teal-50')
+                    : isDark ? 'border-slate-700 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'
+                }`}
+        >
+            <input
+                ref={inputRef}
+                type="file"
+                accept={accept}
+                multiple={multiple}
+                className="hidden"
+                onChange={e => { if (e.target.files?.length) onFiles(e.target.files); e.target.value = ''; }}
+            />
+            <div className="flex flex-col items-center gap-2 pointer-events-none">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center
+                    ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}
+                >
+                    <Icon size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                </div>
+                <span className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {label}
+                </span>
+                {hint && (
+                    <span className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{hint}</span>
+                )}
             </div>
-        </Field>
+        </div>
     );
 }
 
-// ─── main ──────────────────────────────────────────────────────
+// ─── ImageDragGrid ──────────────────────────────────────────────────────────
+// Grid de miniaturas con drag-to-reorder interno y botón de eliminar.
+// La primera imagen siempre es la portada.
+
+function ImageDragGrid({ images, onReorder, onRemove, isDark }) {
+    const dragIdx = useRef(null);
+
+    if (!images.length) return null;
+
+    const handlers = (i) => ({
+        draggable: true,
+        onDragStart: () => { dragIdx.current = i; },
+        onDragOver: (e) => e.preventDefault(),
+        onDrop: (e) => {
+            e.preventDefault();
+            const from = dragIdx.current;
+            if (from === null || from === i) return;
+            const arr = [...images];
+            const [moved] = arr.splice(from, 1);
+            arr.splice(i, 0, moved);
+            dragIdx.current = null;
+            onReorder(arr);
+        },
+    });
+
+    return (
+        <div className="flex flex-wrap gap-2 mb-3">
+            {images.map((img, i) => (
+                <div
+                    key={img.uid}
+                    {...handlers(i)}
+                    className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 cursor-grab active:cursor-grabbing group transition-transform active:scale-95
+                        ${i === 0
+                            ? (isDark ? 'border-teal-500' : 'border-teal-400')
+                            : (isDark ? 'border-slate-700' : 'border-slate-200')
+                        }`}
+                >
+                    <img src={img.preview} alt="" className="w-full h-full object-cover pointer-events-none" />
+
+                    {/* grip hint */}
+                    <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-80 transition-opacity">
+                        <GripVertical size={12} className="text-white drop-shadow" />
+                    </div>
+
+                    {/* portada badge */}
+                    {i === 0 && (
+                        <div className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 py-0.5"
+                            style={{ background: `${B.teal}cc` }}
+                        >
+                            <Star size={7} className="text-white" fill="white" />
+                            <span className="text-[8px] font-black text-white tracking-wider">PORTADA</span>
+                        </div>
+                    )}
+
+                    {/* delete */}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onRemove(i); }}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                    >
+                        <X size={10} />
+                    </button>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ─── PriceBlock ─────────────────────────────────────────────────────────────
+// 3 campos: Precio Costo | Margen % | Precio Venta (bidireccional)
+
+function PriceBlock({ isDark, cost, onCostChange, price, onPriceChange, marginPct, onMarginChange, errors }) {
+    return (
+        <div className="grid grid-cols-3 gap-3">
+            {/* Costo */}
+            <Field label="Precio Costo" error={errors?.cost_price}>
+                <div className="relative">
+                    <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
+                        ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>$</span>
+                    <Input
+                        isDark={isDark} type="number" step="0.01"
+                        value={cost} onChange={e => onCostChange(e.target.value)}
+                        placeholder="0,00" className="pl-7 font-mono"
+                    />
+                </div>
+            </Field>
+
+            {/* Margen % */}
+            <Field label="Margen %">
+                <div className="relative">
+                    <Input
+                        isDark={isDark} type="number" step="0.01"
+                        value={marginPct} onChange={e => onMarginChange(e.target.value)}
+                        placeholder="0,00" className="pr-8 font-mono"
+                    />
+                    <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
+                        ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>%</span>
+                </div>
+            </Field>
+
+            {/* Precio Venta */}
+            <Field label="Precio Venta *" error={errors?.price}>
+                <div className="relative">
+                    <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
+                        ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>$</span>
+                    <Input
+                        isDark={isDark} type="number" step="0.01"
+                        value={price} onChange={e => onPriceChange(e.target.value)}
+                        placeholder="0,00" required className="pl-7 font-mono"
+                    />
+                </div>
+            </Field>
+        </div>
+    );
+}
+
+// ─── main ──────────────────────────────────────────────────────────────────
+
 export default function Create({ auth }) {
     const { isDark } = useTheme();
     const { data, setData, post, processing, errors, transform } = useForm({
@@ -129,9 +272,82 @@ export default function Create({ auth }) {
         variants: [],
         track_stock: 1,
         stock_quantity: '',
-        images: null,
+        images: [],
+        video: null,
     });
 
+    // ── media state ──────────────────────────────────────────────────────────
+    // pendingImages: [{ uid, file, preview }]
+    const [pendingImages, setPendingImages] = useState([]);
+    const [pendingVideo, setPendingVideo] = useState(null); // { file, name }
+
+    // ── margin state ─────────────────────────────────────────────────────────
+    const [marginPct, setMarginPct] = useState('');
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    const addImages = (files) => {
+        const newItems = Array.from(files).map(f => ({
+            uid: Math.random().toString(36).slice(2),
+            file: f,
+            preview: URL.createObjectURL(f),
+        }));
+        const updated = [...pendingImages, ...newItems];
+        setPendingImages(updated);
+        setData('images', updated.map(p => p.file));
+    };
+
+    const removeImage = (idx) => {
+        const updated = pendingImages.filter((_, i) => i !== idx);
+        setPendingImages(updated);
+        setData('images', updated.map(p => p.file));
+    };
+
+    const reorderImages = (newArr) => {
+        setPendingImages(newArr);
+        setData('images', newArr.map(p => p.file));
+    };
+
+    const addVideo = (files) => {
+        const f = files[0];
+        if (!f) return;
+        setPendingVideo({ file: f, name: f.name });
+        setData('video', f);
+    };
+
+    const removeVideo = () => {
+        setPendingVideo(null);
+        setData('video', null);
+    };
+
+    // ── price / margin logic ─────────────────────────────────────────────────
+    const handleCostChange = (val) => {
+        setData('cost_price', val);
+        const cost = parseFloat(val);
+        const pct  = parseFloat(marginPct);
+        if (!isNaN(cost) && cost > 0 && !isNaN(pct)) {
+            setData('price', (cost * (1 + pct / 100)).toFixed(2));
+        }
+    };
+
+    const handlePriceChange = (val) => {
+        setData('price', val);
+        const cost  = parseFloat(data.cost_price);
+        const price = parseFloat(val);
+        if (!isNaN(cost) && cost > 0 && !isNaN(price) && price > 0) {
+            setMarginPct(((price / cost - 1) * 100).toFixed(2));
+        }
+    };
+
+    const handleMarginChange = (val) => {
+        setMarginPct(val);
+        const cost = parseFloat(data.cost_price);
+        const pct  = parseFloat(val);
+        if (!isNaN(cost) && cost > 0 && !isNaN(pct)) {
+            setData('price', (cost * (1 + pct / 100)).toFixed(2));
+        }
+    };
+
+    // ── submit ───────────────────────────────────────────────────────────────
     const submit = (e) => {
         e.preventDefault();
         transform((f) => ({
@@ -141,6 +357,7 @@ export default function Create({ auth }) {
                     ...v,
                     price: f.same_price_for_variants ? f.price : v.price,
                     cost_price: f.same_price_for_variants ? f.cost_price : v.cost_price,
+                    stock_quantity: f.track_stock ? v.stock_quantity : undefined,
                 })))
                 : null,
         }));
@@ -148,9 +365,10 @@ export default function Create({ auth }) {
     };
 
     const hasVariants = data.has_variants === 1 || data.has_variants === true;
-    const trackStock = data.track_stock === 1 || data.track_stock === true;
-    const isActive = data.is_active === 1 || data.is_active === true;
+    const trackStock  = data.track_stock === 1  || data.track_stock === true;
+    const isActive    = data.is_active === 1    || data.is_active === true;
 
+    // ── render ───────────────────────────────────────────────────────────────
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title="Nuevo Producto" />
@@ -214,33 +432,65 @@ export default function Create({ auth }) {
                     </div>
                 </SectionCard>
 
-                {/* ── imágenes ── */}
-                <SectionCard icon={Image} title="Imágenes" isDark={isDark}>
-                    <Field label="Subir Imágenes" error={errors['images.0']}>
-                        <div className={`rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors
-                            ${isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'}`}
-                        >
-                            <input type="file" multiple accept="image/*"
-                                onChange={e => setData('images', Array.from(e.target.files))}
-                                className="hidden" id="img-upload"
+                {/* ── imágenes & video ── */}
+                <SectionCard icon={Image} title="Multimedia" isDark={isDark}>
+                    <div className="flex flex-col gap-4">
+
+                        {/* grid de miniaturas con drag-to-reorder */}
+                        <ImageDragGrid
+                            images={pendingImages}
+                            onReorder={reorderImages}
+                            onRemove={removeImage}
+                            isDark={isDark}
+                        />
+
+                        {/* zona de drop para imágenes */}
+                        <Field label="Imágenes del producto" error={errors['images.0']}>
+                            <MediaDropZone
+                                accept="image/*"
+                                multiple
+                                onFiles={addImages}
+                                isDark={isDark}
+                                icon={Image}
+                                label={pendingImages.length
+                                    ? `${pendingImages.length} imagen${pendingImages.length > 1 ? 'es' : ''} · arrastrá para reordenar`
+                                    : 'Arrastrá imágenes aquí o tocá para seleccionar'
+                                }
+                                hint="JPG, PNG, WEBP · Máx. 2 MB · La primera en el orden será la portada"
                             />
-                            <label htmlFor="img-upload" className="cursor-pointer flex flex-col items-center gap-2">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-                                    ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}
+                        </Field>
+
+                        {/* video */}
+                        <Field label="Video del producto (opcional)" error={errors.video}>
+                            {pendingVideo ? (
+                                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border
+                                    ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
                                 >
-                                    <Image size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                                    <Video size={18} style={{ color: B.teal }} className="shrink-0" />
+                                    <span className={`text-sm font-medium truncate flex-1
+                                        ${isDark ? 'text-slate-300' : 'text-slate-700'}`}
+                                    >
+                                        {pendingVideo.name}
+                                    </span>
+                                    <button type="button" onClick={removeVideo}
+                                        className="w-6 h-6 rounded-full bg-red-500/15 text-red-500 flex items-center justify-center hover:bg-red-500/25 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
                                 </div>
-                                <span className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    {data.images?.length
-                                        ? `${data.images.length} imagen${data.images.length > 1 ? 'es' : ''} seleccionada${data.images.length > 1 ? 's' : ''}`
-                                        : 'Tocá para seleccionar'}
-                                </span>
-                                <span className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                                    JPG, PNG, WEBP · Máx. 2MB · La primera será portada
-                                </span>
-                            </label>
-                        </div>
-                    </Field>
+                            ) : (
+                                <MediaDropZone
+                                    accept="video/*"
+                                    multiple={false}
+                                    onFiles={addVideo}
+                                    isDark={isDark}
+                                    icon={Video}
+                                    label="Arrastrá un video o tocá para seleccionar"
+                                    hint="MP4, MOV, WEBM · Máx. 50 MB"
+                                />
+                            )}
+                        </Field>
+                    </div>
                 </SectionCard>
 
                 {/* ── inventario ── */}
@@ -262,23 +512,17 @@ export default function Create({ auth }) {
                         </div>
 
                         <div className={`flex flex-col gap-3 px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-                            <Toggle
-                                isDark={isDark}
-                                label="Llevar control de stock"
-                                color="blue"
-                                checked={trackStock}
+                            <Toggle isDark={isDark} label="Llevar control de stock"
+                                color="blue" checked={trackStock}
                                 onChange={e => setData('track_stock', e.target.checked ? 1 : 0)}
                             />
-                            <Toggle
-                                isDark={isDark}
-                                label="Producto activo en catálogo"
-                                color="emerald"
-                                checked={isActive}
+                            <Toggle isDark={isDark} label="Producto activo en catálogo"
+                                color="emerald" checked={isActive}
                                 onChange={e => setData('is_active', e.target.checked ? 1 : 0)}
                             />
                         </div>
 
-                        {trackStock && (
+                        {trackStock && !hasVariants && (
                             <Field label="Stock Inicial" error={errors.stock_quantity}>
                                 <Input isDark={isDark} type="number" value={data.stock_quantity}
                                     onChange={e => setData('stock_quantity', e.target.value)}
@@ -293,11 +537,8 @@ export default function Create({ auth }) {
                 <SectionCard icon={DollarSign} title="Precios y Variantes" isDark={isDark}>
                     <div className="flex flex-col gap-4">
                         <div className={`px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-                            <Toggle
-                                isDark={isDark}
-                                label="Producto con múltiples variantes"
-                                color="purple"
-                                checked={hasVariants}
+                            <Toggle isDark={isDark} label="Producto con múltiples variantes"
+                                color="purple" checked={hasVariants}
                                 onChange={e => setData('has_variants', e.target.checked ? 1 : 0)}
                             />
                         </div>
@@ -305,43 +546,35 @@ export default function Create({ auth }) {
                         {hasVariants ? (
                             <div className="flex flex-col gap-4">
                                 <div className={`px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-                                    <Toggle
-                                        isDark={isDark}
-                                        label="Precio único para todas las variantes"
-                                        color="blue"
-                                        checked={data.same_price_for_variants}
+                                    <Toggle isDark={isDark} label="Precio único para todas las variantes"
+                                        color="blue" checked={data.same_price_for_variants}
                                         onChange={e => setData('same_price_for_variants', e.target.checked)}
                                     />
                                 </div>
                                 {data.same_price_for_variants && (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <PriceInput label="Precio Público *" isDark={isDark} value={data.price}
-                                            onChange={e => setData('price', e.target.value)}
-                                            error={errors.price} required
-                                        />
-                                        <PriceInput label="Precio de Costo" isDark={isDark} value={data.cost_price}
-                                            onChange={e => setData('cost_price', e.target.value)}
-                                            error={errors.cost_price}
-                                        />
-                                    </div>
+                                    <PriceBlock
+                                        isDark={isDark}
+                                        cost={data.cost_price}        onCostChange={handleCostChange}
+                                        price={data.price}            onPriceChange={handlePriceChange}
+                                        marginPct={marginPct}         onMarginChange={handleMarginChange}
+                                        errors={errors}
+                                    />
                                 )}
                                 <VariantGenerator
                                     variantsData={data.variants}
                                     onVariantsChange={(v) => setData('variants', v)}
                                     hidePrices={data.same_price_for_variants}
+                                    trackStock={trackStock}
                                 />
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 gap-3">
-                                <PriceInput label="Precio Público *" isDark={isDark} value={data.price}
-                                    onChange={e => setData('price', e.target.value)}
-                                    error={errors.price} required
-                                />
-                                <PriceInput label="Precio de Costo" isDark={isDark} value={data.cost_price}
-                                    onChange={e => setData('cost_price', e.target.value)}
-                                    error={errors.cost_price}
-                                />
-                            </div>
+                            <PriceBlock
+                                isDark={isDark}
+                                cost={data.cost_price}        onCostChange={handleCostChange}
+                                price={data.price}            onPriceChange={handlePriceChange}
+                                marginPct={marginPct}         onMarginChange={handleMarginChange}
+                                errors={errors}
+                            />
                         )}
                     </div>
                 </SectionCard>

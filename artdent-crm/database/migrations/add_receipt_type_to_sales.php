@@ -8,6 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('sales', 'receipt_type')) {
+            return;
+        }
         Schema::table('sales', function (Blueprint $table) {
             $table->string('receipt_type', 5)->default('X')
                 ->after('sale_number')

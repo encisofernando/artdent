@@ -41,6 +41,9 @@ Route::middleware(['auth'])->group(function () {
 
 });
 
+// Presupuesto público — sin autenticación (link compartible por WhatsApp)
+Route::get('/q/{token}', [\App\Http\Controllers\QuoteController::class, 'publicShow'])->name('quotes.public');
+
 // Panel de asignación — usa auth:sanctum (Bearer token) fuera del grupo de sesión
 require __DIR__.'/modules/assign-panel.php';
 

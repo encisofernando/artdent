@@ -25,7 +25,15 @@
       "Bash(vendor/bin/pint --dirty app/Http/Controllers/WebAuthnKioskController.php app/Http/Controllers/AttendanceKioskController.php)",
       "Bash(python3 /tmp/write_attendance.py)",
       "Bash(/c/Python314/python /tmp/write_attendance.py)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(\"c:\\\\Users\\\\ferna\\\\OneDrive\\\\Documentos\\\\ArtDent\\\\artdent\\\\artdent-crm\\\\resources\\\\js\\\\Pages\\\\Invoice\\\\Create.jsx\":*)",
+      "Bash(vendor/bin/pint app/Http/Controllers/QuoteController.php app/Models/Invoice.php)",
+      "Bash(ls \"c:\\\\Users\\\\ferna\\\\OneDrive\\\\Documentos\\\\ArtDent\\\\artdent\\\\artdent-crm\\\\database\\\\migrations\"\" | grep -i \"stock)",
+      "Bash(variant)",
+      "Bash(sale_item\" 2>/dev/null || dir \"c:UsersfernaOneDriveDocumentosArtDentartdentartdent-crmdatabasemigrations\"\")",
+      "Bash(findstr /i \"stock variant sale_item\")",
+      "Bash(vendor/bin/pint app/Http/Controllers/ProductController.php app/Http/Controllers/SaleController.php)",
+      "Bash(vendor/bin/pint app/Http/Controllers/SaleController.php)"
     ]
   }
 }
