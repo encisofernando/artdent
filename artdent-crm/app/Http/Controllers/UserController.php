@@ -2,64 +2,128 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Models\Branch;
+use App\Models\Role;
 use App\Models\User;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Hash;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): Response
     {
-        //
+        $users = User::query()
+            ->with('roles')
+            ->where('company_id', auth()->user()->company_id)
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'phone' => $u->phone,
+                'is_active' => $u->is_active,
+                'created_at' => $u->created_at?->format('d/m/Y'),
+                'roles' => $u->roles->map(fn (Role $r) => [
+                    'id' => $r->id,
+                    'name' => $r->name,
+                    'display_name' => $r->display_name,
+                ]),
+            ]);
+
+        return Inertia::render('Users/Index', [
+            'users' => $users,
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): Response
     {
-        //
+        return Inertia::render('Users/Create', [
+            'roles' => Role::query()->orderBy('display_name')->get(['id', 'name', 'display_name']),
+            'branches' => Branch::query()
+                ->where('company_id', auth()->user()->company_id)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request): RedirectResponse
     {
-        //
+        $validated = $request->validated();
+
+        $user = User::create([
+            'company_id' => auth()->user()->company_id,
+            'branch_id' => $validated['branch_id'] ?? null,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'phone' => $validated['phone'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        if (! empty($validated['roles'])) {
+            $user->roles()->sync($validated['roles']);
+        }
+
+        return redirect()->route('users.index')
+            ->with('success', "Usuario {$user->name} creado exitosamente.");
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(User $user)
+    public function edit(User $user): Response
     {
-        //
+        $user->load('roles');
+
+        return Inertia::render('Users/Edit', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'branch_id' => $user->branch_id,
+                'is_active' => $user->is_active,
+                'roles' => $user->roles->pluck('id'),
+            ],
+            'roles' => Role::query()->orderBy('display_name')->get(['id', 'name', 'display_name']),
+            'branches' => Branch::query()
+                ->where('company_id', auth()->user()->company_id)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(User $user)
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        //
+        $validated = $request->validated();
+
+        $data = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'branch_id' => $validated['branch_id'] ?? null,
+            'is_active' => $validated['is_active'] ?? $user->is_active,
+        ];
+
+        if (! empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($data);
+        $user->roles()->sync($validated['roles'] ?? []);
+
+        return redirect()->route('users.index')
+            ->with('success', "Usuario {$user->name} actualizado correctamente.");
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, User $user)
+    public function destroy(User $user): RedirectResponse
     {
-        //
-    }
+        $user->roles()->detach();
+        $user->delete();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(User $user)
-    {
-        //
+        return redirect()->route('users.index')
+            ->with('success', 'Usuario eliminado.');
     }
 }

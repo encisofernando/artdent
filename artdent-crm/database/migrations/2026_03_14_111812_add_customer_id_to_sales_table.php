@@ -6,22 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
-        if (Schema::hasColumn('sales', 'receipt_type')) {
-            return;
-        }
         Schema::table('sales', function (Blueprint $table) {
-            $table->string('receipt_type', 5)->default('X')
-                ->after('sale_number')
-                ->comment('Tipo de comprobante: X, A, B, C');
+            $table->foreignId('customer_id')->nullable()->after('crm_client_id')->constrained('customers')->nullOnDelete();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('sales', function (Blueprint $table) {
-            $table->dropColumn('receipt_type');
+            $table->dropForeignIdFor(\App\Models\Customer::class);
         });
     }
 };

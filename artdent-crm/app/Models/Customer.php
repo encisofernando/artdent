@@ -8,12 +8,13 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Class Customer
- * 
+ *
  * @property int $id
  * @property string $name
  * @property string $email
@@ -31,69 +32,67 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
- * 
  * @property Collection|CrmClient[] $crm_clients
  * @property Collection|CustomerAddress[] $customer_addresses
  * @property Collection|EcommerceOrder[] $ecommerce_orders
  * @property Collection|Review[] $reviews
  * @property Collection|Wishlist[] $wishlists
- *
- * @package App\Models
  */
-class Customer extends Model
+class Customer extends Authenticatable
 {
-	use SoftDeletes;
-	protected $table = 'customers';
+    use HasApiTokens, SoftDeletes;
 
-	protected $casts = [
-		'email_verified_at' => 'datetime',
-		'accepts_marketing' => 'bool',
-		'is_active' => 'bool'
-	];
+    protected $table = 'customers';
 
-	protected $hidden = [
-		'password',
-		'remember_token'
-	];
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'accepts_marketing' => 'bool',
+        'is_active' => 'bool',
+    ];
 
-	protected $fillable = [
-		'name',
-		'email',
-		'password',
-		'phone',
-		'dni',
-		'address',
-		'city',
-		'province',
-		'postal_code',
-		'email_verified_at',
-		'remember_token',
-		'accepts_marketing',
-		'is_active'
-	];
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
-	public function crm_clients()
-	{
-		return $this->hasMany(CrmClient::class);
-	}
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'phone',
+        'dni',
+        'address',
+        'city',
+        'province',
+        'postal_code',
+        'email_verified_at',
+        'remember_token',
+        'accepts_marketing',
+        'is_active',
+    ];
 
-	public function customer_addresses()
-	{
-		return $this->hasMany(CustomerAddress::class);
-	}
+    public function crm_clients()
+    {
+        return $this->hasMany(CrmClient::class);
+    }
 
-	public function ecommerce_orders()
-	{
-		return $this->hasMany(EcommerceOrder::class);
-	}
+    public function customer_addresses()
+    {
+        return $this->hasMany(CustomerAddress::class);
+    }
 
-	public function reviews()
-	{
-		return $this->hasMany(Review::class);
-	}
+    public function ecommerce_orders()
+    {
+        return $this->hasMany(EcommerceOrder::class);
+    }
 
-	public function wishlists()
-	{
-		return $this->hasMany(Wishlist::class);
-	}
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function wishlists()
+    {
+        return $this->hasMany(Wishlist::class);
+    }
 }

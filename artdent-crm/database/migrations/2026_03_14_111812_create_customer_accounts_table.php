@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('collaborator_attendances', function (Blueprint $table) {
-            $table->string('photo_path')->nullable()->after('notes');
+        Schema::create('customer_accounts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('customer_id')->unique()->constrained()->cascadeOnDelete();
+            $table->decimal('balance', 12, 2)->default(0);
+            $table->timestamps();
         });
     }
 
@@ -21,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('collaborator_attendances', function (Blueprint $table) {
-            $table->dropColumn('photo_path');
-        });
+        Schema::dropIfExists('customer_accounts');
     }
 };

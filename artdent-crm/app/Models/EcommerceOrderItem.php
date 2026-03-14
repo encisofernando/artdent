@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class EcommerceOrderItem
- * 
+ *
  * @property int $id
  * @property int $order_id
  * @property int|null $product_id
@@ -21,46 +21,46 @@ use Illuminate\Database\Eloquent\Model;
  * @property float $unit_price
  * @property float|null $discount
  * @property float $total
- * 
  * @property EcommerceOrder $ecommerce_order
  * @property Product|null $product
- *
- * @package App\Models
  */
 class EcommerceOrderItem extends Model
 {
-	protected $table = 'ecommerce_order_items';
-	public $timestamps = false;
+    protected $table = 'ecommerce_order_items';
 
-	protected $casts = [
-		'order_id' => 'int',
-		'product_id' => 'int',
-		'variant_id' => 'int',
-		'quantity' => 'int',
-		'unit_price' => 'float',
-		'discount' => 'float',
-		'total' => 'float'
-	];
+    public $timestamps = false;
 
-	protected $fillable = [
-		'order_id',
-		'product_id',
-		'variant_id',
-		'product_name',
-		'sku',
-		'quantity',
-		'unit_price',
-		'discount',
-		'total'
-	];
+    protected $casts = [
+        'order_id' => 'int',
+        'product_id' => 'int',
+        'variant_id' => 'int',
+        'quantity' => 'int',
+        'unit_price' => 'float',
+        'tax_rate' => 'float',
+        'discount' => 'float',
+        'total' => 'float',
+    ];
 
-	public function ecommerce_order()
-	{
-		return $this->belongsTo(EcommerceOrder::class, 'order_id');
-	}
+    protected $fillable = [
+        'order_id',
+        'product_id',
+        'variant_id',
+        'product_name',
+        'sku',
+        'quantity',
+        'unit_price',
+        'tax_rate',
+        'discount',
+        'total',
+    ];
 
-	public function product()
-	{
-		return $this->belongsTo(Product::class);
-	}
+    public function ecommerce_order()
+    {
+        return $this->belongsTo(EcommerceOrder::class, 'order_id');
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

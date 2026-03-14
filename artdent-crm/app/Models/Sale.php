@@ -50,6 +50,7 @@ class Sale extends Model
         'cash_session_id' => 'int',
         'user_id' => 'int',
         'crm_client_id' => 'int',
+        'customer_id' => 'int',
         'dentist_id' => 'int',
         'invoice_id' => 'int',
         'subtotal' => 'float',
@@ -67,6 +68,7 @@ class Sale extends Model
         'cash_session_id',
         'user_id',
         'crm_client_id',
+        'customer_id',
         'dentist_id',
         'sale_type',
         'invoice_id',
@@ -111,6 +113,11 @@ class Sale extends Model
     public function sale_payments()
     {
         return $this->hasMany(SalePayment::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function dentist()

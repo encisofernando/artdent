@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Plus, Edit, CreditCard } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 
@@ -151,6 +151,14 @@ export default function Index({ auth, items, filters }) {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                <Link href={route('customers.account', item.id)}
+                                                    title="Cuenta Corriente">
+                                                    <button className={`p-1.5 rounded-lg transition-colors
+                                                        ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-teal-400' : 'text-slate-500 hover:bg-slate-100 hover:text-teal-600'}
+                                                    `}>
+                                                        <CreditCard size={18} />
+                                                    </button>
+                                                </Link>
                                                 <Link href={route('customers.edit', item.id)}>
                                                     <button className={`p-1.5 rounded-lg transition-colors
                                                         ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}

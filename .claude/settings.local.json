@@ -33,7 +33,15 @@
       "Bash(sale_item\" 2>/dev/null || dir \"c:UsersfernaOneDriveDocumentosArtDentartdentartdent-crmdatabasemigrations\"\")",
       "Bash(findstr /i \"stock variant sale_item\")",
       "Bash(vendor/bin/pint app/Http/Controllers/ProductController.php app/Http/Controllers/SaleController.php)",
-      "Bash(vendor/bin/pint app/Http/Controllers/SaleController.php)"
+      "Bash(vendor/bin/pint app/Http/Controllers/SaleController.php)",
+      "Bash(vendor/bin/pint --dirty app/Http/Controllers/SaleController.php app/Http/Controllers/CustomerController.php)",
+      "Bash(cp \"database/migrations/2026_03_14_111812_create_customer_account_moves_table.php\" \"database/migrations/2026_03_14_111813_create_customer_account_moves_table.php\")",
+      "Bash(rm \"database/migrations/2026_03_14_111812_create_customer_account_moves_table.php\")",
+      "Bash(vendor/bin/pint --dirty app/Http/Controllers/SaleController.php app/Http/Controllers/CustomerAccountController.php app/Models/CustomerAccount.php app/Models/CustomerAccountMove.php app/Models/Sale.php routes/modules/ecommerce.php)",
+      "Bash(find c:UsersUsuarioDocumentsSOFTWAREartdente-commerce -type f -name *.json -o -name *.js -o -name *.ts -o -name *.jsx -o -name *.tsx)",
+      "Bash(find c:UsersUsuarioDocumentsSOFTWAREartdente-commercesrc -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx \\\\\\))",
+      "Bash(grep -r \"catalog\\\\|variant\\\\|attribute\" /c/Users/Usuario/Documents/SOFTWARE/artdent/artdent-crm/routes --include=*.php)",
+      "Bash(grep -r \"has_variants\\\\|product_variants\" /c/Users/Usuario/Documents/SOFTWARE/artdent --include=*.php --include=*.ts --include=*.tsx)"
     ]
   }
 }

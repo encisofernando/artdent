@@ -19,15 +19,15 @@ class CustomerController extends Controller
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('dni', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('dni', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
         }
 
         $items = $query->paginate(15)->withQueryString();
 
         return Inertia::render('Customer/Index', [
             'items' => $items,
-            'filters' => ['search' => $search]
+            'filters' => ['search' => $search],
         ]);
     }
 
@@ -57,10 +57,14 @@ class CustomerController extends Controller
             'email_verified_at' => 'nullable',
             'remember_token' => 'nullable',
             'accepts_marketing' => 'nullable',
-            'is_active' => 'nullable'
+            'is_active' => 'nullable',
         ]);
 
-        \App\Models\Customer::create($validated);
+        $customer = \App\Models\Customer::create($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json(['customer' => $customer]);
+        }
 
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }
@@ -79,7 +83,7 @@ class CustomerController extends Controller
     public function edit(Customer $customer)
     {
         return Inertia::render('Customer/Edit', [
-            'item' => $customer
+            'item' => $customer,
         ]);
     }
 
@@ -101,7 +105,7 @@ class CustomerController extends Controller
             'email_verified_at' => 'nullable',
             'remember_token' => 'nullable',
             'accepts_marketing' => 'nullable',
-            'is_active' => 'nullable'
+            'is_active' => 'nullable',
         ]);
 
         $customer->update($validated);
@@ -115,6 +119,7 @@ class CustomerController extends Controller
     public function destroy(Customer $customer)
     {
         $customer->delete();
+
         return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
     }
 }

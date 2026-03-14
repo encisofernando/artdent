@@ -28,10 +28,11 @@ const TIPOS = [
 ];
 
 const PAYMENT_METHODS = [
-    { id: 'cash',     name: 'Efectivo'       },
-    { id: 'debit',    name: 'Débito'         },
-    { id: 'credit',   name: 'Crédito'        },
-    { id: 'transfer', name: 'Transferencia'  },
+    { id: 'cash',              name: 'Efectivo',        requiresCustomer: false },
+    { id: 'debit',             name: 'Débito',          requiresCustomer: false },
+    { id: 'credit',            name: 'Crédito',         requiresCustomer: false },
+    { id: 'transfer',          name: 'Transferencia',   requiresCustomer: false },
+    { id: 'cuenta_corriente',  name: 'Cta. Corriente',  requiresCustomer: true  },
 ];
 
 // ─── Brand / layout ──────────────────────────────────────────
@@ -201,7 +202,7 @@ function FacturaA4({ sale }) {
     );
 }
 
-export default function Create({ auth, products }) {
+export default function Create({ auth, products, customers = [] }) {
     const { isDark, sidebarCollapsed } = useTheme();
     const D = useD(isDark);
 
@@ -224,10 +225,17 @@ export default function Create({ auth, products }) {
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [receivedAmount, setReceivedAmount] = useState('');
 
-    // Alta rápida
+    // Alta rápida producto
     const [newProd, setNewProd]           = useState({ name: '', sku: '', price: '', tax_rate: '21' });
     const [savingProd, setSavingProd]     = useState(false);
     const [prodError, setProdError]       = useState('');
+
+    // Alta rápida cliente
+    const [altaClienteOpen, setAltaClienteOpen] = useState(false);
+    const [newCliente, setNewCliente]           = useState({ name: '', phone: '', dni: '' });
+    const [savingCliente, setSavingCliente]     = useState(false);
+    const [clienteError, setClienteError]       = useState('');
+    const [clienteSearch, setClienteSearch]     = useState('');
 
     // Variant picker
     const [variantProduct, setVariantProduct] = useState(null); // product whose variants are being picked
@@ -268,8 +276,9 @@ export default function Create({ auth, products }) {
     }, [cart, receiptType]);
 
     const itemCount   = cart.reduce((s, i) => s + i.quantity, 0);
-    const isCash      = paymentMethod === 'cash';
-    const changeAmt   = isCash && Number(receivedAmount) > totals.total
+    const isCash             = paymentMethod === 'cash';
+    const isCuentaCorriente  = paymentMethod === 'cuenta_corriente';
+    const changeAmt          = isCash && Number(receivedAmount) > totals.total
         ? Number(receivedAmount) - totals.total : 0;
 
     // ── Cart actions ─────────────────────────────────────────
@@ -337,6 +346,10 @@ export default function Create({ auth, products }) {
     const handleCobrar = () => {
         if (cart.length === 0) return;
         setReceivedAmount(String(totals.total));
+        // Reset CC if no customer selected
+        if (paymentMethod === 'cuenta_corriente' && !customerId) {
+            setPaymentMethod('cash');
+        }
         setPagoOpen(true);
     };
 
@@ -475,6 +488,31 @@ export default function Create({ auth, products }) {
             setProdError(e.response?.data?.message || 'Error al crear producto');
         } finally {
             setSavingProd(false);
+        }
+    };
+
+    // ── Alta rápida cliente ──────────────────────────────────
+    const handleCreateCliente = async () => {
+        if (!newCliente.name.trim()) {
+            setClienteError('El nombre es obligatorio.');
+            return;
+        }
+        setSavingCliente(true);
+        setClienteError('');
+        try {
+            const res = await axios.post(route('customers.store'), { ...newCliente, is_active: true }, {
+                headers: { Accept: 'application/json' },
+            });
+            const c = res.data.customer;
+            setCustomerId(String(c.id));
+            setCustomerName(c.name);
+            setAltaClienteOpen(false);
+            setNewCliente({ name: '', phone: '', dni: '' });
+            setClienteOpen(false);
+        } catch (e) {
+            setClienteError(e.response?.data?.message || 'Error al crear cliente');
+        } finally {
+            setSavingCliente(false);
         }
     };
 
@@ -832,40 +870,164 @@ export default function Create({ auth, products }) {
             </Modal>
 
             {/* ═══ MODAL CLIENTE ══════════════════════════════════════════════ */}
-            <Modal open={clienteOpen} onClose={() => setClienteOpen(false)} title="Seleccionar Cliente" D={D}
-                footer={
-                    <>
-                        <Btn variant="ghost" size="sm" onClick={() => setClienteOpen(false)}
-                            style={{ color: D.muted }}>Cancelar</Btn>
-                        <Btn variant="primary" size="sm" onClick={() => setClienteOpen(false)}>Confirmar</Btn>
-                    </>
-                }
-            >
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-[11px] font-bold tracking-widest mb-1.5"
-                            style={{ color: D.label }}>NOMBRE DEL CLIENTE</label>
-                        <input
-                            type="text"
-                            value={customerName === 'Consumidor Final' ? '' : customerName}
-                            onChange={e => setCustomerName(e.target.value || 'Consumidor Final')}
-                            placeholder="Ej: Juan Pérez"
-                            className="w-full outline-none"
-                            style={{
-                                padding: '10px 12px', borderRadius: 11,
-                                border: `1.5px solid ${D.inputBorder}`,
-                                background: D.input, color: D.text, fontSize: 13.5, fontFamily: 'inherit',
-                            }}
-                        />
+            <Modal open={clienteOpen} onClose={() => { setClienteOpen(false); setAltaClienteOpen(false); setClienteSearch(''); }} title="Seleccionar Cliente" D={D}>
+                {!altaClienteOpen ? (
+                    <div className="space-y-3">
+                        {/* Buscador */}
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" style={{ color: D.text }} />
+                            <input
+                                type="text"
+                                value={clienteSearch}
+                                onChange={e => setClienteSearch(e.target.value)}
+                                placeholder="Buscar por nombre, DNI o teléfono..."
+                                className="w-full outline-none pl-8"
+                                style={{ ...inputStyle, fontSize: 13 }}
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Lista de clientes */}
+                        <div className="max-h-64 overflow-y-auto space-y-1 pr-0.5">
+                            {/* Consumidor Final */}
+                            <button
+                                onClick={() => { setCustomerName('Consumidor Final'); setCustomerId(''); setClienteOpen(false); setClienteSearch(''); }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-left transition-colors"
+                                style={{
+                                    background: !customerId ? `${B.blue}1F` : 'transparent',
+                                    border: `1.5px solid ${!customerId ? `${B.blue}60` : D.border}`,
+                                }}
+                            >
+                                <User size={14} style={{ color: D.muted }} />
+                                <div>
+                                    <div className="text-[13px] font-semibold" style={{ color: D.text }}>Consumidor Final</div>
+                                    <div className="text-[11px]" style={{ color: D.muted }}>Sin identificar</div>
+                                </div>
+                                {!customerId && <Check size={14} className="ml-auto" style={{ color: B.blue }} />}
+                            </button>
+
+                            {/* Clientes filtrados */}
+                            {customers
+                                .filter(c => {
+                                    if (!clienteSearch) return true;
+                                    const q = clienteSearch.toLowerCase();
+                                    return (c.name && c.name.toLowerCase().includes(q))
+                                        || (c.dni && c.dni.toLowerCase().includes(q))
+                                        || (c.phone && c.phone.toLowerCase().includes(q));
+                                })
+                                .map(c => {
+                                    const isSelected = customerId === String(c.id);
+                                    return (
+                                        <button
+                                            key={c.id}
+                                            onClick={() => { setCustomerId(String(c.id)); setCustomerName(c.name); setClienteOpen(false); setClienteSearch(''); }}
+                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-left transition-colors"
+                                            style={{
+                                                background: isSelected ? `${B.blue}1F` : 'transparent',
+                                                border: `1.5px solid ${isSelected ? `${B.blue}60` : D.border}`,
+                                            }}
+                                        >
+                                            <User size={14} style={{ color: isSelected ? B.blue : D.muted }} />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-[13px] font-semibold truncate" style={{ color: D.text }}>{c.name}</div>
+                                                <div className="text-[11px]" style={{ color: D.muted }}>
+                                                    {[c.dni && `DNI: ${c.dni}`, c.phone].filter(Boolean).join(' · ') || 'Sin datos adicionales'}
+                                                </div>
+                                            </div>
+                                            {isSelected && <Check size={14} style={{ color: B.blue }} />}
+                                        </button>
+                                    );
+                                })
+                            }
+
+                            {customers.length === 0 && (
+                                <p className="text-[12px] text-center py-4" style={{ color: D.muted }}>
+                                    No hay clientes registrados aún.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Alta rápida */}
+                        <button
+                            onClick={() => setAltaClienteOpen(true)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-[12.5px] font-semibold transition-colors"
+                            style={{ border: `1.5px dashed ${B.teal}60`, color: B.teal, background: `${B.teal}0D` }}
+                        >
+                            <Plus size={14} />
+                            Alta rápida de cliente
+                        </button>
                     </div>
-                    <button
-                        onClick={() => { setCustomerName('Consumidor Final'); setCustomerId(''); setClienteOpen(false); }}
-                        className="text-[12px] font-semibold transition-colors"
-                        style={{ color: D.muted }}
-                    >
-                        ← Usar Consumidor Final
-                    </button>
-                </div>
+                ) : (
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => { setAltaClienteOpen(false); setClienteError(''); }}
+                            className="flex items-center gap-1.5 text-[12px] font-semibold mb-1"
+                            style={{ color: D.muted }}
+                        >
+                            ← Volver al listado
+                        </button>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-[10.5px] font-bold tracking-widest mb-1" style={{ color: D.label }}>
+                                    NOMBRE *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newCliente.name}
+                                    onChange={e => setNewCliente(p => ({ ...p, name: e.target.value }))}
+                                    placeholder="Nombre del cliente"
+                                    className="w-full outline-none"
+                                    style={inputStyle}
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-[10.5px] font-bold tracking-widest mb-1" style={{ color: D.label }}>
+                                        TELÉFONO
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newCliente.phone}
+                                        onChange={e => setNewCliente(p => ({ ...p, phone: e.target.value }))}
+                                        placeholder="Ej: +54 9 11..."
+                                        className="w-full outline-none"
+                                        style={inputStyle}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10.5px] font-bold tracking-widest mb-1" style={{ color: D.label }}>
+                                        DNI
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newCliente.dni}
+                                        onChange={e => setNewCliente(p => ({ ...p, dni: e.target.value }))}
+                                        placeholder="Ej: 12345678"
+                                        className="w-full outline-none"
+                                        style={inputStyle}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {clienteError && (
+                            <p className="text-[12px] text-red-400">{clienteError}</p>
+                        )}
+
+                        <div className="flex gap-2 pt-1">
+                            <Btn variant="ghost" size="sm" onClick={() => { setAltaClienteOpen(false); setClienteError(''); }}
+                                style={{ color: D.muted }}>
+                                Cancelar
+                            </Btn>
+                            <Btn variant="primary" size="sm" disabled={savingCliente} onClick={handleCreateCliente}
+                                style={{ background: B.teal, flex: 1 }}>
+                                {savingCliente ? 'Guardando...' : 'Crear y seleccionar'}
+                            </Btn>
+                        </div>
+                    </div>
+                )}
             </Modal>
 
             {/* ═══ MODAL PAGO ════════════════════════════════════════════════ */}
@@ -876,29 +1038,48 @@ export default function Create({ auth, products }) {
                         style={{ border: `1px solid ${B.blue}38`, background: `linear-gradient(135deg, ${B.blue}38, ${B.teal}26)` }}>
                         <div className="text-[11px] font-semibold tracking-[0.04em] mb-1" style={{ color: D.muted }}>TOTAL A COBRAR</div>
                         <div className="text-[30px] font-extrabold leading-none" style={{ color: B.blue }}>${fmt(totals.total)}</div>
+                        {customerName !== 'Consumidor Final' && (
+                            <div className="text-[11.5px] font-medium mt-1.5" style={{ color: D.muted }}>
+                                Cliente: <span style={{ color: D.text }}>{customerName}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Método de pago */}
                     <div>
                         <div className="text-[10.5px] font-semibold tracking-[0.06em] mb-2" style={{ color: D.muted }}>MÉTODO DE PAGO</div>
                         <div className="grid grid-cols-2 gap-2">
-                            {PAYMENT_METHODS.map(pm => (
-                                <button key={pm.id} onClick={() => setPaymentMethod(pm.id)}
-                                    className="p-[10px_12px] rounded-[10px] text-[12.5px] font-medium transition-colors border-[1.5px]"
-                                    style={{
-                                        borderColor: paymentMethod === pm.id ? B.blue : D.border,
-                                        color: paymentMethod === pm.id ? B.blue : D.text,
-                                        background: paymentMethod === pm.id
-                                            ? `linear-gradient(135deg, ${B.blue}38, ${B.teal}26)`
-                                            : 'transparent',
-                                    }}>
-                                    {pm.name}
-                                </button>
-                            ))}
+                            {PAYMENT_METHODS.map(pm => {
+                                const isDisabled = pm.requiresCustomer && !customerId;
+                                const isSelected = paymentMethod === pm.id;
+                                return (
+                                    <button key={pm.id}
+                                        onClick={() => !isDisabled && setPaymentMethod(pm.id)}
+                                        disabled={isDisabled}
+                                        title={isDisabled ? 'Requiere cliente seleccionado' : undefined}
+                                        className="p-[10px_12px] rounded-[10px] text-[12.5px] font-medium transition-colors border-[1.5px]"
+                                        style={{
+                                            borderColor: isSelected ? B.teal : D.border,
+                                            color: isDisabled ? D.muted : (isSelected ? B.teal : D.text),
+                                            background: isSelected
+                                                ? `linear-gradient(135deg, ${B.teal}38, ${B.blue}26)`
+                                                : 'transparent',
+                                            opacity: isDisabled ? 0.45 : 1,
+                                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                        }}>
+                                        {pm.name}
+                                    </button>
+                                );
+                            })}
                         </div>
+                        {isCuentaCorriente && (
+                            <p className="text-[11px] mt-2" style={{ color: B.teal }}>
+                                Se cargará ${ fmt(totals.total) } a la cuenta corriente de {customerName}.
+                            </p>
+                        )}
                     </div>
 
-                    {/* Efectivo */}
+                    {/* Efectivo: monto recibido + vuelto */}
                     {isCash && (
                         <div className="space-y-3">
                             <div className="relative">
@@ -935,8 +1116,9 @@ export default function Create({ auth, products }) {
                             size="md"
                             disabled={processing || (isCash && Number(receivedAmount) < totals.total)}
                             onClick={handleConfirmPayment}
+                            style={isCuentaCorriente ? { background: B.teal } : {}}
                         >
-                            {processing ? '...' : 'Confirmar cobro'}
+                            {processing ? '...' : isCuentaCorriente ? 'Cargar a cuenta' : 'Confirmar cobro'}
                         </Btn>
                     </div>
                 </div>

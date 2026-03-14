@@ -1,18 +1,21 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\ClientesController;
-use App\Http\Controllers\CrmClientController;
-use App\Http\Controllers\EcommerceOrderController;
-use App\Http\Controllers\EcommerceOrderItemController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\CouponUsageController;
-use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\CrmClientController;
+use App\Http\Controllers\CustomerAccountController;
+use App\Http\Controllers\CustomerAddressController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\EcommerceOrderController;
+use App\Http\Controllers\EcommerceOrderItemController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\WishlistController;
+use Illuminate\Support\Facades\Route;
 
 Route::resource('customers', CustomerController::class);
+Route::get('customers/{customer}/account', [CustomerAccountController::class, 'show'])->name('customers.account');
+Route::post('customers/{customer}/account/payments', [CustomerAccountController::class, 'storePayment'])->name('customers.account.payments');
 Route::resource('customer-address', CustomerAddressController::class);
 Route::resource('clientes', ClientesController::class);
 Route::resource('crm-clients', CrmClientController::class);

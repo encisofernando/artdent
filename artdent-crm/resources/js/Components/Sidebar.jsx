@@ -114,7 +114,7 @@ const NAV_SECTIONS = [
                 title: "Administración", icon: Settings, key: "administracion",
                 children: [
                     { title: "Categorías", path: "/categorys" },
-                    { title: "Usuarios", path: "/team" },
+                    { title: "Usuarios", path: "/users" },
                     { title: "Empresa", path: "/settings" },
                     { title: "API", path: "/admin/api-tokens" },
                 ],

@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
+use App\Models\CustomerAccount;
+use App\Models\CustomerAccountMove;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
@@ -44,6 +47,14 @@ class SaleController extends Controller
         ]);
     }
 
+    private function getActiveCustomers(): \Illuminate\Support\Collection
+    {
+        return Customer::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'dni']);
+    }
+
     public function create()
     {
         $products = Product::with([
@@ -84,6 +95,7 @@ class SaleController extends Controller
 
         return Inertia::render('Sale/Create', [
             'products' => $products,
+            'customers' => $this->getActiveCustomers(),
         ]);
     }
 
@@ -101,11 +113,12 @@ class SaleController extends Controller
             'discount_amount' => 'nullable|numeric',
             'tax_amount' => 'nullable|numeric',
             'total' => 'required|numeric|min:0',
-            'paid_amount' => 'required|numeric|min:0',
+            'paid_amount' => 'nullable|numeric|min:0',
             'payment_method' => 'nullable|string',
             'receipt_type' => 'nullable|string',
             'notes' => 'nullable|string',
             'customer_name' => 'nullable|string',
+            'customer_id' => 'nullable|integer|exists:customers,id',
         ]);
 
         $companyId = auth()->user()->company_id ?? 1;
@@ -131,9 +144,10 @@ class SaleController extends Controller
         $saleNumber = $pointSale.'-'.str_pad($sequence, 8, '0', STR_PAD_LEFT);
         // ─────────────────────────────────────────────────────────────────────
 
-        $paidAmount = (float) $request->paid_amount;
+        $isCuentaCorriente = $request->payment_method === 'cuenta_corriente';
         $total = (float) $request->total;
-        $change = max(0, $paidAmount - $total);
+        $paidAmount = $isCuentaCorriente ? 0.0 : (float) ($request->paid_amount ?? $total);
+        $change = $isCuentaCorriente ? 0.0 : max(0, $paidAmount - $total);
 
         $notes = $request->notes ?? '';
         if (! empty($request->customer_name) && $request->customer_name !== 'Consumidor Final') {
@@ -145,9 +159,10 @@ class SaleController extends Controller
             $sale = Sale::create([
                 'company_id' => $companyId,
                 'user_id' => $userId,
+                'customer_id' => $request->customer_id ?: null,
                 'sale_number' => $saleNumber,
                 'receipt_type' => $receiptType,
-                'status' => 'completed',
+                'status' => $isCuentaCorriente ? 'pending' : 'completed',
                 'subtotal' => $request->subtotal ?? 0,
                 'discount_amount' => $request->discount_amount ?? 0,
                 'tax_amount' => $request->tax_amount ?? 0,
@@ -158,16 +173,37 @@ class SaleController extends Controller
                 'sold_at' => now(),
             ]);
 
-            // Registrar método de pago
-            $pm = PaymentMethod::where('name', $request->payment_method)
-                ->orWhere('type', $request->payment_method)
-                ->first();
-            SalePayment::create([
-                'sale_id' => $sale->id,
-                'payment_method_id' => $pm?->id ?? null,
-                'amount' => $paidAmount,
-                'paid_at' => now(),
-            ]);
+            if ($isCuentaCorriente && $request->customer_id) {
+                // Cargar a cuenta corriente del cliente
+                $account = CustomerAccount::firstOrCreate(
+                    ['customer_id' => $request->customer_id],
+                    ['balance' => 0]
+                );
+                $newBalance = $account->balance + $total;
+                $move = CustomerAccountMove::create([
+                    'customer_account_id' => $account->id,
+                    'user_id' => $userId,
+                    'type' => CustomerAccountMove::TYPE_CHARGE,
+                    'amount' => $total,
+                    'balance_after' => $newBalance,
+                    'description' => "Venta POS {$saleNumber}",
+                    'reference_type' => 'sale',
+                    'reference_id' => $sale->id,
+                    'move_date' => now()->toDateString(),
+                ]);
+                $account->applyMove($move);
+            } else {
+                // Registrar método de pago normal
+                $pm = PaymentMethod::where('name', $request->payment_method)
+                    ->orWhere('type', $request->payment_method)
+                    ->first();
+                SalePayment::create([
+                    'sale_id' => $sale->id,
+                    'payment_method_id' => $pm?->id ?? null,
+                    'amount' => $paidAmount,
+                    'paid_at' => now(),
+                ]);
+            }
 
             // Crear ítems y descontar stock
             foreach ($request->items as $item) {
@@ -270,6 +306,7 @@ class SaleController extends Controller
 
                         return $arr;
                     }),
+                'customers' => $this->getActiveCustomers(),
                 'sale' => array_merge($sale->toArray(), [
                     'sale_payments' => $sale->sale_payments->map(fn ($p) => [
                         'amount' => $p->amount,
@@ -297,24 +334,42 @@ class SaleController extends Controller
      */
     public function show(Sale $sale)
     {
-        // Todas las relaciones ya están definidas en el modelo Sale
         $sale->load([
             'sale_items',
             'sale_payments.paymentMethod',
             'company',
             'user',
+            'customer',
         ]);
+
+        $accountData = null;
+        if ($sale->customer_id) {
+            $account = CustomerAccount::firstOrCreate(
+                ['customer_id' => $sale->customer_id],
+                ['balance' => 0]
+            );
+            $accountData = ['id' => $account->id, 'balance' => $account->balance];
+        }
+
+        $paymentMethods = PaymentMethod::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return Inertia::render('Sale/Show', [
             'sale' => array_merge($sale->toArray(), [
-                // Normalizar sale_payments para el frontend: { amount, payment_method: { name, type } }
                 'sale_payments' => $sale->sale_payments->map(fn ($p) => [
                     'amount' => $p->amount,
                     'payment_method' => $p->paymentMethod
                         ? ['name' => $p->paymentMethod->name, 'type' => $p->paymentMethod->type]
                         : null,
                 ]),
+                'customer' => $sale->customer
+                    ? $sale->customer->only('id', 'name', 'phone', 'dni')
+                    : null,
             ]),
+            'account' => $accountData,
+            'paymentMethods' => $paymentMethods,
         ]);
     }
 

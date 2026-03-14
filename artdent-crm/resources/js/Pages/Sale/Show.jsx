@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Printer, Download } from 'lucide-react';
+import { ArrowLeft, Printer, Download, CreditCard, User, Check } from 'lucide-react';
+import axios from 'axios';
 
 // ─── Paleta ArtDent (Manual de Identidad) ───────────────────────────────────
 const AD = {
@@ -500,9 +501,42 @@ const MODES = [
 ];
 
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
-export default function Show({ auth, sale }) {
+export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const { isDark } = useTheme();
     const [mode, setMode] = useState('a4');
+
+    // ── Cuenta Corriente ─────────────────────────────────────
+    const [ccBalance, setCcBalance]       = useState(account?.balance ?? null);
+    const [pagoCC, setPagoCC]             = useState({ amount: '', payment_method_id: '', description: '' });
+    const [savingCC, setSavingCC]         = useState(false);
+    const [ccError, setCcError]           = useState('');
+    const [ccSuccess, setCcSuccess]       = useState(false);
+    const hasCuentaCorriente = sale.status === 'pending' && sale.customer_id;
+
+    const handlePayCC = async () => {
+        if (!pagoCC.amount || Number(pagoCC.amount) <= 0) {
+            setCcError('Ingresá un monto válido.');
+            return;
+        }
+        setSavingCC(true);
+        setCcError('');
+        try {
+            const res = await axios.post(
+                route('customers.account.payments', sale.customer_id),
+                { ...pagoCC, description: pagoCC.description || `Pago venta ${sale.sale_number}` },
+                { headers: { Accept: 'application/json' } }
+            );
+            setCcBalance(res.data.balance);
+            setCcSuccess(true);
+            setPagoCC({ amount: '', payment_method_id: '', description: '' });
+            // Reload to refresh sale status
+            router.reload({ only: ['sale', 'account'] });
+        } catch (e) {
+            setCcError(e.response?.data?.message || 'Error al registrar pago.');
+        } finally {
+            setSavingCC(false);
+        }
+    };
 
     const handlePrint = async () => {
         // Si es A4, usamos el flujo nativo del navegador para PDF
@@ -632,7 +666,7 @@ export default function Show({ auth, sale }) {
                             <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Resumen</h4>
                             {[
                                 ['Nº', sale.sale_number],
-                                ['Estado', sale.status],
+                                ['Estado', sale.status === 'pending' ? '⏳ Pendiente' : sale.status],
                                 ['Total', `$${fmt(sale.total)}`],
                                 ['Cobrado', `$${fmt(sale.paid_amount)}`],
                                 ['Ítems', (sale.sale_items?.length || 0) + ' producto(s)'],
@@ -642,7 +676,98 @@ export default function Show({ auth, sale }) {
                                     <span className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{value}</span>
                                 </div>
                             ))}
+                            {sale.customer && (
+                                <div className="mt-2 pt-2 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                                    <div className="flex items-center gap-1.5">
+                                        <User size={12} style={{ color: AD.teal }} />
+                                        <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                            {sale.customer.name}
+                                        </span>
+                                    </div>
+                                    {sale.customer.dni && (
+                                        <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            DNI: {sale.customer.dni}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
+
+                        {/* Panel cuenta corriente */}
+                        {hasCuentaCorriente && (
+                            <div className={`mt-3 p-4 rounded-xl border ${isDark ? 'bg-slate-900 border-teal-700/50' : 'bg-teal-50 border-teal-200'}`}>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <CreditCard size={14} style={{ color: AD.teal }} />
+                                    <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: AD.teal }}>
+                                        Cuenta Corriente
+                                    </h4>
+                                </div>
+
+                                <div className="flex justify-between text-xs mb-3">
+                                    <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Saldo pendiente</span>
+                                    <span className="font-bold text-sm" style={{ color: ccBalance > 0 ? AD.blue : '#22c55e' }}>
+                                        ${fmt(ccBalance ?? account?.balance ?? 0)}
+                                    </span>
+                                </div>
+
+                                {ccSuccess && (
+                                    <div className="flex items-center gap-1.5 text-[11.5px] font-semibold mb-2 text-emerald-500">
+                                        <Check size={12} />
+                                        Pago registrado correctamente.
+                                    </div>
+                                )}
+
+                                {ccError && (
+                                    <p className="text-[11.5px] text-red-400 mb-2">{ccError}</p>
+                                )}
+
+                                <div className="space-y-2">
+                                    <input
+                                        type="number"
+                                        placeholder="Monto a abonar"
+                                        value={pagoCC.amount}
+                                        onChange={e => setPagoCC(p => ({ ...p, amount: e.target.value }))}
+                                        className="w-full outline-none text-sm"
+                                        style={{
+                                            padding: '8px 10px', borderRadius: 8,
+                                            border: `1.5px solid ${isDark ? '#334155' : '#cbd5e1'}`,
+                                            background: isDark ? '#1e293b' : '#fff',
+                                            color: isDark ? '#f1f5f9' : '#1e293b',
+                                            fontFamily: 'inherit',
+                                        }}
+                                    />
+                                    <select
+                                        value={pagoCC.payment_method_id}
+                                        onChange={e => setPagoCC(p => ({ ...p, payment_method_id: e.target.value }))}
+                                        className="w-full outline-none text-sm"
+                                        style={{
+                                            padding: '8px 10px', borderRadius: 8,
+                                            border: `1.5px solid ${isDark ? '#334155' : '#cbd5e1'}`,
+                                            background: isDark ? '#1e293b' : '#fff',
+                                            color: isDark ? '#f1f5f9' : '#1e293b',
+                                            fontFamily: 'inherit',
+                                        }}
+                                    >
+                                        <option value="">— Método de pago —</option>
+                                        {paymentMethods.map(pm => (
+                                            <option key={pm.id} value={pm.id}>{pm.name}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        onClick={handlePayCC}
+                                        disabled={savingCC || !pagoCC.amount}
+                                        className="w-full py-2 rounded-lg text-[12.5px] font-bold text-white transition-opacity"
+                                        style={{ background: `linear-gradient(135deg, ${AD.teal}, ${AD.blue})`, opacity: savingCC ? 0.6 : 1 }}
+                                    >
+                                        {savingCC ? 'Guardando...' : 'Registrar pago'}
+                                    </button>
+                                    <Link href={route('customers.account', sale.customer_id)}
+                                        className="block text-center text-[11px] mt-1" style={{ color: AD.teal }}>
+                                        Ver cuenta completa →
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Panel de preview */}
