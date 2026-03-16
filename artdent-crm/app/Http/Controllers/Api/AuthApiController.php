@@ -27,7 +27,7 @@ class AuthApiController extends Controller
 
         if (! $customer || ! Hash::check($request->password, $customer->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Las credenciales no son correctas.'],
+                'email' => ['Correo o contraseña incorrectos.'],
             ]);
         }
 

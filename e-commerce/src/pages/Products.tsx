@@ -180,6 +180,26 @@ export default function Products() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-5 flex-wrap">
+        <Link to="/" className="hover:text-[var(--brand-primary)] transition-colors">Inicio</Link>
+        <ChevronRight size={14} className="text-gray-400 shrink-0" />
+        {selectedCategory ? (
+          <button onClick={() => setCategory(undefined)} className="hover:text-[var(--brand-primary)] transition-colors">
+            Productos
+          </button>
+        ) : (
+          <span className="text-gray-800 font-medium">Productos</span>
+        )}
+        {selectedCategory && (
+          <>
+            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+            <span className="text-gray-800 font-medium">{selectedCategory.name}</span>
+          </>
+        )}
+      </nav>
+
       <div className="flex gap-6">
 
         {/* ── Sidebar de categorías (desktop) ── */}

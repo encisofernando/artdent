@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Share2, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getProduct, type ProductVariant } from '../api/products'
 import { useCart } from '../store/cart'
@@ -12,6 +12,7 @@ import { analytics } from '../api/analytics'
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
   const productId = Number(id)
+  const navigate = useNavigate()
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ['product', productId],
@@ -106,6 +107,16 @@ export default function ProductDetail() {
         quantity,
         category: product.category?.name,
       })
+    }
+  }
+
+  const handleBuyNow = () => {
+    if (product) {
+      const variantLabel = selectedVariant
+        ? selectedVariant.attributes.map((a) => `${a.attribute}: ${a.value}`).join(' / ')
+        : undefined
+      add(product, quantity, selectedVariant?.id, selectedVariant?.sku, selectedVariant?.price, variantLabel)
+      navigate('/carrito')
     }
   }
 
@@ -239,11 +250,62 @@ export default function ProductDetail() {
       <div className="min-h-screen bg-gray-50">
         {/* Contenedor principal centrado y con ancho máximo */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 lg:py-12 product-detail-container">
+
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-6 flex-wrap">
+            <Link to="/" className="hover:text-[var(--brand-primary)] transition-colors">Inicio</Link>
+            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+            <Link to="/productos" className="hover:text-[var(--brand-primary)] transition-colors">Productos</Link>
+            {product.category && (
+              <>
+                <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                <Link
+                  to={`/productos?cat=${product.category.id}`}
+                  className="hover:text-[var(--brand-primary)] transition-colors"
+                >
+                  {product.category.name}
+                </Link>
+              </>
+            )}
+            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+            <span className="text-gray-800 font-medium truncate max-w-[200px]">{product.name}</span>
+          </nav>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 xl:gap-12 product-detail-grid">
             {/* Columna izquierda: Galería */}
-            <div className="flex flex-col gap-4 product-gallery">
+            <div className="flex gap-3 product-gallery">
+
+              {/* Thumbnails verticales (desktop) */}
+              {images.length > 1 && (
+                <div
+                  ref={thumbnailsRef}
+                  className="hidden lg:flex flex-col gap-2 w-[72px] xl:w-20 shrink-0 overflow-y-auto"
+                  style={{ maxHeight: '500px' }}
+                >
+                  {images.map((img, idx) => (
+                    <button
+                      key={img.id}
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`aspect-square rounded-xl overflow-hidden border-2 shrink-0 transition-all duration-200 ${
+                        activeImageIndex === idx
+                          ? 'border-[var(--brand-primary)] ring-2 ring-[var(--brand-soft)]'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={img.url}
+                        alt={`${product.name} vista ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Imagen principal + thumbnails horizontales (mobile) */}
+              <div className="flex flex-col flex-1 gap-4 min-w-0">
               {/* Imagen principal - centrada y con proporción */}
-              <div 
+              <div
                 className="aspect-[4/3] md:aspect-square bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex items-center justify-center relative group"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
@@ -288,8 +350,8 @@ export default function ProductDetail() {
                         <div
                           key={idx}
                           className={`h-1.5 rounded-full transition-all ${
-                            idx === activeImageIndex 
-                              ? 'w-6 bg-[var(--brand-primary)]' 
+                            idx === activeImageIndex
+                              ? 'w-6 bg-[var(--brand-primary)]'
                               : 'w-1.5 bg-gray-300'
                           }`}
                         />
@@ -299,12 +361,9 @@ export default function ProductDetail() {
                 )}
               </div>
 
-              {/* Thumbnails - solo si hay más de 1 imagen */}
+              {/* Thumbnails horizontales (mobile/tablet) */}
               {images.length > 1 && (
-                <div 
-                  ref={thumbnailsRef}
-                  className="grid grid-cols-5 sm:grid-cols-6 gap-3 product-thumbnails"
-                >
+                <div className="grid grid-cols-5 sm:grid-cols-6 gap-3 lg:hidden product-thumbnails">
                   {images.map((img, idx) => (
                     <button
                       key={img.id}
@@ -324,23 +383,37 @@ export default function ProductDetail() {
                   ))}
                 </div>
               )}
+              </div>
             </div>
 
             {/* Columna derecha: Información */}
             <div className="flex flex-col gap-5 product-info">
-              {/* Título y categoría */}
-              <div>
-                {product.category && (
-                  <Link
-                    to={`/categoria/${product.category.id}`}
-                    className="text-sm font-medium text-[var(--brand-primary)] hover:opacity-80 transition-opacity"
+
+              {/* Título + íconos favorito / compartir */}
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  {product.category && (
+                    <Link
+                      to={`/productos?cat=${product.category.id}`}
+                      className="text-sm font-medium text-[var(--brand-primary)] hover:opacity-80 transition-opacity"
+                    >
+                      {product.category.name}
+                    </Link>
+                  )}
+                  <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl leading-snug">
+                    {product.name}
+                  </h1>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 mt-1">
+                  <WishlistButton productId={product.id} />
+                  <button
+                    onClick={handleShare}
+                    title="Compartir"
+                    className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-[var(--brand-primary)] hover:bg-[var(--brand-soft)] transition-colors"
                   >
-                    {product.category.name}
-                  </Link>
-                )}
-                <h1 className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-                  {product.name}
-                </h1>
+                    <Share2 size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* Precio */}
@@ -358,7 +431,6 @@ export default function ProductDetail() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-semibold text-green-600"></p>
                 <p className="text-xs text-gray-500">IVA {Number(product.tax_rate || 0)}% incluido</p>
               </div>
 
@@ -398,83 +470,83 @@ export default function ProductDetail() {
               )}
 
               {/* Stock */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl w-fit">
-                <span className="text-sm font-medium text-gray-700">Disponibilidad:</span>
-                <span
-                  className={`font-medium ${
-                    hasStock ? 'text-green-600' : product.has_variants && !selectedVariant ? 'text-gray-400' : 'text-red-600'
-                  }`}
-                >
-                  {product.has_variants && !selectedVariant
-                    ? '—'
-                    : hasStock
-                    ? `${stockCount} unidades`
-                    : 'Sin stock'}
-                </span>
+              <div className="text-sm text-gray-700">
+                {product.has_variants && !selectedVariant ? (
+                  <span className="text-gray-400">Seleccioná una opción para ver stock</span>
+                ) : hasStock ? (
+                  <span className="text-green-600 font-medium">
+                    Stock disponible
+                    <span className="text-gray-500 font-normal"> · {stockCount} unidades</span>
+                  </span>
+                ) : (
+                  <span className="text-red-600 font-medium">Sin stock</span>
+                )}
               </div>
 
-              {/* Cantidad + Agregar al carrito */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-end gap-4 quantity-add-container">
-                  <div className="flex-1 min-w-[180px]">
-                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-2">
-                      Cantidad
-                    </label>
-                    <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => handleQuantityChange(-1)}
-                        disabled={quantity <= 1}
-                        className="w-12 py-3 text-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition active:bg-gray-100 flex items-center justify-center"
-                      >
-                        −
-                      </button>
-                      <input
-                        id="quantity"
-                        type="text"
-                        value={quantity}
-                        readOnly
-                        className="flex-1 text-center text-lg font-medium border-x border-gray-300 py-3 focus:outline-none min-w-[60px]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleQuantityChange(1)}
-                        disabled={!hasStock || quantity >= stockCount}
-                        className="w-12 py-3 text-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition active:bg-gray-100 flex items-center justify-center"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
+              {/* Cantidad */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-700">Cantidad:</span>
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden">
                   <button
-                    onClick={handleAddToCart}
-                    disabled={!hasStock || (product.has_variants && !selectedVariant)}
-                    className={`btn flex-1 py-3.5 px-6 text-base font-bold flex items-center justify-center gap-2 ${
-                      hasStock && !(product.has_variants && !selectedVariant)
-                        ? 'btn-primary shadow-md'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed hover:bg-gray-200 !transform-none !shadow-none'
-                    }`}
+                    type="button"
+                    onClick={() => handleQuantityChange(-1)}
+                    disabled={quantity <= 1}
+                    className="w-10 py-2 text-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition active:bg-gray-100 flex items-center justify-center"
                   >
-                    <ShoppingCart size={18} />
-                    {product.has_variants && !selectedVariant
-                      ? 'Seleccioná una opción'
-                      : hasStock
-                      ? 'Agregar al carrito'
-                      : 'Sin stock'}
+                    −
+                  </button>
+                  <input
+                    id="quantity"
+                    type="text"
+                    value={quantity}
+                    readOnly
+                    className="w-12 text-center text-base font-medium border-x border-gray-300 py-2 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleQuantityChange(1)}
+                    disabled={!hasStock || quantity >= stockCount}
+                    className="w-10 py-2 text-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition active:bg-gray-100 flex items-center justify-center"
+                  >
+                    +
                   </button>
                 </div>
+                {hasStock && stockCount <= 10 && (
+                  <span className="text-xs text-amber-600">({stockCount} disponibles)</span>
+                )}
               </div>
 
-              {/* Acciones secundarias */}
-              <div className="flex flex-wrap gap-4 product-actions">
-                <WishlistButton productId={product.id} />
+              {/* Botones CTA */}
+              <div className="flex flex-col gap-3">
+                {/* Comprar ahora */}
                 <button
-                  onClick={handleShare}
-                  className="btn btn-outline flex-1 sm:flex-none inline-flex items-center justify-center gap-2"
+                  onClick={handleBuyNow}
+                  disabled={!hasStock || (product.has_variants && !selectedVariant)}
+                  className={`w-full py-3.5 rounded-xl text-base font-bold transition-all ${
+                    hasStock && !(product.has_variants && !selectedVariant)
+                      ? 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-dark)] text-white shadow-md active:scale-[0.98]'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
                 >
-                  <Share2 size={18} />
-                  Compartir
+                  Comprar ahora
+                </button>
+
+                {/* Agregar al carrito */}
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!hasStock || (product.has_variants && !selectedVariant)}
+                  className={`w-full py-3.5 rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-all ${
+                    hasStock && !(product.has_variants && !selectedVariant)
+                      ? 'bg-[var(--brand-soft)] hover:bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] border border-[var(--brand-primary)]/25 active:scale-[0.98]'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                  }`}
+                >
+                  <ShoppingCart size={18} />
+                  {product.has_variants && !selectedVariant
+                    ? 'Seleccioná una opción'
+                    : hasStock
+                    ? 'Agregar al carrito'
+                    : 'Sin stock'}
                 </button>
               </div>
             </div>

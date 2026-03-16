@@ -58,13 +58,22 @@ const NAV_SECTIONS = [
                     { title: "Cta. Cte.", path: "/proveedores/ctacte" },
                 ],
             },
+
+        ],
+    },
+        {
+        label: "E-commerce",
+        items: [
             {
-                title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
+                title: "E-commerce", icon: ShoppingCart, key: "ecommerce",
                 children: [
-                    { title: "Lista", path: "/collaborators" },
-                    { title: "Asistencias", path: "/collaborator-attendances" },
-                    { title: "Recibos", path: "/collaborator-receipts" },
-                    { title: "Kiosk de Fichaje", path: "/attendance-kiosk", external: true },
+                    { title: "Pedidos", path: "/ecommerce-orders" },
+                    { title: "Cupones", path: "/coupons" },
+                    { title: "Carrusel Hero", path: "/hero-slides" },
+                    { title: "Banners Sidebar", path: "/sidebar-banners" },
+                    { title: "Reseñas", path: "/reviews" },
+                    { title: "Puntos de Retiro", path: "/shipping-pickup-points" },
+                    { title: "Moto Mandados", path: "/shipping-moto-companies" },
                 ],
             },
         ],
@@ -90,23 +99,18 @@ const NAV_SECTIONS = [
                 ],
             },
             { title: "Aranceles y Costos", icon: Banknote, path: "/tariffs" },
-        ],
-    },
-    {
-        label: "E-commerce",
-        items: [
             {
-                title: "E-commerce", icon: ShoppingCart, key: "ecommerce",
+                title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
                 children: [
-                    { title: "Pedidos", path: "/ecommerce-orders" },
-                    { title: "Cupones", path: "/coupons" },
-                    { title: "Reseñas", path: "/reviews" },
-                    { title: "Puntos de Retiro", path: "/shipping-pickup-points" },
-                    { title: "Moto Mandados", path: "/shipping-moto-companies" },
+                    { title: "Lista", path: "/collaborators" },
+                    { title: "Asistencias", path: "/collaborator-attendances" },
+                    { title: "Recibos", path: "/collaborator-receipts" },
+                    { title: "Kiosk de Fichaje", path: "/attendance-kiosk", external: true },
                 ],
             },
         ],
     },
+
     {
         label: "CRM",
         items: [

@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Play, Pause, ArrowRight, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowRight, Check } from 'lucide-react'
 import { listProducts, type CatalogProduct } from '../api/products'
 import { listCategories } from '../api/categories'
-import isotipoAzul from '../assets/isotipo-azul.png'
-import bottles1 from '../assets/hero/bottles-1.png'
-import bottles2 from '../assets/hero/bottles-2.png'
-import bottles3 from '../assets/hero/bottles-3.png'
+import { listSidebarBanners, type SidebarBanner } from '../api/banners'
+import { listHeroSlides, type HeroSlide as ApiHeroSlide } from '../api/slides'
+import { storageUrl } from '../api/http'
 import { subscribeNewsletter } from '../api/newsletter'
 
 /* ─── Category icon map ─────────────────────────────────────────────── */
@@ -89,10 +88,8 @@ function MiniCardSkeleton() {
 
 /* ─── Slide type ────────────────────────────────────────────────────── */
 type Slide = {
-  eyebrow: string; title: string; subtitle: string
-  ctaHref: string; ctaLabel: string
-  secondaryHref?: string; secondaryLabel?: string
-  bgClassName: string; imageSrc: string; imageAlt: string
+  imageSrc: string
+  clickUrl: string | null
 }
 
 /* ─── Component ─────────────────────────────────────────────────────── */
@@ -120,36 +117,27 @@ export default function Home() {
     queryFn: () => listCategories(),
   })
 
-  /* ── Slides ── */
-  const slides: Slide[] = useMemo(() => [
-    {
-      eyebrow: 'ARTDENT · Distribuidora Dental',
-      title: 'Materiales y tecnología para el laboratorio odontológico.',
-      subtitle: 'Catálogo profesional con stock y precios actualizados. Compras simples, rápidas y con trazabilidad.',
-      ctaHref: '/productos', ctaLabel: 'Ver catálogo completo',
-      secondaryHref: '/contacto', secondaryLabel: 'Contactanos',
-      bgClassName: 'bg-[radial-gradient(1000px_circle_at_20%_20%,rgba(218,238,227,0.95),transparent_55%),radial-gradient(900px_circle_at_80%_30%,rgba(218,230,240,0.95),transparent_50%),linear-gradient(135deg,rgba(57,123,156,0.92),rgba(90,173,156,0.92))]',
-      imageSrc: bottles1, imageAlt: 'Productos destacados ARTDENT',
-    },
-    {
-      eyebrow: 'Impresión 3D Dental',
-      title: 'Resinas, consumibles y repuestos listos para producir.',
-      subtitle: 'Estandarizá tus insumos: modelos, férulas, temporales y guías. Todo en un solo lugar.',
-      ctaHref: '/productos', ctaLabel: 'Explorar impresión 3D',
-      secondaryHref: '/contacto', secondaryLabel: 'Asesoramiento',
-      bgClassName: 'bg-[radial-gradient(900px_circle_at_30%_25%,rgba(124,165,195,0.75),transparent_55%),radial-gradient(900px_circle_at_80%_70%,rgba(172,214,206,0.9),transparent_55%),linear-gradient(135deg,rgba(73,148,156,0.92),rgba(57,123,156,0.92))]',
-      imageSrc: bottles2, imageAlt: 'Impresión 3D: resinas y consumibles',
-    },
-    {
-      eyebrow: 'Confianza y soporte',
-      title: 'Comprá con respaldo: facturación y seguimiento de pedidos.',
-      subtitle: 'Cuenta, historial y estados del pedido. Factura A/B. Envíos a todo el país.',
-      ctaHref: '/mi-cuenta', ctaLabel: 'Ir a mi cuenta',
-      secondaryHref: '/carrito', secondaryLabel: 'Ver carrito',
-      bgClassName: 'bg-[radial-gradient(900px_circle_at_20%_70%,rgba(218,230,240,0.95),transparent_55%),radial-gradient(900px_circle_at_75%_25%,rgba(218,238,227,0.95),transparent_55%),linear-gradient(135deg,rgba(57,123,156,0.92),rgba(73,148,156,0.92))]',
-      imageSrc: bottles3, imageAlt: 'Soporte, facturación y seguimiento de pedidos',
-    },
-  ], [])
+  /* Sidebar banners */
+  const { data: sidebarBanners = [] } = useQuery({
+    queryKey: ['sidebar_banners'],
+    queryFn: () => listSidebarBanners(),
+    staleTime: 5 * 60 * 1000,
+  })
+  const activeBanner: SidebarBanner | null = sidebarBanners[0] ?? null
+
+  /* Hero slides dinámicos */
+  const { data: apiSlides = [] } = useQuery({
+    queryKey: ['hero_slides'],
+    queryFn: () => listHeroSlides(),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const slides: Slide[] = useMemo(() =>
+    apiSlides.map((s: ApiHeroSlide) => ({
+      imageSrc: storageUrl(s.image_url) ?? '',
+      clickUrl: s.click_url,
+    }))
+  , [apiSlides])
 
   /* ── Carousel state ── */
   const [active, setActive] = useState(0)
@@ -189,13 +177,10 @@ export default function Home() {
     const h = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') handlePrev()
       if (e.key === 'ArrowRight') handleNext()
-      if (e.key === ' ') { e.preventDefault(); setPaused((p) => !p) }
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [handleNext, handlePrev])
-
-  const current = slides[active]
 
   /* ── Tabs ── */
   const TABS = ['NUEVOS', 'DESTACADOS', 'OFERTAS']
@@ -205,7 +190,7 @@ export default function Home() {
 
       {/* ══════════════ HERO CAROUSEL ══════════════ */}
       <section
-        className="relative overflow-hidden"
+        className="relative w-full overflow-hidden bg-gray-100"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
@@ -218,68 +203,72 @@ export default function Home() {
           setTouchStart(0); setTouchEnd(0)
         }}
       >
-        <div className="absolute inset-0" aria-hidden="true">
-          <div className={`h-full w-full transition-all duration-700 ease-in-out ${current.bgClassName}`} key={active} />
-          <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:48px_48px]" />
-        </div>
-
-        <div className="relative mx-auto max-w-7xl px-10 md:px-16 py-12 md:py-16">
-          <div className="grid items-center gap-10 md:grid-cols-[1.2fr,0.8fr]">
-            <div className="animate-fade-in" key={`content-${active}`}>
-              <p className="text-xs font-bold tracking-[0.2em] text-white/80 uppercase">{current.eyebrow}</p>
-              <h1 className="mt-3 text-3xl font-extrabold leading-tight text-white md:text-4xl lg:text-5xl">
-                {current.title}
-              </h1>
-              <p className="mt-4 max-w-lg text-sm text-white/85 md:text-base leading-relaxed">{current.subtitle}</p>
-              <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <Link to={current.ctaHref} className="btn bg-white text-[var(--brand-primary)] hover:bg-white/90 shadow-lg px-6 py-3 text-sm font-bold">
-                  {current.ctaLabel}
-                </Link>
-                {current.secondaryHref && (
-                  <Link to={current.secondaryHref} className="btn border-white/60 text-white hover:bg-white/10 border px-6 py-3 text-sm font-semibold">
-                    {current.secondaryLabel}
+        {/* Track de imágenes — grid superpuesto, altura natural de la imagen */}
+        <div className="w-full overflow-hidden group" style={{ display: 'grid' }}>
+          {slides.map((slide, idx) => {
+            const isActive = idx === active
+            const img = (
+              <img
+                src={slide.imageSrc}
+                alt=""
+                className="w-full h-auto block select-none transition-transform duration-700 ease-in-out group-hover:scale-105"
+                draggable={false}
+                loading={idx === 0 ? 'eager' : 'lazy'}
+              />
+            )
+            return (
+              <div
+                key={idx}
+                style={{ gridArea: '1 / 1' }}
+                className={`transition-opacity duration-500 ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
+              >
+                {slide.clickUrl ? (
+                  <Link to={slide.clickUrl} className="block w-full" tabIndex={isActive ? 0 : -1}>
+                    {img}
                   </Link>
-                )}
+                ) : img}
               </div>
-              <div className="mt-8 flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  {slides.map((_, idx) => (
-                    <button key={idx} onClick={() => goToSlide(idx)}
-                      className={`h-2 rounded-full transition-all duration-300 ${idx === active ? 'w-7 bg-white' : 'w-2 bg-white/35 hover:bg-white/60'}`} />
-                  ))}
-                </div>
-                <button onClick={() => setPaused(!paused)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 backdrop-blur hover:bg-white/30 transition">
-                  {paused ? <Play size={14} className="text-white" /> : <Pause size={14} className="text-white" />}
-                </button>
-              </div>
-            </div>
-            <div className="relative" key={`image-${active}`}>
-              <img src={current.imageSrc} alt={current.imageAlt}
-                className="mx-auto max-h-[280px] md:max-h-[360px] w-auto object-contain drop-shadow-2xl"
-                style={{ animation: 'float 3.5s ease-in-out infinite' }} />
-            </div>
-          </div>
+            )
+          })}
         </div>
 
-        {/* Flechas en los márgenes — fuera del contenedor centrado */}
-        <button
-          onClick={handlePrev}
-          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md hover:bg-white hover:shadow-lg transition"
-          aria-label="Anterior"
-        >
-          <ChevronLeft size={20} className="text-gray-700" />
-        </button>
-        <button
-          onClick={handleNext}
-          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md hover:bg-white hover:shadow-lg transition"
-          aria-label="Siguiente"
-        >
-          <ChevronRight size={20} className="text-gray-700" />
-        </button>
-        {!paused && (
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/20">
-            <div className="h-full bg-white/60 transition-all duration-[6500ms] ease-linear" style={{ width: isTransitioning ? '0%' : '100%' }} key={active} />
+        {/* Flechas */}
+        {slides.length > 1 && (
+          <>
+            <button
+              onClick={handlePrev}
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/80 shadow hover:bg-white transition"
+              aria-label="Anterior"
+            >
+              <ChevronLeft size={18} className="text-gray-700" />
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/80 shadow hover:bg-white transition"
+              aria-label="Siguiente"
+            >
+              <ChevronRight size={18} className="text-gray-700" />
+            </button>
+          </>
+        )}
+
+        {/* Dots */}
+        {slides.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => goToSlide(idx)}
+                className={`rounded-full transition-all duration-300 ${idx === active ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/75'}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Barra de progreso */}
+        {!paused && slides.length > 1 && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/10 z-20">
+            <div className="h-full bg-white/70 transition-all duration-[6500ms] ease-linear" style={{ width: isTransitioning ? '0%' : '100%' }} key={active} />
           </div>
         )}
       </section>
@@ -311,28 +300,36 @@ export default function Home() {
         {/* Content row */}
         <div className="flex gap-4">
           {/* Feature panel (desktop only) */}
-          <div className="hidden lg:flex w-56 xl:w-64 flex-shrink-0">
-            <div
-              className="rounded-2xl w-full flex flex-col justify-between p-6 text-white overflow-hidden relative min-h-[320px]"
-              style={{ background: 'linear-gradient(145deg, var(--brand-primary) 0%, var(--brand-secondary) 100%)' }}
-            >
-              <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white/10" />
-              <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-white/10" />
-              <div className="relative z-10">
-                <img src={isotipoAzul} alt="ARTDENT" className="h-8 brightness-0 invert mb-5 opacity-90" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-1">Distribuidora</p>
-                <h3 className="text-xl font-extrabold leading-tight">Catálogo<br />Profesional</h3>
-                <p className="mt-2 text-sm text-white/80 leading-snug">
-                  Materiales e insumos para laboratorio dental
-                </p>
-              </div>
+          <div className="hidden lg:block w-56 xl:w-64 flex-shrink-0 rounded-2xl overflow-hidden group self-stretch min-h-[320px] relative">
+            {activeBanner?.image_url ? (
               <Link
-                to="/productos"
-                className="relative z-10 mt-6 inline-flex items-center gap-2 bg-white text-[var(--brand-primary)] rounded-xl px-4 py-2 text-sm font-bold self-start hover:shadow-md transition-shadow"
+                to={activeBanner.cta_url ?? '/productos'}
+                className="block w-full h-full absolute inset-0"
               >
-                Ver catálogo <ArrowRight size={13} />
+                <img
+                  src={storageUrl(activeBanner.image_url) ?? ''}
+                  alt={activeBanner.title ?? 'Banner'}
+                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500 block"
+                />
+                {/* Overlay degradado inferior */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                {(activeBanner.title || activeBanner.cta_label) && (
+                  <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+                    {activeBanner.title && (
+                      <p className="text-white font-extrabold text-sm leading-tight drop-shadow">{activeBanner.title}</p>
+                    )}
+                    {activeBanner.subtitle && (
+                      <p className="text-white/80 text-xs mt-1 leading-snug">{activeBanner.subtitle}</p>
+                    )}
+                    {activeBanner.cta_label && (
+                      <span className="mt-3 inline-flex items-center gap-1.5 bg-white text-[var(--brand-primary)] rounded-lg px-3 py-1.5 text-xs font-bold">
+                        {activeBanner.cta_label} <ArrowRight size={11} />
+                      </span>
+                    )}
+                  </div>
+                )}
               </Link>
-            </div>
+            ) : null}
           </div>
 
           {/* Mini product grid */}

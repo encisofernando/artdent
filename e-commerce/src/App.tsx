@@ -26,6 +26,9 @@ import Terminos from './pages/Terminos'
 import Cookies from './pages/Cookies'
 import Devoluciones from './pages/Devoluciones'
 import Favoritos from './pages/Favoritos'
+import FAQ from './pages/FAQ'
+import Ayuda from './pages/Ayuda'
+import Politicas from './pages/Politicas'
 
 function NotFound() {
   return (
@@ -59,6 +62,9 @@ export default function App() {
             <Route path="/terminos" element={<Terminos />} />
             <Route path="/cookies" element={<Cookies />} />
             <Route path="/devoluciones" element={<Devoluciones />} />
+            <Route path="/preguntas-frecuentes" element={<FAQ />} />
+            <Route path="/ayuda" element={<Ayuda />} />
+            <Route path="/politicas" element={<Politicas />} />
             
             {/* Comparador de productos */}
             <Route path="/comparar" element={<Comparar />} />

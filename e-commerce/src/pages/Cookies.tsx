@@ -139,8 +139,8 @@ export default function Cookies() {
       <section className="bg-[var(--brand-primary)] text-white">
         <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold mb-4">
-              <Cookie size={15} />
+            <div className="inline-flex flex-wrap justify-center items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold mb-4">
+              <Cookie size={15} className="shrink-0" />
               Ley 25.326 — Protección de Datos Personales
             </div>
             <h1 className="text-2xl font-bold md:text-4xl">Política de Cookies</h1>
@@ -174,7 +174,7 @@ export default function Cookies() {
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Contenido principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
 
             <Section id="que-son" icon={Info} title="¿Qué son las cookies?" num="1">
               <p>
@@ -235,7 +235,7 @@ export default function Cookies() {
             <Section id="listado" icon={Settings} title="Listado completo de cookies" num="3">
               <p>A continuación detallamos todas las cookies que puede depositar este sitio en tu dispositivo:</p>
               <div className="overflow-x-auto mt-2 rounded-xl border border-gray-200">
-                <table className="w-full text-xs border-collapse">
+                <table className="w-full min-w-[640px] text-xs border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="text-left px-3 py-2.5 font-semibold text-gray-700 border-b border-gray-200">Cookie</th>
@@ -405,7 +405,7 @@ export default function Cookies() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-first lg:order-last">
 
             <div className="card p-5">
               <h3 className="font-bold text-gray-900 mb-3">Resumen de cookies</h3>

@@ -2,6 +2,9 @@ import axios from 'axios'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'
 
+/** Origen del backend (sin /api), para construir URLs de storage */
+export const backendOrigin = baseURL.replace(/\/api\/?$/, '')
+
 export const http = axios.create({
   baseURL,
   headers: {
@@ -29,6 +32,16 @@ http.interceptors.response.use(
     return Promise.reject(err)
   }
 )
+
+/**
+ * Convierte una ruta relativa de storage (/storage/...) en URL absoluta
+ * del backend. Si ya es absoluta (http/https) la devuelve sin cambios.
+ */
+export function storageUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  if (/^https?:\/\//.test(path)) return path
+  return backendOrigin + path
+}
 
 export type Paginated<T> = {
   data: T[]

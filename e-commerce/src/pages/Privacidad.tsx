@@ -104,7 +104,7 @@ export default function Privacidad() {
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Contenido principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
 
             <Section id="responsable" icon={UserCheck} title="Responsable del Tratamiento" num="1">
               <p>
@@ -296,8 +296,8 @@ export default function Privacidad() {
               <p>
                 Este sitio utiliza cookies y tecnologías similares para mejorar tu experiencia de navegación. Podés configurar o deshabilitar las cookies desde la configuración de tu navegador.
               </p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
+              <div className="overflow-x-auto rounded-xl border border-gray-200 mt-2">
+                <table className="w-full min-w-[480px] text-xs border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="text-left px-3 py-2 font-semibold text-gray-700 border border-gray-200">Tipo</th>
@@ -366,7 +366,7 @@ export default function Privacidad() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-first lg:order-last">
             <div className="card p-5">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Mail size={16} className="text-[var(--brand-primary)]" />

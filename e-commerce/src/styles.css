@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  /* Manual ARTDENT */
-  --brand-primary: #397B9C;      /* RGB(57,123,156) */
-  --brand-secondary: #5AAD9C;    /* RGB(90,173,156) */
-  --brand-primary-dark: #2d6483; /* Darker for hover */
-  --brand-accent: #49949C;       /* RGB(73,148,156) */
+  /* Manual ARTDENT — Color oficial: RGB(18,76,105) */
+  --brand-primary: #124C69;      /* RGB(18,76,105) — azul marino marca */
+  --brand-secondary: #1a6b8a;    /* Variante más clara para elementos secundarios */
+  --brand-primary-dark: #0e3b52; /* Hover / estados activos */
+  --brand-accent: #2388a8;       /* Acento brillante para destacar */
 
-  --brand-light-1: #ACD6CE;      /* RGB(172,214,206) */
-  --brand-light-2: #DAEEE3;      /* RGB(218,238,227) */
-  --brand-light-3: #DAE6F0;      /* RGB(218,230,240) */
-  --brand-muted: #7CA5C3;        /* RGB(124,165,195) */
-  --brand-soft: #EBF4FA;         /* Very light blue for badges */
+  --brand-light-1: #8ab4c8;      /* Tinte 50% — iconos, separadores */
+  --brand-light-2: #cfe4ed;      /* Tinte 20% — fondos suaves */
+  --brand-light-3: #ddeaf3;      /* Tinte 15% — gradientes */
+  --brand-muted: #5b8fa5;        /* Azul apagado — textos secundarios */
+  --brand-soft: #edf5f9;         /* Fondo muy suave — badges, chips */
 
   --text: #0b1220;
   --muted-text: #4b5563;
@@ -49,7 +49,7 @@ body {
 .btn-primary:hover {
   background: var(--brand-primary-dark);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(57,123,156,0.35);
+  box-shadow: 0 4px 12px rgba(18,76,105,0.35);
 }
 .btn-primary:active {
   transform: translateY(0);

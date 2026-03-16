@@ -28,14 +28,14 @@ export default function SignIn() {
             await signIn(email, password)
             navigate(from, { replace: true })
           } catch (err: any) {
-            setError(err?.response?.data?.message || 'Credenciales inválidas o error de conexión.')
+            setError(err?.response?.data?.message || 'Correo o contraseña incorrectos.')
           } finally {
             setIsSubmitting(false)
           }
         }}
       >
         <div>
-          <label className="text-sm font-semibold">Email</label>
+          <label className="text-sm font-semibold">Correo</label>
           <input
             type="email"
             value={email}
@@ -67,7 +67,7 @@ export default function SignIn() {
 
         <div className="flex items-center justify-between text-sm">
           <Link to="/recuperar" className="font-semibold text-[var(--brand-primary)]">¿Olvidaste tu contraseña?</Link>
-          <Link to="/registrarme" className="font-semibold text-[var(--brand-primary)]">Crear cuenta</Link>
+          <Link to="/registrarme" className="font-semibold text-[var(--brand-primary)]">Creá tu cuenta</Link>
         </div>
       </form>
     </div>

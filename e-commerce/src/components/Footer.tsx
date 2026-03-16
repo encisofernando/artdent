@@ -94,9 +94,9 @@ export default function Footer() {
               <div className="text-left">
                 <p className="text-sm font-semibold">Soporte</p>
                 <ul className="mt-3 space-y-2 text-sm text-white/90">
-                  <li><Link to="/ayuda" className="hover:text-white transition">Ayuda</Link></li>
+                  <li><Link to="/ayuda" className="hover:text-white transition">Centro de ayuda</Link></li>
+                  <li><Link to="/preguntas-frecuentes" className="hover:text-white transition">Preguntas frecuentes</Link></li>
                   <li><Link to="/devoluciones" className="hover:text-white transition">Devoluciones</Link></li>
-                  <li><Link to="/facturacion" className="hover:text-white transition">Facturación</Link></li>
                   <li><Link to="/mi-cuenta" className="hover:text-white transition">Mi cuenta</Link></li>
                 </ul>
               </div>
@@ -147,9 +147,9 @@ export default function Footer() {
             <div>
               <p className="text-sm font-semibold">Soporte</p>
               <ul className="mt-3 space-y-2 text-sm text-white/90">
-                <li><Link to="/ayuda" className="hover:text-white transition">Ayuda</Link></li>
+                <li><Link to="/ayuda" className="hover:text-white transition">Centro de ayuda</Link></li>
+                <li><Link to="/preguntas-frecuentes" className="hover:text-white transition">Preguntas frecuentes</Link></li>
                 <li><Link to="/devoluciones" className="hover:text-white transition">Devoluciones</Link></li>
-                <li><Link to="/facturacion" className="hover:text-white transition">Facturación</Link></li>
                 <li><Link to="/mi-cuenta" className="hover:text-white transition">Mi cuenta</Link></li>
               </ul>
             </div>

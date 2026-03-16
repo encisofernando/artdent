@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\CollaboratorAssignController;
+use App\Http\Controllers\HeroSlideController;
+use App\Http\Controllers\SidebarBannerController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -82,6 +84,14 @@ Route::prefix('payment')->name('api.payment.')->group(function (): void {
 |--------------------------------------------------------------------------
 */
 Route::post('newsletter/subscribe', [NewsletterApiController::class, 'subscribe'])->name('api.newsletter.subscribe');
+
+/*
+|--------------------------------------------------------------------------
+| Sidebar banners del e-commerce (público)
+|--------------------------------------------------------------------------
+*/
+Route::get('sidebar-banners', [SidebarBannerController::class, 'apiIndex'])->name('api.sidebar-banners.index');
+Route::get('hero-slides', [HeroSlideController::class, 'apiIndex'])->name('api.hero-slides.index');
 
 /*
 |--------------------------------------------------------------------------

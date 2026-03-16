@@ -107,7 +107,7 @@ export default function Terminos() {
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Columna principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
 
             <Section id="aceptacion" icon={FileText} title="Aceptación de los Términos" num="1">
               <p>
@@ -332,7 +332,7 @@ export default function Terminos() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-first lg:order-last">
 
             <div className="card p-5">
               <h3 className="font-bold text-gray-900 mb-3">Consultas y reclamos</h3>

@@ -1,4 +1,4 @@
-import { http, Paginated } from './http'
+import { http, Paginated, storageUrl } from './http'
 
 export type Product = {
   id: number
@@ -66,14 +66,22 @@ export type StockSummary = {
   quantity: number
 }
 
+function normalizeProductUrls(p: CatalogProduct): CatalogProduct {
+  return {
+    ...p,
+    primary_image_url: storageUrl(p.primary_image_url) ?? p.primary_image_url,
+    images: p.images?.map(img => ({ ...img, url: storageUrl(img.url) ?? img.url })),
+  }
+}
+
 export async function listProducts(params: { q?: string; page?: number; category_id?: number; per_page?: number; company_id?: number } = {}): Promise<Paginated<CatalogProduct>> {
   const { data } = await http.get('/catalog/products', { params })
-  return data
+  return { ...data, data: data.data.map(normalizeProductUrls) }
 }
 
 export async function getProduct(id: number, params: { company_id?: number } = {}): Promise<CatalogProduct> {
   const { data } = await http.get(`/catalog/products/${id}`, { params })
-  return data
+  return normalizeProductUrls(data)
 }
 
 export async function getProductStock(id: number): Promise<any> {

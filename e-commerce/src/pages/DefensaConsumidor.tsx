@@ -144,7 +144,7 @@ export default function DefensaConsumidor() {
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Columna principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
 
             {/* Datos del proveedor */}
             <Section id="empresa" icon={FileText} title="Datos del Proveedor" badge="Art. 10 Ley 24.240">
@@ -338,7 +338,7 @@ export default function DefensaConsumidor() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-first lg:order-last">
 
             {/* Contacto rápido */}
             <div className="card p-5 space-y-4">

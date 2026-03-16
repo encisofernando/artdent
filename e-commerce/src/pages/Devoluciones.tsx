@@ -169,7 +169,7 @@ export default function Devoluciones() {
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Columna principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
 
             {/* Política general */}
             <section id="politica" className="card p-5 md:p-7 scroll-mt-24">
@@ -237,7 +237,7 @@ export default function Devoluciones() {
               <div className="text-sm text-gray-700 space-y-4 leading-relaxed">
 
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-xs border-collapse">
+                  <table className="w-full min-w-[640px] text-xs border-collapse">
                     <thead>
                       <tr className="bg-gray-100">
                         <th className="text-left px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">Caso</th>
@@ -489,7 +489,7 @@ export default function Devoluciones() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-first lg:order-last">
 
             <div className="card p-5">
               <h3 className="font-bold text-gray-900 mb-3">Contacto directo</h3>
