@@ -36,10 +36,28 @@ export type CatalogProduct = Product & {
   stock?: number
   average_rating?: number
   review_count?: number
+  has_variants?: boolean
+  variants?: ProductVariant[]
   category?: {
     id: number | string
     name: string
   } | null
+}
+
+export type VariantAttribute = {
+  attribute_id: number
+  attribute: string
+  value_id: number
+  value: string
+}
+
+export type ProductVariant = {
+  id: number
+  sku: string | null
+  price: number | null
+  is_active: boolean
+  stock: number
+  attributes: VariantAttribute[]
 }
 
 export type StockSummary = {

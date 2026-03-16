@@ -11,7 +11,7 @@ export default function ForgotPassword() {
     <div className="mx-auto max-w-md px-4 py-10">
       <h1 className="text-3xl font-bold">Recuperar contraseña</h1>
       <p className="mt-2 text-sm text-gray-600">
-        Enviá tu email y el backend te mandará un enlace.
+        Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.
       </p>
 
       <form

@@ -14,9 +14,6 @@ export default function Cart() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Carrito</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Precios dinámicos: si iniciás sesión con cuenta B2B, el catálogo ya viene con el precio correcto.
-          </p>
         </div>
 
         {cart.items.length ? (
@@ -38,29 +35,34 @@ export default function Cart() {
           <div className="lg:col-span-2 card p-6">
             <div className="space-y-4">
               {cart.items.map((it) => {
-                const unit = Number(it.product.price_final ?? it.product.price ?? 0)
+                const unit = Number(it.variant_price ?? it.product.price_final ?? it.product.price ?? 0)
                 const line = unit * it.qty
+                const sku = it.variant_sku ?? it.product.sku
+                const cartKey = `${it.product.id}-${it.variant_id ?? 0}`
                 return (
-                  <div key={it.product.id} className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div key={cartKey} className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <Link to={`/productos/${it.product.id}`} className="text-sm font-semibold hover:underline">
                         {it.product.name}
                       </Link>
-                      <p className="mt-1 text-xs text-gray-500">SKU: {it.product.sku || '—'}</p>
+                      {it.variant_label && (
+                        <p className="mt-0.5 text-xs text-[var(--brand-primary)] font-medium">{it.variant_label}</p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">SKU: {sku || '—'}</p>
                       <p className="mt-2 text-sm font-bold">{formatMoney(unit)}</p>
                     </div>
 
                     <div className="flex items-center gap-3">
                       <input
                         type="number"
-                        min={0.001}
+                        min={1}
                         step={1}
                         value={it.qty}
-                        onChange={(e) => cart.setQty(it.product.id, Number(e.target.value || 1))}
+                        onChange={(e) => cart.setQty(it.product.id, Number(e.target.value || 1), it.variant_id)}
                         className="w-24 rounded-xl border px-3 py-2 text-sm"
                       />
                       <p className="w-28 text-right text-sm font-semibold">{formatMoney(line)}</p>
-                      <button className="btn btn-outline" onClick={() => cart.remove(it.product.id)}>
+                      <button className="btn btn-outline" onClick={() => cart.remove(it.product.id, it.variant_id)}>
                         Quitar
                       </button>
                     </div>
@@ -74,15 +76,12 @@ export default function Cart() {
             <h2 className="text-lg font-bold">Resumen</h2>
             <div className="mt-4 space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Subtotal (sin IVA)</span>
+                <span className="text-gray-600">Total</span>
                 <span className="font-semibold">{formatMoney(cart.subtotal)}</span>
               </div>
-              <p className="text-xs text-gray-500">
-                El IVA se calcula en el checkout (por producto) al generar el pedido.
-              </p>
             </div>
             <button className="btn btn-primary w-full mt-6" onClick={() => navigate('/checkout')}>
-              Continuar a checkout
+              Continuar con el pago
             </button>
           </div>
         </div>

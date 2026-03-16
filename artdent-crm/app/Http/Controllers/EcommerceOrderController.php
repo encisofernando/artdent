@@ -3,120 +3,149 @@
 namespace App\Http\Controllers;
 
 use App\Models\EcommerceOrder;
+use App\Models\Stock;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class EcommerceOrderController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-        public function index()
+    public function index(Request $request)
     {
-        $items = \App\Models\EcommerceOrder::paginate(10);
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+        $payment = $request->input('payment', 'all');
+
+        $query = EcommerceOrder::query()
+            ->with(['customer', 'coupon'])
+            ->withCount('ecommerce_order_items');
+
+        if ($search) {
+            $query->where(function ($q) use ($search): void {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        if ($payment !== 'all') {
+            $query->where('payment_status', $payment);
+        }
+
+        $items = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
+
+        // KPIs globales sobre la consulta filtrada (sin paginación)
+        // Excluye cancelados/reembolsados del facturado y por cobrar
+        $activeQuery = EcommerceOrder::query()
+            ->whereNotIn('status', ['cancelled', 'refunded']);
+
+        // Aplicar los mismos filtros de búsqueda al query de KPIs
+        if ($search) {
+            $activeQuery->where(function ($q) use ($search): void {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"));
+            });
+        }
+
+        $kpis = [
+            'total_orders' => $items->total(),
+            'total_billed' => (float) (clone $activeQuery)->sum('total'),
+            'total_paid' => (float) (clone $activeQuery)->where('payment_status', 'paid')->sum('total'),
+            'total_pending' => (float) (clone $activeQuery)->where('payment_status', 'pending')->sum('total'),
+        ];
+
         return Inertia::render('EcommerceOrder/Index', [
-            'items' => $items
+            'items' => $items,
+            'filters' => compact('search', 'status', 'payment'),
+            'kpis' => $kpis,
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-        public function create()
-    {
-        return Inertia::render('EcommerceOrder/Create');
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-        public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'company_id' => 'nullable',
-            'customer_id' => 'nullable',
-            'coupon_id' => 'nullable',
-            'shipping_method_id' => 'nullable',
-            'order_number' => 'nullable',
-            'status' => 'nullable',
-            'payment_status' => 'nullable',
-            'subtotal' => 'nullable',
-            'discount_amount' => 'nullable',
-            'shipping_cost' => 'nullable',
-            'tax_amount' => 'nullable',
-            'total' => 'nullable',
-            'shipping_name' => 'nullable',
-            'shipping_address' => 'nullable',
-            'shipping_city' => 'nullable',
-            'shipping_province' => 'nullable',
-            'shipping_postal' => 'nullable',
-            'shipping_phone' => 'nullable',
-            'customer_notes' => 'nullable',
-            'admin_notes' => 'nullable'
-        ]);
-
-        \App\Models\EcommerceOrder::create($validated);
-
-        return redirect()->route('ecommerce-orders.index')->with('success', 'EcommerceOrder created successfully.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(EcommerceOrder $ecommerceOrder)
     {
-        //
-    }
+        $ecommerceOrder->load([
+            'customer',
+            'coupon',
+            'ecommerce_order_items.product.product_images',
+        ]);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-        public function edit(EcommerceOrder $ecommerceOrder)
-    {
-        return Inertia::render('EcommerceOrder/Edit', [
-            'item' => $ecommerceOrder
+        return Inertia::render('EcommerceOrder/Show', [
+            'order' => $ecommerceOrder,
         ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-        public function update(Request $request, EcommerceOrder $ecommerceOrder)
+    public function update(Request $request, EcommerceOrder $ecommerceOrder)
     {
         $validated = $request->validate([
-            'company_id' => 'nullable',
-            'customer_id' => 'nullable',
-            'coupon_id' => 'nullable',
-            'shipping_method_id' => 'nullable',
-            'order_number' => 'nullable',
-            'status' => 'nullable',
-            'payment_status' => 'nullable',
-            'subtotal' => 'nullable',
-            'discount_amount' => 'nullable',
-            'shipping_cost' => 'nullable',
-            'tax_amount' => 'nullable',
-            'total' => 'nullable',
-            'shipping_name' => 'nullable',
-            'shipping_address' => 'nullable',
-            'shipping_city' => 'nullable',
-            'shipping_province' => 'nullable',
-            'shipping_postal' => 'nullable',
-            'shipping_phone' => 'nullable',
-            'customer_notes' => 'nullable',
-            'admin_notes' => 'nullable'
+            'status' => 'nullable|in:pending,confirmed,processing,shipped,delivered,cancelled,refunded',
+            'payment_status' => 'nullable|in:pending,paid,failed,refunded',
+            'admin_notes' => 'nullable|string|max:2000',
+            'shipping_name' => 'nullable|string|max:255',
+            'shipping_address' => 'nullable|string|max:500',
+            'shipping_city' => 'nullable|string|max:100',
+            'shipping_province' => 'nullable|string|max:100',
+            'shipping_postal' => 'nullable|string|max:20',
+            'shipping_phone' => 'nullable|string|max:30',
         ]);
+
+        $previousStatus = $ecommerceOrder->status;
+        $newStatus = $validated['status'] ?? $previousStatus;
+        $terminalStatuses = ['cancelled', 'refunded'];
+        $wasTerminal = in_array($previousStatus, $terminalStatuses);
+        $becomesTerminal = in_array($newStatus, $terminalStatuses);
+
+        // Return stock when transitioning to cancelled/refunded for the first time
+        if ($becomesTerminal && ! $wasTerminal) {
+            $warehouseId = (int) env('ECOMMERCE_WAREHOUSE_ID', 1);
+            $ecommerceOrder->load('ecommerce_order_items');
+
+            foreach ($ecommerceOrder->ecommerce_order_items as $item) {
+                Stock::query()
+                    ->where('product_id', $item->product_id)
+                    ->where('warehouse_id', $warehouseId)
+                    ->when(
+                        $item->variant_id === null,
+                        fn ($q) => $q->whereNull('variant_id'),
+                        fn ($q) => $q->where('variant_id', $item->variant_id)
+                    )
+                    ->increment('quantity', $item->quantity);
+            }
+
+            // Cancel pending payment automatically
+            if ($ecommerceOrder->payment_status === 'pending') {
+                $validated['payment_status'] = 'failed';
+            }
+        }
 
         $ecommerceOrder->update($validated);
 
-        return redirect()->route('ecommerce-orders.index')->with('success', 'EcommerceOrder updated successfully.');
+        return back()->with('success', 'Pedido actualizado.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-        public function destroy(EcommerceOrder $ecommerceOrder)
+    public function destroy(EcommerceOrder $ecommerceOrder)
     {
         $ecommerceOrder->delete();
-        return redirect()->route('ecommerce-orders.index')->with('success', 'EcommerceOrder deleted successfully.');
+
+        return redirect()->route('ecommerce-orders.index')->with('success', 'Pedido eliminado.');
+    }
+
+    // Kept for route completeness — not used
+    public function create()
+    {
+        return redirect()->route('ecommerce-orders.index');
+    }
+
+    public function store(Request $request)
+    {
+        return redirect()->route('ecommerce-orders.index');
+    }
+
+    public function edit(EcommerceOrder $ecommerceOrder)
+    {
+        return redirect()->route('ecommerce-orders.show', $ecommerceOrder);
     }
 }

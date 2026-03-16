@@ -10,6 +10,8 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EcommerceOrderController;
 use App\Http\Controllers\EcommerceOrderItemController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ShippingMotoCompanyController;
+use App\Http\Controllers\ShippingPickupPointController;
 use App\Http\Controllers\WishlistController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,3 +30,6 @@ Route::resource('coupon-usages', CouponUsageController::class);
 
 Route::resource('wishlists', WishlistController::class);
 Route::resource('reviews', ReviewController::class);
+
+Route::resource('shipping-pickup-points', ShippingPickupPointController::class)->except(['show']);
+Route::resource('shipping-moto-companies', ShippingMotoCompanyController::class)->except(['show']);

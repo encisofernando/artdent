@@ -97,7 +97,7 @@ export default function Index({ auth, items, filters }) {
                                         Control de Ventas
                                     </h1>
                                     <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        Historial de operaciones POS y E-commerce
+                                        Historial de operaciones y seguimiento de pagos.
                                     </p>
                                 </div>
                             </div>

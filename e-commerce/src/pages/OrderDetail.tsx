@@ -1,121 +1,282 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { CheckCircle, Circle, Truck, XCircle, Clock, RefreshCw, CreditCard } from 'lucide-react'
 import { getOrder } from '../api/orders'
+import { useAuth } from '../store/auth'
+import { getCustomerOrder } from '../api/customer'
+import { createMpPreference } from '../api/payment'
 
 const LS_LAST_EMAIL = 'artdent_last_checkout_email'
 
-function formatMoney(n: number) {
-  return `$${Number(n || 0).toLocaleString('es-AR')}`
+function fmt(n: number) { return `$${Number(n || 0).toLocaleString('es-AR')}` }
+
+/* ── Status timeline ─────────────────────────────────────────────────── */
+const ORDER_STEPS = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'] as const
+const STEP_LABEL: Record<string, string> = {
+  pending: 'Pendiente', confirmed: 'Confirmado', processing: 'En preparación',
+  shipped: 'Enviado', delivered: 'Entregado',
 }
 
+const PAY_LABEL: Record<string, string> = {
+  pending: 'Sin pagar', paid: 'Pagado', failed: 'Fallido', refunded: 'Reembolsado',
+}
+const PAY_COLOR: Record<string, string> = {
+  pending: 'text-yellow-600 bg-yellow-50', paid: 'text-green-700 bg-green-50',
+  failed: 'text-red-600 bg-red-50', refunded: 'text-gray-600 bg-gray-100',
+}
+
+function StatusTimeline({ status }: { status: string }) {
+  if (status === 'cancelled') {
+    return (
+      <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 p-4 text-red-700">
+        <XCircle size={20} /> <span className="font-semibold">Pedido cancelado</span>
+      </div>
+    )
+  }
+  if (status === 'refunded') {
+    return (
+      <div className="flex items-center gap-2 rounded-xl bg-gray-100 border p-4 text-gray-600">
+        <RefreshCw size={20} /> <span className="font-semibold">Pedido reembolsado</span>
+      </div>
+    )
+  }
+
+  const currentIdx = ORDER_STEPS.indexOf(status as any)
+
+  return (
+    <div className="relative flex items-start justify-between">
+      {/* connector line */}
+      <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 mx-8" />
+      <div
+        className="absolute top-4 left-0 h-0.5 bg-[var(--brand-primary)] mx-8 transition-all"
+        style={{ width: currentIdx >= 0 ? `${(currentIdx / (ORDER_STEPS.length - 1)) * 100}%` : '0%' }}
+      />
+
+      {ORDER_STEPS.map((step, i) => {
+        const done = currentIdx >= i
+        const current = currentIdx === i
+        return (
+          <div key={step} className="relative flex flex-col items-center gap-2 flex-1">
+            <div className={`z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors ${
+              done
+                ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white'
+                : 'bg-white border-gray-300 text-gray-400'
+            } ${current ? 'ring-4 ring-[var(--brand-primary)]/20' : ''}`}>
+              {done ? <CheckCircle size={16} /> : <Circle size={16} />}
+            </div>
+            <span className={`text-[10px] font-semibold text-center leading-tight ${done ? 'text-[var(--brand-primary)]' : 'text-gray-400'}`}>
+              {STEP_LABEL[step]}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
 export default function OrderDetail() {
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const code = String(params.code || '')
+  const { isAuthenticated } = useAuth()
+  const mpResult = searchParams.get('mp') // success | failure | pending
+
   const [email, setEmail] = useState(() => localStorage.getItem(LS_LAST_EMAIL) || '')
 
-  const query = useQuery({
-    queryKey: ['order', code, email],
-    queryFn: () => getOrder(code, email ? { email } : {}),
-    enabled: Boolean(code),
+  // Authenticated: use customer endpoint (more data, no email needed)
+  const authQuery = useQuery({
+    queryKey: ['customer_order', code],
+    queryFn: () => getCustomerOrder(code),
+    enabled: Boolean(code) && isAuthenticated,
     retry: false,
   })
 
+  // Guest: use public endpoint with email param
+  const guestQuery = useQuery({
+    queryKey: ['order', code, email],
+    queryFn: () => getOrder(code, email ? { email } : {}),
+    enabled: Boolean(code) && !isAuthenticated,
+    retry: false,
+  })
+
+  const query = isAuthenticated ? authQuery : guestQuery
+  const order = query.data as any
+
+  // MP preference mutation
+  const mpMut = useMutation({
+    mutationFn: () => createMpPreference(code),
+    onSuccess: (pref) => { window.location.href = pref.init_point },
+  })
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Pedido</h1>
-          <p className="mt-2 text-sm text-gray-600">Código: <span className="font-semibold">{code}</span></p>
+          <h1 className="text-2xl font-bold text-gray-900">Pedido #{code}</h1>
+          {order?.created_at && (
+            <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString('es-AR', { dateStyle: 'long' })}</p>
+          )}
         </div>
-        <Link to="/productos" className="btn btn-outline">Volver al catálogo</Link>
+        <Link to={isAuthenticated ? '/mi-cuenta' : '/productos'} className="btn btn-outline text-sm">
+          {isAuthenticated ? '← Mi cuenta' : '← Catálogo'}
+        </Link>
       </div>
 
-      <div className="mt-6 card p-6">
-        <p className="text-sm text-gray-600">
-          Si no estás logueado, para ver el pedido el backend solicita el email con el que se generó.
-        </p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            type="email"
-            className="w-full sm:w-96 rounded-xl border px-4 py-2 text-sm"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email del comprador"
-          />
-          <button className="btn btn-primary" onClick={() => {
-            localStorage.setItem(LS_LAST_EMAIL, email)
-            query.refetch()
-          }}>
-            Consultar
-          </button>
+      {/* MP result banner */}
+      {mpResult === 'success' && (
+        <div className="mb-5 flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 p-4 text-green-700 font-semibold">
+          <CheckCircle size={20} /> ¡Pago procesado con éxito! Tu pedido fue confirmado.
         </div>
-      </div>
+      )}
+      {mpResult === 'failure' && (
+        <div className="mb-5 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 p-4 text-red-700 font-semibold">
+          <XCircle size={20} /> El pago no pudo procesarse. Podés intentarlo nuevamente.
+        </div>
+      )}
+      {mpResult === 'pending' && (
+        <div className="mb-5 flex items-center gap-2 rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-yellow-700 font-semibold">
+          <Clock size={20} /> Pago en revisión. Te avisaremos cuando se confirme.
+        </div>
+      )}
 
-      <div className="mt-6">
-        {query.isLoading ? (
-          <p className="text-sm text-gray-500">Cargando pedido...</p>
-        ) : query.isError ? (
-          <div className="card p-6">
-            <p className="text-sm font-semibold text-red-700">No se pudo cargar el pedido.</p>
-            <p className="mt-2 text-sm text-gray-600">
-              {String((query.error as any)?.response?.data?.message || (query.error as any)?.message || '')}
-            </p>
+      {/* Guest email lookup */}
+      {!isAuthenticated && (
+        <div className="card p-5 mb-5">
+          <p className="text-sm text-gray-600 mb-3">Ingresá el email con el que realizaste el pedido para ver los detalles.</p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@email.com"
+            />
+            <button className="btn btn-primary" onClick={() => { localStorage.setItem(LS_LAST_EMAIL, email); guestQuery.refetch() }}>
+              Consultar
+            </button>
           </div>
-        ) : query.data ? (
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 card p-6">
-              <h2 className="text-lg font-bold">Ítems</h2>
-              <div className="mt-4 space-y-3">
-                {query.data.items.map((it) => (
-                  <div key={it.id} className="flex items-start justify-between gap-4 border-b pb-3">
+        </div>
+      )}
+
+      {query.isLoading && <p className="text-sm text-gray-500 py-10 text-center">Cargando pedido…</p>}
+
+      {query.isError && (
+        <div className="card p-6 text-center">
+          <p className="text-sm font-semibold text-red-700">No se pudo cargar el pedido.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {String((query.error as any)?.response?.data?.message ?? 'Error de conexión.')}
+          </p>
+        </div>
+      )}
+
+      {order && (
+        <div className="grid gap-5 lg:grid-cols-3">
+          {/* Left column */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Status timeline */}
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-gray-700 mb-4">Estado del pedido</h2>
+              <StatusTimeline status={order.status ?? 'pending'} />
+            </div>
+
+            {/* Tracking */}
+            {order.tracking && (
+              <div className="card p-5">
+                <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><Truck size={16} /> Seguimiento del envío</h2>
+                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                  {order.tracking.carrier && <div><p className="text-xs text-gray-500 font-semibold">Carrier</p><p>{order.tracking.carrier}</p></div>}
+                  {order.tracking.tracking_code && <div><p className="text-xs text-gray-500 font-semibold">Código de seguimiento</p><p className="font-mono">{order.tracking.tracking_code}</p></div>}
+                  {order.tracking.status && <div><p className="text-xs text-gray-500 font-semibold">Estado del envío</p><p className="capitalize">{order.tracking.status.replace('_', ' ')}</p></div>}
+                  {order.tracking.estimated_delivery && <div><p className="text-xs text-gray-500 font-semibold">Entrega estimada</p><p>{order.tracking.estimated_delivery}</p></div>}
+                  {order.tracking.shipped_at && <div><p className="text-xs text-gray-500 font-semibold">Fecha de envío</p><p>{new Date(order.tracking.shipped_at).toLocaleDateString('es-AR')}</p></div>}
+                  {order.tracking.delivered_at && <div><p className="text-xs text-gray-500 font-semibold">Entregado</p><p>{new Date(order.tracking.delivered_at).toLocaleDateString('es-AR')}</p></div>}
+                </div>
+                {order.tracking.notes && <p className="mt-3 text-xs text-gray-500 border-t pt-2">{order.tracking.notes}</p>}
+              </div>
+            )}
+
+            {/* Items */}
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-gray-700 mb-3">Productos</h2>
+              <div className="space-y-3">
+                {(order.items ?? []).map((it: any) => (
+                  <div key={it.id} className="flex items-start justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
                     <div>
-                      <p className="font-semibold leading-tight">{it.name}</p>
-                      <p className="text-xs text-gray-500">x {it.qty} · {formatMoney(it.unit_price)} · IVA {it.tax_rate}%</p>
+                      <p className="text-sm font-semibold text-gray-800">{it.name}</p>
+                      <p className="text-xs text-gray-500">
+                        x{it.qty} · {fmt(it.unit_price)} c/u
+                        {it.sku && ` · SKU: ${it.sku}`}
+                      </p>
                     </div>
-                    <p className="font-semibold">{formatMoney(it.line_total)}</p>
+                    <p className="text-sm font-bold flex-shrink-0">{fmt(it.total ?? it.line_total)}</p>
                   </div>
                 ))}
               </div>
             </div>
-
-            <div className="card p-6 h-fit">
-              <h2 className="text-lg font-bold">Resumen</h2>
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Estado</span>
-                  <span className="font-semibold">{query.data.status}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Modo</span>
-                  <span className="font-semibold">{query.data.pricing_mode.toUpperCase()}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">{formatMoney(query.data.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">IVA</span>
-                  <span className="font-semibold">{formatMoney(query.data.tax_total)}</span>
-                </div>
-                <div className="flex items-center justify-between border-t pt-3">
-                  <span className="text-gray-600">Total</span>
-                  <span className="text-lg font-bold">{formatMoney(query.data.total)}</span>
-                </div>
-              </div>
-
-              <div className="mt-6 text-xs text-gray-600">
-                <p><span className="font-semibold">Comprador:</span> {query.data.customer_name}</p>
-                <p><span className="font-semibold">Email:</span> {query.data.customer_email}</p>
-                {query.data.customer_phone ? <p><span className="font-semibold">Tel:</span> {query.data.customer_phone}</p> : null}
-                {query.data.shipping_address ? (
-                  <p className="mt-2 whitespace-pre-wrap"><span className="font-semibold">Envío:</span> {query.data.shipping_address}</p>
-                ) : null}
-              </div>
-            </div>
           </div>
-        ) : null}
-      </div>
+
+          {/* Right column */}
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-gray-700 mb-3">Resumen</h2>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Pago</span>
+                  <span className={`badge ${PAY_COLOR[order.payment_status] ?? 'bg-gray-100'}`}>
+                    {PAY_LABEL[order.payment_status] ?? order.payment_status}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{fmt(order.subtotal)}</span></div>
+                {(order.discount_amount ?? 0) > 0 && (
+                  <div className="flex justify-between text-green-700"><span>Descuento</span><span>-{fmt(order.discount_amount)}</span></div>
+                )}
+                {(order.shipping_cost ?? 0) > 0 && (
+                  <div className="flex justify-between text-gray-600"><span>Envío</span><span>{fmt(order.shipping_cost)}</span></div>
+                )}
+                <div className="flex justify-between font-bold text-gray-900 pt-2 border-t text-base">
+                  <span>Total</span><span>{fmt(order.total)}</span>
+                </div>
+              </div>
+
+              {/* Pay button if pending */}
+              {order.payment_status === 'pending' && order.status !== 'cancelled' && (
+                <button
+                  onClick={() => mpMut.mutate()}
+                  disabled={mpMut.isPending}
+                  className="mt-4 btn btn-primary w-full py-2.5 gap-2"
+                >
+                  <CreditCard size={16} />
+                  {mpMut.isPending ? 'Redirigiendo…' : 'Pagar con MercadoPago'}
+                </button>
+              )}
+              {mpMut.isError && (
+                <p className="mt-2 text-xs text-red-600">{(mpMut.error as any)?.response?.data?.message ?? 'Error al iniciar el pago.'}</p>
+              )}
+            </div>
+
+            {/* Shipping info */}
+            {(order.shipping_name || order.shipping_address) && (
+              <div className="card p-5">
+                <h2 className="text-sm font-bold text-gray-700 mb-2">Datos de envío</h2>
+                <div className="text-sm text-gray-600 space-y-0.5">
+                  {order.shipping_name && <p className="font-semibold text-gray-800">{order.shipping_name}</p>}
+                  {order.shipping_address && <p>{order.shipping_address}</p>}
+                  {(order.shipping_city || order.shipping_province) && (
+                    <p>{[order.shipping_city, order.shipping_province, order.shipping_postal].filter(Boolean).join(', ')}</p>
+                  )}
+                  {order.shipping_phone && <p>{order.shipping_phone}</p>}
+                  {(order.customer_notes ?? order.notes) && (
+                    <p className="pt-1 text-xs italic text-gray-400">{order.customer_notes ?? order.notes}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

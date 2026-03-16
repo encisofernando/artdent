@@ -264,6 +264,7 @@ export default function Create({ auth }) {
         sku: '',
         barcode: '',
         short_description: '',
+        description: '',
         cost_price: '',
         price: '',
         is_active: 1,
@@ -427,6 +428,12 @@ export default function Create({ auth }) {
                             <Textarea isDark={isDark} rows={2} value={data.short_description}
                                 onChange={e => setData('short_description', e.target.value)}
                                 placeholder="Descripción breve para el listado..."
+                            />
+                        </Field>
+                        <Field label="Descripción Completa" error={errors.description}>
+                            <Textarea isDark={isDark} rows={6} value={data.description}
+                                onChange={e => setData('description', e.target.value)}
+                                placeholder="Descripción detallada del producto (se muestra en la página del producto del e-commerce)..."
                             />
                         </Field>
                     </div>

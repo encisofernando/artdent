@@ -1,371 +1,345 @@
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Filter, X } from 'lucide-react'
-import { listProducts } from '../api/products'
+import { X, SlidersHorizontal, ChevronRight } from 'lucide-react'
+import { listProducts, type CatalogProduct } from '../api/products'
 import { listCategories } from '../api/categories'
 import { useCart } from '../store/cart'
 import WishlistButton from '../components/WishlistButton'
 
+// ── Product Card ──────────────────────────────────────────────────────────────
+function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduct) => void }) {
+  const price = Number(p.price_final ?? p.price ?? 0)
+  const originalPrice = p.price_final && p.price_final < p.price ? Number(p.price) : null
+  const pct = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0
+  const hasStock = (p.stock ?? 0) > 0
+
+  return (
+    <div className="product-card-ml flex flex-col group relative">
+      <Link to={`/productos/${p.id}`} className="block">
+        <div className="aspect-square bg-gray-50 overflow-hidden flex items-center justify-center p-3 relative">
+          {pct > 0 && (
+            <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-black rounded px-1.5 py-0.5 z-10">
+              -{pct}%
+            </span>
+          )}
+          {p.primary_image_url ? (
+            <img src={p.primary_image_url} alt={p.name}
+              className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              loading="lazy" />
+          ) : (
+            <svg className="w-12 h-12 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          )}
+          {!hasStock && (
+            <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+              <span className="badge badge-danger text-xs">Sin stock</span>
+            </div>
+          )}
+        </div>
+      </Link>
+
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <WishlistButton productId={p.id} />
+      </div>
+
+      <div className="flex flex-col flex-1 p-3 gap-1">
+        {p.category && (
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--brand-primary)]">
+            {p.category.name}
+          </span>
+        )}
+        <Link to={`/productos/${p.id}`}>
+          <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-[var(--brand-primary)] transition-colors min-h-[2.5rem]">
+            {p.name}
+          </h3>
+        </Link>
+        <div className="mt-auto pt-1">
+          {originalPrice && (
+            <p className="text-[10px] text-gray-400 line-through">${originalPrice.toLocaleString('es-AR')}</p>
+          )}
+          <p className="price-main">${price.toLocaleString('es-AR')}</p>
+        </div>
+        <button
+          className={`btn btn-primary w-full mt-2 py-2 text-xs ${!hasStock ? 'opacity-40 cursor-not-allowed !transform-none !shadow-none' : ''}`}
+          onClick={() => hasStock && onAdd(p)}
+          disabled={!hasStock}
+        >
+          {hasStock ? 'Agregar al carrito' : 'Sin stock'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+function SkeletonGrid({ count = 10 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="product-card-ml animate-pulse">
+          <div className="aspect-square bg-gray-100 rounded-t-xl" />
+          <div className="p-4 space-y-2">
+            <div className="h-3 bg-gray-100 rounded w-1/3" />
+            <div className="h-4 bg-gray-100 rounded w-full" />
+            <div className="h-4 bg-gray-100 rounded w-4/5" />
+            <div className="h-6 bg-gray-100 rounded w-2/5 mt-3" />
+            <div className="h-9 bg-gray-100 rounded-xl mt-2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams()
   const q = searchParams.get('q') || ''
-  const page = Number(searchParams.get('page') || '1')
-  const categoryId = searchParams.get('category_id')
+  const categoryId = searchParams.get('cat') || searchParams.get('category_id') || ''
   const category_id = categoryId ? Number(categoryId) : undefined
 
   const cart = useCart()
-  const [showFilters, setShowFilters] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Categories
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
     queryFn: () => listCategories(),
   })
+  const categories = categoriesQuery.data ?? []
 
-  const query = useQuery({
-    queryKey: ['catalog_products', q, page, category_id],
-    queryFn: () => listProducts({ q: q || undefined, page, category_id }),
+  // Infinite scroll query
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
+    queryKey: ['catalog_products_inf', q, category_id],
+    queryFn: ({ pageParam = 1 }) =>
+      listProducts({ q: q || undefined, page: pageParam as number, category_id }),
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.current_page < last.last_page ? last.current_page + 1 : undefined,
   })
 
-  const products = query.data?.data || []
-  const currentPage = query.data?.current_page || 1
-  const lastPage = query.data?.last_page || 1
+  // Flatten all pages
+  const products = useMemo(
+    () => data?.pages.flatMap((p) => p.data) ?? [],
+    [data]
+  )
 
-  const canPrev = currentPage > 1
-  const canNext = currentPage < lastPage
+  const totalProducts = data?.pages[0]?.total ?? 0
 
-  const [draftQ, setDraftQ] = useState(q)
+  // IntersectionObserver for infinite scroll
+  const onSentinel = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage()
+      }
+    },
+    [fetchNextPage, hasNextPage, isFetchingNextPage]
+  )
 
-  const title = useMemo(() => {
-    if (q) return `Productos · "${q}"`
-    return 'Productos'
-  }, [q])
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(onSentinel, { rootMargin: '200px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [onSentinel])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  const setCategory = (id: number | undefined) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      if (draftQ.trim()) next.set('q', draftQ.trim())
-      else next.delete('q')
-      next.set('page', '1')
+      if (id) next.set('cat', String(id))
+      else next.delete('cat')
+      next.delete('category_id')
+      next.delete('page')
       return next
     })
-    setShowFilters(false)
+    setSidebarOpen(false)
   }
 
-  const handleCategoryChange = (value: string) => {
+  const clearQ = () => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      if (value) next.set('category_id', value)
-      else next.delete('category_id')
-      next.set('page', '1')
+      next.delete('q')
       return next
     })
-    setShowFilters(false)
   }
 
-  const clearFilters = () => {
-    setDraftQ('')
-    setSearchParams({})
-    setShowFilters(false)
-  }
+  const title = q ? `Resultados para "${q}"` : 'Productos'
+  const selectedCategory = categories.find((c) => c.id === category_id)
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 products-container">
-      {/* Header con título y botón de filtros */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">{title}</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Catálogo público. Si iniciás sesión con una cuenta B2B, los precios se ajustan automáticamente.
-          </p>
-        </div>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="flex gap-6">
 
-        {/* Botón de filtros (solo mobile) */}
-        <button
-          onClick={() => setShowFilters(true)}
-          className="md:hidden btn btn-primary flex items-center justify-center gap-2"
-        >
-          <Filter size={18} />
-          Filtros
-          {(q || category_id) && (
-            <span className="ml-1 rounded-full bg-white text-[var(--brand-primary)] px-2 py-0.5 text-xs font-bold">
-              {[q, category_id].filter(Boolean).length}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Formulario de búsqueda (desktop) */}
-      <form
-        className="hidden md:flex w-full flex-col gap-2 md:w-auto md:flex-row mt-6"
-        onSubmit={handleSearch}
-      >
-        <input
-          value={draftQ}
-          onChange={(e) => setDraftQ(e.target.value)}
-          placeholder="Buscar por nombre o SKU..."
-          className="w-full md:w-80 rounded-xl border px-4 py-2 text-sm outline-none focus:ring-2"
-        />
-        <select
-          value={category_id ?? ''}
-          onChange={(e) => handleCategoryChange(e.target.value)}
-          className="w-full md:w-56 rounded-xl border px-4 py-2 text-sm outline-none focus:ring-2"
-        >
-          <option value="">Todas las categorías</option>
-          {(categoriesQuery.data || []).map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <button className="btn btn-primary" type="submit">
-          Buscar
-        </button>
-        {(q || category_id) && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="btn btn-outline"
-          >
-            Limpiar
-          </button>
-        )}
-      </form>
-
-      {/* Panel de filtros mobile (modal) */}
-      {showFilters && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 z-[100] md:hidden"
-            onClick={() => setShowFilters(false)}
-          />
-          <div className="fixed inset-x-0 bottom-0 z-[101] bg-white rounded-t-2xl shadow-2xl md:hidden animate-slide-up max-h-[80vh] flex flex-col">
-            {/* Header del panel */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Filtros</h3>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="w-10 h-10 rounded-lg hover:bg-gray-100 flex items-center justify-center"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Contenido scrollable */}
-            <form onSubmit={handleSearch} className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div>
-                <label htmlFor="mobile-search" className="block text-sm font-medium text-gray-700 mb-2">
-                  Buscar producto
-                </label>
-                <input
-                  id="mobile-search"
-                  value={draftQ}
-                  onChange={(e) => setDraftQ(e.target.value)}
-                  placeholder="Nombre o SKU..."
-                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="mobile-category" className="block text-sm font-medium text-gray-700 mb-2">
-                  Categoría
-                </label>
-                <select
-                  id="mobile-category"
-                  value={category_id ?? ''}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2"
+        {/* ── Sidebar de categorías (desktop) ── */}
+        <aside className="hidden lg:block w-52 shrink-0">
+          <div className="sticky top-24">
+            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 px-1">
+              Categorías
+            </h2>
+            <ul className="space-y-0.5">
+              <li>
+                <button
+                  onClick={() => setCategory(undefined)}
+                  className={`w-full text-left text-sm px-3 py-2 rounded-lg transition flex items-center justify-between group
+                    ${!category_id
+                      ? 'bg-[var(--brand-primary)] text-white font-semibold'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                 >
-                  <option value="">Todas las categorías</option>
-                  {(categoriesQuery.data || []).map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {(q || category_id) && (
-                <div className="pt-2">
+                  <span>Todas las categorías</span>
+                  {!category_id && <ChevronRight size={14} />}
+                </button>
+              </li>
+              {categories.map((c) => (
+                <li key={c.id}>
                   <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                    onClick={() => setCategory(c.id)}
+                    className={`w-full text-left text-sm px-3 py-2 rounded-lg transition flex items-center justify-between group
+                      ${category_id === c.id
+                        ? 'bg-[var(--brand-primary)] text-white font-semibold'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                   >
-                    Limpiar todos los filtros
+                    <span className="truncate pr-1">{c.name}</span>
+                    {category_id === c.id && <ChevronRight size={14} />}
                   </button>
-                </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        {/* ── Contenido principal ── */}
+        <div className="flex-1 min-w-0">
+
+          {/* Header */}
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+              {!isLoading && (
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {selectedCategory ? selectedCategory.name : 'Todos los productos'}
+                  {totalProducts > 0 && ` · ${totalProducts.toLocaleString('es-AR')} resultados`}
+                </p>
               )}
-            </form>
-
-            {/* Footer del panel */}
-            <div className="border-t p-4 safe-bottom">
-              <button
-                onClick={handleSearch}
-                className="btn btn-primary w-full"
-              >
-                Aplicar filtros
-              </button>
             </div>
-          </div>
-        </>
-      )}
 
-      {/* Grilla de productos */}
-      <div className="mt-8">
-        {query.isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 products-grid">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="card p-5 animate-pulse product-card">
-                <div className="h-40 bg-gray-200 rounded-2xl"></div>
-                <div className="mt-4 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                  <div className="h-8 bg-gray-200 rounded mt-4"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : query.isError ? (
-          <div className="card p-4">
-            <p className="text-sm font-semibold text-red-600">No se pudo cargar el catálogo.</p>
-            <p className="mt-2 text-sm text-gray-600">
-              Probables causas: no estás logueado, CORS, o la URL del backend en <code>VITE_API_BASE_URL</code>.
-            </p>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="card p-8 text-center">
-            <p className="text-gray-600">No se encontraron productos.</p>
+            {/* Mobile: botón filtros */}
             <button
-              onClick={clearFilters}
-              className="mt-4 btn btn-outline"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden flex items-center gap-2 btn btn-outline text-sm"
             >
-              Limpiar filtros
+              <SlidersHorizontal size={15} />
+              Categorías
             </button>
           </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 products-grid">
-            {products.map((p) => {
-              const price = Number(p.price_final ?? p.price ?? 0)
-              const mode = p.price_mode
-              const hasStock = (p.stock ?? 0) > 0
-              
-              return (
-                <div key={p.id} className="card p-5 hover:border-gray-300 transition relative product-card">
-                  {/* Botón de Wishlist */}
-                  <div className="absolute top-3 right-3 z-10">
-                    <WishlistButton productId={p.id} />
-                  </div>
 
-                  <Link to={`/productos/${p.id}`} className="block">
-                    <div className="h-40 w-full overflow-hidden rounded-2xl border bg-white" style={{ borderColor: 'var(--border)' }}>
-                      {p.primary_image_url ? (
-                        <img 
-                          src={p.primary_image_url} 
-                          alt={p.name} 
-                          className="h-full w-full object-cover transition hover:scale-105" 
-                          loading="lazy" 
-                        />
-                      ) : (
-                        <div className="h-full w-full grid place-items-center">
-                          <span className="text-xs text-gray-500">Sin imagen</span>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-
-                  <Link to={`/productos/${p.id}`}>
-                    <div className="mt-4">
-                      <p className="text-xs font-semibold text-[var(--brand-primary)]">
-                        SKU: {p.sku || '—'}
-                      </p>
-                      <p className="mt-2 line-clamp-2 text-sm font-semibold min-h-[2.5rem]">
-                        {p.name}
-                      </p>
-                    </div>
-                  </Link>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-lg font-bold">${price.toLocaleString('es-AR')}</p>
-                      <p className="text-xs text-gray-500">IVA {Number(p.tax_rate || 0)}%</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {mode === 'b2b' && (
-                        <span className="rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-primary)]">
-                          B2B
-                        </span>
-                      )}
-                      {!hasStock && (
-                        <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
-                          Sin stock
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    className={`btn btn-outline w-full mt-4 ${!hasStock ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => hasStock && cart.add(p, 1)}
-                    disabled={!hasStock}
-                  >
-                    {hasStock ? 'Agregar al carrito' : 'Sin stock'}
+          {/* Chips filtros activos */}
+          {(q || category_id) && (
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              {q && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand-primary)]/30 px-3 py-1 text-sm font-semibold text-[var(--brand-primary)]">
+                  "{q}"
+                  <button onClick={clearQ} className="rounded-full hover:bg-[var(--brand-primary)]/10 p-0.5">
+                    <X size={12} />
                   </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                </span>
+              )}
+              {category_id && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand-primary)]/30 px-3 py-1 text-sm font-semibold text-[var(--brand-primary)]">
+                  {selectedCategory?.name ?? 'Categoría'}
+                  <button onClick={() => setCategory(undefined)} className="rounded-full hover:bg-[var(--brand-primary)]/10 p-0.5">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              <button onClick={() => { clearQ(); setCategory(undefined) }}
+                className="text-xs text-gray-400 hover:text-red-500 transition">
+                Limpiar todo
+              </button>
+            </div>
+          )}
+
+          {/* Grid */}
+          {isLoading ? (
+            <SkeletonGrid />
+          ) : isError ? (
+            <div className="card p-6 text-center">
+              <p className="text-sm font-semibold text-red-600">No se pudo cargar el catálogo.</p>
+              <p className="mt-2 text-sm text-gray-500">Verificá la conexión con el servidor.</p>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="card p-10 text-center">
+              <p className="text-gray-600 font-medium">No se encontraron productos.</p>
+              <button onClick={() => { clearQ(); setCategory(undefined) }} className="mt-4 btn btn-outline">
+                Limpiar filtros
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {products.map((p) => (
+                <ProductCard key={p.id} p={p} onAdd={(pr) => cart.add(pr, 1)} />
+              ))}
+            </div>
+          )}
+
+          {/* Sentinel + loading más */}
+          <div ref={sentinelRef} className="h-4 mt-4" />
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--brand-primary)] border-r-transparent" />
+            </div>
+          )}
+          {!hasNextPage && products.length > 0 && (
+            <p className="text-center text-sm text-gray-400 py-6">
+              · {products.length.toLocaleString('es-AR')} productos mostrados ·
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Paginación */}
-      {products.length > 0 && (
-        <div className="mt-10 flex items-center justify-between pagination-controls">
-          <button
-            className={`btn btn-outline ${!canPrev ? 'opacity-50 pointer-events-none' : ''}`}
-            onClick={() => {
-              const next: Record<string, string> = { page: String(currentPage - 1) }
-              if (q) next.q = q
-              if (category_id) next.category_id = String(category_id)
-              setSearchParams(next)
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-            disabled={!canPrev}
-          >
-            Anterior
-          </button>
-          <p className="text-sm text-gray-600">
-            Página <span className="font-semibold">{currentPage}</span> de <span className="font-semibold">{lastPage}</span>
-          </p>
-          <button
-            className={`btn btn-outline ${!canNext ? 'opacity-50 pointer-events-none' : ''}`}
-            onClick={() => {
-              const next: Record<string, string> = { page: String(currentPage + 1) }
-              if (q) next.q = q
-              if (category_id) next.category_id = String(category_id)
-              setSearchParams(next)
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-            disabled={!canNext}
-          >
-            Siguiente
-          </button>
+      {/* ── Sidebar mobile (drawer) ── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <div className="relative w-72 bg-white h-full shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-4 border-b">
+              <h2 className="font-bold text-gray-800">Categorías</h2>
+              <button onClick={() => setSidebarOpen(false)}>
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <ul className="flex-1 overflow-y-auto p-3 space-y-0.5">
+              <li>
+                <button onClick={() => setCategory(undefined)}
+                  className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition
+                    ${!category_id ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                  Todas las categorías
+                </button>
+              </li>
+              {categories.map((c) => (
+                <li key={c.id}>
+                  <button onClick={() => setCategory(c.id)}
+                    className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition
+                      ${category_id === c.id ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    {c.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-
-        .animate-slide-up {
-          animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-      `}</style>
     </div>
   )
 }

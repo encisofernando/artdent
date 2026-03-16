@@ -3,6 +3,7 @@ import { http } from './http'
 export type CheckoutItem = {
   product_id: number
   qty: number
+  variant_id?: number
 }
 
 export type CheckoutPayload = {
@@ -12,7 +13,15 @@ export type CheckoutPayload = {
   customer_email: string
   customer_phone?: string
   shipping_address?: string
+  shipping_city?: string
+  shipping_province?: string
+  shipping_postal?: string
+  shipping_method_type?: 'home_delivery' | 'pickup_point' | 'moto'
+  pickup_point_id?: number
+  moto_company_id?: number
+  shipping_cost?: number
   notes?: string
+  coupon_code?: string
   items: CheckoutItem[]
 }
 

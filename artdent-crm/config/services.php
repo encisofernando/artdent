@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'mercadopago' => [
+        'access_token' => env('MP_ACCESS_TOKEN', ''),
+        'ecommerce_url' => env('ECOMMERCE_URL', ''),
+    ],
+
 ];

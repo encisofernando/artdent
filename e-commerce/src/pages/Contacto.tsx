@@ -26,7 +26,7 @@ export default function Contacto() {
   // Información de contacto de la empresa
   const contactInfo = {
     phone: '+54 3704-995406',
-    email: 'info@artdent.com.ar',
+    email: 'ventas@artdent.com.ar',
     address: 'B° Sagrado Corazon Mz 40 Casa 2, Formosa Capital, Formosa, Argentina',
     hours: 'Lunes a Viernes: 8:00 - 14:00 hs',
     whatsapp: '+54 9 3704-995406',

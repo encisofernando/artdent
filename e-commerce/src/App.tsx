@@ -16,9 +16,16 @@ import OrderDetail from './pages/OrderDetail'
 import SignIn from './pages/SignIn'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Account from './pages/Account'
 import Comparar from './pages/Comparar'
 import Contacto from './pages/Contacto'
+import DefensaConsumidor from './pages/DefensaConsumidor'
+import Privacidad from './pages/Privacidad'
+import Terminos from './pages/Terminos'
+import Cookies from './pages/Cookies'
+import Devoluciones from './pages/Devoluciones'
+import Favoritos from './pages/Favoritos'
 
 function NotFound() {
   return (
@@ -47,6 +54,11 @@ export default function App() {
             <Route path="/productos/:id" element={<ProductDetail />} />
 
             <Route path="/contacto" element={<Contacto />} />
+            <Route path="/defensa-consumidor" element={<DefensaConsumidor />} />
+            <Route path="/privacidad" element={<Privacidad />} />
+            <Route path="/terminos" element={<Terminos />} />
+            <Route path="/cookies" element={<Cookies />} />
+            <Route path="/devoluciones" element={<Devoluciones />} />
             
             {/* Comparador de productos */}
             <Route path="/comparar" element={<Comparar />} />
@@ -60,6 +72,17 @@ export default function App() {
             <Route path="/iniciar-sesion" element={<SignIn />} />
             <Route path="/registrarme" element={<Register />} />
             <Route path="/recuperar" element={<ForgotPassword />} />
+            <Route path="/resetear-contrasena" element={<ResetPassword />} />
+
+            {/* Favoritos (requiere auth) */}
+            <Route
+              path="/favoritos"
+              element={
+                <ProtectedRoute>
+                  <Favoritos />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Cuenta protegida */}
             <Route

@@ -41,7 +41,28 @@
       "Bash(find c:UsersUsuarioDocumentsSOFTWAREartdente-commerce -type f -name *.json -o -name *.js -o -name *.ts -o -name *.jsx -o -name *.tsx)",
       "Bash(find c:UsersUsuarioDocumentsSOFTWAREartdente-commercesrc -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx \\\\\\))",
       "Bash(grep -r \"catalog\\\\|variant\\\\|attribute\" /c/Users/Usuario/Documents/SOFTWARE/artdent/artdent-crm/routes --include=*.php)",
-      "Bash(grep -r \"has_variants\\\\|product_variants\" /c/Users/Usuario/Documents/SOFTWARE/artdent --include=*.php --include=*.ts --include=*.tsx)"
+      "Bash(grep -r \"has_variants\\\\|product_variants\" /c/Users/Usuario/Documents/SOFTWARE/artdent --include=*.php --include=*.ts --include=*.tsx)",
+      "Bash(\"c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm/.env\")",
+      "Bash(php -l \"app/Http/Controllers/Api/CatalogController.php\")",
+      "Bash(vendor/bin/pint app/Http/Controllers/Api/CatalogController.php --dirty)",
+      "Bash(php -r \"require ''''vendor/autoload.php''''; $app = require ''''bootstrap/app.php'''';\")",
+      "Bash(npx tsc:*)",
+      "Bash(vendor/bin/pint app/Mail app/Observers app/Http/Controllers/Api/AuthApiController.php app/Http/Controllers/Api/NewsletterApiController.php app/Models/Customer.php app/Providers/AppServiceProvider.php --dirty)",
+      "Bash(php -r \":*)",
+      "Bash(php -r \"echo php_ini_loaded_file\\(\\);\")",
+      "Bash(curl -s -o \"C:/Users/ferna/OneDrive/Documentos/ArtDent/php-8.3.30/cacert.pem\" \"https://curl.se/ca/cacert.pem\")",
+      "Bash(sed -i 's|;curl.cainfo =|curl.cainfo = \"\"C:/Users/ferna/OneDrive/Documentos/ArtDent/php-8.3.30/cacert.pem\"\"|' \"C:/Users/ferna/OneDrive/Documentos/ArtDent/php-8.3.30/php.ini\")",
+      "Bash(sed -i 's|;openssl.cafile=|openssl.cafile=\"\"C:/Users/ferna/OneDrive/Documentos/ArtDent/php-8.3.30/cacert.pem\"\"|' \"C:/Users/ferna/OneDrive/Documentos/ArtDent/php-8.3.30/php.ini\")",
+      "Bash(curl -s -X GET https://api.resend.com/emails -H 'Authorization: Bearer re_V1FvmnEp_NESneVzRGHBRjGQekML3WToM')",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); emails=data.get\\(''''data'''',[]\\); [print\\(e.get\\(''''to''''\\), e.get\\(''''subject''''\\), e.get\\(''''created_at''''\\), e.get\\(''''last_event''''\\)\\) for e in emails[:5]]\")",
+      "Bash(curl -s \"https://api.resend.com/emails\" -H \"Authorization: Bearer re_V1FvmnEp_NESneVzRGHBRjGQekML3WToM\")",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/auth/password/forgot\" -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"fernandoenciso97@gmail.com\"\"}')",
+      "Bash(find c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent -name logo* -o -name Logo*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8000/brand/logo-artdent-blanco.png\")",
+      "Bash(./vendor/bin/pint --dirty)",
+      "Bash(find c:UsersfernaOneDriveDocumentosArtDentartdentartdent-crmresourcesjs -type f -name *Sidebar* -o -type f -name *Navigation*)",
+      "Bash(grep -l ecommerce_orders c:UsersfernaOneDriveDocumentosArtDentartdentartdent-crmdatabasemigrations/*)",
+      "Bash(find c:UsersfernaOneDriveDocumentosArtDentartdent -name *.php -path */migrations/* -type f)"
     ]
   }
 }

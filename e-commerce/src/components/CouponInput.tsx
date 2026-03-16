@@ -86,7 +86,7 @@ export default function CouponInput({
             <Check className="text-green-600" size={20} />
             <div>
               <p className="text-sm font-semibold text-green-900">
-                {appliedCoupon.coupon.name}
+                {appliedCoupon.coupon?.code}
               </p>
               <p className="text-xs text-green-700">
                 Descuento: ${Number(appliedCoupon.discount || 0).toLocaleString('es-AR')}

@@ -21,6 +21,7 @@ import {
     RefreshCcw,
     Truck,
     Key,
+    ShoppingCart,
 } from 'lucide-react';
 
 const NAV_SECTIONS = [
@@ -46,8 +47,6 @@ const NAV_SECTIONS = [
                 title: "Clientes", icon: Users, key: "clientes",
                 children: [
                     { title: "Lista de Clientes", path: "/customers" },
-                    { title: "Cta. Cte.", path: "/ctacte" },
-                    { title: "Pagos", path: "/pagoscte" },
                 ],
             },
             {
@@ -91,6 +90,21 @@ const NAV_SECTIONS = [
                 ],
             },
             { title: "Aranceles y Costos", icon: Banknote, path: "/tariffs" },
+        ],
+    },
+    {
+        label: "E-commerce",
+        items: [
+            {
+                title: "E-commerce", icon: ShoppingCart, key: "ecommerce",
+                children: [
+                    { title: "Pedidos", path: "/ecommerce-orders" },
+                    { title: "Cupones", path: "/coupons" },
+                    { title: "Reseñas", path: "/reviews" },
+                    { title: "Puntos de Retiro", path: "/shipping-pickup-points" },
+                    { title: "Moto Mandados", path: "/shipping-moto-companies" },
+                ],
+            },
         ],
     },
     {

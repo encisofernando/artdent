@@ -6,10 +6,14 @@
 
 namespace App\Models;
 
+use App\Mail\CustomerResetPassword;
 use Carbon\Carbon;
+use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -40,7 +44,12 @@ use Laravel\Sanctum\HasApiTokens;
  */
 class Customer extends Authenticatable
 {
-    use HasApiTokens, SoftDeletes;
+    use CanResetPassword, HasApiTokens, Notifiable, SoftDeletes;
+
+    public function sendPasswordResetNotification($token): void
+    {
+        Mail::to($this->email)->queue(new CustomerResetPassword($this, $token));
+    }
 
     protected $table = 'customers';
 

@@ -4,13 +4,17 @@ import type { CatalogProduct } from '../api/products'
 export type CartItem = {
   product: CatalogProduct
   qty: number
+  variant_id?: number
+  variant_sku?: string | null
+  variant_price?: number | null
+  variant_label?: string // e.g. "Color: Rojo / Talle: M"
 }
 
 type CartCtx = {
   items: CartItem[]
-  add: (product: CatalogProduct, qty?: number) => void
-  remove: (productId: number) => void
-  setQty: (productId: number, qty: number) => void
+  add: (product: CatalogProduct, qty?: number, variantId?: number, variantSku?: string | null, variantPrice?: number | null, variantLabel?: string) => void
+  remove: (productId: number, variantId?: number) => void
+  setQty: (productId: number, qty: number, variantId?: number) => void
   clear: () => void
   subtotal: number
 }
@@ -18,6 +22,10 @@ type CartCtx = {
 const CartContext = createContext<CartCtx | null>(null)
 
 const LS_KEY = 'artdent_cart_v1'
+
+function itemKey(productId: number, variantId?: number): string {
+  return `${productId}-${variantId ?? 0}`
+}
 
 function money(n: number) {
   return Number.isFinite(n) ? n : 0
@@ -41,28 +49,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items])
 
   const subtotal = useMemo(() => {
-    return items.reduce((acc, it) => acc + money((it.product.price_final ?? it.product.price) * it.qty), 0)
+    return items.reduce((acc, it) => {
+      const price = it.variant_price ?? it.product.price_final ?? it.product.price
+      return acc + money(price * it.qty)
+    }, 0)
   }, [items])
 
   const api: CartCtx = {
     items,
     subtotal,
-    add: (product, qty = 1) => {
-      const q = Math.max(0.001, qty)
+    add: (product, qty = 1, variantId, variantSku, variantPrice, variantLabel) => {
+      const q = Math.max(1, Math.round(qty))
+      const key = itemKey(product.id, variantId)
       setItems((prev) => {
-        const idx = prev.findIndex((x) => x.product.id === product.id)
+        const idx = prev.findIndex((x) => itemKey(x.product.id, x.variant_id) === key)
         if (idx >= 0) {
           const next = [...prev]
-          next[idx] = { ...next[idx], qty: next[idx].qty + q, product }
+          next[idx] = { ...next[idx], qty: next[idx].qty + q, product, variant_price: variantPrice }
           return next
         }
-        return [...prev, { product, qty: q }]
+        return [...prev, { product, qty: q, variant_id: variantId, variant_sku: variantSku, variant_price: variantPrice, variant_label: variantLabel }]
       })
     },
-    remove: (productId) => setItems((prev) => prev.filter((x) => x.product.id !== productId)),
-    setQty: (productId, qty) => {
-      const q = Math.max(0.001, qty)
-      setItems((prev) => prev.map((x) => (x.product.id === productId ? { ...x, qty: q } : x)))
+    remove: (productId, variantId) => {
+      const key = itemKey(productId, variantId)
+      setItems((prev) => prev.filter((x) => itemKey(x.product.id, x.variant_id) !== key))
+    },
+    setQty: (productId, qty, variantId) => {
+      const q = Math.max(1, Math.round(qty))
+      const key = itemKey(productId, variantId)
+      setItems((prev) => prev.map((x) => itemKey(x.product.id, x.variant_id) === key ? { ...x, qty: q } : x))
     },
     clear: () => setItems([]),
   }

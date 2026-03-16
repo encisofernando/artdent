@@ -16,7 +16,7 @@ export default function SignIn() {
   return (
     <div className="mx-auto max-w-md px-4 py-10">
       <h1 className="text-3xl font-bold">Iniciar sesión</h1>
-      <p className="mt-2 text-sm text-gray-600">Acceso con token Bearer (Laravel Sanctum).</p>
+      <p className="mt-2 text-sm text-gray-600">Ingresa con tu cuenta de usuario.</p>
 
       <form
         className="mt-8 space-y-4"

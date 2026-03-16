@@ -278,6 +278,7 @@ export default function Edit({ auth, item }) {
         sku: item.sku || '',
         barcode: item.barcode || '',
         short_description: item.short_description || '',
+        description: item.description || '',
         cost_price: item.cost_price || '',
         price: item.price || '',
         is_active: item.is_active !== undefined ? item.is_active : 1,
@@ -491,6 +492,12 @@ export default function Edit({ auth, item }) {
                             <Textarea isDark={isDark} rows={2} value={data.short_description}
                                 onChange={e => setData('short_description', e.target.value)}
                                 placeholder="Descripción breve para el listado..."
+                            />
+                        </Field>
+                        <Field label="Descripción Completa" error={errors.description}>
+                            <Textarea isDark={isDark} rows={6} value={data.description}
+                                onChange={e => setData('description', e.target.value)}
+                                placeholder="Descripción detallada del producto (se muestra en la página del producto del e-commerce)..."
                             />
                         </Field>
                     </div>

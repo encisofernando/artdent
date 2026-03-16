@@ -4,6 +4,13 @@ export type User = {
   id: number
   name: string
   email: string
+  phone?: string | null
+  dni?: string | null
+  address?: string | null
+  city?: string | null
+  province?: string | null
+  postal_code?: string | null
+  accepts_marketing?: boolean | null
   company_id?: number | null
 }
 
@@ -12,7 +19,15 @@ export async function login(email: string, password: string): Promise<{ token: s
   return data
 }
 
-export async function register(payload: { name: string; email: string; password: string; password_confirmation: string }): Promise<any> {
+export async function register(payload: {
+  name: string
+  email: string
+  password: string
+  password_confirmation: string
+  phone?: string
+  dni?: string
+  accepts_marketing?: boolean
+}): Promise<any> {
   const { data } = await http.post('/auth/register', payload)
   return data
 }
@@ -26,12 +41,17 @@ export async function logout(): Promise<void> {
   await http.post('/auth/logout')
 }
 
-export async function createPassword(payload: { email: string; password: string; password_confirmation: string }): Promise<any> {
-  const { data } = await http.post('/auth/create-password', payload)
+export async function forgotPassword(email: string): Promise<any> {
+  const { data } = await http.post('/auth/password/forgot', { email })
   return data
 }
 
-export async function forgotPassword(email: string): Promise<any> {
-  const { data } = await http.post('/auth/password/forgot', { email })
+export async function resetPassword(payload: {
+  token: string
+  email: string
+  password: string
+  password_confirmation: string
+}): Promise<any> {
+  const { data } = await http.post('/auth/password/reset', payload)
   return data
 }
