@@ -7,6 +7,12 @@ import { Button } from '@/Components/ui/button';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
+const SHIPPING_METHOD_LABELS = {
+    home_delivery: 'Envío a domicilio',
+    pickup_point:  'Retiro en punto de entrega',
+    moto:          'Moto Mandados',
+};
+
 const STATUS_CONFIG = {
     pending:    { label: 'Pendiente',   cls: 'bg-amber-500/10 text-amber-600 border-amber-500/20'       },
     confirmed:  { label: 'Confirmado',  cls: 'bg-blue-500/10 text-blue-600 border-blue-500/20'          },
@@ -268,6 +274,13 @@ export default function Show({ auth, order }) {
 
                         {/* Envío */}
                         <Section title="Datos de Envío" icon={Truck} isDark={isDark}>
+                            {order.shipping_method_type && (
+                                <div className={`mb-4 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold
+                                    ${isDark ? 'bg-slate-800 text-teal-300' : 'bg-teal-50 text-teal-700'}`}>
+                                    <Truck size={14} />
+                                    {SHIPPING_METHOD_LABELS[order.shipping_method_type] ?? order.shipping_method_type}
+                                </div>
+                            )}
                             <form onSubmit={submit} className="space-y-3">
                                 {[
                                     { key: 'shipping_name',     label: 'Nombre',     placeholder: 'Destinatario' },

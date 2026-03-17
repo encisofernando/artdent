@@ -1,21 +1,21 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\BranchController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\TaxController;
-use App\Http\Controllers\PaymentMethodController;
-use App\Http\Controllers\ShippingMethodController;
-use App\Http\Controllers\ShipmentController;
-use App\Http\Controllers\NewsletterSubscriberController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceItemController;
 use App\Http\Controllers\InvoiceTypeController;
+use App\Http\Controllers\NewsletterSubscriberController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ShipmentController;
+use App\Http\Controllers\ShippingMethodController;
+use App\Http\Controllers\TaxController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\VariantAttributeValueController;
+use App\Http\Controllers\VendorController;
+use Illuminate\Support\Facades\Route;
 
 Route::resource('users', UserController::class);
 Route::resource('roles', RoleController::class);
@@ -42,8 +42,21 @@ Route::resource('variant-attribute-values', VariantAttributeValueController::cla
 
 // Gestión de Tokens API (Sanctum) — Administración → API
 use App\Http\Controllers\ApiTokenController;
+
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('api-tokens',           [ApiTokenController::class, 'index'])->name('api-tokens.index');
-    Route::post('api-tokens',          [ApiTokenController::class, 'store'])->name('api-tokens.store');
-    Route::delete('api-tokens/{token}',[ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    Route::get('api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+
+    // Crear symlink storage en producción
+    Route::post('storage-link', function () {
+        try {
+            \Artisan::call('storage:link', ['--force' => true]);
+            $output = trim(\Artisan::output());
+
+            return back()->with('success', 'Symlink creado correctamente. '.$output);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al crear symlink: '.$e->getMessage());
+        }
+    })->name('storage-link');
 });

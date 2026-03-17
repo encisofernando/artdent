@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\Offer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -74,6 +75,7 @@ class Product extends Model
         'is_featured' => 'bool',
         'internal_use' => 'bool',
         'tax_rate' => 'float',
+        'min_stock' => 'int',
     ];
 
     protected $fillable = [
@@ -84,6 +86,7 @@ class Product extends Model
         'product_type',
         'internal_use',
         'name',
+        'brand',
         'slug',
         'sku',
         'barcode',
@@ -94,6 +97,7 @@ class Product extends Model
         'compare_price',
         'has_variants',
         'track_stock',
+        'min_stock',
         'weight',
         'is_active',
         'is_featured',
@@ -165,5 +169,10 @@ class Product extends Model
     public function wishlists()
     {
         return $this->hasMany(Wishlist::class);
+    }
+
+    public function offers()
+    {
+        return $this->belongsToMany(Offer::class, 'offer_products');
     }
 }

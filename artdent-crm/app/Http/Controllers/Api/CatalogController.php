@@ -9,6 +9,7 @@ use App\Models\Coupon;
 use App\Models\CouponUsage;
 use App\Models\EcommerceOrder;
 use App\Models\EcommerceOrderItem;
+use App\Models\Offer;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Stock;
@@ -34,6 +35,8 @@ class CatalogController extends Controller
         $companyId = $request->integer('company_id') ?: $this->defaultCompanyId();
         $warehouseId = $request->integer('warehouse_id') ?: $this->defaultWarehouseId();
 
+        $now = now();
+
         $query = Product::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
@@ -43,6 +46,14 @@ class CatalogController extends Controller
             ->with([
                 'category:id,name,slug',
                 'product_images' => fn ($q) => $q->orderBy('sort_order'),
+                'offers' => fn ($q) => $q
+                    ->where('is_active', true)
+                    ->where(function ($sq) use ($now): void {
+                        $sq->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
+                    })
+                    ->where(function ($sq) use ($now): void {
+                        $sq->whereNull('ends_at')->orWhere('ends_at', '>=', $now);
+                    }),
             ]);
 
         if ($search = $request->string('q')->toString()) {
@@ -54,11 +65,65 @@ class CatalogController extends Controller
         }
 
         if ($categoryId = $request->integer('category_id')) {
-            $query->where('category_id', $categoryId);
+            // Include products from the selected category AND all its subcategories
+            $childIds = Category::query()
+                ->where('parent_id', $categoryId)
+                ->pluck('id');
+
+            $ids = $childIds->prepend($categoryId);
+            $query->whereIn('category_id', $ids);
+        }
+
+        if ($brand = $request->string('brand')->toString()) {
+            $query->where('brand', $brand);
+        }
+
+        if ($request->boolean('has_offer')) {
+            $activeOfferProductIds = Offer::query()
+                ->where('company_id', $companyId)
+                ->where('is_active', true)
+                ->where(function ($q) use ($now): void {
+                    $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
+                })
+                ->where(function ($q) use ($now): void {
+                    $q->whereNull('ends_at')->orWhere('ends_at', '>=', $now);
+                })
+                ->with('products:id')
+                ->get()
+                ->flatMap(fn ($o) => $o->products->pluck('id'))
+                ->unique();
+            $query->whereIn('id', $activeOfferProductIds);
         }
 
         $perPage = min($request->integer('per_page', 24), 100);
-        $paginated = $query->orderBy('name')->paginate($perPage);
+        $sort = $request->string('sort', 'relevantes')->toString();
+
+        $stockPriority = "(SELECT COALESCE(SUM(quantity), 0) FROM stocks
+                           WHERE stocks.product_id = products.id
+                             AND stocks.warehouse_id = {$warehouseId}
+                             AND stocks.variant_id IS NULL) > 0";
+
+        if ($sort === 'nuevos') {
+            $query->orderByRaw("{$stockPriority} DESC")->orderByDesc('products.created_at');
+        } elseif ($sort === 'precio_asc') {
+            $query->orderByRaw("{$stockPriority} DESC")
+                ->orderBy('price');
+        } elseif ($sort === 'precio_desc') {
+            $query->orderByRaw("{$stockPriority} DESC")
+                ->orderByDesc('price');
+        } else {
+            // relevantes: más vendidos primero
+            $salesCount = "(SELECT COALESCE(SUM(eoi.quantity), 0)
+                            FROM ecommerce_order_items eoi
+                            INNER JOIN ecommerce_orders eo ON eo.id = eoi.order_id
+                            WHERE eoi.product_id = products.id
+                              AND eo.status NOT IN ('cancelled', 'refunded'))";
+            $query->orderByRaw("{$salesCount} DESC")
+                ->orderByRaw("{$stockPriority} DESC")
+                ->orderBy('name');
+        }
+
+        $paginated = $query->paginate($perPage);
 
         // Attach stock to each product (base stock, no variant)
         $productIds = $paginated->pluck('id');
@@ -82,6 +147,8 @@ class CatalogController extends Controller
         $companyId = $request->integer('company_id') ?: $this->defaultCompanyId();
         $warehouseId = $request->integer('warehouse_id') ?: $this->defaultWarehouseId();
 
+        $now = now();
+
         $product = Product::query()
             ->where('id', $id)
             ->where('company_id', $companyId)
@@ -94,6 +161,14 @@ class CatalogController extends Controller
                     'stocks' => fn ($sq) => $sq->where('warehouse_id', $warehouseId),
                 ]),
                 'reviews' => fn ($q) => $q->where('status', 'approved')->latest()->limit(20),
+                'offers' => fn ($q) => $q
+                    ->where('is_active', true)
+                    ->where(function ($sq) use ($now): void {
+                        $sq->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
+                    })
+                    ->where(function ($sq) use ($now): void {
+                        $sq->whereNull('ends_at')->orWhere('ends_at', '>=', $now);
+                    }),
             ])
             ->firstOrFail();
 
@@ -142,12 +217,27 @@ class CatalogController extends Controller
     {
         $categories = Category::query()
             ->where('is_active', true)
-            ->whereNull('parent_id')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'image_url', 'parent_id']);
 
         return response()->json($categories);
+    }
+
+    public function brands(Request $request): JsonResponse
+    {
+        $companyId = $request->integer('company_id') ?: $this->defaultCompanyId();
+
+        $brands = Product::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereNotNull('brand')
+            ->where('brand', '!=', '')
+            ->distinct()
+            ->orderBy('brand')
+            ->pluck('brand');
+
+        return response()->json($brands);
     }
 
     public function checkout(Request $request): JsonResponse
@@ -461,6 +551,26 @@ class CatalogController extends Controller
         return response()->json($stocks);
     }
 
+    public function offers(Request $request): JsonResponse
+    {
+        $companyId = $request->integer('company_id') ?: $this->defaultCompanyId();
+        $now = now();
+
+        $offers = Offer::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->where(function ($q) use ($now): void {
+                $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
+            })
+            ->where(function ($q) use ($now): void {
+                $q->whereNull('ends_at')->orWhere('ends_at', '>=', $now);
+            })
+            ->withCount('products')
+            ->get(['id', 'name', 'type', 'value', 'badge_text', 'badge_color', 'description', 'ends_at']);
+
+        return response()->json($offers);
+    }
+
     /** @return array<string, mixed> */
     private function formatProduct(Product $product, float $stock): array
     {
@@ -475,6 +585,50 @@ class CatalogController extends Controller
         $primaryImage = $product->product_images?->firstWhere('is_cover', true)?->url
             ?? $product->product_images?->first()?->url;
 
+        $offers = $product->offers ?? collect();
+
+        // List price (shown with strikethrough when a discount applies)
+        $listPrice = (float) $product->price;
+        // Starting price for offer calculations (compare_price may already be a manual sale price)
+        $startPrice = (float) ($product->compare_price ?? $product->price);
+
+        // Apply the best discount from all active offers
+        $finalPrice = $startPrice;
+        foreach ($offers as $offer) {
+            switch ($offer->type) {
+                case 'discount_percent':
+                    if ($offer->value !== null) {
+                        $discounted = round($startPrice * (1 - (float) $offer->value / 100), 2);
+                        if ($discounted < $finalPrice) {
+                            $finalPrice = $discounted;
+                        }
+                    }
+                    break;
+                case 'discount_fixed':
+                    if ($offer->value !== null) {
+                        $discounted = max(0.0, round($startPrice - (float) $offer->value, 2));
+                        if ($discounted < $finalPrice) {
+                            $finalPrice = $discounted;
+                        }
+                    }
+                    break;
+                case 'combo':
+                    if ($offer->value !== null && (float) $offer->value < $finalPrice) {
+                        $finalPrice = (float) $offer->value;
+                    }
+                    break;
+            }
+        }
+
+        $offersData = $offers->map(fn ($o): array => [
+            'id' => $o->id,
+            'badge_text' => $o->badge_text,
+            'badge_color' => $o->badge_color,
+            'type' => $o->type,
+            'value' => $o->value,
+            'description' => $o->description,
+        ])->values()->all();
+
         return [
             'id' => $product->id,
             'company_id' => $product->company_id,
@@ -485,8 +639,8 @@ class CatalogController extends Controller
             'description' => $product->description,
             'unit' => null,
             'cost' => $product->cost_price ?? 0,
-            'price' => $product->price,
-            'price_final' => $product->compare_price ?? $product->price,
+            'price' => $listPrice,
+            'price_final' => $finalPrice,
             'tax_rate' => $product->tax_rate ?? 0,
             'tax_id' => $product->tax_id,
             'is_active' => $product->is_active,
@@ -500,6 +654,8 @@ class CatalogController extends Controller
                 'id' => $product->category->id,
                 'name' => $product->category->name,
             ] : null,
+            'offers' => $offersData,
+            'offer' => $offersData[0] ?? null,
         ];
     }
 }

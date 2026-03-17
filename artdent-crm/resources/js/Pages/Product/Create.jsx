@@ -4,9 +4,10 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import {
     ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2,
-    Star, X, Video, GripVertical, Percent,
+    Star, X, Video, GripVertical, AlertTriangle,
 } from 'lucide-react';
 import VariantGenerator from '@/Components/VariantGenerator';
+import RichTextEditor from '@/Components/RichTextEditor';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -57,6 +58,21 @@ function Input({ isDark, className = '', ...props }) {
     );
 }
 
+function Select({ isDark, children, ...props }) {
+    return (
+        <select
+            {...props}
+            className={`w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-all
+                ${isDark
+                    ? 'bg-slate-800 border-slate-700 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
+                    : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/15 focus:bg-white'
+                }`}
+        >
+            {children}
+        </select>
+    );
+}
+
 function Textarea({ isDark, ...props }) {
     return (
         <textarea
@@ -89,7 +105,6 @@ function Toggle({ checked, onChange, label, color = 'blue', isDark }) {
 }
 
 // ─── MediaDropZone ──────────────────────────────────────────────────────────
-// Zona de drop que acepta archivos por click o arrastre desde el sistema.
 
 function MediaDropZone({ accept, multiple, onFiles, isDark, icon: Icon, label, hint }) {
     const inputRef = useRef(null);
@@ -140,8 +155,6 @@ function MediaDropZone({ accept, multiple, onFiles, isDark, icon: Icon, label, h
 }
 
 // ─── ImageDragGrid ──────────────────────────────────────────────────────────
-// Grid de miniaturas con drag-to-reorder interno y botón de eliminar.
-// La primera imagen siempre es la portada.
 
 function ImageDragGrid({ images, onReorder, onRemove, isDark }) {
     const dragIdx = useRef(null);
@@ -178,12 +191,10 @@ function ImageDragGrid({ images, onReorder, onRemove, isDark }) {
                 >
                     <img src={img.preview} alt="" className="w-full h-full object-cover pointer-events-none" />
 
-                    {/* grip hint */}
                     <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-80 transition-opacity">
                         <GripVertical size={12} className="text-white drop-shadow" />
                     </div>
 
-                    {/* portada badge */}
                     {i === 0 && (
                         <div className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 py-0.5"
                             style={{ background: `${B.teal}cc` }}
@@ -193,7 +204,6 @@ function ImageDragGrid({ images, onReorder, onRemove, isDark }) {
                         </div>
                     )}
 
-                    {/* delete */}
                     <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onRemove(i); }}
@@ -208,12 +218,10 @@ function ImageDragGrid({ images, onReorder, onRemove, isDark }) {
 }
 
 // ─── PriceBlock ─────────────────────────────────────────────────────────────
-// 3 campos: Precio Costo | Margen % | Precio Venta (bidireccional)
 
 function PriceBlock({ isDark, cost, onCostChange, price, onPriceChange, marginPct, onMarginChange, errors }) {
     return (
         <div className="grid grid-cols-3 gap-3">
-            {/* Costo */}
             <Field label="Precio Costo" error={errors?.cost_price}>
                 <div className="relative">
                     <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
@@ -226,7 +234,6 @@ function PriceBlock({ isDark, cost, onCostChange, price, onPriceChange, marginPc
                 </div>
             </Field>
 
-            {/* Margen % */}
             <Field label="Margen %">
                 <div className="relative">
                     <Input
@@ -239,7 +246,6 @@ function PriceBlock({ isDark, cost, onCostChange, price, onPriceChange, marginPc
                 </div>
             </Field>
 
-            {/* Precio Venta */}
             <Field label="Precio Venta *" error={errors?.price}>
                 <div className="relative">
                     <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none
@@ -257,14 +263,16 @@ function PriceBlock({ isDark, cost, onCostChange, price, onPriceChange, marginPc
 
 // ─── main ──────────────────────────────────────────────────────────────────
 
-export default function Create({ auth }) {
+export default function Create({ auth, categories = [], vendors = [] }) {
     const { isDark } = useTheme();
     const { data, setData, post, processing, errors, transform } = useForm({
         name: '',
+        brand: '',
+        vendor_id: '',
         sku: '',
         barcode: '',
-        short_description: '',
         description: '',
+        category_id: '',
         cost_price: '',
         price: '',
         is_active: 1,
@@ -273,14 +281,23 @@ export default function Create({ auth }) {
         variants: [],
         track_stock: 1,
         stock_quantity: '',
+        min_stock: '',
         images: [],
         video: null,
     });
 
+    const [rootCatId, setRootCatId] = useState('');
+    const selectedRoot = categories.find(c => String(c.id) === String(rootCatId));
+
+    const handleRootChange = (val) => {
+        setRootCatId(val);
+        const cat = categories.find(c => String(c.id) === String(val));
+        setData('category_id', (!cat || !cat.categories?.length) ? val : '');
+    };
+
     // ── media state ──────────────────────────────────────────────────────────
-    // pendingImages: [{ uid, file, preview }]
     const [pendingImages, setPendingImages] = useState([]);
-    const [pendingVideo, setPendingVideo] = useState(null); // { file, name }
+    const [pendingVideo, setPendingVideo] = useState(null);
 
     // ── margin state ─────────────────────────────────────────────────────────
     const [marginPct, setMarginPct] = useState('');
@@ -348,6 +365,11 @@ export default function Create({ auth }) {
         }
     };
 
+    // ── low stock indicator ───────────────────────────────────────────────────
+    const minStock = parseInt(data.min_stock) || 0;
+    const currentStock = parseInt(data.stock_quantity) || 0;
+    const isLowStock = data.track_stock && minStock > 0 && currentStock <= minStock;
+
     // ── submit ───────────────────────────────────────────────────────────────
     const submit = (e) => {
         e.preventDefault();
@@ -381,7 +403,7 @@ export default function Create({ auth }) {
                     : 'bg-white/95 backdrop-blur-xl border-b border-slate-100'
                 }`}
             >
-                <div className="flex items-center justify-between max-w-2xl mx-auto">
+                <div className="flex items-center justify-between max-w-6xl mx-auto">
                     <div className="flex items-center gap-3">
                         <Link href={route('products.index')}>
                             <button className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors
@@ -413,178 +435,252 @@ export default function Create({ auth }) {
             </div>
 
             <form id="product-form" onSubmit={submit}
-                className="flex flex-col gap-4 py-4 pb-28 sm:pb-8 max-w-2xl mx-auto"
+                className="grid grid-cols-1 lg:grid-cols-3 gap-4 py-4 pb-28 sm:pb-8 max-w-6xl mx-auto"
             >
-                {/* ── información ── */}
-                <SectionCard icon={Tag} title="Información General" isDark={isDark}>
-                    <div className="flex flex-col gap-4">
-                        <Field label="Nombre del Producto *" error={errors.name}>
-                            <Input isDark={isDark} type="text" value={data.name}
-                                onChange={e => setData('name', e.target.value)}
-                                placeholder="Ej. Resina Compuesta A2" required
-                            />
-                        </Field>
-                        <Field label="Descripción Corta" error={errors.short_description}>
-                            <Textarea isDark={isDark} rows={2} value={data.short_description}
-                                onChange={e => setData('short_description', e.target.value)}
-                                placeholder="Descripción breve para el listado..."
-                            />
-                        </Field>
-                        <Field label="Descripción Completa" error={errors.description}>
-                            <Textarea isDark={isDark} rows={6} value={data.description}
-                                onChange={e => setData('description', e.target.value)}
-                                placeholder="Descripción detallada del producto (se muestra en la página del producto del e-commerce)..."
-                            />
-                        </Field>
-                    </div>
-                </SectionCard>
+                {/* ── columna principal (izquierda 2/3) ── */}
+                <div className="lg:col-span-2 flex flex-col gap-4">
 
-                {/* ── imágenes & video ── */}
-                <SectionCard icon={Image} title="Multimedia" isDark={isDark}>
-                    <div className="flex flex-col gap-4">
+                    {/* ── información general ── */}
+                    <SectionCard icon={Tag} title="Información General" isDark={isDark}>
+                        <div className="flex flex-col gap-4">
+                            <Field label="Nombre del Producto *" error={errors.name}>
+                                <Input isDark={isDark} type="text" value={data.name}
+                                    onChange={e => setData('name', e.target.value)}
+                                    placeholder="Ej. Resina Compuesta A2" required
+                                />
+                            </Field>
 
-                        {/* grid de miniaturas con drag-to-reorder */}
-                        <ImageDragGrid
-                            images={pendingImages}
-                            onReorder={reorderImages}
-                            onRemove={removeImage}
-                            isDark={isDark}
-                        />
-
-                        {/* zona de drop para imágenes */}
-                        <Field label="Imágenes del producto" error={errors['images.0']}>
-                            <MediaDropZone
-                                accept="image/*"
-                                multiple
-                                onFiles={addImages}
-                                isDark={isDark}
-                                icon={Image}
-                                label={pendingImages.length
-                                    ? `${pendingImages.length} imagen${pendingImages.length > 1 ? 'es' : ''} · arrastrá para reordenar`
-                                    : 'Arrastrá imágenes aquí o tocá para seleccionar'
-                                }
-                                hint="JPG, PNG, WEBP · Máx. 2 MB · La primera en el orden será la portada"
-                            />
-                        </Field>
-
-                        {/* video */}
-                        <Field label="Video del producto (opcional)" error={errors.video}>
-                            {pendingVideo ? (
-                                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border
-                                    ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
-                                >
-                                    <Video size={18} style={{ color: B.teal }} className="shrink-0" />
-                                    <span className={`text-sm font-medium truncate flex-1
-                                        ${isDark ? 'text-slate-300' : 'text-slate-700'}`}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Marca" error={errors.brand}>
+                                    <Input isDark={isDark} type="text" value={data.brand}
+                                        onChange={e => setData('brand', e.target.value)}
+                                        placeholder="Ej. 3M, Ivoclar"
+                                    />
+                                </Field>
+                                <Field label="Proveedor" error={errors.vendor_id}>
+                                    <Select isDark={isDark} value={data.vendor_id}
+                                        onChange={e => setData('vendor_id', e.target.value)}
                                     >
-                                        {pendingVideo.name}
-                                    </span>
-                                    <button type="button" onClick={removeVideo}
-                                        className="w-6 h-6 rounded-full bg-red-500/15 text-red-500 flex items-center justify-center hover:bg-red-500/25 transition-colors"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                </div>
-                            ) : (
-                                <MediaDropZone
-                                    accept="video/*"
-                                    multiple={false}
-                                    onFiles={addVideo}
+                                        <option value="">Sin proveedor</option>
+                                        {vendors.map(v => (
+                                            <option key={v.id} value={v.id}>{v.name}</option>
+                                        ))}
+                                    </Select>
+                                </Field>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Categoría" error={errors.category_id}>
+                                    <Select isDark={isDark} value={rootCatId} onChange={e => handleRootChange(e.target.value)}>
+                                        <option value="">Sin categoría</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </Select>
+                                </Field>
+
+                                {selectedRoot?.categories?.length > 0 && (
+                                    <Field label="Subcategoría" error={errors.category_id}>
+                                        <Select isDark={isDark} value={data.category_id} onChange={e => setData('category_id', e.target.value || rootCatId)}>
+                                            <option value={rootCatId}>— Sin subcategoría —</option>
+                                            {selectedRoot.categories.map(sub => (
+                                                <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                            ))}
+                                        </Select>
+                                    </Field>
+                                )}
+                            </div>
+
+                            <Field label="Descripción" error={errors.description}>
+                                <RichTextEditor
                                     isDark={isDark}
-                                    icon={Video}
-                                    label="Arrastrá un video o tocá para seleccionar"
-                                    hint="MP4, MOV, WEBM · Máx. 50 MB"
+                                    value={data.description}
+                                    onChange={val => setData('description', val)}
+                                    placeholder="Descripción detallada del producto (se muestra en la página del producto del e-commerce)..."
                                 />
+                            </Field>
+                        </div>
+                    </SectionCard>
+
+                    {/* ── multimedia: imágenes + video unificados ── */}
+                    <SectionCard icon={Image} title="Multimedia" isDark={isDark}>
+                        <div className="flex flex-col gap-5">
+
+                            {/* ── Imágenes ── */}
+                            <div className="flex flex-col gap-3">
+                                <p className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    Imágenes
+                                </p>
+                                <ImageDragGrid
+                                    images={pendingImages}
+                                    onReorder={reorderImages}
+                                    onRemove={removeImage}
+                                    isDark={isDark}
+                                />
+                                <MediaDropZone
+                                    accept="image/*"
+                                    multiple
+                                    onFiles={addImages}
+                                    isDark={isDark}
+                                    icon={Image}
+                                    label={pendingImages.length
+                                        ? `${pendingImages.length} imagen${pendingImages.length > 1 ? 'es' : ''} · arrastrá para reordenar`
+                                        : 'Arrastrá imágenes aquí o tocá para seleccionar'
+                                    }
+                                    hint="JPG, PNG, WEBP · Máx. 2 MB · La primera en el orden será la portada"
+                                />
+                                {errors['images.0'] && <p className="text-red-500 text-xs font-medium">{errors['images.0']}</p>}
+                            </div>
+
+                            {/* ── divisor ── */}
+                            <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`} />
+
+                            {/* ── Video ── */}
+                            <div className="flex flex-col gap-3">
+                                <p className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    Video (opcional)
+                                </p>
+                                {pendingVideo ? (
+                                    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border
+                                        ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
+                                    >
+                                        <Video size={18} style={{ color: B.teal }} className="shrink-0" />
+                                        <span className={`text-sm font-medium truncate flex-1
+                                            ${isDark ? 'text-slate-300' : 'text-slate-700'}`}
+                                        >
+                                            {pendingVideo.name}
+                                        </span>
+                                        <button type="button" onClick={removeVideo}
+                                            className="w-6 h-6 rounded-full bg-red-500/15 text-red-500 flex items-center justify-center hover:bg-red-500/25 transition-colors"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <MediaDropZone
+                                        accept="video/*"
+                                        multiple={false}
+                                        onFiles={addVideo}
+                                        isDark={isDark}
+                                        icon={Video}
+                                        label="Arrastrá un video o tocá para seleccionar"
+                                        hint="MP4, MOV, WEBM · Máx. 50 MB"
+                                    />
+                                )}
+                                {errors.video && <p className="text-red-500 text-xs font-medium">{errors.video}</p>}
+                            </div>
+                        </div>
+                    </SectionCard>
+                </div>
+
+                {/* ── columna lateral (derecha 1/3) ── */}
+                <div className="flex flex-col gap-4">
+
+                    {/* ── inventario ── */}
+                    <SectionCard icon={Package} title="Inventario" isDark={isDark}>
+                        <div className="flex flex-col gap-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <Field label="SKU" error={errors.sku}>
+                                    <Input isDark={isDark} type="text" value={data.sku}
+                                        onChange={e => setData('sku', e.target.value)}
+                                        placeholder="ART-001" className="font-mono"
+                                    />
+                                </Field>
+                                <Field label="Código de Barras" error={errors.barcode}>
+                                    <Input isDark={isDark} type="text" value={data.barcode}
+                                        onChange={e => setData('barcode', e.target.value)}
+                                        placeholder="779123456789" className="font-mono"
+                                    />
+                                </Field>
+                            </div>
+
+                            <div className={`flex flex-col gap-3 px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
+                                <Toggle isDark={isDark} label="Llevar control de stock"
+                                    color="blue" checked={trackStock}
+                                    onChange={e => setData('track_stock', e.target.checked ? 1 : 0)}
+                                />
+                                <Toggle isDark={isDark} label="Producto activo en catálogo"
+                                    color="emerald" checked={isActive}
+                                    onChange={e => setData('is_active', e.target.checked ? 1 : 0)}
+                                />
+                            </div>
+
+                            {trackStock && !hasVariants && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Field label="Stock Inicial" error={errors.stock_quantity}>
+                                        <Input isDark={isDark} type="number" value={data.stock_quantity}
+                                            onChange={e => setData('stock_quantity', e.target.value)}
+                                            placeholder="0" className="font-mono"
+                                        />
+                                    </Field>
+                                    <Field label="Stock Mínimo" error={errors.min_stock}>
+                                        <Input isDark={isDark} type="number" value={data.min_stock}
+                                            onChange={e => setData('min_stock', e.target.value)}
+                                            placeholder="0" className="font-mono"
+                                        />
+                                    </Field>
+                                </div>
                             )}
-                        </Field>
-                    </div>
-                </SectionCard>
 
-                {/* ── inventario ── */}
-                <SectionCard icon={Package} title="Inventario" isDark={isDark}>
-                    <div className="flex flex-col gap-4">
-                        <div className="grid grid-cols-2 gap-3">
-                            <Field label="SKU" error={errors.sku}>
-                                <Input isDark={isDark} type="text" value={data.sku}
-                                    onChange={e => setData('sku', e.target.value)}
-                                    placeholder="ART-001" className="font-mono"
-                                />
-                            </Field>
-                            <Field label="Código de Barras" error={errors.barcode}>
-                                <Input isDark={isDark} type="text" value={data.barcode}
-                                    onChange={e => setData('barcode', e.target.value)}
-                                    placeholder="779123456789" className="font-mono"
-                                />
-                            </Field>
+                            {/* alerta stock bajo */}
+                            {isLowStock && (
+                                <div className={`flex items-start gap-2.5 px-3.5 py-3 rounded-xl border
+                                    ${isDark ? 'bg-amber-900/20 border-amber-800/40 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'}`}
+                                >
+                                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                                    <p className="text-xs font-medium leading-snug">
+                                        El stock ingresado ({currentStock}) está en o por debajo del mínimo ({minStock}).
+                                    </p>
+                                </div>
+                            )}
                         </div>
+                    </SectionCard>
 
-                        <div className={`flex flex-col gap-3 px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-                            <Toggle isDark={isDark} label="Llevar control de stock"
-                                color="blue" checked={trackStock}
-                                onChange={e => setData('track_stock', e.target.checked ? 1 : 0)}
-                            />
-                            <Toggle isDark={isDark} label="Producto activo en catálogo"
-                                color="emerald" checked={isActive}
-                                onChange={e => setData('is_active', e.target.checked ? 1 : 0)}
-                            />
-                        </div>
-
-                        {trackStock && !hasVariants && (
-                            <Field label="Stock Inicial" error={errors.stock_quantity}>
-                                <Input isDark={isDark} type="number" value={data.stock_quantity}
-                                    onChange={e => setData('stock_quantity', e.target.value)}
-                                    placeholder="0" className="font-mono"
+                    {/* ── precios y variantes ── */}
+                    <SectionCard icon={DollarSign} title="Precios y Variantes" isDark={isDark}>
+                        <div className="flex flex-col gap-4">
+                            <div className={`px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
+                                <Toggle isDark={isDark} label="Producto con múltiples variantes"
+                                    color="purple" checked={hasVariants}
+                                    onChange={e => setData('has_variants', e.target.checked ? 1 : 0)}
                                 />
-                            </Field>
-                        )}
-                    </div>
-                </SectionCard>
+                            </div>
 
-                {/* ── precios / variantes ── */}
-                <SectionCard icon={DollarSign} title="Precios y Variantes" isDark={isDark}>
-                    <div className="flex flex-col gap-4">
-                        <div className={`px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-                            <Toggle isDark={isDark} label="Producto con múltiples variantes"
-                                color="purple" checked={hasVariants}
-                                onChange={e => setData('has_variants', e.target.checked ? 1 : 0)}
-                            />
-                        </div>
-
-                        {hasVariants ? (
-                            <div className="flex flex-col gap-4">
+                            {hasVariants && (
                                 <div className={`px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
                                     <Toggle isDark={isDark} label="Precio único para todas las variantes"
                                         color="blue" checked={data.same_price_for_variants}
                                         onChange={e => setData('same_price_for_variants', e.target.checked)}
                                     />
                                 </div>
-                                {data.same_price_for_variants && (
-                                    <PriceBlock
-                                        isDark={isDark}
-                                        cost={data.cost_price}        onCostChange={handleCostChange}
-                                        price={data.price}            onPriceChange={handlePriceChange}
-                                        marginPct={marginPct}         onMarginChange={handleMarginChange}
-                                        errors={errors}
-                                    />
-                                )}
-                                <VariantGenerator
-                                    variantsData={data.variants}
-                                    onVariantsChange={(v) => setData('variants', v)}
-                                    hidePrices={data.same_price_for_variants}
-                                    trackStock={trackStock}
+                            )}
+
+                            {(!hasVariants || data.same_price_for_variants) && (
+                                <PriceBlock
+                                    isDark={isDark}
+                                    cost={data.cost_price}        onCostChange={handleCostChange}
+                                    price={data.price}            onPriceChange={handlePriceChange}
+                                    marginPct={marginPct}         onMarginChange={handleMarginChange}
+                                    errors={errors}
                                 />
-                            </div>
-                        ) : (
-                            <PriceBlock
-                                isDark={isDark}
-                                cost={data.cost_price}        onCostChange={handleCostChange}
-                                price={data.price}            onPriceChange={handlePriceChange}
-                                marginPct={marginPct}         onMarginChange={handleMarginChange}
-                                errors={errors}
+                            )}
+                        </div>
+                    </SectionCard>
+                </div>
+
+                {/* ── tabla de variantes: ancho completo ── */}
+                {hasVariants && (
+                    <div className="lg:col-span-3">
+                        <SectionCard icon={DollarSign} title="Tabla de Variantes" isDark={isDark}>
+                            <VariantGenerator
+                                variantsData={data.variants}
+                                onVariantsChange={(v) => setData('variants', v)}
+                                hidePrices={data.same_price_for_variants}
+                                trackStock={trackStock}
                             />
-                        )}
+                        </SectionCard>
                     </div>
-                </SectionCard>
+                )}
             </form>
 
             {/* mobile save FAB */}

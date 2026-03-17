@@ -45,6 +45,8 @@ Route::prefix('catalog')->name('api.catalog.')->group(function (): void {
     Route::get('products', [CatalogController::class, 'products'])->name('products');
     Route::get('products/{id}', [CatalogController::class, 'product'])->name('products.show');
     Route::get('categories', [CatalogController::class, 'categories'])->name('categories');
+    Route::get('brands', [CatalogController::class, 'brands'])->name('brands');
+    Route::get('offers', [CatalogController::class, 'offers'])->name('offers');
     Route::post('checkout', [CatalogController::class, 'checkout'])->name('checkout');
     Route::get('orders/{code}', [CatalogController::class, 'order'])->name('orders.show');
 });

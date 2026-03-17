@@ -6,6 +6,25 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// ── Fallback para archivos de storage cuando el symlink no existe ─────────────
+// Si el symlink public/storage existe y el servidor sirve el archivo estático,
+// esta ruta nunca se ejecuta. Sólo actúa cuando el archivo no se resuelve
+// estáticamente (symlink roto o inexistente en producción).
+Route::get('/storage/{path}', function (string $path) {
+    $realPath = storage_path('app/public/'.ltrim($path, '/'));
+
+    if (! file_exists($realPath) || is_dir($realPath)) {
+        abort(404);
+    }
+
+    $mime = mime_content_type($realPath) ?: 'application/octet-stream';
+
+    return response()->file($realPath, [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('path', '.*');
+
 // Kiosk page — publicly accessible (anyone can see the UI)
 Route::get('/attendance-kiosk', [\App\Http\Controllers\AttendanceKioskController::class, 'index'])->name('attendance-kiosk');
 

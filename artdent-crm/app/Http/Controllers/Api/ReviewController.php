@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\EcommerceOrder;
 use App\Models\Review;
+use App\Services\ProfanityFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -72,17 +73,26 @@ class ReviewController extends Controller
             ->whereHas('ecommerce_order_items', fn ($q) => $q->where('product_id', $productId))
             ->value('id');
 
+        $title = $request->input('title') ?? '';
+        $body = $request->input('comment') ?? '';
+
+        // Auto-aprobar si el contenido es apropiado; dejar pendiente para moderación si no.
+        $status = ProfanityFilter::contains($title, $body) ? 'pending' : 'approved';
+
         $review = Review::create([
             'product_id' => $productId,
             'customer_id' => $customer->id,
             'order_id' => $orderId,
             'rating' => $request->integer('rating'),
-            'title' => $request->input('title'),
-            'body' => $request->input('comment'),
-            'status' => 'pending',
+            'title' => $title ?: null,
+            'body' => $body ?: null,
+            'status' => $status,
         ]);
 
-        return response()->json($this->format($review->load('customer')), 201);
+        return response()->json([
+            ...$this->format($review->load('customer')),
+            'pending_review' => $status === 'pending',
+        ], 201);
     }
 
     public function markHelpful(int $reviewId): JsonResponse

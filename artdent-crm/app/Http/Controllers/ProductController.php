@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
+use App\Models\Vendor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -65,9 +68,12 @@ class ProductController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(): \Inertia\Response
     {
-        return Inertia::render('Product/Create');
+        $categories = $this->categoriesTree();
+        $vendors = $this->vendorsList();
+
+        return Inertia::render('Product/Create', compact('categories', 'vendors'));
     }
 
     /**
@@ -77,20 +83,21 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'nullable',
-            'vendor_id' => 'nullable',
+            'vendor_id' => 'nullable|integer',
             'category_id' => 'nullable',
             'tax_id' => 'nullable',
             'name' => 'required|string|max:255',
+            'brand' => 'nullable|string|max:255',
             'slug' => 'nullable|string|max:255',
             'sku' => 'nullable|string|max:100',
             'barcode' => 'nullable|string|max:100',
-            'short_description' => 'nullable|string',
             'description' => 'nullable|string',
             'cost_price' => 'nullable|numeric',
             'price' => 'required|numeric',
             'compare_price' => 'nullable|numeric',
             'has_variants' => 'nullable|boolean',
             'track_stock' => 'nullable|boolean',
+            'min_stock' => 'nullable|integer|min:0',
             'weight' => 'nullable|numeric',
             'is_active' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
@@ -213,7 +220,11 @@ class ProductController extends Controller
             }
         }
 
-        return redirect()->route('products.index')->with('success', 'Product created successfully.');
+        $lowStockWarning = $this->checkLowStock($product, $validated['stock_quantity'] ?? null);
+
+        return redirect()->route('products.index')
+            ->with('success', 'Producto creado correctamente.')
+            ->with('warning', $lowStockWarning);
     }
 
     /**
@@ -230,6 +241,8 @@ class ProductController extends Controller
 
         return Inertia::render('Product/Edit', [
             'item' => $product,
+            'categories' => $this->categoriesTree(),
+            'vendors' => $this->vendorsList(),
         ]);
     }
 
@@ -240,20 +253,21 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'nullable',
-            'vendor_id' => 'nullable',
+            'vendor_id' => 'nullable|integer',
             'category_id' => 'nullable',
             'tax_id' => 'nullable',
             'name' => 'required|string|max:255',
+            'brand' => 'nullable|string|max:255',
             'slug' => 'nullable|string|max:255',
             'sku' => 'nullable|string|max:100',
             'barcode' => 'nullable|string|max:100',
-            'short_description' => 'nullable|string',
             'description' => 'nullable|string',
             'cost_price' => 'nullable|numeric',
             'price' => 'required|numeric',
             'compare_price' => 'nullable|numeric',
             'has_variants' => 'nullable|boolean',
             'track_stock' => 'nullable|boolean',
+            'min_stock' => 'nullable|integer|min:0',
             'weight' => 'nullable|numeric',
             'is_active' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
@@ -263,9 +277,7 @@ class ProductController extends Controller
             'stock_quantity' => 'nullable|numeric',
             'images.*' => 'nullable|image|max:2048',
             'variants' => 'nullable|json',
-            // Nuevos campos de multimedia
             'video' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,video/x-msvideo|max:51200',
-            // Orden e IDs que vienen del drag & drop del frontend
             'image_sort' => 'nullable|array',
             'image_sort.*' => 'integer',
             'deleted_image_ids' => 'nullable|array',
@@ -273,99 +285,174 @@ class ProductController extends Controller
             'cover_image_id' => 'nullable|integer',
         ]);
 
-        $product->update($validated);
-
-        // ── Eliminar imágenes marcadas como borradas ───────────────────────────
-        if (! empty($validated['deleted_image_ids'])) {
-            $toDelete = $product->product_images()
-                ->whereIn('id', $validated['deleted_image_ids'])
-                ->get();
-
-            foreach ($toDelete as $img) {
-                $this->deleteImageFile($img->url);
-                $img->delete();
-            }
-        }
-
-        // ── Reordenar imágenes existentes y asignar portada ───────────────────
-        // image_sort contiene los ids en el nuevo orden (primera posición = portada).
-        if (! empty($validated['image_sort'])) {
-            foreach ($validated['image_sort'] as $order => $imageId) {
-                $product->product_images()
-                    ->where('id', $imageId)
-                    ->update([
-                        'sort_order' => $order,
-                        'is_cover' => $order === 0 ? 1 : 0,
-                    ]);
-            }
-        } elseif (! empty($validated['cover_image_id'])) {
-            // Si no vino image_sort pero sí cover_image_id, solo actualizamos la portada
-            $product->product_images()->update(['is_cover' => 0]);
-            $product->product_images()
-                ->where('id', $validated['cover_image_id'])
-                ->update(['is_cover' => 1]);
-        }
-
-        // ── Agregar nuevas imágenes ───────────────────────────────────────────
-        // Se agregan al final del orden existente.
-        // Si no quedan imágenes existentes, la primera nueva se convierte en portada.
+        // Subir archivos ANTES de la transacción (puede tardar y no necesita rollback de BD)
+        $uploadedImages = [];
         if ($request->hasFile('images')) {
-            $maxSortOrder = $product->product_images()->max('sort_order') ?? -1;
-            $hasCover = $product->product_images()->where('is_cover', 1)->exists();
-
-            foreach ($request->file('images') as $i => $file) {
-                $path = $file->store('products', 'public');
-                $product->product_images()->create([
-                    'url' => '/storage/'.$path,
-                    'is_cover' => (! $hasCover && $i === 0) ? 1 : 0,
-                    'sort_order' => $maxSortOrder + 1 + $i,
-                ]);
+            foreach ($request->file('images') as $file) {
+                $uploadedImages[] = $file->store('products', 'public');
             }
         }
 
-        // ── Video ─────────────────────────────────────────────────────────────
+        $uploadedVideo = null;
         if ($request->hasFile('video')) {
-            // Borrar el video anterior si existe
-            if ($product->video_url) {
-                $this->deleteStorageFile($product->video_url);
-            }
-            $videoPath = $request->file('video')->store('products/videos', 'public');
-            $product->update(['video_url' => '/storage/'.$videoPath]);
+            $uploadedVideo = $request->file('video')->store('products/videos', 'public');
         }
 
-        // ── Stock ─────────────────────────────────────────────────────────────
-        if (! empty($validated['track_stock']) && $request->has('stock_quantity')) {
-            $warehouseId = \App\Models\Warehouse::where('company_id', $product->company_id)->value('id') ?? 1;
+        // Resolver warehouse ID una sola vez, fuera de cualquier loop
+        $warehouseId = \App\Models\Warehouse::where('company_id', $product->company_id)->value('id') ?? 1;
 
-            $stock = \App\Models\Stock::firstOrCreate(
-                ['product_id' => $product->id, 'warehouse_id' => $warehouseId],
-                ['quantity' => 0]
-            );
+        // Pre-cargar atributos existentes para evitar N queries firstOrCreate dentro del loop
+        $variantsData = [];
+        $attributeCache = [];   // 'name' => ProductAttribute
+        $attrValueCache = [];   // 'attributeId:value' => ProductAttributeValue
 
-            $qtyDiff = $validated['stock_quantity'] - $stock->quantity;
-            if ($qtyDiff != 0) {
-                $stockBefore = $stock->quantity;
-                $stock->update(['quantity' => $validated['stock_quantity']]);
-
-                \App\Models\StockMovement::create([
-                    'product_id' => $product->id,
-                    'warehouse_id' => $warehouseId,
-                    'user_id' => auth()->id(),
-                    'type' => 'adjustment',
-                    'quantity' => $qtyDiff,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $validated['stock_quantity'],
-                    'note' => 'Ajuste manual desde edición de producto',
-                ]);
-            }
-        }
-
-        // ── Variantes ─────────────────────────────────────────────────────────
         if (! empty($validated['has_variants']) && ! empty($validated['variants'])) {
-            $variantsData = json_decode($validated['variants'], true);
-            $processedVariantIds = [];
+            $variantsData = json_decode($validated['variants'], true) ?? [];
 
-            if (is_array($variantsData)) {
+            // Recolectar todos los nombres de atributo y valores únicos
+            $attrNames = [];
+            $attrValuePairs = [];
+            foreach ($variantsData as $variantItem) {
+                foreach ($variantItem['attributes'] ?? [] as $attrName => $attrValue) {
+                    $attrNames[] = $attrName;
+                    $attrValuePairs[] = ['name' => $attrName, 'value' => $attrValue];
+                }
+            }
+
+            // Cargar atributos existentes en una sola query
+            if ($attrNames) {
+                $existingAttrs = \App\Models\ProductAttribute::whereIn('name', array_unique($attrNames))->get()->keyBy('name');
+                foreach ($existingAttrs as $name => $attr) {
+                    $attributeCache[$name] = $attr;
+                }
+
+                // Crear los que faltan de a uno (raro en práctica)
+                foreach (array_unique($attrNames) as $name) {
+                    if (! isset($attributeCache[$name])) {
+                        $attributeCache[$name] = \App\Models\ProductAttribute::firstOrCreate(['name' => $name]);
+                    }
+                }
+
+                // Cargar valores de atributo existentes en una sola query por attribute_id
+                $attrIds = collect($attributeCache)->pluck('id')->all();
+                $existingValues = \App\Models\ProductAttributeValue::whereIn('attribute_id', $attrIds)->get();
+                foreach ($existingValues as $val) {
+                    $attrValueCache["{$val->attribute_id}:{$val->value}"] = $val;
+                }
+
+                // Crear los valores que faltan
+                foreach ($attrValuePairs as $pair) {
+                    $attr = $attributeCache[$pair['name']];
+                    $cacheKey = "{$attr->id}:{$pair['value']}";
+                    if (! isset($attrValueCache[$cacheKey])) {
+                        $attrValueCache[$cacheKey] = \App\Models\ProductAttributeValue::firstOrCreate([
+                            'attribute_id' => $attr->id,
+                            'value' => $pair['value'],
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $userId = auth()->id();
+
+        DB::transaction(function () use (
+            $product, $validated, $request, $warehouseId, $userId,
+            $uploadedImages, $uploadedVideo, $variantsData,
+            $attributeCache, $attrValueCache
+        ): void {
+            $product->update($validated);
+
+            // ── Eliminar imágenes marcadas como borradas ───────────────────────
+            if (! empty($validated['deleted_image_ids'])) {
+                $toDelete = $product->product_images()
+                    ->whereIn('id', $validated['deleted_image_ids'])
+                    ->get();
+
+                foreach ($toDelete as $img) {
+                    $this->deleteImageFile($img->url);
+                    $img->delete();
+                }
+            }
+
+            // ── Reordenar imágenes: un solo UPDATE con CASE WHEN ──────────────
+            if (! empty($validated['image_sort'])) {
+                $imageIds = $validated['image_sort'];
+                $sortCases = '';
+                $coverCases = '';
+                $coverId = $imageIds[0];
+
+                foreach ($imageIds as $order => $imageId) {
+                    $sortCases .= "WHEN {$imageId} THEN {$order} ";
+                    $coverCases .= "WHEN {$imageId} THEN ".($order === 0 ? '1' : '0').' ';
+                }
+
+                $placeholders = implode(',', $imageIds);
+                DB::statement("UPDATE product_images
+                    SET sort_order = CASE id {$sortCases} END,
+                        is_cover   = CASE id {$coverCases} END
+                    WHERE id IN ({$placeholders})");
+            } elseif (! empty($validated['cover_image_id'])) {
+                $product->product_images()->update(['is_cover' => 0]);
+                $product->product_images()
+                    ->where('id', $validated['cover_image_id'])
+                    ->update(['is_cover' => 1]);
+            }
+
+            // ── Agregar nuevas imágenes ───────────────────────────────────────
+            if ($uploadedImages) {
+                $maxSortOrder = $product->product_images()->max('sort_order') ?? -1;
+                $hasCover = $product->product_images()->where('is_cover', 1)->exists();
+
+                $newImages = [];
+                foreach ($uploadedImages as $i => $path) {
+                    $newImages[] = [
+                        'product_id' => $product->id,
+                        'url' => '/storage/'.$path,
+                        'is_cover' => (! $hasCover && $i === 0) ? 1 : 0,
+                        'sort_order' => $maxSortOrder + 1 + $i,
+                    ];
+                }
+                \App\Models\ProductImage::insert($newImages);
+            }
+
+            // ── Video ─────────────────────────────────────────────────────────
+            if ($uploadedVideo) {
+                if ($product->video_url) {
+                    $this->deleteStorageFile($product->video_url);
+                }
+                $product->update(['video_url' => '/storage/'.$uploadedVideo]);
+            }
+
+            // ── Stock base (sin variante) ──────────────────────────────────────
+            if (! empty($validated['track_stock']) && $request->has('stock_quantity')) {
+                $stock = \App\Models\Stock::firstOrCreate(
+                    ['product_id' => $product->id, 'warehouse_id' => $warehouseId, 'variant_id' => null],
+                    ['quantity' => 0]
+                );
+
+                $qtyDiff = $validated['stock_quantity'] - $stock->quantity;
+                if ($qtyDiff != 0) {
+                    $stockBefore = $stock->quantity;
+                    $stock->update(['quantity' => $validated['stock_quantity']]);
+
+                    \App\Models\StockMovement::create([
+                        'product_id' => $product->id,
+                        'warehouse_id' => $warehouseId,
+                        'user_id' => $userId,
+                        'type' => 'adjustment',
+                        'quantity' => $qtyDiff,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $validated['stock_quantity'],
+                        'note' => 'Ajuste manual desde edición de producto',
+                    ]);
+                }
+            }
+
+            // ── Variantes ─────────────────────────────────────────────────────
+            if (! empty($validated['has_variants']) && $variantsData) {
+                $processedVariantIds = [];
+
                 foreach ($variantsData as $variantItem) {
                     $variant = \App\Models\ProductVariant::updateOrCreate(
                         ['product_id' => $product->id, 'id' => $variantItem['id'] ?? null],
@@ -381,30 +468,29 @@ class ProductController extends Controller
                     if (isset($variantItem['attributes']) && is_array($variantItem['attributes'])) {
                         $variant->variant_attribute_values()->delete();
 
+                        $newAttrValues = [];
                         foreach ($variantItem['attributes'] as $attrName => $attrValueStr) {
-                            $attribute = \App\Models\ProductAttribute::firstOrCreate(['name' => $attrName]);
-                            $attrValue = \App\Models\ProductAttributeValue::firstOrCreate([
-                                'attribute_id' => $attribute->id,
-                                'value' => $attrValueStr,
-                            ]);
-                            \App\Models\VariantAttributeValue::create([
+                            $attr = $attributeCache[$attrName];
+                            $attrValue = $attrValueCache["{$attr->id}:{$attrValueStr}"];
+                            $newAttrValues[] = [
                                 'variant_id' => $variant->id,
                                 'attribute_value_id' => $attrValue->id,
-                            ]);
+                            ];
+                        }
+                        if ($newAttrValues) {
+                            \App\Models\VariantAttributeValue::insert($newAttrValues);
                         }
                     }
 
                     if (! empty($validated['track_stock']) && isset($variantItem['stock_quantity']) && $variantItem['stock_quantity'] !== '') {
-                        $variantWarehouseId = \App\Models\Warehouse::where('company_id', $product->company_id)->value('id') ?? 1;
                         $newVariantQty = (float) $variantItem['stock_quantity'];
 
                         $variantStock = \App\Models\Stock::firstOrCreate(
-                            ['product_id' => $product->id, 'variant_id' => $variant->id, 'warehouse_id' => $variantWarehouseId],
+                            ['product_id' => $product->id, 'variant_id' => $variant->id, 'warehouse_id' => $warehouseId],
                             ['quantity' => 0]
                         );
 
                         $variantQtyDiff = $newVariantQty - (float) $variantStock->quantity;
-
                         if ($variantQtyDiff != 0) {
                             $variantStockBefore = $variantStock->quantity;
                             $variantStock->update(['quantity' => $newVariantQty]);
@@ -412,8 +498,8 @@ class ProductController extends Controller
                             \App\Models\StockMovement::create([
                                 'product_id' => $product->id,
                                 'variant_id' => $variant->id,
-                                'warehouse_id' => $variantWarehouseId,
-                                'user_id' => auth()->id(),
+                                'warehouse_id' => $warehouseId,
+                                'user_id' => $userId,
                                 'type' => 'adjustment',
                                 'quantity' => $variantQtyDiff,
                                 'stock_before' => $variantStockBefore,
@@ -427,12 +513,18 @@ class ProductController extends Controller
                 \App\Models\ProductVariant::where('product_id', $product->id)
                     ->whereNotIn('id', $processedVariantIds)
                     ->delete();
+            } else {
+                \App\Models\ProductVariant::where('product_id', $product->id)->delete();
             }
-        } else {
-            \App\Models\ProductVariant::where('product_id', $product->id)->delete();
-        }
+        });
 
-        return redirect()->route('products.index')->with('success', 'Product updated successfully.');
+        $product->refresh()->load('stocks');
+        $currentStock = $product->stocks->sum('quantity');
+        $lowStockWarning = $this->checkLowStock($product, $currentStock);
+
+        return redirect()->route('products.index')
+            ->with('success', 'Producto actualizado correctamente.')
+            ->with('warning', $lowStockWarning);
     }
 
     /**
@@ -533,5 +625,38 @@ class ProductController extends Controller
 
             return response()->json(['error' => 'Error ejecutando el script. Revisa el log de Laravel.'], 500);
         }
+    }
+
+    private function categoriesTree(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Category::query()
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->with(['categories' => fn ($q) => $q->where('is_active', true)->orderBy('name')])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    private function vendorsList(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Vendor::query()
+            ->where('company_id', auth()->user()->company_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    private function checkLowStock(Product $product, int|float|null $currentStock): ?string
+    {
+        if (! $product->track_stock || $product->min_stock <= 0 || $currentStock === null) {
+            return null;
+        }
+
+        if ($currentStock <= $product->min_stock) {
+            return "⚠️ Stock bajo en \"{$product->name}\": {$currentStock} unidades (mínimo: {$product->min_stock}).";
+        }
+
+        return null;
     }
 }

@@ -69,6 +69,7 @@ const NAV_SECTIONS = [
                 children: [
                     { title: "Pedidos", path: "/ecommerce-orders" },
                     { title: "Cupones", path: "/coupons" },
+                    { title: "Ofertas", path: "/offers" },
                     { title: "Carrusel Hero", path: "/hero-slides" },
                     { title: "Banners Sidebar", path: "/sidebar-banners" },
                     { title: "Reseñas", path: "/reviews" },
