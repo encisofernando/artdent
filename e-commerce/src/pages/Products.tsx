@@ -12,7 +12,9 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
   const price = Number(p.price_final ?? p.price ?? 0)
   const originalPrice = p.price_final && p.price_final < p.price ? Number(p.price) : null
   const pct = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0
-  const hasStock = (p.stock ?? 0) > 0
+  const hasStock = p.has_variants && p.variants?.length
+    ? p.variants.some(v => v.is_active && v.stock > 0)
+    : (p.stock ?? 0) > 0
 
   return (
     <div className="product-card-ml flex flex-col group relative">

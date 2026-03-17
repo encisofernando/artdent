@@ -148,7 +148,7 @@ export default function AdvancedSearch({ onSearch, placeholder, autoFocus = fals
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
-            placeholder={placeholder || 'Buscar productos...'}
+            placeholder={placeholder || '¿Qué estas buscando?'}
             className="w-full rounded-xl border-2 border-gray-200 py-3 pl-12 pr-24 text-sm outline-none transition focus:border-[var(--brand-primary)]"
             autoFocus={autoFocus}
           />

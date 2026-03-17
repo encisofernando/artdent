@@ -62,7 +62,9 @@
       "Bash(./vendor/bin/pint --dirty)",
       "Bash(find c:UsersfernaOneDriveDocumentosArtDentartdentartdent-crmresourcesjs -type f -name *Sidebar* -o -type f -name *Navigation*)",
       "Bash(grep -l ecommerce_orders c:UsersfernaOneDriveDocumentosArtDentartdentartdent-crmdatabasemigrations/*)",
-      "Bash(find c:UsersfernaOneDriveDocumentosArtDentartdent -name *.php -path */migrations/* -type f)"
+      "Bash(find c:UsersfernaOneDriveDocumentosArtDentartdent -name *.php -path */migrations/* -type f)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(ls \"c:\\\\Users\\\\Usuario\\\\Documents\\\\SOFTWARE\\\\artdent\\\\e-commerce\\\\.env\"*)"
     ]
   }
 }

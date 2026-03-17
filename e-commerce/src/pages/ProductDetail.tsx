@@ -556,9 +556,10 @@ export default function ProductDetail() {
           {product.description && (
             <div className="mt-12 border-t border-gray-200 pt-8 product-description">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Descripción del producto</h2>
-              <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
-                {product.description}
-              </div>
+              <div
+                className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
             </div>
           )}
 

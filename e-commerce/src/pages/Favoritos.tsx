@@ -2,13 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, Trash2 } from 'lucide-react'
 import { getWishlist, removeFromWishlist, type WishlistItem } from '../api/wishlist'
-
-const STORAGE_URL = import.meta.env.VITE_STORAGE_URL ?? ''
-
-function imageUrl(url: string | null | undefined): string | undefined {
-  if (!url) return undefined
-  return url.startsWith('http') ? url : `${STORAGE_URL}/${url}`
-}
+import { storageUrl } from '../api/http'
 
 export default function Favoritos() {
   const [items, setItems] = useState<WishlistItem[]>([])
@@ -51,7 +45,7 @@ export default function Favoritos() {
           {items.map((item) => {
             const product = item.product
             if (!product) return null
-            const img = imageUrl(product.primary_image_url)
+            const img = storageUrl(product.primary_image_url)
             const price = product.price_final ?? product.price
             return (
               <div key={item.id} className="group card flex flex-col">

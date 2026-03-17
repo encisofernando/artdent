@@ -86,6 +86,44 @@ function MiniCardSkeleton() {
   )
 }
 
+/* ─── Tab empty states ──────────────────────────────────────────────── */
+const TAB_EMPTY = [
+  {
+    emoji: '✨',
+    title: '¡Próximamente nuevos productos!',
+    desc: 'Estamos incorporando nuevos insumos odontológicos. Volvé pronto o suscribite al newsletter para ser el primero en enterarte.',
+  },
+  {
+    emoji: '⭐',
+    title: '¡Próximamente productos destacados!',
+    desc: 'Estamos preparando nuestra selección de los mejores productos. Mientras tanto, explorá el catálogo completo.',
+  },
+  {
+    emoji: '🏷️',
+    title: '¡Próximamente grandes ofertas!',
+    desc: 'Estamos preparando descuentos y promociones exclusivas para vos. Volvé pronto o suscribite al newsletter para ser el primero en enterarte.',
+  },
+]
+
+function TabEmptyState({ tab }: { tab: number }) {
+  const e = TAB_EMPTY[tab] ?? TAB_EMPTY[0]
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-10 py-10 text-center max-w-md w-full">
+        <span className="text-5xl mb-4 block">{e.emoji}</span>
+        <h3 className="text-lg font-extrabold text-gray-900 mb-2">{e.title}</h3>
+        <p className="text-sm text-gray-500 leading-relaxed mb-6">{e.desc}</p>
+        <Link
+          to="/productos"
+          className="inline-flex items-center gap-2 bg-[var(--brand-primary)] text-white rounded-xl px-6 py-2.5 text-sm font-bold hover:opacity-90 transition"
+        >
+          Ver catálogo completo <ArrowRight size={14} />
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Slide type ────────────────────────────────────────────────────── */
 type Slide = {
   imageSrc: string
@@ -104,10 +142,17 @@ export default function Home() {
     onSuccess: () => { setNlOk(true); setNlName(''); setNlEmail('') },
   })
 
-  /* Products */
+  /* ── Tab params ── */
+  const TAB_PARAMS = [
+    { sort: 'nuevos' },
+    { sort: 'relevantes' },
+    { has_offer: true as const },
+  ]
+
+  /* Products — refetch when tab changes */
   const { data: productsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['home_products'],
-    queryFn: () => listProducts({ per_page: 8, page: 1 }),
+    queryKey: ['home_products', activeTab],
+    queryFn: () => listProducts({ per_page: 8, page: 1, ...TAB_PARAMS[activeTab] }),
   })
   const products = productsData?.data ?? []
 
@@ -333,11 +378,18 @@ export default function Home() {
           </div>
 
           {/* Mini product grid */}
-          <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {productsLoading
-              ? Array.from({ length: 8 }, (_, i) => <MiniCardSkeleton key={i} />)
-              : products.slice(0, 8).map((p) => <MiniCard key={p.id} p={p} />)
-            }
+          <div className={`flex-1 transition-opacity duration-200 ${productsLoading ? 'opacity-50' : 'opacity-100'}`}>
+            {productsLoading && products.length === 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {Array.from({ length: 8 }, (_, i) => <MiniCardSkeleton key={i} />)}
+              </div>
+            ) : products.length === 0 ? (
+              <TabEmptyState tab={activeTab} />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {products.slice(0, 8).map((p) => <MiniCard key={p.id} p={p} />)}
+              </div>
+            )}
           </div>
         </div>
       </section>

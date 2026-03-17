@@ -74,7 +74,7 @@ function normalizeProductUrls(p: CatalogProduct): CatalogProduct {
   }
 }
 
-export async function listProducts(params: { q?: string; page?: number; category_id?: number; per_page?: number; company_id?: number } = {}): Promise<Paginated<CatalogProduct>> {
+export async function listProducts(params: { q?: string; page?: number; category_id?: number; per_page?: number; company_id?: number; sort?: string; has_offer?: boolean; brand?: string } = {}): Promise<Paginated<CatalogProduct>> {
   const { data } = await http.get('/catalog/products', { params })
   return { ...data, data: data.data.map(normalizeProductUrls) }
 }

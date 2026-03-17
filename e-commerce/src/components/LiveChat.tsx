@@ -15,29 +15,8 @@ export default function LiveChat() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Contactar por WhatsApp"
-      style={{
-        position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        zIndex: 9999,
-        width: '56px',
-        height: '56px',
-        borderRadius: '50%',
-        backgroundColor: '#25D366',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1.1)'
-        ;(e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)'
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1)'
-        ;(e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.25)'
-      }}
+      className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[9999] w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 active:scale-95"
+      style={{ backgroundColor: '#25D366' }}
     >
       {/* WhatsApp SVG icon */}
       <svg viewBox="0 0 32 32" width="30" height="30" fill="white" xmlns="http://www.w3.org/2000/svg">

@@ -40,31 +40,38 @@ export default function Cart() {
                 const sku = it.variant_sku ?? it.product.sku
                 const cartKey = `${it.product.id}-${it.variant_id ?? 0}`
                 return (
-                  <div key={cartKey} className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <Link to={`/productos/${it.product.id}`} className="text-sm font-semibold hover:underline">
-                        {it.product.name}
-                      </Link>
-                      {it.variant_label && (
-                        <p className="mt-0.5 text-xs text-[var(--brand-primary)] font-medium">{it.variant_label}</p>
-                      )}
-                      <p className="mt-1 text-xs text-gray-500">SKU: {sku || '—'}</p>
-                      <p className="mt-2 text-sm font-bold">{formatMoney(unit)}</p>
+                  <div key={cartKey} className="flex flex-col gap-2 border-b pb-4 last:border-0 last:pb-0">
+                    {/* Fila 1: nombre + botón quitar */}
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <Link to={`/productos/${it.product.id}`} className="text-sm font-semibold hover:underline leading-tight">
+                          {it.product.name}
+                        </Link>
+                        {it.variant_label && (
+                          <p className="mt-0.5 text-xs text-[var(--brand-primary)] font-medium">{it.variant_label}</p>
+                        )}
+                        <p className="mt-0.5 text-xs text-gray-500">SKU: {sku || '—'}</p>
+                      </div>
+                      <button
+                        className="shrink-0 text-xs text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-red-50 border border-gray-200"
+                        onClick={() => cart.remove(it.product.id, it.variant_id)}
+                      >
+                        Quitar
+                      </button>
                     </div>
-
-                    <div className="flex items-center gap-3">
+                    {/* Fila 2: precio unitario × cantidad = total */}
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 shrink-0">{formatMoney(unit)}</p>
+                      <span className="text-gray-300 text-xs">×</span>
                       <input
                         type="number"
                         min={1}
                         step={1}
                         value={it.qty}
                         onChange={(e) => cart.setQty(it.product.id, Number(e.target.value || 1), it.variant_id)}
-                        className="w-24 rounded-xl border px-3 py-2 text-sm"
+                        className="w-16 rounded-xl border px-2 py-1.5 text-sm text-center"
                       />
-                      <p className="w-28 text-right text-sm font-semibold">{formatMoney(line)}</p>
-                      <button className="btn btn-outline" onClick={() => cart.remove(it.product.id, it.variant_id)}>
-                        Quitar
-                      </button>
+                      <p className="ml-auto text-sm font-bold shrink-0">{formatMoney(line)}</p>
                     </div>
                   </div>
                 )

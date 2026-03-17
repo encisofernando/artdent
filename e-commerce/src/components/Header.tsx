@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { ShoppingCart, ChevronDown, Menu, MapPin, X, Truck, LogOut, User, Heart, Bell, Package } from 'lucide-react'
+import { ShoppingCart, ChevronDown, MapPin, X, Truck, LogOut, User, Heart, Bell, Package } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../store/auth'
 import { useCart } from '../store/cart'
@@ -9,12 +9,7 @@ import logoBlanco from '../assets/logo-blanco.png'
 import AdvancedSearch from '../components/AdvancedSearch'
 import MobileMenu from '../components/MobileMenu'
 import { listCategories, type Category } from '../api/categories'
-
-const STORAGE_URL = import.meta.env.VITE_STORAGE_URL ?? ''
-function imgSrc(url: string | null | undefined) {
-  if (!url) return undefined
-  return url.startsWith('http') ? url : `${STORAGE_URL}/${url}`
-}
+import { storageUrl } from '../api/http'
 
 type MegaMenuColumn = {
   title: string
@@ -220,10 +215,6 @@ export default function Header() {
 
             {/* Mobile */}
             <div className="flex md:hidden items-center gap-3">
-              <button onClick={() => setMobileMenuOpen(true)}
-                className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition shrink-0" aria-label="Abrir menú">
-                <Menu size={20} className="text-white" />
-              </button>
               <Link to="/" className="flex-1 flex justify-center">
                 <img src={logoBlanco} alt="ArtDent" className="h-8 w-auto" />
               </Link>
@@ -233,14 +224,6 @@ export default function Header() {
                     <User size={19} className="text-white" />
                   </Link>
                 )}
-                <Link to="/carrito" className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/10 transition">
-                  <ShoppingCart size={19} className="text-white" />
-                  {count > 0 && (
-                    <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[var(--brand-primary)]">
-                      {count > 99 ? '99+' : count}
-                    </span>
-                  )}
-                </Link>
               </div>
             </div>
 
@@ -317,7 +300,7 @@ export default function Header() {
                               {wishlist.slice(0, 5).map((item) => {
                                 const p = item.product
                                 if (!p) return null
-                                const src = imgSrc(p.primary_image_url)
+                                const src = storageUrl(p.primary_image_url)
                                 const base = p.price
                                 const final = p.price_final ?? p.pricing?.final ?? base
                                 const discountPct = p.pricing?.discount_percent

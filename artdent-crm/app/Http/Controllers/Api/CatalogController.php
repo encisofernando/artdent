@@ -100,8 +100,7 @@ class CatalogController extends Controller
 
         $stockPriority = "(SELECT COALESCE(SUM(quantity), 0) FROM stocks
                            WHERE stocks.product_id = products.id
-                             AND stocks.warehouse_id = {$warehouseId}
-                             AND stocks.variant_id IS NULL) > 0";
+                             AND stocks.warehouse_id = {$warehouseId}) > 0";
 
         if ($sort === 'nuevos') {
             $query->orderByRaw("{$stockPriority} DESC")->orderByDesc('products.created_at');
@@ -135,8 +134,21 @@ class CatalogController extends Controller
             ->selectRaw('product_id, SUM(quantity) as total')
             ->pluck('total', 'product_id');
 
-        $paginated->getCollection()->transform(function (Product $product) use ($stocks): array {
-            return $this->formatProduct($product, (float) ($stocks->get($product->id, 0)));
+        // Variant stock aggregated per product (for products with variants)
+        $variantStocks = Stock::query()
+            ->whereIn('product_id', $productIds)
+            ->where('warehouse_id', $warehouseId)
+            ->whereNotNull('variant_id')
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(quantity) as total')
+            ->pluck('total', 'product_id');
+
+        $paginated->getCollection()->transform(function (Product $product) use ($stocks, $variantStocks): array {
+            $stock = $product->has_variants
+                ? (float) ($variantStocks->get($product->id, 0))
+                : (float) ($stocks->get($product->id, 0));
+
+            return $this->formatProduct($product, $stock);
         });
 
         return response()->json($paginated);
@@ -414,11 +426,15 @@ class CatalogController extends Controller
             ]);
         }
 
-        // Send order confirmation email
-        $order->load('ecommerce_order_items');
-        Mail::to($validated['customer_email'])->queue(
-            new OrderConfirmed($order, $validated['customer_name'], $validated['customer_email'])
-        );
+        // Send order confirmation email (fire-and-forget — never fail the checkout)
+        try {
+            $order->load('ecommerce_order_items');
+            Mail::to($validated['customer_email'])->send(
+                new OrderConfirmed($order, $validated['customer_name'], $validated['customer_email'])
+            );
+        } catch (\Throwable) {
+            // Email failure must not roll back the order
+        }
 
         return response()->json([
             'code' => $order->order_number,

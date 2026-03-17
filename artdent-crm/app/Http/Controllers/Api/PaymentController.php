@@ -83,6 +83,7 @@ class PaymentController extends Controller
         ]);
 
         $response = Http::withToken($this->accessToken())
+            ->when(! app()->isProduction(), fn ($h) => $h->withoutVerifying())
             ->post('https://api.mercadopago.com/checkout/preferences', $payload);
 
         if (! $response->successful()) {
@@ -117,6 +118,7 @@ class PaymentController extends Controller
         }
 
         $payment = Http::withToken($this->accessToken())
+            ->when(! app()->isProduction(), fn ($h) => $h->withoutVerifying())
             ->get("https://api.mercadopago.com/v1/payments/{$dataId}")
             ->json();
 

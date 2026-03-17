@@ -583,15 +583,15 @@ export default function Checkout() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Confirmar compra</h1>
-        <Link to="/carrito" className="btn btn-outline">Volver al carrito</Link>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl sm:text-3xl font-bold">Confirmar compra</h1>
+        <Link to="/carrito" className="btn btn-outline text-sm">← Carrito</Link>
       </div>
 
       <StepBar step={step} />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 order-last lg:order-first">
           {step === 1 && (
             <StepCustomer
               name={name} setName={setName}
@@ -626,27 +626,27 @@ export default function Checkout() {
 
               {/* Summary of chosen options */}
               <div className="rounded-xl bg-gray-50 p-4 space-y-2 text-sm">
-                <div className="flex gap-2 text-gray-700">
-                  <span className="font-semibold w-28 shrink-0 text-gray-500">Comprador:</span>
-                  <span>{name} — {email}</span>
+                <div className="flex flex-col sm:flex-row sm:gap-2 text-gray-700">
+                  <span className="font-semibold sm:w-24 sm:shrink-0 text-gray-500">Comprador:</span>
+                  <span className="min-w-0 break-words">{name} — {email}</span>
                 </div>
                 {phone && (
-                  <div className="flex gap-2 text-gray-700">
-                    <span className="font-semibold w-28 shrink-0 text-gray-500">Teléfono:</span>
-                    <span>{phone}</span>
+                  <div className="flex flex-col sm:flex-row sm:gap-2 text-gray-700">
+                    <span className="font-semibold sm:w-24 sm:shrink-0 text-gray-500">Teléfono:</span>
+                    <span className="min-w-0 break-words">{phone}</span>
                   </div>
                 )}
-                <div className="flex gap-2 text-gray-700">
-                  <span className="font-semibold w-28 shrink-0 text-gray-500">Envío:</span>
-                  <span>
+                <div className="flex flex-col sm:flex-row sm:gap-2 text-gray-700">
+                  <span className="font-semibold sm:w-24 sm:shrink-0 text-gray-500">Envío:</span>
+                  <span className="min-w-0 break-words">
                     {selectedMethod === 'home_delivery' && `Domicilio: ${address}${city ? `, ${city}` : ''}`}
                     {selectedMethod === 'pickup_point' && `Retiro en ${selectedPickupPoint?.name} — ${selectedPickupPoint?.address}`}
                     {selectedMethod === 'moto' && `Moto Mandados (${selectedMotoCompany?.name}) — ${address}`}
                   </span>
                 </div>
                 {shippingCost > 0 && (
-                  <div className="flex gap-2 text-gray-700">
-                    <span className="font-semibold w-28 shrink-0 text-gray-500">Costo envío:</span>
+                  <div className="flex flex-col sm:flex-row sm:gap-2 text-gray-700">
+                    <span className="font-semibold sm:w-24 sm:shrink-0 text-gray-500">Costo envío:</span>
                     <span className="text-[var(--brand-primary)] font-semibold">{formatMoney(shippingCost)}</span>
                   </div>
                 )}
@@ -676,13 +676,15 @@ export default function Checkout() {
         </div>
 
         {/* Sidebar */}
-        <OrderSummary
-          shippingCost={shippingCost}
-          shippingLabel={shippingLabel}
-          appliedCoupon={appliedCoupon}
-          onCouponApplied={setAppliedCoupon}
-          onCouponRemoved={() => setAppliedCoupon(null)}
-        />
+        <div className="order-first lg:order-last">
+          <OrderSummary
+            shippingCost={shippingCost}
+            shippingLabel={shippingLabel}
+            appliedCoupon={appliedCoupon}
+            onCouponApplied={setAppliedCoupon}
+            onCouponRemoved={() => setAppliedCoupon(null)}
+          />
+        </div>
       </div>
     </div>
   )

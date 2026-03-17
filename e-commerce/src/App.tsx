@@ -1,5 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
-import { useEffect } from 'react'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { AuthProvider } from './store/auth'
 import { CartProvider } from './store/cart'
 import AppLayout from './layouts/AppLayout'
@@ -30,11 +30,50 @@ import FAQ from './pages/FAQ'
 import Ayuda from './pages/Ayuda'
 import Politicas from './pages/Politicas'
 
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
 function NotFound() {
+  const navigate = useNavigate()
+  const [seconds, setSeconds] = useState(5)
+
+  useEffect(() => {
+    if (seconds <= 0) { navigate('/'); return }
+    const t = setTimeout(() => setSeconds(s => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [seconds, navigate])
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-2xl font-bold">404</h1>
-      <p className="mt-2 text-sm text-gray-600">Página no encontrada.</p>
+    <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <div className="text-center max-w-md">
+        <div className="w-24 h-24 rounded-full bg-[var(--brand-soft)] flex items-center justify-center mx-auto mb-6">
+          <span className="text-5xl">🦷</span>
+        </div>
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-2">¡Ups!</h1>
+        <p className="text-xl font-semibold text-gray-700 mb-3">Esta página no existe</p>
+        <p className="text-sm text-gray-500 mb-8">
+          Puede que la dirección haya cambiado o el enlace esté roto.<br />
+          No te preocupes, te llevamos al inicio.
+        </p>
+        <div className="mb-6">
+          <div className="w-48 h-1.5 bg-gray-200 rounded-full mx-auto overflow-hidden">
+            <div
+              className="h-full bg-[var(--brand-primary)] rounded-full transition-all duration-1000 ease-linear"
+              style={{ width: `${((5 - seconds) / 5) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-400 mt-2">Redirigiendo en <strong>{seconds}s</strong>…</p>
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          className="btn btn-primary px-8 py-3 text-base"
+        >
+          Ir al inicio ahora
+        </button>
+      </div>
     </div>
   )
 }
@@ -49,6 +88,7 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <AppLayout>
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<Home />} />
 
