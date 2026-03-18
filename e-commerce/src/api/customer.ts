@@ -29,6 +29,7 @@ export type CustomerAddress = {
 export type OrderTracking = {
   carrier: string | null
   tracking_code: string | null
+  tracking_url: string | null
   status: 'preparing' | 'shipped' | 'in_transit' | 'delivered' | 'returned' | null
   shipped_at: string | null
   estimated_delivery: string | null
@@ -64,6 +65,9 @@ export type CustomerOrder = {
   shipping_postal: string | null
   shipping_phone: string | null
   customer_notes: string | null
+  shipping_method_type: 'home_delivery' | 'pickup_point' | 'moto' | null
+  selected_payment_method: 'mercadopago' | 'bank_transfer' | 'qr' | 'cash' | null
+  can_cancel: boolean
   created_at: string
   items: CustomerOrderItem[]
   tracking: OrderTracking | null
@@ -94,6 +98,16 @@ export async function getOrders(): Promise<CustomerOrder[]> {
 
 export async function getCustomerOrder(code: string): Promise<CustomerOrder> {
   const { data } = await http.get(`/customer/orders/${code}`)
+  return data
+}
+
+export async function cancelOrder(code: string): Promise<CustomerOrder> {
+  const { data } = await http.post(`/customer/orders/${code}/cancel`)
+  return data
+}
+
+export async function changePaymentMethod(code: string, method: string): Promise<CustomerOrder> {
+  const { data } = await http.post(`/customer/orders/${code}/payment-method`, { selected_payment_method: method })
   return data
 }
 

@@ -64,7 +64,16 @@
       "Bash(grep -l ecommerce_orders c:UsersfernaOneDriveDocumentosArtDentartdentartdent-crmdatabasemigrations/*)",
       "Bash(find c:UsersfernaOneDriveDocumentosArtDentartdent -name *.php -path */migrations/* -type f)",
       "Bash(grep -v \"^--$\")",
-      "Bash(ls \"c:\\\\Users\\\\Usuario\\\\Documents\\\\SOFTWARE\\\\artdent\\\\e-commerce\\\\.env\"*)"
+      "Bash(ls \"c:\\\\Users\\\\Usuario\\\\Documents\\\\SOFTWARE\\\\artdent\\\\e-commerce\\\\.env\"*)",
+      "Bash(grep -rn \"slugify\\\\|productPath\\\\|idFromSlug\\\\|/productos/\" c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/e-commerce/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -rn productos/$.*.id c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/e-commerce/src --include=*.tsx --include=*.ts)",
+      "Bash(ls c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/e-commerce/*.config.* 2)",
+      "Bash(/dev/null grep:*)",
+      "Bash(grep -r create.*ecommerce_orders /c/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm/database/migrations/)",
+      "Bash(vendor/bin/pint app/Http/Controllers/Api/CustomerController.php routes/api.php)",
+      "Bash(grep -rn \"E-Commerce\\\\|ecommerce\\\\|e-commerce\\\\|ECommerce\\\\|Pedidos\\\\|payment\" c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm/resources/js/Layouts --include=*.jsx --include=*.tsx --include=*.js)",
+      "Bash(find c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm/resources/js/Layouts -name *.jsx -o -name *.tsx)",
+      "Bash(find /c/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm -name routes* -o -name *notification*)"
     ]
   }
 }

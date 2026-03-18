@@ -1,12 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { User, MapPin, ShoppingBag, Lock, ChevronRight, Plus, Trash2, Edit2, Check, Package } from 'lucide-react'
+import {
+  User, MapPin, ShoppingBag, Lock, ChevronRight, Plus, Trash2, Edit2,
+  Check, Package, Clock, CheckCircle2, Truck, XCircle, AlertTriangle,
+  RefreshCw, MapPinned, RotateCcw,
+} from 'lucide-react'
 import { useAuth } from '../store/auth'
 import {
   getProfile, updateProfile, changePassword,
   getOrders, getAddresses, createAddress, updateAddress, deleteAddress,
-  type CustomerProfile, type CustomerAddress,
+  cancelOrder,
+  type CustomerProfile, type CustomerAddress, type CustomerOrder,
 } from '../api/customer'
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
@@ -164,111 +169,126 @@ export default function Account() {
   )
 }
 
-/* ── OrdersTab ───────────────────────────────────────────────────────── */
-function OrdersTab({ qc: _qc }: { qc: ReturnType<typeof useQueryClient> }) {
-  const [expanded, setExpanded] = useState<number | null>(null)
-  const { data: orders = [], isLoading, isError } = useQuery({
-    queryKey: ['customer_orders'],
-    queryFn: getOrders,
-  })
+/* ── helpers de pedidos ──────────────────────────────────────────────── */
+const ORDER_STEPS: CustomerOrder['status'][] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered']
+const STEP_LABELS: Record<string, string> = {
+  pending: 'Recibido', confirmed: 'Confirmado', processing: 'Preparando',
+  shipped: 'En camino', delivered: 'Entregado',
+}
+const TRACKING_LABELS: Record<string, string> = {
+  preparing: 'Preparando', shipped: 'Despachado', in_transit: 'En tránsito',
+  delivered: 'Entregado', returned: 'Devuelto',
+}
 
-  if (isLoading) return <div className="text-sm text-gray-500 py-8 text-center">Cargando pedidos…</div>
-  if (isError)   return <div className="text-sm text-red-600 py-8 text-center">Error al cargar pedidos.</div>
-  if (orders.length === 0) {
+function canCancel(order: CustomerOrder): boolean {
+  if (['shipped', 'delivered', 'cancelled', 'refunded'].includes(order.status)) return false
+  return new Date().getTime() - new Date(order.created_at).getTime() < 2 * 60 * 60 * 1000
+}
+
+function cancelTimeLeft(order: CustomerOrder): string {
+  const ms = 2 * 60 * 60 * 1000 - (new Date().getTime() - new Date(order.created_at).getTime())
+  if (ms <= 0) return ''
+  const mins = Math.ceil(ms / 60000)
+  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`
+}
+
+/* ── StatusStepper ───────────────────────────────────────────────────── */
+function StatusStepper({ status }: { status: CustomerOrder['status'] }) {
+  if (status === 'cancelled') {
     return (
-      <div className="card p-10 text-center">
-        <Package size={40} className="mx-auto text-gray-300 mb-3" />
-        <p className="text-gray-500 font-medium">Todavía no tenés pedidos.</p>
-        <Link to="/productos" className="mt-4 btn btn-primary inline-flex">Ver catálogo</Link>
+      <div className="flex items-center gap-2 py-2">
+        <XCircle size={18} className="text-red-500 shrink-0" />
+        <span className="text-sm font-semibold text-red-600">Pedido cancelado</span>
       </div>
     )
   }
-
+  if (status === 'refunded') {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <RotateCcw size={18} className="text-gray-500 shrink-0" />
+        <span className="text-sm font-semibold text-gray-600">Pedido reembolsado</span>
+      </div>
+    )
+  }
+  const currentIdx = ORDER_STEPS.indexOf(status)
   return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-bold text-gray-900">Mis pedidos</h2>
-      {orders.map((order) => (
-        <div key={order.id} className="card overflow-hidden">
-          {/* Row */}
-          <button
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
-            onClick={() => setExpanded(expanded === order.id ? null : order.id)}
-          >
-            <div className="flex items-center gap-3">
-              <div>
-                <p className="text-sm font-bold text-gray-900">#{order.code}</p>
-                <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString('es-AR')}</p>
+    <div className="flex items-start w-full overflow-x-auto pb-1">
+      {ORDER_STEPS.map((step, idx) => {
+        const done = idx < currentIdx
+        const active = idx === currentIdx
+        return (
+          <div key={step} className="flex items-start flex-1 min-w-0">
+            <div className="flex flex-col items-center flex-1">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                done ? 'bg-[var(--brand-primary)]' : active ? 'bg-[var(--brand-primary)] ring-4 ring-[var(--brand-primary)]/20' : 'bg-gray-200'
+              }`}>
+                {done
+                  ? <Check size={13} className="text-white" />
+                  : <span className={`text-[10px] font-bold ${active ? 'text-white' : 'text-gray-400'}`}>{idx + 1}</span>
+                }
               </div>
-              <span className={`badge ${STATUS_COLOR[order.status] ?? 'bg-gray-100 text-gray-600'} ml-2`}>
-                {STATUS_LABEL[order.status] ?? order.status}
-              </span>
-              <span className={`badge ${PAY_COLOR[order.payment_status] ?? 'bg-gray-100'}`}>
-                {PAY_LABEL[order.payment_status] ?? order.payment_status}
+              <span className={`text-[10px] mt-1 text-center leading-tight px-0.5 ${active ? 'font-bold text-[var(--brand-primary)]' : done ? 'text-gray-600' : 'text-gray-400'}`}>
+                {STEP_LABELS[step]}
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold">{fmt(order.total)}</span>
-              <ChevronRight size={16} className={`text-gray-400 transition-transform ${expanded === order.id ? 'rotate-90' : ''}`} />
-            </div>
-          </button>
+            {idx < ORDER_STEPS.length - 1 && (
+              <div className={`h-0.5 flex-1 mt-3.5 mx-1 shrink-0 ${idx < currentIdx ? 'bg-[var(--brand-primary)]' : 'bg-gray-200'}`} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
-          {/* Detail */}
-          {expanded === order.id && (
-            <div className="border-t px-4 pb-4 pt-3 space-y-4">
-              {/* Items */}
-              <div className="space-y-2">
-                {order.items.map((it) => (
-                  <div key={it.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">{it.name} × {it.qty}</span>
-                    <span className="font-semibold">{fmt(it.total)}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Totals */}
-              <div className="rounded-xl bg-gray-50 p-3 text-sm space-y-1">
-                <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{fmt(order.subtotal)}</span></div>
-                {(order.discount_amount ?? 0) > 0 && (
-                  <div className="flex justify-between text-green-700"><span>Descuento</span><span>-{fmt(order.discount_amount)}</span></div>
-                )}
-                <div className="flex justify-between font-bold text-gray-900 pt-1 border-t"><span>Total</span><span>{fmt(order.total)}</span></div>
-                <p className="text-[10px] text-gray-400">Precios con IVA incluido</p>
-              </div>
-
-              {/* Shipping */}
-              {order.shipping_address && (
-                <div className="text-xs text-gray-500">
-                  <span className="font-semibold">Envío a:</span>{' '}
-                  {[order.shipping_address, order.shipping_city, order.shipping_province, order.shipping_postal].filter(Boolean).join(', ')}
-                </div>
-              )}
-
-              {/* Tracking */}
-              {order.tracking && (
-                <div className="rounded-xl border border-[var(--brand-primary)]/20 bg-[var(--brand-soft)] p-3 text-sm">
-                  <p className="font-bold text-[var(--brand-primary)] mb-1">Seguimiento del envío</p>
-                  {order.tracking.carrier && <p className="text-gray-700"><span className="font-semibold">Carrier:</span> {order.tracking.carrier}</p>}
-                  {order.tracking.tracking_code && <p className="text-gray-700"><span className="font-semibold">Código:</span> {order.tracking.tracking_code}</p>}
-                  {order.tracking.status && <p className="text-gray-700"><span className="font-semibold">Estado:</span> {order.tracking.status}</p>}
-                  {order.tracking.estimated_delivery && <p className="text-gray-700"><span className="font-semibold">Entrega estimada:</span> {order.tracking.estimated_delivery}</p>}
-                  {order.tracking.notes && <p className="text-gray-500 text-xs mt-1">{order.tracking.notes}</p>}
-                </div>
-              )}
-
-              {/* MP pay button if unpaid */}
-              {order.payment_status === 'pending' && (
-                <PayOrderButton code={order.code} />
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+/* ── TrackingCard ────────────────────────────────────────────────────── */
+function TrackingCard({ tracking }: { tracking: NonNullable<CustomerOrder['tracking']> }) {
+  return (
+    <div className="rounded-xl border border-[var(--brand-primary)]/25 bg-[var(--brand-soft)] p-4 space-y-2">
+      <div className="flex items-center gap-2 mb-1">
+        <Truck size={16} className="text-[var(--brand-primary)]" />
+        <p className="font-bold text-[var(--brand-primary)] text-sm">Seguimiento del envío</p>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        {tracking.carrier && (
+          <div><span className="text-gray-500 text-xs">Carrier</span><p className="font-semibold text-gray-800">{tracking.carrier}</p></div>
+        )}
+        {tracking.tracking_code && (
+          <div>
+            <span className="text-gray-500 text-xs">Código de rastreo</span>
+            <p className="font-mono font-bold text-gray-800 text-xs">{tracking.tracking_code}</p>
+          </div>
+        )}
+        {tracking.status && (
+          <div><span className="text-gray-500 text-xs">Estado</span><p className="font-semibold text-gray-800">{TRACKING_LABELS[tracking.status] ?? tracking.status}</p></div>
+        )}
+        {tracking.estimated_delivery && (
+          <div><span className="text-gray-500 text-xs">Entrega estimada</span><p className="font-semibold text-gray-800">{new Date(tracking.estimated_delivery).toLocaleDateString('es-AR')}</p></div>
+        )}
+        {tracking.shipped_at && (
+          <div><span className="text-gray-500 text-xs">Despachado</span><p className="font-semibold text-gray-800">{new Date(tracking.shipped_at).toLocaleDateString('es-AR')}</p></div>
+        )}
+        {tracking.delivered_at && (
+          <div><span className="text-gray-500 text-xs">Entregado</span><p className="font-semibold text-gray-800">{new Date(tracking.delivered_at).toLocaleDateString('es-AR')}</p></div>
+        )}
+      </div>
+      {tracking.tracking_url && (
+        <a
+          href={tracking.tracking_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+        >
+          Rastrear envío →
+        </a>
+      )}
+      {tracking.notes && <p className="text-xs text-gray-500 border-t pt-2 mt-1">{tracking.notes}</p>}
     </div>
   )
 }
 
 /* ── PayOrderButton ──────────────────────────────────────────────────── */
-function PayOrderButton({ code }: { code: string }) {
+function PayOrderButton({ code, failed }: { code: string; failed?: boolean }) {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -286,10 +306,227 @@ function PayOrderButton({ code }: { code: string }) {
 
   return (
     <div>
-      <button onClick={pay} disabled={loading} className="btn btn-primary w-full py-2.5">
-        {loading ? 'Redirigiendo a MercadoPago…' : '💳 Pagar con MercadoPago'}
+      {failed && (
+        <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 mb-2 text-sm text-red-700">
+          <AlertTriangle size={15} className="shrink-0" />
+          El pago anterior fue rechazado. Podés intentarlo nuevamente.
+        </div>
+      )}
+      <button onClick={pay} disabled={loading}
+        className={`btn w-full py-2.5 flex items-center justify-center gap-2 ${failed ? 'btn-outline border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'btn-primary'}`}>
+        <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+        {loading ? 'Redirigiendo…' : failed ? 'Reintentar pago con MercadoPago' : 'Pagar con MercadoPago'}
       </button>
       {err && <p className="text-xs text-red-600 mt-1">{err}</p>}
+    </div>
+  )
+}
+
+/* ── CancelButton ────────────────────────────────────────────────────── */
+function CancelButton({ order, onCancelled }: { order: CustomerOrder; onCancelled: (updated: CustomerOrder) => void }) {
+  const [confirm, setConfirm] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState(cancelTimeLeft(order))
+
+  useEffect(() => {
+    const t = setInterval(() => setTimeLeft(cancelTimeLeft(order)), 30000)
+    return () => clearInterval(t)
+  }, [order])
+
+  const doCancel = async () => {
+    setLoading(true); setErr(null)
+    try {
+      const updated = await cancelOrder(order.code)
+      onCancelled(updated)
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? 'No se pudo cancelar el pedido.')
+      setLoading(false)
+      setConfirm(false)
+    }
+  }
+
+  if (!confirm) {
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setConfirm(true)}
+          className="btn btn-outline text-sm border-red-300 text-red-600 hover:bg-red-50 gap-1.5"
+        >
+          <XCircle size={14} /> Cancelar pedido
+        </button>
+        {timeLeft && (
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            <Clock size={12} /> Podés cancelar hasta en {timeLeft}
+          </span>
+        )}
+        {err && <p className="text-xs text-red-600 w-full">{err}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl bg-red-50 border border-red-200 p-3 space-y-2">
+      <p className="text-sm font-semibold text-red-700">¿Confirmás la cancelación del pedido?</p>
+      <p className="text-xs text-red-600">Esta acción no se puede deshacer.</p>
+      <div className="flex gap-2">
+        <button onClick={doCancel} disabled={loading}
+          className="btn text-sm bg-red-600 hover:bg-red-700 text-white flex-1 py-2">
+          {loading ? 'Cancelando…' : 'Sí, cancelar'}
+        </button>
+        <button onClick={() => setConfirm(false)} disabled={loading}
+          className="btn btn-outline text-sm px-4">
+          No
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ── OrdersTab ───────────────────────────────────────────────────────── */
+function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const { data: orders = [], isLoading, isError } = useQuery({
+    queryKey: ['customer_orders'],
+    queryFn: getOrders,
+    refetchInterval: 30_000,
+    staleTime: 0,
+  })
+
+  const updateOrder = (updated: CustomerOrder) => {
+    qc.setQueryData<CustomerOrder[]>(['customer_orders'], (prev = []) =>
+      prev.map((o) => (o.id === updated.id ? updated : o))
+    )
+  }
+
+  if (isLoading) return <div className="text-sm text-gray-500 py-8 text-center">Cargando pedidos…</div>
+  if (isError)   return <div className="text-sm text-red-600 py-8 text-center">Error al cargar pedidos.</div>
+  if (orders.length === 0) {
+    return (
+      <div className="card p-10 text-center">
+        <Package size={40} className="mx-auto text-gray-300 mb-3" />
+        <p className="text-gray-500 font-medium">Todavía no tenés pedidos.</p>
+        <Link to="/productos" className="mt-4 btn btn-primary inline-flex">Ver catálogo</Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-bold text-gray-900">Mis pedidos ({orders.length})</h2>
+      {orders.map((order) => (
+        <div key={order.id} className="card overflow-hidden">
+          {/* Header row */}
+          <button
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
+            onClick={() => setExpanded(expanded === order.id ? null : order.id)}
+          >
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="shrink-0">
+                <p className="text-sm font-bold text-gray-900">#{order.code}</p>
+                <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+              </div>
+              <div className="flex flex-wrap gap-1.5 items-center min-w-0">
+                <span className={`badge text-xs ${STATUS_COLOR[order.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  {STATUS_LABEL[order.status] ?? order.status}
+                </span>
+                <span className={`badge text-xs ${PAY_COLOR[order.payment_status] ?? 'bg-gray-100'}`}>
+                  {PAY_LABEL[order.payment_status] ?? order.payment_status}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0 ml-2">
+              <span className="text-sm font-bold text-gray-900">{fmt(order.total)}</span>
+              <ChevronRight size={16} className={`text-gray-400 transition-transform ${expanded === order.id ? 'rotate-90' : ''}`} />
+            </div>
+          </button>
+
+          {/* Expanded detail */}
+          {expanded === order.id && (
+            <div className="border-t px-4 pb-5 pt-4 space-y-5">
+
+              {/* Progress stepper */}
+              <StatusStepper status={order.status} />
+
+              {/* Items */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Productos</p>
+                <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                  {order.items.map((it) => (
+                    <div key={it.id} className="flex items-center justify-between px-3 py-2.5 text-sm bg-white">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-800 truncate">{it.name}</p>
+                        {it.sku && <p className="text-[10px] text-gray-400">SKU: {it.sku}</p>}
+                      </div>
+                      <div className="text-right shrink-0 ml-3">
+                        <p className="font-semibold text-gray-900">{fmt(it.total)}</p>
+                        <p className="text-[11px] text-gray-400">{fmt(it.unit_price)} × {it.qty}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Totals */}
+              <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm space-y-1.5">
+                <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{fmt(order.subtotal)}</span></div>
+                {(order.discount_amount ?? 0) > 0 && (
+                  <div className="flex justify-between text-green-700 font-medium"><span>Descuento</span><span>−{fmt(order.discount_amount)}</span></div>
+                )}
+                {(order.shipping_cost ?? 0) > 0 && (
+                  <div className="flex justify-between text-gray-600"><span>Envío</span><span>{fmt(order.shipping_cost)}</span></div>
+                )}
+                {(order.tax_amount ?? 0) > 0 && (
+                  <div className="flex justify-between text-gray-500"><span>IVA incluido</span><span>{fmt(order.tax_amount)}</span></div>
+                )}
+                <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-200 text-base">
+                  <span>Total</span><span>{fmt(order.total)}</span>
+                </div>
+              </div>
+
+              {/* Shipping address */}
+              {order.shipping_address && (
+                <div className="flex gap-2 text-sm text-gray-600">
+                  <MapPinned size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-700 text-xs uppercase tracking-wide mb-0.5">Dirección de entrega</p>
+                    {order.shipping_name && <p className="font-medium">{order.shipping_name}</p>}
+                    <p>{[order.shipping_address, order.shipping_city, order.shipping_province, order.shipping_postal].filter(Boolean).join(', ')}</p>
+                    {order.shipping_phone && <p className="text-gray-500">{order.shipping_phone}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Tracking */}
+              {order.tracking && <TrackingCard tracking={order.tracking} />}
+
+              {/* Customer notes */}
+              {order.customer_notes && (
+                <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+                  <span className="font-semibold">Nota:</span> {order.customer_notes}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="space-y-2 pt-1">
+                {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.status !== 'cancelled' && (
+                  <PayOrderButton code={order.code} failed={order.payment_status === 'failed'} />
+                )}
+                {canCancel(order) && (
+                  <CancelButton order={order} onCancelled={updateOrder} />
+                )}
+                {/* Link to public order page */}
+                <Link
+                  to={`/pedido/${order.code}`}
+                  className="flex items-center justify-center gap-1.5 text-xs text-[var(--brand-primary)] hover:underline py-1"
+                >
+                  <CheckCircle2 size={13} /> Ver página del pedido
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

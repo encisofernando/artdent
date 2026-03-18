@@ -12,6 +12,7 @@ export type PickupPoint = {
   latitude: number | null
   longitude: number | null
   notes: string | null
+  accepts_cash_payment: boolean
 }
 
 export type MotoCompany = {

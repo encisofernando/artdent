@@ -1,6 +1,8 @@
+import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { ShoppingCart, ChevronDown, MapPin, X, Truck, LogOut, User, Heart, Bell, Package } from 'lucide-react'
+import { ShoppingCart, ChevronDown, MapPin, X, Truck, LogOut, User, Heart, Bell, Package, ShoppingBag, CreditCard } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../store/auth'
 import { useCart } from '../store/cart'
 import { getWishlist, removeFromWishlist, type WishlistItem } from '../api/wishlist'
@@ -10,17 +12,33 @@ import AdvancedSearch from '../components/AdvancedSearch'
 import MobileMenu from '../components/MobileMenu'
 import { listCategories, type Category } from '../api/categories'
 import { storageUrl } from '../api/http'
+import { productPath } from '../utils/slug'
 
 type MegaMenuColumn = {
   title: string
   items: { label: string; href: string; id: number }[]
 }
 
-const NOTIF_ICONS: Record<AppNotification['type'], string> = {
-  order_status: '📦',
-  order_payment: '💳',
-  stock: '🔔',
-  offer: '🏷️',
+const NOTIF_ICON_COMPONENTS: Record<AppNotification['type'], React.ElementType> = {
+  order_status: ShoppingBag,
+  order_payment: CreditCard,
+  stock: Bell,
+  offer: Bell,
+}
+
+const NOTIF_COLORS: Record<AppNotification['type'], string> = {
+  order_status: 'text-[var(--brand-primary)]',
+  order_payment: 'text-green-600',
+  stock: 'text-amber-500',
+  offer: 'text-purple-500',
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (diff < 60) return 'ahora'
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)}m`
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`
+  return `hace ${Math.floor(diff / 86400)}d`
 }
 
 // ── Postal Code Modal ─────────────────────────────────────────────────────────
@@ -102,6 +120,7 @@ export default function Header() {
   const { user, isAuthenticated, signOut } = useAuth()
   const cart = useCart()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const count = cart.items.reduce((acc, it) => acc + (it.qty || 0), 0)
 
   const [menuOpen, setMenuOpen] = useState<null | 'productos' | 'marcas'>(null)
@@ -110,20 +129,21 @@ export default function Header() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false)
   const [showPostalModal, setShowPostalModal] = useState(false)
 
-  // Favoritos
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([])
+  // Favoritos — React Query para sincronizarse con WishlistButton automáticamente
+  const { data: wishlist = [] } = useQuery<WishlistItem[]>({
+    queryKey: ['wishlist'],
+    queryFn: getWishlist,
+    enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  })
   const [wishlistOpen, setWishlistOpen] = useState(false)
   const wishlistRef = useRef<HTMLDivElement>(null)
 
   // Notificaciones
-  const { notifications, unread, markAllRead } = useNotifications(isAuthenticated)
+  const { notifications, unread, markOneRead, markAllRead, toastNotif, dismissToast } = useNotifications(isAuthenticated)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!isAuthenticated) { setWishlist([]); return }
-    getWishlist().then(setWishlist).catch(() => {})
-  }, [isAuthenticated])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -310,7 +330,7 @@ export default function Header() {
                                   <li key={item.id} className="px-4 py-3 hover:bg-gray-50 transition">
                                     <div className="flex items-start gap-3">
                                       {/* Imagen */}
-                                      <Link to={`/productos/${p.id}`} onClick={() => setWishlistOpen(false)}
+                                      <Link to={productPath(p.id, p.name)} onClick={() => setWishlistOpen(false)}
                                         className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden border">
                                         {src
                                           ? <img src={src} alt={p.name} className="w-full h-full object-contain p-1" />
@@ -318,7 +338,7 @@ export default function Header() {
                                       </Link>
                                       {/* Info */}
                                       <div className="flex-1 min-w-0">
-                                        <Link to={`/productos/${p.id}`} onClick={() => setWishlistOpen(false)}
+                                        <Link to={productPath(p.id, p.name)} onClick={() => setWishlistOpen(false)}
                                           className="text-xs text-gray-700 line-clamp-2 hover:text-[var(--brand-primary)] transition leading-snug">
                                           {p.name}
                                         </Link>
@@ -342,7 +362,8 @@ export default function Header() {
                                         <button
                                           onClick={async () => {
                                             await removeFromWishlist(item.id)
-                                            setWishlist((prev) => prev.filter((i) => i.id !== item.id))
+                                            qc.invalidateQueries({ queryKey: ['wishlist'] })
+                                            qc.invalidateQueries({ queryKey: ['wishlist-check', item.product_id] })
                                           }}
                                           className="mt-1.5 text-[11px] text-[var(--brand-primary)] hover:underline">
                                           Eliminar
@@ -369,7 +390,7 @@ export default function Header() {
                     {/* ── Notificaciones ── */}
                     <div ref={notifRef} className="relative">
                       <button
-                        onClick={() => { setNotifOpen((v) => { if (!v) markAllRead(); return !v }) }}
+                        onClick={() => setNotifOpen((v) => !v)}
                         className="relative flex items-center justify-center hover:text-white transition"
                         aria-label="Notificaciones">
                         <Bell size={17} />
@@ -383,8 +404,25 @@ export default function Header() {
                       {notifOpen && (
                         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border z-50 overflow-hidden">
                           <div className="px-4 py-3 border-b flex items-center justify-between">
-                            <span className="font-semibold text-gray-800 text-sm">Notificaciones</span>
-                            <button onClick={() => setNotifOpen(false)}><X size={14} className="text-gray-400" /></button>
+                            <span className="font-semibold text-gray-800 text-sm">
+                              Notificaciones
+                              {unread > 0 && (
+                                <span className="ml-2 text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full">
+                                  {unread} nuevas
+                                </span>
+                              )}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {unread > 0 && (
+                                <button
+                                  onClick={markAllRead}
+                                  className="text-[11px] text-[var(--brand-primary)] hover:underline font-medium"
+                                >
+                                  Todo leído
+                                </button>
+                              )}
+                              <button onClick={() => setNotifOpen(false)}><X size={14} className="text-gray-400" /></button>
+                            </div>
                           </div>
                           {notifications.length === 0 ? (
                             <div className="px-4 py-8 text-center text-gray-400 text-sm">
@@ -393,30 +431,43 @@ export default function Header() {
                             </div>
                           ) : (
                             <ul className="max-h-80 overflow-y-auto divide-y">
-                              {notifications.map((n) => (
-                                <li key={n.id} className={`transition ${n.read ? 'bg-white' : 'bg-blue-50'}`}>
-                                  {n.orderCode ? (
-                                    <Link to={`/pedido/${n.orderCode}`} onClick={() => setNotifOpen(false)}
-                                      className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50">
-                                      <span className="text-base shrink-0 mt-0.5">{NOTIF_ICONS[n.type]}</span>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-gray-800">{n.title}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                              {notifications.map((n) => {
+                                const Icon = NOTIF_ICON_COMPONENTS[n.type] ?? Bell
+                                const color = NOTIF_COLORS[n.type]
+                                const handleClick = () => {
+                                  markOneRead(n.id)
+                                  setNotifOpen(false)
+                                }
+                                return (
+                                  <li key={n.id} className="bg-blue-50 hover:bg-blue-100/60 transition cursor-pointer">
+                                    {n.orderCode ? (
+                                      <Link
+                                        to={`/pedido/${n.orderCode}`}
+                                        onClick={handleClick}
+                                        className="flex items-start gap-3 px-4 py-3"
+                                      >
+                                        <Icon size={15} className={`${color} shrink-0 mt-0.5`} />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-semibold text-gray-800">{n.title}</p>
+                                          <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                                          <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
+                                        </div>
+                                        <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
+                                      </Link>
+                                    ) : (
+                                      <div onClick={handleClick} className="flex items-start gap-3 px-4 py-3">
+                                        <Icon size={15} className={`${color} shrink-0 mt-0.5`} />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-semibold text-gray-800">{n.title}</p>
+                                          <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                                          <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
+                                        </div>
+                                        <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
                                       </div>
-                                      {!n.read && <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />}
-                                    </Link>
-                                  ) : (
-                                    <div className="flex items-start gap-3 px-4 py-3">
-                                      <span className="text-base shrink-0 mt-0.5">{NOTIF_ICONS[n.type]}</span>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-gray-800">{n.title}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                                      </div>
-                                      {!n.read && <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />}
-                                    </div>
-                                  )}
-                                </li>
-                              ))}
+                                    )}
+                                  </li>
+                                )
+                              })}
                             </ul>
                           )}
                           <div className="px-4 py-3 border-t bg-gray-50">
@@ -539,6 +590,37 @@ export default function Header() {
       </header>
 
       <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+
+      {/* Toast — bottom right */}
+      {toastNotif && (
+        <div className="fixed bottom-6 right-6 z-[9999] w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+          style={{ animation: 'slideInUp 0.3s ease' }}>
+          <div className="flex items-start gap-3 px-4 py-3.5">
+            {(() => {
+              const Icon = NOTIF_ICON_COMPONENTS[toastNotif.type] ?? Bell
+              const color = NOTIF_COLORS[toastNotif.type]
+              return <Icon size={18} className={`${color} shrink-0 mt-0.5`} />
+            })()}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-800">{toastNotif.title}</p>
+              <p className="text-xs text-gray-500 mt-0.5 leading-snug">{toastNotif.body}</p>
+              {toastNotif.orderCode && (
+                <Link
+                  to={`/pedido/${toastNotif.orderCode}`}
+                  onClick={() => { markOneRead(toastNotif.id); dismissToast() }}
+                  className="mt-1.5 inline-block text-xs text-[var(--brand-primary)] hover:underline font-semibold"
+                >
+                  Ver pedido →
+                </Link>
+              )}
+            </div>
+            <button onClick={dismissToast} className="text-gray-400 hover:text-gray-600 shrink-0">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="h-1 bg-[var(--brand-primary)]" style={{ animation: 'shrinkBar 5s linear forwards' }} />
+        </div>
+      )}
     </>
   )
 }

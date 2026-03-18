@@ -82,6 +82,8 @@ class EcommerceOrder extends Model
         'shipping_phone',
         'customer_notes',
         'admin_notes',
+        'selected_payment_method',
+        'mp_payment_id',
     ];
 
     public function company()

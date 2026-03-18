@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Download, ArrowRight } from 'lucide-react'
 import { getComparison, removeFromComparison } from '../api/comparison'
 import { useNavigate } from 'react-router-dom'
+import { productPath } from '../utils/slug'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
@@ -197,7 +198,7 @@ export default function ProductComparison() {
                     </h3>
                     
                     <button
-                      onClick={() => navigate(`/productos/${item.product.id}`)}
+                      onClick={() => navigate(productPath(item.product.id, item.product.name))}
                       className="mt-3 text-xs text-[var(--brand-primary)] hover:underline flex items-center gap-1"
                     >
                       Ver detalles

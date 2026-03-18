@@ -94,7 +94,7 @@ export default function App() {
 
             {/* Catálogo público */}
             <Route path="/productos" element={<Products />} />
-            <Route path="/productos/:id" element={<ProductDetail />} />
+            <Route path="/productos/:slug" element={<ProductDetail />} />
 
             <Route path="/contacto" element={<Contacto />} />
             <Route path="/defensa-consumidor" element={<DefensaConsumidor />} />

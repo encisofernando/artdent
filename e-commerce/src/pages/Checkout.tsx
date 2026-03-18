@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CreditCard, MapPin, Bike, Home, ChevronRight, Check, Package } from 'lucide-react'
+import { CreditCard, MapPin, Bike, Home, ChevronRight, Check, Package, Landmark, QrCode, Banknote } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { checkout } from '../api/orders'
 import { getShippingOptions, type PickupPoint, type MotoCompany } from '../api/shipping'
+import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
 import { useCart } from '../store/cart'
 import { useAuth } from '../store/auth'
 import { createMpPreference } from '../api/payment'
@@ -17,7 +18,7 @@ const LS_LAST_EMAIL = 'artdent_last_checkout_email'
 
 // ── Step indicator ─────────────────────────────────────────────────────────────
 function StepBar({ step }: { step: number }) {
-  const steps = ['Datos', 'Envío', 'Pago']
+  const steps = ['Datos', 'Envío', 'Pago', 'Confirmar']
   return (
     <div className="flex items-center gap-0 mb-8">
       {steps.map((label, i) => {
@@ -438,6 +439,104 @@ function StepShipping({
   )
 }
 
+const PAYMENT_ICONS: Record<string, React.ReactNode> = {
+  mercadopago: <CreditCard size={20} />,
+  bank_transfer: <Landmark size={20} />,
+  qr: <QrCode size={20} />,
+  cash: <Banknote size={20} />,
+}
+
+// ── Step 3: Payment method ──────────────────────────────────────────────────────
+function StepPayment({
+  selectedPayment, setSelectedPayment,
+  selectedMethod, selectedPickupPoint,
+  onBack, onNext,
+}: {
+  selectedPayment: PaymentOption | null
+  setSelectedPayment: (p: PaymentOption) => void
+  selectedMethod: ShippingMethod | null
+  selectedPickupPoint: PickupPoint | null
+  onBack: () => void
+  onNext: () => void
+}) {
+  const { data: rawOptions = [], isLoading } = useQuery({
+    queryKey: ['payment_options'],
+    queryFn: getPaymentOptions,
+    staleTime: 5 * 60_000,
+  })
+
+  // Ocultar efectivo si la sucursal elegida no lo acepta
+  const options = rawOptions.filter(opt => {
+    if (opt.type !== 'cash') return true
+    if (selectedMethod === 'pickup_point') {
+      return selectedPickupPoint?.accepts_cash_payment === true
+    }
+    return true
+  })
+
+  return (
+    <div className="space-y-4">
+      <div className="card p-6 space-y-4">
+        <h2 className="text-lg font-bold">Método de pago</h2>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8 gap-3 text-sm text-gray-500">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--brand-primary)] border-r-transparent" />
+            Cargando métodos de pago…
+          </div>
+        ) : options.length === 0 ? (
+          <p className="text-sm text-gray-500 py-4">No hay métodos de pago disponibles.</p>
+        ) : (
+          <div className="space-y-3">
+            {options.map(opt => (
+              <button
+                key={opt.type}
+                onClick={() => setSelectedPayment(opt)}
+                className={`w-full text-left rounded-xl border-2 p-4 transition-all
+                  ${selectedPayment?.type === opt.type
+                    ? 'border-[var(--brand-primary)] bg-[var(--brand-soft)]'
+                    : 'border-gray-200 hover:border-[var(--brand-primary)]/40 bg-white'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0
+                    ${selectedPayment?.type === opt.type ? 'bg-[var(--brand-primary)] text-white' : 'bg-gray-100 text-gray-500'}`}>
+                    {PAYMENT_ICONS[opt.type] ?? <CreditCard size={20} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-800">{opt.label}</p>
+                    {opt.instructions && (
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{opt.instructions}</p>
+                    )}
+                    {opt.type === 'cash' && opt.pickup_points && opt.pickup_points.length > 0 && (
+                      <p className="text-xs text-amber-600 mt-0.5">
+                        Disponible en {opt.pickup_points.length} punto{opt.pickup_points.length !== 1 ? 's' : ''} de retiro
+                      </p>
+                    )}
+                  </div>
+                  <div className={`h-5 w-5 rounded-full border-2 shrink-0 flex items-center justify-center
+                    ${selectedPayment?.type === opt.type ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]' : 'border-gray-300'}`}>
+                    {selectedPayment?.type === opt.type && <div className="h-2 w-2 rounded-full bg-white" />}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-between pt-2">
+        <button className="btn btn-outline gap-2" onClick={onBack}>Volver</button>
+        <button
+          className={`btn btn-primary px-8 gap-2 ${!selectedPayment ? 'opacity-40 pointer-events-none' : ''}`}
+          onClick={onNext}
+        >
+          Continuar <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Checkout ───────────────────────────────────────────────────────────────
 export default function Checkout() {
   const cart = useCart()
@@ -460,6 +559,8 @@ export default function Checkout() {
   const [selectedMethod, setSelectedMethod] = useState<ShippingMethod | null>(null)
   const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null)
   const [selectedMotoCompany, setSelectedMotoCompany] = useState<MotoCompany | null>(null)
+
+  const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(null)
 
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -507,6 +608,7 @@ export default function Checkout() {
         shipping_cost: shippingCost || undefined,
         notes: notes.trim() || undefined,
         coupon_code: appliedCoupon?.coupon?.code || undefined,
+        selected_payment_method: selectedPayment?.type ?? undefined,
         items: cart.items.map((it) => ({
           product_id: it.product.id,
           qty: it.qty,
@@ -540,8 +642,9 @@ export default function Checkout() {
 
   // Post-checkout payment screen
   if (orderCode) {
+    const pm = selectedPayment
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+      <div className="mx-auto max-w-lg px-4 py-16">
         <div className="card p-8 space-y-6">
           <div className="flex justify-center">
             <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
@@ -550,21 +653,85 @@ export default function Checkout() {
               </svg>
             </div>
           </div>
-          <div>
+          <div className="text-center">
             <h2 className="text-xl font-bold text-gray-900">¡Pedido creado!</h2>
             <p className="mt-1 text-sm text-gray-500">Pedido <span className="font-mono font-semibold">#{orderCode}</span></p>
           </div>
-          <p className="text-sm text-gray-600">¿Querés pagar ahora con MercadoPago o lo hacés después?</p>
-          <div className="space-y-3">
-            <button onClick={payWithMp} disabled={mpLoading} className="btn btn-primary w-full py-3 gap-2">
-              <CreditCard size={18} />
-              {mpLoading ? 'Redirigiendo a MercadoPago…' : 'Pagar ahora con MercadoPago'}
-            </button>
-            <button onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)} className="btn btn-outline w-full py-3">
-              Pagar después / Ver pedido
-            </button>
-          </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          {/* MercadoPago */}
+          {(!pm || pm.type === 'mercadopago') && (
+            <>
+              <p className="text-sm text-gray-600 text-center">¿Querés pagar ahora con MercadoPago o lo hacés después?</p>
+              <div className="space-y-3">
+                <button onClick={payWithMp} disabled={mpLoading} className="btn btn-primary w-full py-3 gap-2">
+                  <CreditCard size={18} />
+                  {mpLoading ? 'Redirigiendo a MercadoPago…' : 'Pagar ahora con MercadoPago'}
+                </button>
+                <button onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)} className="btn btn-outline w-full py-3">
+                  Pagar después / Ver pedido
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Transferencia */}
+          {pm?.type === 'bank_transfer' && (
+            <div className="space-y-4">
+              {pm.instructions && <p className="text-sm text-gray-600">{pm.instructions}</p>}
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-2 text-sm">
+                {pm.account_name && <div className="flex justify-between"><span className="text-gray-500">Titular</span><span className="font-semibold">{pm.account_name}</span></div>}
+                {pm.cbu && <div className="flex justify-between gap-4"><span className="text-gray-500">CBU/CVU</span><span className="font-mono font-semibold break-all">{pm.cbu}</span></div>}
+                {pm.alias && <div className="flex justify-between"><span className="text-gray-500">Alias</span><span className="font-semibold">{pm.alias}</span></div>}
+              </div>
+              <button onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)} className="btn btn-primary w-full py-3">
+                Ver mi pedido
+              </button>
+            </div>
+          )}
+
+          {/* QR */}
+          {pm?.type === 'qr' && (
+            <div className="space-y-4 text-center">
+              {pm.instructions && <p className="text-sm text-gray-600">{pm.instructions}</p>}
+              {pm.image_url && (
+                <div className="flex justify-center">
+                  <img src={pm.image_url} alt="QR de pago" className="h-48 w-48 rounded-2xl border object-contain p-2 bg-white shadow" />
+                </div>
+              )}
+              {pm.payment_url && (
+                <a href={pm.payment_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary w-full py-3 gap-2 inline-flex justify-center items-center">
+                  <QrCode size={18} /> Ir al link de pago
+                </a>
+              )}
+              <button onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)} className="btn btn-outline w-full py-3">
+                Ver mi pedido
+              </button>
+            </div>
+          )}
+
+          {/* Efectivo */}
+          {pm?.type === 'cash' && (
+            <div className="space-y-4">
+              {pm.instructions && <p className="text-sm text-gray-600">{pm.instructions}</p>}
+              {pm.pickup_points && pm.pickup_points.length > 0 && (
+                <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 space-y-2">
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Puntos donde pagar en efectivo</p>
+                  {pm.pickup_points.map(pp => (
+                    <div key={pp.id} className="text-sm">
+                      <p className="font-semibold text-gray-800">{pp.name}</p>
+                      <p className="text-xs text-gray-500">{pp.address}, {pp.city}</p>
+                      {pp.schedule && <p className="text-xs text-gray-400">{pp.schedule}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)} className="btn btn-primary w-full py-3">
+                Ver mi pedido
+              </button>
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-600 text-center">{error}</p>}
         </div>
       </div>
     )
@@ -612,8 +779,12 @@ export default function Checkout() {
                 setSelectedMethod(m)
                 setSelectedPickupPoint(null)
                 setSelectedMotoCompany(null)
+                setSelectedPayment(null)
               }}
-              selectedPickupPoint={selectedPickupPoint} setSelectedPickupPoint={setSelectedPickupPoint}
+              selectedPickupPoint={selectedPickupPoint} setSelectedPickupPoint={(p) => {
+                setSelectedPickupPoint(p)
+                setSelectedPayment(null)
+              }}
               selectedMotoCompany={selectedMotoCompany} setSelectedMotoCompany={setSelectedMotoCompany}
               onBack={() => setStep(1)}
               onNext={() => setStep(3)}
@@ -621,6 +792,17 @@ export default function Checkout() {
           )}
 
           {step === 3 && (
+            <StepPayment
+              selectedPayment={selectedPayment}
+              setSelectedPayment={setSelectedPayment}
+              selectedMethod={selectedMethod}
+              selectedPickupPoint={selectedPickupPoint}
+              onBack={() => setStep(2)}
+              onNext={() => setStep(4)}
+            />
+          )}
+
+          {step === 4 && (
             <div className="card p-6 space-y-5">
               <h2 className="text-lg font-bold">Confirmar pedido</h2>
 
@@ -658,8 +840,16 @@ export default function Checkout() {
                 </div>
               )}
 
+              {/* Payment method summary */}
+              {selectedPayment && (
+                <div className="flex flex-col sm:flex-row sm:gap-2 text-gray-700 text-sm">
+                  <span className="font-semibold sm:w-24 sm:shrink-0 text-gray-500">Pago:</span>
+                  <span>{selectedPayment.label}</span>
+                </div>
+              )}
+
               <div className="flex justify-between pt-2">
-                <button className="btn btn-outline gap-2" onClick={() => setStep(2)}>Volver</button>
+                <button className="btn btn-outline gap-2" onClick={() => setStep(3)}>Volver</button>
                 <button
                   className={`btn btn-primary px-8 gap-2 ${loading ? 'opacity-60 pointer-events-none' : ''}`}
                   onClick={onSubmit}
@@ -669,7 +859,7 @@ export default function Checkout() {
               </div>
 
               <p className="text-xs text-gray-400 text-center">
-                Al confirmar se genera el pedido y podrás elegir pagar con MercadoPago o después.
+                Al confirmar se genera el pedido.
               </p>
             </div>
           )}

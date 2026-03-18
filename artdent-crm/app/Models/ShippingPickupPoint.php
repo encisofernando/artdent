@@ -18,6 +18,7 @@ class ShippingPickupPoint extends Model
         'longitude',
         'notes',
         'is_active',
+        'accepts_cash_payment',
     ];
 
     protected function casts(): array
@@ -26,6 +27,7 @@ class ShippingPickupPoint extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'is_active' => 'boolean',
+            'accepts_cash_payment' => 'boolean',
         ];
     }
 }

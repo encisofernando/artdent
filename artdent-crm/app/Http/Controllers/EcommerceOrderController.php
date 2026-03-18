@@ -71,6 +71,7 @@ class EcommerceOrderController extends Controller
             'customer',
             'coupon',
             'ecommerce_order_items.product.product_images',
+            'shipments',
         ]);
 
         return Inertia::render('EcommerceOrder/Show', [
@@ -90,6 +91,14 @@ class EcommerceOrderController extends Controller
             'shipping_province' => 'nullable|string|max:100',
             'shipping_postal' => 'nullable|string|max:20',
             'shipping_phone' => 'nullable|string|max:30',
+            'carrier' => 'nullable|string|max:100',
+            'tracking_code' => 'nullable|string|max:255',
+            'tracking_url' => 'nullable|url|max:500',
+            'tracking_status' => 'nullable|in:preparing,shipped,in_transit,delivered,returned',
+            'shipped_at' => 'nullable|date',
+            'estimated_delivery' => 'nullable|date',
+            'delivered_at' => 'nullable|date',
+            'tracking_notes' => 'nullable|string|max:500',
         ]);
 
         $previousStatus = $ecommerceOrder->status;
@@ -122,6 +131,27 @@ class EcommerceOrderController extends Controller
         }
 
         $ecommerceOrder->update($validated);
+
+        // Handle shipment tracking
+        $trackingData = array_filter([
+            'carrier' => $request->input('carrier'),
+            'tracking_code' => $request->input('tracking_code'),
+            'tracking_url' => $request->input('tracking_url'),
+            'status' => $request->input('tracking_status'),
+            'shipped_at' => $request->input('shipped_at') ?: null,
+            'estimated_delivery' => $request->input('estimated_delivery') ?: null,
+            'delivered_at' => $request->input('delivered_at') ?: null,
+            'notes' => $request->input('tracking_notes'),
+        ], fn ($v) => $v !== null && $v !== '');
+
+        if (! empty($trackingData)) {
+            $shipment = $ecommerceOrder->shipments()->first();
+            if ($shipment) {
+                $shipment->update($trackingData);
+            } else {
+                $ecommerceOrder->shipments()->create($trackingData);
+            }
+        }
 
         return back()->with('success', 'Pedido actualizado.');
     }

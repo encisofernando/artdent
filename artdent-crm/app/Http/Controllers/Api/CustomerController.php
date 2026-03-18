@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CrmNotification;
+use App\Models\Stock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
@@ -72,6 +75,113 @@ class CustomerController extends Controller
             ->firstOrFail();
 
         return response()->json($this->formatOrder($order));
+    }
+
+    public function changePaymentMethod(Request $request, string $code): JsonResponse
+    {
+        $validated = $request->validate([
+            'selected_payment_method' => ['required', 'string', 'in:mercadopago,bank_transfer,qr,cash'],
+        ]);
+
+        $order = $request->user()
+            ->ecommerce_orders()
+            ->with(['ecommerce_order_items', 'shipments'])
+            ->where('order_number', $code)
+            ->firstOrFail();
+
+        if (\in_array($order->status, ['cancelled', 'refunded', 'delivered'])) {
+            return response()->json([
+                'message' => 'No se puede cambiar el método de pago de este pedido.',
+            ], 422);
+        }
+
+        if ($order->payment_status === 'paid') {
+            return response()->json([
+                'message' => 'El pedido ya fue pagado.',
+            ], 422);
+        }
+
+        if ($validated['selected_payment_method'] === 'cash' &&
+            \in_array($order->shipping_method_type, ['home_delivery', 'moto'])) {
+            return response()->json([
+                'message' => 'El pago en efectivo no está disponible para este método de envío.',
+            ], 422);
+        }
+
+        $order->update(['selected_payment_method' => $validated['selected_payment_method']]);
+
+        return response()->json($this->formatOrder($order->fresh(['ecommerce_order_items', 'shipments'])));
+    }
+
+    public function cancelOrder(Request $request, string $code): JsonResponse
+    {
+        $order = $request->user()
+            ->ecommerce_orders()
+            ->with(['ecommerce_order_items', 'shipments'])
+            ->where('order_number', $code)
+            ->firstOrFail();
+
+        if (in_array($order->status, ['shipped', 'delivered', 'cancelled', 'refunded'])) {
+            return response()->json([
+                'message' => 'Este pedido no puede cancelarse en su estado actual.',
+            ], 422);
+        }
+
+        if ($order->created_at->lt(now()->subHours(2))) {
+            return response()->json([
+                'message' => 'El plazo de cancelación de 2 horas ya venció.',
+            ], 422);
+        }
+
+        // Restore stock for each item
+        $warehouseId = (int) env('ECOMMERCE_WAREHOUSE_ID', 1);
+
+        foreach ($order->ecommerce_order_items as $item) {
+            Stock::query()
+                ->where('product_id', $item->product_id)
+                ->where('warehouse_id', $warehouseId)
+                ->when(
+                    $item->variant_id === null,
+                    fn ($q) => $q->whereNull('variant_id'),
+                    fn ($q) => $q->where('variant_id', $item->variant_id)
+                )
+                ->increment('quantity', $item->quantity);
+        }
+
+        $orderUpdates = ['status' => 'cancelled'];
+
+        if ($order->payment_status === 'pending') {
+            $orderUpdates['payment_status'] = 'failed';
+        } elseif ($order->payment_status === 'paid' && $order->selected_payment_method === 'mercadopago' && $order->mp_payment_id) {
+            $mpConfig = \App\Models\EcommercePaymentConfig::query()
+                ->where('type', 'mercadopago')
+                ->first();
+
+            $accessToken = ($mpConfig && ! empty($mpConfig->config['access_token']))
+                ? $mpConfig->config['access_token']
+                : config('services.mercadopago.access_token', '');
+
+            $refundResponse = Http::withToken($accessToken)
+                ->when(! app()->isProduction(), fn ($h) => $h->withoutVerifying())
+                ->post("https://api.mercadopago.com/v1/payments/{$order->mp_payment_id}/refunds");
+
+            if ($refundResponse->successful()) {
+                $orderUpdates['payment_status'] = 'refunded';
+                $orderUpdates['status'] = 'refunded';
+            }
+        }
+
+        $order->update($orderUpdates);
+
+        CrmNotification::create([
+            'type' => 'order_cancelled',
+            'title' => 'Pedido cancelado',
+            'body' => "El cliente canceló el pedido #{$order->order_number}",
+            'url' => '/ecommerce-orders/'.$order->id,
+            'order_code' => $order->order_number,
+        ]);
+
+        return response()->json($this->formatOrder($order->fresh(['ecommerce_order_items', 'shipments'])));
     }
 
     public function addresses(Request $request): JsonResponse
@@ -172,7 +282,11 @@ class CustomerController extends Controller
             'shipping_postal' => $order->shipping_postal,
             'shipping_phone' => $order->shipping_phone,
             'customer_notes' => $order->customer_notes,
+            'shipping_method_type' => $order->shipping_method_type,
+            'selected_payment_method' => $order->selected_payment_method,
             'created_at' => $order->created_at?->toIso8601String(),
+            'can_cancel' => ! \in_array($order->status, ['shipped', 'delivered', 'cancelled', 'refunded'])
+                && $order->created_at?->gt(now()->subHours(2)),
             'items' => $order->ecommerce_order_items->map(fn ($item) => [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
@@ -186,6 +300,7 @@ class CustomerController extends Controller
             'tracking' => $shipment ? [
                 'carrier' => $shipment->carrier,
                 'tracking_code' => $shipment->tracking_code,
+                'tracking_url' => $shipment->tracking_url,
                 'status' => $shipment->status,
                 'shipped_at' => $shipment->shipped_at,
                 'estimated_delivery' => $shipment->estimated_delivery,

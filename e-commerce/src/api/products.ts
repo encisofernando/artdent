@@ -55,6 +55,7 @@ export type ProductVariant = {
   id: number
   sku: string | null
   price: number | null
+  price_final: number | null
   is_active: boolean
   stock: number
   attributes: VariantAttribute[]

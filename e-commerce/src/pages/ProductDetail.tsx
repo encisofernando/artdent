@@ -3,6 +3,7 @@ import { useMemo, useState, useRef, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Share2, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getProduct, type ProductVariant } from '../api/products'
+import { productPath, idFromSlug } from '../utils/slug'
 import { useCart } from '../store/cart'
 import ProductReviews from '../components/ProductReviews'
 import WishlistButton from '../components/WishlistButton'
@@ -10,8 +11,8 @@ import SEOHead from '../components/SEOHead'
 import { analytics } from '../api/analytics'
 
 export default function ProductDetail() {
-  const { id } = useParams<{ id: string }>()
-  const productId = Number(id)
+  const { slug } = useParams<{ slug: string }>()
+  const productId = idFromSlug(slug ?? '')
   const navigate = useNavigate()
 
   const { data: product, isLoading, isError } = useQuery({
@@ -78,9 +79,15 @@ export default function ProductDetail() {
 
   const currentImage = images[activeImageIndex]?.url || '/placeholder-product.jpg'
 
-  const price = selectedVariant?.price != null
-    ? Number(selectedVariant.price)
+  const price = selectedVariant != null
+    ? Number(selectedVariant.price_final ?? selectedVariant.price ?? 0)
     : Number(product?.price_final ?? product?.price ?? 0)
+
+  const originalPrice = selectedVariant != null
+    ? (selectedVariant.price_final != null && selectedVariant.price != null && selectedVariant.price_final < selectedVariant.price
+        ? Number(selectedVariant.price)
+        : null)
+    : (product?.price_final != null && product.price_final < product.price ? Number(product.price) : null)
 
   const hasStock = product?.has_variants
     ? (selectedVariant ? selectedVariant.stock > 0 : false)
@@ -99,7 +106,10 @@ export default function ProductDetail() {
       const variantLabel = selectedVariant
         ? selectedVariant.attributes.map((a) => `${a.attribute}: ${a.value}`).join(' / ')
         : undefined
-      add(product, quantity, selectedVariant?.id, selectedVariant?.sku, selectedVariant?.price, variantLabel)
+      const variantPrice = selectedVariant
+        ? (selectedVariant.price_final ?? selectedVariant.price)
+        : undefined
+      add(product, quantity, selectedVariant?.id, selectedVariant?.sku, variantPrice, variantLabel)
       analytics.addToCart({
         id: product.id,
         name: product.name,
@@ -115,7 +125,10 @@ export default function ProductDetail() {
       const variantLabel = selectedVariant
         ? selectedVariant.attributes.map((a) => `${a.attribute}: ${a.value}`).join(' / ')
         : undefined
-      add(product, quantity, selectedVariant?.id, selectedVariant?.sku, selectedVariant?.price, variantLabel)
+      const variantPrice = selectedVariant
+        ? (selectedVariant.price_final ?? selectedVariant.price)
+        : undefined
+      add(product, quantity, selectedVariant?.id, selectedVariant?.sku, variantPrice, variantLabel)
       navigate('/carrito')
     }
   }
@@ -237,13 +250,13 @@ export default function ProductDetail() {
         description={product.description ?? `${product.name} – ArtDent`}
         keywords={[product.category?.name, 'dental', product.name, 'ArtDent'].filter(Boolean) as string[]}
         image={currentImage}
-        url={`/productos/${product.id}`}
+        url={productPath(product.id, product.name)}
         type="product"
         breadcrumbs={[
           { name: 'Inicio', url: '/' },
           { name: 'Productos', url: '/productos' },
           ...(product.category ? [{ name: product.category.name, url: `/categoria/${product.category.id}` }] : []),
-          { name: product.name, url: `/productos/${product.id}` },
+          { name: product.name, url: productPath(product.id, product.name) },
         ]}
       />
 
@@ -418,16 +431,16 @@ export default function ProductDetail() {
 
               {/* Precio */}
               <div className="space-y-1">
-                {product.price_final && product.price_final < product.price && (
-                  <p className="text-sm text-gray-400 line-through">${Number(product.price).toLocaleString('es-AR')}</p>
+                {originalPrice && (
+                  <p className="text-sm text-gray-400 line-through">${originalPrice.toLocaleString('es-AR')}</p>
                 )}
                 <div className="flex items-baseline gap-3">
                   <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">
                     ${price.toLocaleString('es-AR')}
                   </span>
-                  {product.price_final && product.price_final < product.price && (
+                  {originalPrice && (
                     <span className="badge badge-success text-xs">
-                      {Math.round((1 - product.price_final / product.price) * 100)}% OFF
+                      {Math.round((1 - price / originalPrice) * 100)}% OFF
                     </span>
                   )}
                 </div>

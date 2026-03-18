@@ -55,6 +55,7 @@ class ShippingPickupPointController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'notes' => 'nullable|string',
             'is_active' => 'nullable|boolean',
+            'accepts_cash_payment' => 'nullable|boolean',
         ]);
 
         ShippingPickupPoint::create($validated);
@@ -82,6 +83,7 @@ class ShippingPickupPointController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'notes' => 'nullable|string',
             'is_active' => 'nullable|boolean',
+            'accepts_cash_payment' => 'nullable|boolean',
         ]);
 
         $shippingPickupPoint->update($validated);

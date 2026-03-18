@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Share2, ShoppingCart } from 'lucide-react'
 import { getProduct } from '../api/products'
+import { productPath, idFromSlug } from '../utils/slug'
 import { useCart } from '../store/cart'
 import ProductReviews from '../components/ProductReviews'
 import WishlistButton from '../components/WishlistButton'
@@ -10,7 +11,7 @@ import SEOHead from '../components/SEOHead'
 import { analytics } from '../api/analytics'
 export default function ProductDetail() {
   const params = useParams()
-  const id = Number(params.id)
+  const id = idFromSlug(params.slug ?? params.id ?? '')
 
   const productQuery = useQuery({
     queryKey: ['product', id],
@@ -125,13 +126,13 @@ export default function ProductDetail() {
         description={p.description ?? `${p.name} - Productos dentales profesionales en ARTDENT`}
         keywords={[p.category?.name, 'dental', p.name, 'ARTDENT'].filter(Boolean) as string[]}
         image={mainUrl ?? undefined}
-        url={`/productos/${p.id}`}
+        url={productPath(p.id, p.name)}
         type="product"
         breadcrumbs={[
           { name: 'Inicio', url: '/' },
           { name: 'Productos', url: '/productos' },
           ...(p.category ? [{ name: p.category.name, url: `/categoria/${p.category.id}` }] : []),
-          { name: p.name, url: `/productos/${p.id}` },
+          { name: p.name, url: productPath(p.id, p.name) },
         ]}
       />
 

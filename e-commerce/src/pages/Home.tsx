@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, ArrowRight, Check } from 'lucide-react'
 import { listProducts, type CatalogProduct } from '../api/products'
+import { productPath } from '../utils/slug'
 import { listCategories } from '../api/categories'
 import { listSidebarBanners, type SidebarBanner } from '../api/banners'
 import { listHeroSlides, type HeroSlide as ApiHeroSlide } from '../api/slides'
@@ -30,7 +31,7 @@ function MiniCard({ p }: { p: CatalogProduct }) {
 
   return (
     <Link
-      to={`/productos/${p.id}`}
+      to={productPath(p.id, p.name)}
       className="bg-white rounded-xl border border-gray-100 hover:border-[var(--brand-primary)]/40 hover:shadow-md transition-all flex flex-col overflow-hidden group"
     >
       {p.category && (

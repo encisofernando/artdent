@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag, MapPin, Banknote, QrCode } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 
@@ -11,6 +11,21 @@ const SHIPPING_METHOD_LABELS = {
     home_delivery: 'Envío a domicilio',
     pickup_point:  'Retiro en punto de entrega',
     moto:          'Moto Mandados',
+};
+
+const PAYMENT_METHOD_LABELS = {
+    mercadopago:   'MercadoPago',
+    bank_transfer: 'Transferencia bancaria',
+    qr:            'Pago QR',
+    cash:          'Efectivo',
+};
+
+const TRACKING_STATUS_LABELS = {
+    preparing:   'En preparación',
+    shipped:     'Despachado',
+    in_transit:  'En tránsito',
+    delivered:   'Entregado',
+    returned:    'Devuelto',
 };
 
 const STATUS_CONFIG = {
@@ -51,20 +66,43 @@ export default function Show({ auth, order }) {
     const { isDark } = useTheme();
     const [saved, setSaved] = useState(false);
 
+    const shipment = order.shipments?.[0] ?? null;
+
+    const toDateInput = (v) => v ? new Date(v).toISOString().split('T')[0] : '';
+
     const { data, setData, put, processing } = useForm({
-        status:           order.status           || 'pending',
-        payment_status:   order.payment_status   || 'pending',
-        admin_notes:      order.admin_notes      || '',
-        shipping_name:    order.shipping_name    || '',
-        shipping_address: order.shipping_address || '',
-        shipping_city:    order.shipping_city    || '',
-        shipping_province:order.shipping_province|| '',
-        shipping_postal:  order.shipping_postal  || '',
-        shipping_phone:   order.shipping_phone   || '',
+        status:            order.status            || 'pending',
+        payment_status:    order.payment_status    || 'pending',
+        admin_notes:       order.admin_notes       || '',
+        shipping_name:     order.shipping_name     || '',
+        shipping_address:  order.shipping_address  || '',
+        shipping_city:     order.shipping_city     || '',
+        shipping_province: order.shipping_province || '',
+        shipping_postal:   order.shipping_postal   || '',
+        shipping_phone:    order.shipping_phone    || '',
+        // Tracking
+        carrier:           shipment?.carrier          || '',
+        tracking_code:     shipment?.tracking_code    || '',
+        tracking_url:      shipment?.tracking_url     || '',
+        tracking_status:   shipment?.status           || '',
+        shipped_at:        toDateInput(shipment?.shipped_at),
+        estimated_delivery:toDateInput(shipment?.estimated_delivery),
+        delivered_at:      toDateInput(shipment?.delivered_at),
+        tracking_notes:    shipment?.notes            || '',
     });
 
+    // Auto-reload order data every 30s (updates badges/status without resetting form fields)
+    useEffect(() => {
+        const id = setInterval(() => {
+            if (!processing) {
+                router.reload({ only: ['order'] });
+            }
+        }, 30_000);
+        return () => clearInterval(id);
+    }, [processing]);
+
     const submit = (e) => {
-        e.preventDefault();
+        e?.preventDefault();
         put(route('ecommerce-orders.update', order.id), {
             onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2500); },
         });
@@ -105,20 +143,40 @@ export default function Show({ auth, order }) {
                     <div className="flex items-center gap-2 flex-wrap">
                         <Badge value={order.status} config={STATUS_CONFIG} />
                         <Badge value={order.payment_status} config={PAYMENT_CONFIG} />
+                        {order.selected_payment_method && (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-xs font-bold bg-sky-500/10 text-sky-600 border-sky-500/20`}>
+                                <CreditCard size={11} className="mr-1" />
+                                {PAYMENT_METHOD_LABELS[order.selected_payment_method] ?? order.selected_payment_method}
+                            </span>
+                        )}
                         {order.coupon && (
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-xs font-bold bg-purple-500/10 text-purple-600 border-purple-500/20`}>
                                 Cupón: {order.coupon.code}
                             </span>
                         )}
+
+                        {saved && (
+                            <span className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
+                                <CheckCircle2 size={14} /> Guardado
+                            </span>
+                        )}
+                        <Button
+                            onClick={submit}
+                            disabled={processing}
+                            style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
+                            className="text-white border-none shadow-md"
+                        >
+                            <Save size={15} className="mr-2" />
+                            {processing ? 'Guardando…' : 'Guardar cambios'}
+                        </Button>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    {/* Columna izquierda */}
-                    <div className="lg:col-span-2 flex flex-col gap-6">
+                    {/* Columna 1 — Productos */}
+                    <div className="flex flex-col gap-6">
 
-                        {/* Ítems del pedido */}
                         <Section title="Productos Pedidos" icon={Package} isDark={isDark}>
                             <div className="space-y-3">
                                 {(order.ecommerce_order_items || []).map((item) => {
@@ -179,7 +237,6 @@ export default function Show({ auth, order }) {
                             </div>
                         </Section>
 
-                        {/* Notas del cliente */}
                         {order.customer_notes && (
                             <Section title="Notas del Cliente" icon={FileText} isDark={isDark}>
                                 <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{order.customer_notes}</p>
@@ -187,10 +244,9 @@ export default function Show({ auth, order }) {
                         )}
                     </div>
 
-                    {/* Columna derecha */}
+                    {/* Columna 2 — Cliente + Gestionar */}
                     <div className="flex flex-col gap-6">
 
-                        {/* Cliente */}
                         <Section title="Cliente" icon={User} isDark={isDark}>
                             {order.customer ? (
                                 <div className="space-y-1.5 text-sm">
@@ -209,7 +265,6 @@ export default function Show({ auth, order }) {
                             )}
                         </Section>
 
-                        {/* Gestionar pedido */}
                         <Section title="Gestionar Pedido" icon={CheckCircle2} isDark={isDark}>
                             <form onSubmit={submit} className="space-y-4">
                                 <div>
@@ -238,15 +293,9 @@ export default function Show({ auth, order }) {
                                     <textarea rows={3} value={data.admin_notes} onChange={e => setData('admin_notes', e.target.value)}
                                         className={inp} placeholder="Observaciones del equipo..." />
                                 </div>
-                                <Button type="submit" disabled={processing}
-                                    style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
-                                    className="w-full text-white border-none shadow-md">
-                                    {saved ? <><CheckCircle2 size={15} className="mr-2" />Guardado</> : <><Save size={15} className="mr-2" />Guardar cambios</>}
-                                </Button>
                             </form>
                         </Section>
 
-                        {/* Cupón aplicado */}
                         {order.coupon && (
                             <Section title="Cupón Aplicado" icon={Tag} isDark={isDark}>
                                 <div className="space-y-2 text-sm">
@@ -271,8 +320,11 @@ export default function Show({ auth, order }) {
                                 </div>
                             </Section>
                         )}
+                    </div>
 
-                        {/* Envío */}
+                    {/* Columna 3 — Datos de Envío + Seguimiento */}
+                    <div className="flex flex-col gap-6">
+
                         <Section title="Datos de Envío" icon={Truck} isDark={isDark}>
                             {order.shipping_method_type && (
                                 <div className={`mb-4 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold
@@ -299,8 +351,57 @@ export default function Show({ auth, order }) {
                             </form>
                         </Section>
 
+                        <Section title="Seguimiento del Envío" icon={MapPin} isDark={isDark}>
+                            <form onSubmit={submit} className="space-y-3">
+                                <div>
+                                    <label className={lbl}>Carrier / Correo</label>
+                                    <input type="text" value={data.carrier} onChange={e => setData('carrier', e.target.value)}
+                                        className={inp} placeholder="Ej: Andreani, OCA..." />
+                                </div>
+                                <div>
+                                    <label className={lbl}>Código de seguimiento</label>
+                                    <input type="text" value={data.tracking_code} onChange={e => setData('tracking_code', e.target.value)}
+                                        className={`${inp} font-mono`} placeholder="ej: AR123456789" />
+                                </div>
+                                <div>
+                                    <label className={lbl}>Link de seguimiento</label>
+                                    <input type="url" value={data.tracking_url} onChange={e => setData('tracking_url', e.target.value)}
+                                        className={inp} placeholder="https://..." />
+                                </div>
+                                <div>
+                                    <label className={lbl}>Estado del envío</label>
+                                    <select value={data.tracking_status} onChange={e => setData('tracking_status', e.target.value)} className={inp}>
+                                        <option value="">— Sin estado —</option>
+                                        {Object.entries(TRACKING_STATUS_LABELS).map(([v, l]) => (
+                                            <option key={v} value={v}>{l}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className={lbl}>Fecha despacho</label>
+                                        <input type="date" value={data.shipped_at} onChange={e => setData('shipped_at', e.target.value)} className={inp} />
+                                    </div>
+                                    <div>
+                                        <label className={lbl}>Entrega estimada</label>
+                                        <input type="date" value={data.estimated_delivery} onChange={e => setData('estimated_delivery', e.target.value)} className={inp} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Fecha entrega</label>
+                                    <input type="date" value={data.delivered_at} onChange={e => setData('delivered_at', e.target.value)} className={inp} />
+                                </div>
+                                <div>
+                                    <label className={lbl}>Notas de envío</label>
+                                    <textarea rows={2} value={data.tracking_notes} onChange={e => setData('tracking_notes', e.target.value)}
+                                        className={inp} placeholder="Observaciones del envío..." />
+                                </div>
+                            </form>
+                        </Section>
+
                     </div>
                 </div>
+
 
             </div>
         </AuthenticatedLayout>

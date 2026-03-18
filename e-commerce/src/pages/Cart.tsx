@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../store/cart'
+import { productPath } from '../utils/slug'
 
 function formatMoney(n: number) {
   return `$${Number(n || 0).toLocaleString('es-AR')}`
@@ -44,7 +45,7 @@ export default function Cart() {
                     {/* Fila 1: nombre + botón quitar */}
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
-                        <Link to={`/productos/${it.product.id}`} className="text-sm font-semibold hover:underline leading-tight">
+                        <Link to={productPath(it.product.id, it.product.name)} className="text-sm font-semibold hover:underline leading-tight">
                           {it.product.name}
                         </Link>
                         {it.variant_label && (

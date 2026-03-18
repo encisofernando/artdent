@@ -19,6 +19,7 @@ export default function Edit({ auth, item }) {
         longitude: item.longitude ?? '',
         notes: item.notes || '',
         is_active: item.is_active ?? true,
+        accepts_cash_payment: item.accepts_cash_payment ?? false,
     });
 
     const submit = (e) => {
@@ -150,6 +151,15 @@ export default function Edit({ auth, item }) {
                                 <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${data.is_active ? 'translate-x-4' : ''}`} />
                             </div>
                             <span className="font-medium text-sm">Punto activo (visible en el checkout)</span>
+                        </label>
+
+                        <label className={`flex items-center cursor-pointer gap-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            <div className="relative">
+                                <input type="checkbox" className="sr-only" checked={data.accepts_cash_payment} onChange={e => setData('accepts_cash_payment', e.target.checked)} />
+                                <div className={`block w-10 h-6 rounded-full transition-colors ${data.accepts_cash_payment ? 'bg-amber-500' : (isDark ? 'bg-slate-700' : 'bg-slate-300')}`} />
+                                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${data.accepts_cash_payment ? 'translate-x-4' : ''}`} />
+                            </div>
+                            <span className="font-medium text-sm">Acepta pago en efectivo</span>
                         </label>
                     </div>
                 </div>

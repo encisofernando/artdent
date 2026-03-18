@@ -446,6 +446,8 @@ class ProductController extends Controller
                         'stock_after' => $validated['stock_quantity'],
                         'note' => 'Ajuste manual desde edición de producto',
                     ]);
+
+                    \App\Services\StockAlertService::checkAndNotify($product->id, null, $warehouseId);
                 }
             }
 

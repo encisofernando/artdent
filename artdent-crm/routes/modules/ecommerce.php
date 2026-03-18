@@ -9,6 +9,7 @@ use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EcommerceOrderController;
 use App\Http\Controllers\EcommerceOrderItemController;
+use App\Http\Controllers\EcommercePaymentConfigController;
 use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\ReviewController;
@@ -41,3 +42,6 @@ Route::resource('shipping-moto-companies', ShippingMotoCompanyController::class)
 
 Route::resource('sidebar-banners', SidebarBannerController::class)->only(['index', 'store', 'update', 'destroy']);
 Route::resource('hero-slides', HeroSlideController::class)->only(['index', 'store', 'update', 'destroy']);
+
+Route::get('ecommerce-payment-configs', [EcommercePaymentConfigController::class, 'index'])->name('ecommerce-payment-configs.index');
+Route::put('ecommerce-payment-configs/{type}', [EcommercePaymentConfigController::class, 'update'])->name('ecommerce-payment-configs.update');

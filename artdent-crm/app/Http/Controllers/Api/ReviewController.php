@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
 use App\Models\Review;
 use App\Services\ProfanityFilter;
@@ -89,8 +90,20 @@ class ReviewController extends Controller
             'status' => $status,
         ]);
 
+        $loaded = $review->load(['customer', 'product']);
+        $productName = $loaded->product?->name ?? "Producto #{$productId}";
+        $stars = str_repeat('★', $review->rating).str_repeat('☆', 5 - $review->rating);
+
+        CrmNotification::create([
+            'type' => 'new_review',
+            'title' => 'Nueva reseña',
+            'body' => "{$customer->name} dejó {$stars} en {$productName}",
+            'url' => '/reviews/'.$review->id,
+            'order_code' => null,
+        ]);
+
         return response()->json([
-            ...$this->format($review->load('customer')),
+            ...$this->format($loaded),
             'pending_review' => $status === 'pending',
         ], 201);
     }

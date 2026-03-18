@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { X, SlidersHorizontal, ChevronRight } from 'lucide-react'
 import { listProducts, type CatalogProduct } from '../api/products'
+import { productPath } from '../utils/slug'
 import { listCategories } from '../api/categories'
 import { useCart } from '../store/cart'
 import WishlistButton from '../components/WishlistButton'
@@ -18,7 +19,7 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
 
   return (
     <div className="product-card-ml flex flex-col group relative">
-      <Link to={`/productos/${p.id}`} className="block">
+      <Link to={productPath(p.id, p.name)} className="block">
         <div className="aspect-square bg-gray-50 overflow-hidden flex items-center justify-center p-3 relative">
           {pct > 0 && (
             <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-black rounded px-1.5 py-0.5 z-10">
@@ -53,7 +54,7 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
             {p.category.name}
           </span>
         )}
-        <Link to={`/productos/${p.id}`}>
+        <Link to={productPath(p.id, p.name)}>
           <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-[var(--brand-primary)] transition-colors min-h-[2.5rem]">
             {p.name}
           </h3>

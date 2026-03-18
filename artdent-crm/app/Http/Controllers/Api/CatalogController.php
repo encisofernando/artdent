@@ -7,12 +7,14 @@ use App\Mail\OrderConfirmed;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\CouponUsage;
+use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
 use App\Models\EcommerceOrderItem;
 use App\Models\Offer;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Stock;
+use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -195,13 +197,19 @@ class CatalogController extends Controller
 
         // Variants
         if ($product->has_variants && $product->product_variants->isNotEmpty()) {
-            $data['variants'] = $product->product_variants->map(function (ProductVariant $variant): array {
+            $offers = $product->offers ?? collect();
+            $productBasePrice = (float) ($product->compare_price ?? $product->price);
+
+            $data['variants'] = $product->product_variants->map(function (ProductVariant $variant) use ($offers, $productBasePrice): array {
                 $variantStock = $variant->stocks->sum('quantity');
+                $variantBase = (float) ($variant->price ?? $productBasePrice);
+                $variantFinal = $this->applyBestOffer($offers, $variantBase);
 
                 return [
                     'id' => $variant->id,
                     'sku' => $variant->sku,
                     'price' => $variant->price,
+                    'price_final' => $variantFinal,
                     'is_active' => $variant->is_active,
                     'stock' => (int) $variantStock,
                     'attributes' => $variant->variant_attribute_values->map(function ($vav): array {
@@ -271,6 +279,7 @@ class CatalogController extends Controller
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'coupon_code' => ['nullable', 'string'],
+            'selected_payment_method' => ['nullable', 'string', 'in:mercadopago,bank_transfer,qr,cash'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
@@ -317,12 +326,19 @@ class CatalogController extends Controller
         $orderItems = [];
         $subtotal = 0.0;
         $taxTotal = 0.0;
+        $now = now();
 
         foreach ($validated['items'] as $item) {
             $product = Product::query()
                 ->where('id', $item['product_id'])
                 ->where('company_id', $companyId)
                 ->where('is_active', true)
+                ->with([
+                    'offers' => fn ($q) => $q
+                        ->where('is_active', true)
+                        ->where(fn ($sq) => $sq->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                        ->where(fn ($sq) => $sq->whereNull('ends_at')->orWhere('ends_at', '>=', $now)),
+                ])
                 ->first();
 
             if (! $product) {
@@ -330,14 +346,17 @@ class CatalogController extends Controller
             }
 
             $variantId = $item['variant_id'] ?? null;
-            // price_final = compare_price ?? price — el precio de venta IVA incluido
-            $unitPrice = $product->compare_price ?? $product->price;
+
+            // Apply the best active offer to the product base price
+            $basePrice = (float) ($product->compare_price ?? $product->price);
+            $unitPrice = $this->applyBestOffer($product->offers, $basePrice);
             $sku = $product->sku;
 
             if ($variantId) {
                 $variant = ProductVariant::find($variantId);
                 if ($variant && $variant->product_id === $product->id) {
-                    $unitPrice = $variant->price ?? $product->compare_price ?? $product->price;
+                    $variantBase = (float) ($variant->price ?? $basePrice);
+                    $unitPrice = $this->applyBestOffer($product->offers, $variantBase);
                     $sku = $variant->sku ?? $product->sku;
                 }
             }
@@ -402,6 +421,7 @@ class CatalogController extends Controller
             'pickup_point_id' => $validated['pickup_point_id'] ?? null,
             'moto_company_id' => $validated['moto_company_id'] ?? null,
             'customer_notes' => $validated['notes'] ?? null,
+            'selected_payment_method' => $validated['selected_payment_method'] ?? null,
         ]);
 
         foreach ($orderItems as $item) {
@@ -414,6 +434,8 @@ class CatalogController extends Controller
                 ->where('variant_id', $item['variant_id'])
                 ->when($item['variant_id'] === null, fn ($q) => $q->whereNull('variant_id'))
                 ->decrement('quantity', $item['quantity']);
+
+            StockAlertService::checkAndNotify($item['product_id'], $item['variant_id'], $warehouseId);
         }
 
         if ($coupon) {
@@ -425,6 +447,15 @@ class CatalogController extends Controller
                 'used_at' => now(),
             ]);
         }
+
+        // CRM notification — new order
+        CrmNotification::create([
+            'type' => 'new_order',
+            'title' => 'Nuevo pedido',
+            'body' => "#{$order->order_number} · {$validated['customer_name']} · $".number_format($total, 0, ',', '.'),
+            'url' => '/ecommerce-orders/'.$order->id,
+            'order_code' => $order->order_number,
+        ]);
 
         // Send order confirmation email (fire-and-forget — never fail the checkout)
         try {
@@ -450,24 +481,49 @@ class CatalogController extends Controller
     {
         $order = EcommerceOrder::query()
             ->where('order_number', $code)
-            ->with(['ecommerce_order_items'])
+            ->with(['ecommerce_order_items', 'shipments'])
             ->firstOrFail();
+
+        $shipment = $order->shipments->first();
 
         return response()->json([
             'id' => $order->id,
             'code' => $order->order_number,
             'status' => $order->status,
+            'payment_status' => $order->payment_status ?? 'pending',
+            'shipping_method_type' => $order->shipping_method_type,
+            'selected_payment_method' => $order->selected_payment_method,
             'pricing_mode' => 'b2c',
             'customer_name' => $order->shipping_name,
             'customer_email' => null,
             'customer_phone' => $order->shipping_phone,
+            'shipping_name' => $order->shipping_name,
             'shipping_address' => $order->shipping_address,
+            'shipping_city' => $order->shipping_city,
+            'shipping_province' => $order->shipping_province,
+            'shipping_postal' => $order->shipping_postal,
+            'shipping_phone' => $order->shipping_phone,
+            'customer_notes' => $order->customer_notes,
             'notes' => $order->customer_notes,
             'subtotal' => $order->subtotal,
+            'discount_amount' => $order->discount_amount,
+            'shipping_cost' => $order->shipping_cost,
             'tax_total' => $order->tax_amount,
+            'tax_amount' => $order->tax_amount,
             'total' => $order->total,
             'currency' => 'ARS',
             'created_at' => $order->created_at?->toISOString(),
+            'can_cancel' => false,
+            'tracking' => $shipment ? [
+                'carrier' => $shipment->carrier,
+                'tracking_code' => $shipment->tracking_code,
+                'tracking_url' => $shipment->tracking_url,
+                'status' => $shipment->status,
+                'shipped_at' => $shipment->shipped_at,
+                'estimated_delivery' => $shipment->estimated_delivery,
+                'delivered_at' => $shipment->delivered_at,
+                'notes' => $shipment->notes,
+            ] : null,
             'items' => $order->ecommerce_order_items->map(function (EcommerceOrderItem $item): array {
                 $lineSubtotal = round($item->unit_price * $item->quantity, 2);
                 $lineTax = round($lineSubtotal * (float) ($item->tax_rate ?? 0) / 100, 2);
@@ -483,6 +539,7 @@ class CatalogController extends Controller
                     'line_subtotal' => $lineSubtotal,
                     'line_tax' => $lineTax,
                     'line_total' => $item->total,
+                    'total' => $item->total,
                 ];
             })->values(),
         ]);
@@ -587,6 +644,44 @@ class CatalogController extends Controller
         return response()->json($offers);
     }
 
+    /**
+     * Apply the best offer discount to a base price.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Offer>  $offers
+     */
+    private function applyBestOffer(\Illuminate\Support\Collection $offers, float $basePrice): float
+    {
+        $finalPrice = $basePrice;
+
+        foreach ($offers as $offer) {
+            switch ($offer->type) {
+                case 'discount_percent':
+                    if ($offer->value !== null) {
+                        $discounted = round($basePrice * (1 - (float) $offer->value / 100), 2);
+                        if ($discounted < $finalPrice) {
+                            $finalPrice = $discounted;
+                        }
+                    }
+                    break;
+                case 'discount_fixed':
+                    if ($offer->value !== null) {
+                        $discounted = max(0.0, round($basePrice - (float) $offer->value, 2));
+                        if ($discounted < $finalPrice) {
+                            $finalPrice = $discounted;
+                        }
+                    }
+                    break;
+                case 'combo':
+                    if ($offer->value !== null && (float) $offer->value < $finalPrice) {
+                        $finalPrice = (float) $offer->value;
+                    }
+                    break;
+            }
+        }
+
+        return $finalPrice;
+    }
+
     /** @return array<string, mixed> */
     private function formatProduct(Product $product, float $stock): array
     {
@@ -609,32 +704,7 @@ class CatalogController extends Controller
         $startPrice = (float) ($product->compare_price ?? $product->price);
 
         // Apply the best discount from all active offers
-        $finalPrice = $startPrice;
-        foreach ($offers as $offer) {
-            switch ($offer->type) {
-                case 'discount_percent':
-                    if ($offer->value !== null) {
-                        $discounted = round($startPrice * (1 - (float) $offer->value / 100), 2);
-                        if ($discounted < $finalPrice) {
-                            $finalPrice = $discounted;
-                        }
-                    }
-                    break;
-                case 'discount_fixed':
-                    if ($offer->value !== null) {
-                        $discounted = max(0.0, round($startPrice - (float) $offer->value, 2));
-                        if ($discounted < $finalPrice) {
-                            $finalPrice = $discounted;
-                        }
-                    }
-                    break;
-                case 'combo':
-                    if ($offer->value !== null && (float) $offer->value < $finalPrice) {
-                        $finalPrice = (float) $offer->value;
-                    }
-                    break;
-            }
-        }
+        $finalPrice = $this->applyBestOffer($offers, $startPrice);
 
         $offersData = $offers->map(fn ($o): array => [
             'id' => $o->id,

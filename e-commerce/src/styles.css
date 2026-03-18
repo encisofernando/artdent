@@ -150,6 +150,16 @@ body {
   animation: fade-in-up 0.35s ease-out both;
 }
 
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shrinkBar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
 /* ── Product description (rich HTML from backend editor) ── */
 .product-description p   { margin-bottom: 0.75rem; }
 .product-description strong { font-weight: 700; }

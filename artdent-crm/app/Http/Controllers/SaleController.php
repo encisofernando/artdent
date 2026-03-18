@@ -13,6 +13,7 @@ use App\Models\SalePayment;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\StockAlertService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -255,6 +256,8 @@ class SaleController extends Controller
                         'reference_id' => $sale->id,
                         'note' => "Venta POS {$saleNumber}",
                     ]);
+
+                    StockAlertService::checkAndNotify($item['product_id'], $variantId, $warehouse->id);
                 }
             }
 

@@ -58,6 +58,13 @@ Route::middleware(['auth'])->group(function () {
 
     require __DIR__.'/modules/profile.php';
 
+    // CRM in-app notifications (JSON, session auth)
+    Route::prefix('crm/notifications')->name('crm.notifications.')->group(function (): void {
+        Route::get('/', [\App\Http\Controllers\CrmNotificationController::class, 'index'])->name('index');
+        Route::post('read-all', [\App\Http\Controllers\CrmNotificationController::class, 'markAllRead'])->name('read-all');
+        Route::post('{crmNotification}/read', [\App\Http\Controllers\CrmNotificationController::class, 'markRead'])->name('read');
+    });
+
 });
 
 // Presupuesto público — sin autenticación (link compartible por WhatsApp)

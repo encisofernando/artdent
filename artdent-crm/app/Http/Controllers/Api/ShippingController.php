@@ -22,7 +22,7 @@ class ShippingController extends Controller
         $pickupPoints = ShippingPickupPoint::query()
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'address', 'city', 'province', 'postal_code', 'phone', 'schedule', 'latitude', 'longitude', 'notes']);
+            ->get(['id', 'name', 'address', 'city', 'province', 'postal_code', 'phone', 'schedule', 'latitude', 'longitude', 'notes', 'accepts_cash_payment']);
 
         // Moto Mandados: only for Formosa Capital
         $motoAvailable = str_contains($city, 'formosa') || str_contains($province, 'formosa');

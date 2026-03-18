@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, Trash2 } from 'lucide-react'
 import { getWishlist, removeFromWishlist, type WishlistItem } from '../api/wishlist'
+import { productPath } from '../utils/slug'
 import { storageUrl } from '../api/http'
 
 export default function Favoritos() {
@@ -49,7 +50,7 @@ export default function Favoritos() {
             const price = product.price_final ?? product.price
             return (
               <div key={item.id} className="group card flex flex-col">
-                <Link to={`/productos/${product.id}`} className="relative overflow-hidden rounded-xl bg-gray-50 aspect-square flex items-center justify-center mb-3">
+                <Link to={productPath(product.id, product.name)} className="relative overflow-hidden rounded-xl bg-gray-50 aspect-square flex items-center justify-center mb-3">
                   {img ? (
                     <img src={img} alt={product.name} className="h-full w-full object-contain p-4 group-hover:scale-105 transition-transform" />
                   ) : (
@@ -65,7 +66,7 @@ export default function Favoritos() {
                       {product.category.name}
                     </p>
                   )}
-                  <Link to={`/productos/${product.id}`} className="text-sm font-semibold text-gray-800 line-clamp-2 hover:text-[var(--brand-primary)] transition">
+                  <Link to={productPath(product.id, product.name)} className="text-sm font-semibold text-gray-800 line-clamp-2 hover:text-[var(--brand-primary)] transition">
                     {product.name}
                   </Link>
                   <p className="text-base font-bold text-gray-900 mt-auto pt-2">
@@ -74,7 +75,7 @@ export default function Favoritos() {
                 </div>
 
                 <div className="flex gap-2 mt-3 pt-3 border-t">
-                  <Link to={`/productos/${product.id}`} className="btn btn-primary flex-1 text-sm">
+                  <Link to={productPath(product.id, product.name)} className="btn btn-primary flex-1 text-sm">
                     Ver producto
                   </Link>
                   <button

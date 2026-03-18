@@ -75,6 +75,7 @@ const NAV_SECTIONS = [
                     { title: "Reseñas", path: "/reviews" },
                     { title: "Puntos de Retiro", path: "/shipping-pickup-points" },
                     { title: "Moto Mandados", path: "/shipping-moto-companies" },
+                    { title: "Métodos de Pago", path: "/ecommerce-payment-configs" },
                 ],
             },
         ],

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,14 @@ class PaymentController extends Controller
 {
     private function accessToken(): string
     {
+        $mpConfig = \App\Models\EcommercePaymentConfig::query()
+            ->where('type', 'mercadopago')
+            ->first();
+
+        if ($mpConfig && ! empty($mpConfig->config['access_token'])) {
+            return $mpConfig->config['access_token'];
+        }
+
         return config('services.mercadopago.access_token', '');
     }
 
@@ -149,10 +158,27 @@ class PaymentController extends Controller
             $orderStatus = 'confirmed';
         }
 
-        $order->update([
+        $updateData = [
             'payment_status' => $paymentStatus,
             'status' => $orderStatus,
-        ]);
+        ];
+
+        if ($mpStatus === 'approved' && ! empty($dataId)) {
+            $updateData['mp_payment_id'] = (string) $dataId;
+        }
+
+        $order->update($updateData);
+
+        // CRM notification — payment approved
+        if ($mpStatus === 'approved') {
+            CrmNotification::create([
+                'type' => 'payment_approved',
+                'title' => 'Pago acreditado',
+                'body' => "Pedido #{$order->order_number} pagado con MercadoPago · $".number_format((float) $order->total, 0, ',', '.'),
+                'url' => '/ecommerce-orders/'.$order->id,
+                'order_code' => $order->order_number,
+            ]);
+        }
 
         Log::info('MercadoPago webhook processed', [
             'order' => $externalRef,

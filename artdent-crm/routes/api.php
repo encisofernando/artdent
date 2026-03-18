@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\NewsletterApiController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PaymentOptionsController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\WishlistController;
@@ -63,6 +64,8 @@ Route::prefix('customer')->name('api.customer.')->middleware('auth:sanctum')->gr
 
     Route::get('orders', [CustomerController::class, 'orders'])->name('orders');
     Route::get('orders/{code}', [CustomerController::class, 'orderDetail'])->name('orders.show');
+    Route::post('orders/{code}/cancel', [CustomerController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::post('orders/{code}/payment-method', [CustomerController::class, 'changePaymentMethod'])->name('orders.payment-method');
 
     Route::get('addresses', [CustomerController::class, 'addresses'])->name('addresses');
     Route::post('addresses', [CustomerController::class, 'storeAddress'])->name('addresses.store');
@@ -123,6 +126,13 @@ Route::middleware('auth:sanctum')->prefix('wishlist')->name('api.wishlist.')->gr
 |--------------------------------------------------------------------------
 */
 Route::post('coupons/validate', [CatalogController::class, 'validateCoupon'])->name('api.coupons.validate');
+
+/*
+|--------------------------------------------------------------------------
+| Métodos de pago habilitados (para checkout e-commerce)
+|--------------------------------------------------------------------------
+*/
+Route::get('payment-options', [PaymentOptionsController::class, 'index'])->name('api.payment-options');
 
 /*
 |--------------------------------------------------------------------------
