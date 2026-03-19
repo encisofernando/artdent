@@ -47,7 +47,8 @@ class Purchase extends Model
 		'subtotal' => 'float',
 		'tax_amount' => 'float',
 		'total' => 'float',
-		'purchased_at' => 'datetime'
+		'purchased_at' => 'date',
+		'due_date' => 'date',
 	];
 
 	protected $fillable = [
@@ -56,12 +57,15 @@ class Purchase extends Model
 		'user_id',
 		'warehouse_id',
 		'reference_no',
+		'invoice_type',
+		'invoice_number',
 		'status',
 		'subtotal',
 		'tax_amount',
 		'total',
 		'notes',
-		'purchased_at'
+		'purchased_at',
+		'due_date',
 	];
 
 	public function company()
@@ -82,5 +86,10 @@ class Purchase extends Model
 	public function purchase_items()
 	{
 		return $this->hasMany(PurchaseItem::class);
+	}
+
+	public function user()
+	{
+		return $this->belongsTo(User::class);
 	}
 }

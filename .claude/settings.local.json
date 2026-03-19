@@ -73,7 +73,14 @@
       "Bash(vendor/bin/pint app/Http/Controllers/Api/CustomerController.php routes/api.php)",
       "Bash(grep -rn \"E-Commerce\\\\|ecommerce\\\\|e-commerce\\\\|ECommerce\\\\|Pedidos\\\\|payment\" c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm/resources/js/Layouts --include=*.jsx --include=*.tsx --include=*.js)",
       "Bash(find c:/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm/resources/js/Layouts -name *.jsx -o -name *.tsx)",
-      "Bash(find /c/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm -name routes* -o -name *notification*)"
+      "Bash(find /c/Users/ferna/OneDrive/Documentos/ArtDent/artdent/artdent-crm -name routes* -o -name *notification*)",
+      "Bash(ls /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)",
+      "Bash(grep -r \"create table\" /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)",
+      "Bash(grep -r \"purchase\\\\|compra\" /home/infranet/Documentos/Proyectos/artdent/artdent-crm/app/Models/*.php --ignore-case)",
+      "Bash(grep -l \"vendors\\\\|purchases\" /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)",
+      "Bash(find /home/infranet/Documentos/Proyectos/artdent/artdent-crm -name *.sql)",
+      "Bash(vendor/bin/pint app/Models/VendorAccount.php app/Models/VendorAccountMove.php app/Models/VendorPayment.php app/Http/Controllers/PurchaseController.php app/Http/Controllers/VendorPaymentController.php app/Http/Controllers/VendorAccountController.php routes/modules/admin.php)",
+      "Bash(ls -lrt /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)"
     ]
   }
 }

@@ -8,13 +8,16 @@ use App\Http\Controllers\InvoiceTypeController;
 use App\Http\Controllers\NewsletterSubscriberController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ShippingMethodController;
 use App\Http\Controllers\TaxController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VariantAttributeValueController;
+use App\Http\Controllers\VendorAccountController;
 use App\Http\Controllers\VendorController;
+use App\Http\Controllers\VendorPaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::resource('users', UserController::class);
@@ -24,6 +27,34 @@ Route::resource('companys', CompanyController::class);
 Route::resource('branchs', BranchController::class);
 
 Route::resource('vendors', VendorController::class);
+
+// Gestión de Proveedores
+Route::prefix('proveedores')->name('proveedores.')->group(function () {
+    // Comprobantes (Facturas / Remitos de compra)
+    Route::prefix('comprobantes')->name('comprobantes.')->group(function () {
+        Route::get('/', [PurchaseController::class, 'index'])->name('index');
+        Route::get('/create', [PurchaseController::class, 'create'])->name('create');
+        Route::post('/', [PurchaseController::class, 'store'])->name('store');
+        Route::get('/{purchase}', [PurchaseController::class, 'show'])->name('show');
+        Route::get('/{purchase}/edit', [PurchaseController::class, 'edit'])->name('edit');
+        Route::put('/{purchase}', [PurchaseController::class, 'update'])->name('update');
+        Route::delete('/{purchase}', [PurchaseController::class, 'destroy'])->name('destroy');
+    });
+
+    // Pagos a proveedores
+    Route::prefix('pagos')->name('pagos.')->group(function () {
+        Route::get('/', [VendorPaymentController::class, 'index'])->name('index');
+        Route::get('/create', [VendorPaymentController::class, 'create'])->name('create');
+        Route::post('/', [VendorPaymentController::class, 'store'])->name('store');
+        Route::delete('/{vendorPayment}', [VendorPaymentController::class, 'destroy'])->name('destroy');
+    });
+
+    // Cuentas corrientes
+    Route::prefix('ctacte')->name('ctacte.')->group(function () {
+        Route::get('/', [VendorAccountController::class, 'index'])->name('index');
+        Route::get('/{vendor}', [VendorAccountController::class, 'show'])->name('show');
+    });
+});
 
 Route::resource('taxs', TaxController::class);
 Route::resource('payment-methods', PaymentMethodController::class);

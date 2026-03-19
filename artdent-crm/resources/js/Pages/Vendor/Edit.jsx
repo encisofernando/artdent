@@ -108,10 +108,9 @@ export default function Edit({ auth, item }) {
                                     className={inputClasses}
                                 >
                                     <option value="">Seleccione...</option>
-                                    <option value="Responsable Inscripto">Responsable Inscripto</option>
-                                    <option value="Monotributo">Monotributo</option>
-                                    <option value="Exento">Exento</option>
-                                    <option value="Consumidor Final">Consumidor Final</option>
+                                    <option value="responsable_inscripto">Responsable Inscripto</option>
+                                    <option value="monotributista">Monotributista</option>
+                                    <option value="exento">Exento</option>
                                 </select>
                                 {errors.iva_condition && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.iva_condition}</div>}
                             </div>

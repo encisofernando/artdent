@@ -176,7 +176,7 @@ export default function TariffCostBuilder({ costs, onChange }) {
                                     <div className="sm:col-span-2 md:col-span-1">
                                         <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cant (Q)</label>
                                         <input
-                                            type="number" step="0.001" min="0" required
+                                            type="number" step="1" min="1" required
                                             value={cost.quantity}
                                             onChange={e => updateCost(idx, 'quantity', e.target.value)}
                                             className={`${inputClass} font-mono text-sm`}

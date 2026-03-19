@@ -174,7 +174,7 @@ export default function Create({ auth, products = [] }) {
                         <div className="flex items-center gap-2">
                             <div className={`flex items-center rounded-lg border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                                 <button onClick={() => updateQty(item.id, -1)} className={`px-2 py-1 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}><Minus size={11} /></button>
-                                <input type="number" value={item.qty} onChange={e => setQtyDirect(item.id, e.target.value)} min="0.001" step="1"
+                                <input type="number" value={item.qty} onChange={e => setQtyDirect(item.id, e.target.value)} min="1" step="1"
                                     className={`w-10 text-center text-xs font-bold border-none bg-transparent focus:ring-0 p-1 outline-none ${isDark ? 'text-slate-200' : 'text-slate-800'}`} />
                                 <button onClick={() => updateQty(item.id, 1)} className={`px-2 py-1 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}><Plus size={11} /></button>
                             </div>
