@@ -29,6 +29,7 @@ import Favoritos from './pages/Favoritos'
 import FAQ from './pages/FAQ'
 import Ayuda from './pages/Ayuda'
 import Politicas from './pages/Politicas'
+import QuienesSomos from './pages/QuienesSomos'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -96,6 +97,7 @@ export default function App() {
             <Route path="/productos" element={<Products />} />
             <Route path="/productos/:slug" element={<ProductDetail />} />
 
+            <Route path="/nosotros" element={<QuienesSomos />} />
             <Route path="/contacto" element={<Contacto />} />
             <Route path="/defensa-consumidor" element={<DefensaConsumidor />} />
             <Route path="/privacidad" element={<Privacidad />} />

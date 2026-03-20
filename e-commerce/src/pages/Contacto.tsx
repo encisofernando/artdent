@@ -36,7 +36,7 @@ export default function Contacto() {
   const mapLocation = {
     lat: -26.197791696237534,
     lng: -58.23693887447022,
-    embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3579.9605928160313!2d-58.239524523803354!3d-26.197960163721365!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x945caf0000251e81%3A0xab3ee68d381c52c8!2sARTDENT%20FORMOSA!5e0!3m2!1ses-419!2sar!4v1771263678879!5m2!1ses-419!2sar',
+    embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3579.9605928160313!2d-58.239524523803354!3d-26.197960163721365!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x945caf0000251e81%3A0xab3ee68d381c52c8!2sArtDent%20FORMOSA!5e0!3m2!1ses-419!2sar!4v1771263678879!5m2!1ses-419!2sar',
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -409,7 +409,7 @@ export default function Contacto() {
                     allowFullScreen
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
-                    title="Ubicación de ARTDENT"
+                    title="Ubicación de ArtDent"
                     className="grayscale hover:grayscale-0 transition-all duration-300"
                   />
                 </div>

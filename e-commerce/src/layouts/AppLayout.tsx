@@ -11,7 +11,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 pb-16 md:pb-0">
         {children}
       </main>
-      <Footer />
+      <div className="pb-16 md:pb-0">
+        <Footer />
+      </div>
       <BottomNav />
       <CookieConsent />
     </div>

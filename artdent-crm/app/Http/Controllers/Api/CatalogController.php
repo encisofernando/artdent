@@ -269,6 +269,7 @@ class CatalogController extends Controller
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['required', 'email'],
             'customer_phone' => ['nullable', 'string', 'max:50'],
+            'customer_dni' => ['nullable', 'string', 'max:30'],
             'shipping_address' => ['nullable', 'string'],
             'shipping_city' => ['nullable', 'string', 'max:100'],
             'shipping_province' => ['nullable', 'string', 'max:100'],
@@ -402,6 +403,8 @@ class CatalogController extends Controller
         $order = EcommerceOrder::create([
             'company_id' => $companyId,
             'customer_id' => $customerId,
+            'guest_email' => $customerId ? null : strtolower(trim($validated['customer_email'])),
+            'guest_dni' => $customerId ? null : ($validated['customer_dni'] ?? null),
             'coupon_id' => $couponId,
             'order_number' => strtoupper(Str::random(3)).'-'.strtoupper(Str::random(6)),
             'status' => 'pending',

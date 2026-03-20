@@ -34,11 +34,11 @@ export default function SEOHead({
   const siteUrl = 'https://shop.artdent.com.ar'
   const defaultImage = `${siteUrl}/og-image.jpg`
   const defaultDescription =
-    'ARTDENT - Tu sonrisa, es nuestra prioridad. Productos dentales de alta calidad para profesionales.'
+    'ArtDent - Tu sonrisa, es nuestra prioridad. Productos dentales de alta calidad para profesionales.'
 
   const fullTitle = title
-    ? `${title} | ARTDENT`
-    : 'ARTDENT - Productos Dentales Profesionales'
+    ? `${title} | ArtDent`
+    : 'ArtDent - Productos Dentales Profesionales'
   const fullUrl = url ? `${siteUrl}${url}` : siteUrl
   const fullImage = image || defaultImage
   const fullDescription = description || defaultDescription
@@ -104,7 +104,7 @@ export default function SEOHead({
   const organizationData = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'ARTDENT',
+    name: 'ArtDent',
     url: siteUrl,
     logo: `${siteUrl}/logo.png`,
     description: defaultDescription,
@@ -141,7 +141,7 @@ export default function SEOHead({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={fullDescription} />
       <meta property="og:image" content={fullImage} />
-      <meta property="og:site_name" content="ARTDENT" />
+      <meta property="og:site_name" content="ArtDent" />
       <meta property="og:locale" content="es_AR" />
 
       {/* Twitter */}
@@ -185,7 +185,7 @@ export default function SEOHead({
       <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
       {/* Additional meta tags */}
-      <meta name="author" content="ARTDENT" />
+      <meta name="author" content="ArtDent" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
       <meta name="language" content="Spanish" />
@@ -198,7 +198,7 @@ export default function SEOHead({
       {/* Apple */}
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-      <meta name="apple-mobile-web-app-title" content="ARTDENT" />
+      <meta name="apple-mobile-web-app-title" content="ArtDent" />
     </Helmet>
   )
 }
@@ -221,7 +221,7 @@ export default function SEOHead({
     price: product.price,
     currency: 'ARS',
     availability: product.stock > 0 ? 'InStock' : 'OutOfStock',
-    brand: 'ARTDENT',
+    brand: 'ArtDent',
     sku: product.sku,
     image: product.image_url,
     rating: product.average_rating,

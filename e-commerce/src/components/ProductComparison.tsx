@@ -97,7 +97,7 @@ export default function ProductComparison() {
     const doc = new jsPDF()
     
     doc.setFontSize(16)
-    doc.text('Comparación de Productos - ARTDENT', 14, 15)
+    doc.text('Comparación de Productos - ArtDent', 14, 15)
     
     const tableData = attributes
       .filter(shouldShowRow)

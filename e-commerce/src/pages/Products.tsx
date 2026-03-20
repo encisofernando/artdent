@@ -13,8 +13,9 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
   const price = Number(p.price_final ?? p.price ?? 0)
   const originalPrice = p.price_final && p.price_final < p.price ? Number(p.price) : null
   const pct = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0
-  const hasStock = p.has_variants && p.variants?.length
-    ? p.variants.some(v => v.is_active && v.stock > 0)
+  const hasVariants = !!p.has_variants
+  const hasStock = hasVariants
+    ? (p.variants?.length ? p.variants.some(v => v.is_active && v.stock > 0) : true)
     : (p.stock ?? 0) > 0
 
   return (
@@ -65,13 +66,22 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
           )}
           <p className="price-main">${price.toLocaleString('es-AR')}</p>
         </div>
-        <button
-          className={`btn btn-primary w-full mt-2 py-2 text-xs ${!hasStock ? 'opacity-40 cursor-not-allowed !transform-none !shadow-none' : ''}`}
-          onClick={() => hasStock && onAdd(p)}
-          disabled={!hasStock}
-        >
-          {hasStock ? 'Agregar al carrito' : 'Sin stock'}
-        </button>
+        {hasVariants ? (
+          <Link
+            to={productPath(p.id, p.name)}
+            className={`btn btn-primary w-full mt-2 py-2 text-xs text-center ${!hasStock ? 'opacity-40 pointer-events-none' : ''}`}
+          >
+            {hasStock ? 'Ver opciones' : 'Sin stock'}
+          </Link>
+        ) : (
+          <button
+            className={`btn btn-primary w-full mt-2 py-2 text-xs ${!hasStock ? 'opacity-40 cursor-not-allowed !transform-none !shadow-none' : ''}`}
+            onClick={() => hasStock && onAdd(p)}
+            disabled={!hasStock}
+          >
+            {hasStock ? 'Agregar al carrito' : 'Sin stock'}
+          </button>
+        )}
       </div>
     </div>
   )

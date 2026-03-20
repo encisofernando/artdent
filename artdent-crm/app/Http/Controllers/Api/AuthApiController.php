@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\WelcomeCustomer;
 use App\Models\Customer;
+use App\Models\EcommerceOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AuthApiController extends Controller
@@ -31,6 +33,8 @@ class AuthApiController extends Controller
             ]);
         }
 
+        $this->linkGuestOrders($customer);
+
         $token = $customer->createToken('ecommerce')->plainTextToken;
 
         return response()->json([
@@ -45,8 +49,8 @@ class AuthApiController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:customers,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'dni' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->whereNotNull('phone')],
+            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->whereNotNull('dni')],
             'accepts_marketing' => ['nullable', 'boolean'],
         ]);
 
@@ -61,6 +65,8 @@ class AuthApiController extends Controller
         ]);
 
         Mail::to($customer->email)->queue(new WelcomeCustomer($customer));
+
+        $this->linkGuestOrders($customer);
 
         $token = $customer->createToken('ecommerce')->plainTextToken;
 
@@ -126,6 +132,25 @@ class AuthApiController extends Controller
         }
 
         return response()->json(['message' => 'Contraseña actualizada correctamente.']);
+    }
+
+    private function linkGuestOrders(Customer $customer): void
+    {
+        $query = EcommerceOrder::query()->whereNull('customer_id');
+
+        $email = strtolower(trim($customer->email));
+        $dni = $customer->dni;
+
+        $query->where(function ($q) use ($email, $dni): void {
+            $q->where('guest_email', $email);
+            if ($dni) {
+                $q->orWhere('guest_dni', $dni);
+            }
+        });
+
+        $query->update([
+            'customer_id' => $customer->id,
+        ]);
     }
 
     /** @return array<string, mixed> */

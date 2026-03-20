@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CrmNotification;
+use App\Models\EcommercePaymentReport;
 use App\Models\Stock;
+use App\Services\MercadoPagoRefundService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
@@ -22,8 +25,8 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'dni' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->ignore($request->user()->id)->whereNotNull('phone')],
+            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->ignore($request->user()->id)->whereNotNull('dni')],
             'address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'],
             'province' => ['nullable', 'string', 'max:100'],
@@ -58,7 +61,7 @@ class CustomerController extends Controller
     {
         $orders = $request->user()
             ->ecommerce_orders()
-            ->with(['ecommerce_order_items', 'shipments'])
+            ->with(['ecommerce_order_items', 'shipments', 'paymentReport'])
             ->orderByDesc('created_at')
             ->get()
             ->map(fn ($order) => $this->formatOrder($order));
@@ -70,11 +73,58 @@ class CustomerController extends Controller
     {
         $order = $request->user()
             ->ecommerce_orders()
-            ->with(['ecommerce_order_items', 'shipments'])
+            ->with(['ecommerce_order_items', 'shipments', 'paymentReport'])
             ->where('order_number', $code)
             ->firstOrFail();
 
         return response()->json($this->formatOrder($order));
+    }
+
+    public function storePaymentReport(Request $request, string $code): JsonResponse
+    {
+        $order = $request->user()
+            ->ecommerce_orders()
+            ->where('order_number', $code)
+            ->firstOrFail();
+
+        if ($order->selected_payment_method !== 'bank_transfer') {
+            return response()->json(['message' => 'Este pedido no usa transferencia bancaria.'], 422);
+        }
+
+        if ($order->payment_status === 'paid') {
+            return response()->json(['message' => 'El pedido ya fue marcado como pagado.'], 422);
+        }
+
+        $request->validate([
+            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        // Delete old image if re-submitting
+        $existing = $order->paymentReport()->first();
+        if ($existing) {
+            Storage::disk('public')->delete($existing->image_path);
+            $existing->delete();
+        }
+
+        $path = $request->file('image')->store('payment_reports', 'public');
+
+        $report = EcommercePaymentReport::create([
+            'order_id' => $order->id,
+            'image_path' => $path,
+            'notes' => $request->input('notes'),
+            'status' => 'pending',
+        ]);
+
+        CrmNotification::create([
+            'type' => 'payment_report',
+            'title' => 'Comprobante de pago recibido',
+            'body' => "El cliente envió un comprobante para el pedido #{$order->order_number}",
+            'url' => '/ecommerce-orders/'.$order->id,
+            'order_code' => $order->order_number,
+        ]);
+
+        return response()->json($this->formatPaymentReport($report), 201);
     }
 
     public function changePaymentMethod(Request $request, string $code): JsonResponse
@@ -127,9 +177,9 @@ class CustomerController extends Controller
             ], 422);
         }
 
-        if ($order->created_at->lt(now()->subHours(2))) {
+        if ($order->created_at->lt(now()->subHour())) {
             return response()->json([
-                'message' => 'El plazo de cancelación de 2 horas ya venció.',
+                'message' => 'El plazo de cancelación de 1 hora ya venció.',
             ], 422);
         }
 
@@ -152,22 +202,20 @@ class CustomerController extends Controller
 
         if ($order->payment_status === 'pending') {
             $orderUpdates['payment_status'] = 'failed';
-        } elseif ($order->payment_status === 'paid' && $order->selected_payment_method === 'mercadopago' && $order->mp_payment_id) {
-            $mpConfig = \App\Models\EcommercePaymentConfig::query()
-                ->where('type', 'mercadopago')
-                ->first();
+        } elseif ($order->payment_status === 'paid') {
+            $refunded = app(MercadoPagoRefundService::class)->refund($order);
 
-            $accessToken = ($mpConfig && ! empty($mpConfig->config['access_token']))
-                ? $mpConfig->config['access_token']
-                : config('services.mercadopago.access_token', '');
-
-            $refundResponse = Http::withToken($accessToken)
-                ->when(! app()->isProduction(), fn ($h) => $h->withoutVerifying())
-                ->post("https://api.mercadopago.com/v1/payments/{$order->mp_payment_id}/refunds");
-
-            if ($refundResponse->successful()) {
-                $orderUpdates['payment_status'] = 'refunded';
+            if ($refunded) {
                 $orderUpdates['status'] = 'refunded';
+                // payment_status already updated to 'refunded' by the service
+            } else {
+                CrmNotification::create([
+                    'type' => 'refund_failed',
+                    'title' => 'Reembolso fallido',
+                    'body' => "No se pudo reembolsar el pedido #{$order->order_number}. Revisar manualmente en MercadoPago.",
+                    'url' => '/ecommerce-orders/'.$order->id,
+                    'order_code' => $order->order_number,
+                ]);
             }
         }
 
@@ -286,7 +334,7 @@ class CustomerController extends Controller
             'selected_payment_method' => $order->selected_payment_method,
             'created_at' => $order->created_at?->toIso8601String(),
             'can_cancel' => ! \in_array($order->status, ['shipped', 'delivered', 'cancelled', 'refunded'])
-                && $order->created_at?->gt(now()->subHours(2)),
+                && $order->created_at?->gt(now()->subHour()),
             'items' => $order->ecommerce_order_items->map(fn ($item) => [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
@@ -307,6 +355,21 @@ class CustomerController extends Controller
                 'delivered_at' => $shipment->delivered_at,
                 'notes' => $shipment->notes,
             ] : null,
+            'payment_report' => $order->paymentReport
+                ? $this->formatPaymentReport($order->paymentReport)
+                : null,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function formatPaymentReport(EcommercePaymentReport $report): array
+    {
+        return [
+            'id' => $report->id,
+            'status' => $report->status,
+            'notes' => $report->notes,
+            'image_url' => Storage::disk('public')->url($report->image_path),
+            'submitted_at' => $report->created_at?->toIso8601String(),
         ];
     }
 }

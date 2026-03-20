@@ -43,7 +43,7 @@ export default function ProductDetail() {
         name: p.name,
         price: Number(p.price_final ?? p.price ?? 0),
         category: p.category?.name,
-        brand: 'ARTDENT',
+        brand: 'ArtDent',
       })
     }
   }, [p])
@@ -65,7 +65,7 @@ export default function ProductDetail() {
 
   const handleShare = async () => {
     const url = window.location.href
-    const text = `${p?.name} - ARTDENT`
+    const text = `${p?.name} - ArtDent`
 
     if (navigator.share) {
       try {
@@ -123,8 +123,8 @@ export default function ProductDetail() {
     <>
       <SEOHead
         title={p.name}
-        description={p.description ?? `${p.name} - Productos dentales profesionales en ARTDENT`}
-        keywords={[p.category?.name, 'dental', p.name, 'ARTDENT'].filter(Boolean) as string[]}
+        description={p.description ?? `${p.name} - Productos dentales profesionales en ArtDent`}
+        keywords={[p.category?.name, 'dental', p.name, 'ArtDent'].filter(Boolean) as string[]}
         image={mainUrl ?? undefined}
         url={productPath(p.id, p.name)}
         type="product"

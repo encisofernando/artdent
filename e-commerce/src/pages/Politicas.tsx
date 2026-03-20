@@ -335,7 +335,7 @@ export default function Politicas() {
           <div className="text-sm text-amber-800">
             <p className="font-bold text-amber-900 mb-1">Aviso de actualización</p>
             <p>
-              ARTDENT puede modificar estas políticas en cualquier momento. Los cambios entrarán en vigencia desde su publicación en este sitio.
+              ArtDent puede modificar estas políticas en cualquier momento. Los cambios entrarán en vigencia desde su publicación en este sitio.
               Se notificarán cambios sustanciales por correo electrónico con al menos{' '}
               <strong>15 días hábiles</strong> de anticipación. El uso continuado del sitio implica la aceptación de las condiciones vigentes.
             </p>

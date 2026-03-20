@@ -67,7 +67,7 @@ export default function Privacidad() {
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       {/* Hero */}
       <section className="bg-[var(--brand-primary)] text-white">
-        <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
+        <div className="mx-auto max-w-5xl px-4 py-8 md:py-10">
           <div className="mx-auto max-w-3xl text-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold mb-4">
               <Lock size={15} />
@@ -84,7 +84,7 @@ export default function Privacidad() {
 
       {/* Índice */}
       <div className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-3 overflow-x-auto">
+        <div className="mx-auto max-w-5xl px-4 py-3 overflow-x-auto">
           <nav className="flex items-center gap-1 text-xs font-medium text-gray-600 whitespace-nowrap">
             {TOC.map((item) => (
               <a
@@ -100,11 +100,11 @@ export default function Privacidad() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:py-12">
+      <div className="mx-auto max-w-5xl px-4 py-8 md:py-12">
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Contenido principal */}
-          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
+          <div className="lg:col-span-2 space-y-6 min-w-0 overflow-hidden">
 
             <Section id="responsable" icon={UserCheck} title="Responsable del Tratamiento" num="1">
               <p>
@@ -117,8 +117,8 @@ export default function Privacidad() {
                   ['Email de contacto', EMPRESA.email],
                   ['Teléfono', EMPRESA.telefono],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex flex-col sm:flex-row sm:gap-4 px-4 py-2.5">
-                    <span className="w-44 shrink-0 font-medium text-gray-500 text-xs uppercase tracking-wide">{label}</span>
+                  <div key={label} className="flex flex-col md:flex-row md:gap-4 px-4 py-2.5">
+                    <span className="md:w-44 shrink-0 font-medium text-gray-500 text-xs uppercase tracking-wide">{label}</span>
                     <span className="text-gray-900">{value}</span>
                   </div>
                 ))}
@@ -144,7 +144,7 @@ export default function Privacidad() {
                   {
                     titulo: 'Datos de pago',
                     items: [
-                      'Los datos de tarjeta de crédito/débito son procesados directamente por MercadoPago; ARTDENT no almacena información de tarjetas.',
+                      'Los datos de tarjeta de crédito/débito son procesados directamente por MercadoPago; ArtDent no almacena información de tarjetas.',
                       'Guardamos el estado del pago (aprobado/pendiente/rechazado) y el número de transacción.',
                     ],
                   },
@@ -187,7 +187,7 @@ export default function Privacidad() {
 
             <Section id="base-legal" icon={Shield} title="Base Legal del Tratamiento" num="4">
               <p>El tratamiento de tus datos se sustenta en las siguientes bases legales según la <strong>Ley 25.326</strong> y el <strong>Código Civil y Comercial de la Nación</strong>:</p>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-3">
                 {[
                   { base: 'Ejecución del contrato', desc: 'Necesario para procesar y entregar tus pedidos.' },
                   { base: 'Consentimiento', desc: 'Para comunicaciones de marketing; revocable en cualquier momento.' },
@@ -251,7 +251,7 @@ export default function Privacidad() {
               <p>
                 Conforme a los <strong>Arts. 14 a 16 de la Ley 25.326</strong>, sos titular de los siguientes derechos respecto de tus datos personales:
               </p>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-3">
                 {[
                   { letra: 'A', nombre: 'Acceso', desc: 'Conocer qué datos tuyos tenemos almacenados, cómo los usamos y a quién los cedimos.' },
                   { letra: 'R', nombre: 'Rectificación', desc: 'Corregir datos inexactos, incompletos o desactualizados.' },
@@ -366,7 +366,7 @@ export default function Privacidad() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4 order-first lg:order-last">
+          <div className="hidden lg:block space-y-4">
             <div className="card p-5">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Mail size={16} className="text-[var(--brand-primary)]" />
@@ -456,7 +456,7 @@ export default function Privacidad() {
       </div>
 
       <div className="border-t bg-white py-6">
-        <div className="mx-auto max-w-7xl px-4 text-center text-xs text-gray-500">
+        <div className="mx-auto max-w-5xl px-4 text-center text-xs text-gray-500">
           <p>Esta Política de Privacidad cumple con lo dispuesto por la <strong>Ley 25.326</strong> de Protección de los Datos Personales de la República Argentina y su decreto reglamentario <strong>1558/2001</strong>.</p>
           <p className="mt-1">Última actualización: marzo de 2026</p>
         </div>

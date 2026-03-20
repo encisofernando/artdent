@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CustomerController extends Controller
@@ -45,22 +46,24 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'nullable',
-            'email' => 'nullable',
-            'password' => 'nullable',
-            'phone' => 'nullable',
-            'dni' => 'nullable',
-            'address' => 'nullable',
-            'city' => 'nullable',
-            'province' => 'nullable',
-            'postal_code' => 'nullable',
-            'email_verified_at' => 'nullable',
-            'remember_token' => 'nullable',
-            'accepts_marketing' => 'nullable',
-            'is_active' => 'nullable',
+            'name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->whereNotNull('email')],
+            'password' => ['nullable', 'string'],
+            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->whereNotNull('phone')],
+            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->whereNotNull('dni')],
+            'address' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'province' => ['nullable', 'string', 'max:100'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'accepts_marketing' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
+        ], [
+            'email.unique' => 'Ya existe un cliente registrado con ese correo electrónico.',
+            'phone.unique' => 'Ya existe un cliente registrado con ese número de teléfono.',
+            'dni.unique' => 'Ya existe un cliente registrado con ese DNI.',
         ]);
 
-        $customer = \App\Models\Customer::create($validated);
+        $customer = Customer::create($validated);
 
         if ($request->wantsJson()) {
             return response()->json(['customer' => $customer]);
@@ -93,19 +96,21 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $validated = $request->validate([
-            'name' => 'nullable',
-            'email' => 'nullable',
-            'password' => 'nullable',
-            'phone' => 'nullable',
-            'dni' => 'nullable',
-            'address' => 'nullable',
-            'city' => 'nullable',
-            'province' => 'nullable',
-            'postal_code' => 'nullable',
-            'email_verified_at' => 'nullable',
-            'remember_token' => 'nullable',
-            'accepts_marketing' => 'nullable',
-            'is_active' => 'nullable',
+            'name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customer->id)->whereNotNull('email')],
+            'password' => ['nullable', 'string'],
+            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->ignore($customer->id)->whereNotNull('phone')],
+            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->ignore($customer->id)->whereNotNull('dni')],
+            'address' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'province' => ['nullable', 'string', 'max:100'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'accepts_marketing' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
+        ], [
+            'email.unique' => 'Ya existe un cliente registrado con ese correo electrónico.',
+            'phone.unique' => 'Ya existe un cliente registrado con ese número de teléfono.',
+            'dni.unique' => 'Ya existe un cliente registrado con ese DNI.',
         ]);
 
         $customer->update($validated);

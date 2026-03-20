@@ -155,7 +155,7 @@ export default function Terminos() {
 
             <Section id="productos-precios" icon={ShoppingCart} title="Productos y Precios" num="4">
               <p>
-                ARTDENT comercializa productos para uso odontológico profesional. La disponibilidad de stock se muestra en tiempo real, aunque puede existir un margen de diferencia en situaciones de alta demanda simultánea.
+                ArtDent comercializa productos para uso odontológico profesional. La disponibilidad de stock se muestra en tiempo real, aunque puede existir un margen de diferencia en situaciones de alta demanda simultánea.
               </p>
               <div className="space-y-3">
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
@@ -186,10 +186,10 @@ export default function Terminos() {
                 <li><strong>Confirmación:</strong> recibirás un email de confirmación con el detalle del pedido.</li>
               </ol>
               <p>
-                El contrato de compraventa se perfecciona cuando ARTDENT confirma la recepción del pago y la disponibilidad del producto. La confirmación se comunica por correo electrónico al domicilio declarado por el usuario.
+                El contrato de compraventa se perfecciona cuando ArtDent confirma la recepción del pago y la disponibilidad del producto. La confirmación se comunica por correo electrónico al domicilio declarado por el usuario.
               </p>
               <p>
-                ARTDENT se reserva el derecho de rechazar un pedido en caso de detectar fraude, incumplimiento de estos Términos o cualquier otra circunstancia que lo justifique, reembolsando el importe abonado íntegramente.
+                ArtDent se reserva el derecho de rechazar un pedido en caso de detectar fraude, incumplimiento de estos Términos o cualquier otra circunstancia que lo justifique, reembolsando el importe abonado íntegramente.
               </p>
             </Section>
 
@@ -209,7 +209,7 @@ export default function Terminos() {
                 ))}
               </div>
               <p>
-                Las transacciones son procesadas de forma segura por <strong>MercadoPago</strong> (certificado PCI DSS). ARTDENT no almacena datos de tarjetas de crédito/débito. Las cuotas sin interés están sujetas a disponibilidad según el banco y la tarjeta utilizada.
+                Las transacciones son procesadas de forma segura por <strong>MercadoPago</strong> (certificado PCI DSS). ArtDent no almacena datos de tarjetas de crédito/débito. Las cuotas sin interés están sujetas a disponibilidad según el banco y la tarjeta utilizada.
               </p>
               <p>
                 En caso de rechazo del pago, el pedido no será procesado. Podés reintentar con otro medio de pago o contactarnos.
@@ -224,7 +224,7 @@ export default function Terminos() {
                   <ul className="list-disc list-inside space-y-1 text-gray-700">
                     <li><strong>Formosa Capital:</strong> 1–3 días hábiles.</li>
                     <li><strong>Interior del país:</strong> 3–8 días hábiles según destino y modalidad de envío.</li>
-                    <li>Los plazos son estimativos y pueden verse afectados por situaciones fuera del control de ARTDENT (fuerza mayor, días feriados, problemas del correo).</li>
+                    <li>Los plazos son estimativos y pueden verse afectados por situaciones fuera del control de ArtDent (fuerza mayor, días feriados, problemas del correo).</li>
                   </ul>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
@@ -237,7 +237,7 @@ export default function Terminos() {
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                   <p className="font-semibold text-gray-900 mb-2">Responsabilidad en el envío</p>
                   <ul className="list-disc list-inside space-y-1 text-gray-700">
-                    <li>ARTDENT es responsable del producto hasta su entrega al servicio de correo.</li>
+                    <li>ArtDent es responsable del producto hasta su entrega al servicio de correo.</li>
                     <li>Ante extravío o daño en el transporte, gestionaremos el reclamo ante la empresa de correo y te informaremos de los plazos de resolución.</li>
                     <li>Si el domicilio declarado es incorrecto o el destinatario no recibe el pedido, el reenvío puede implicar costos adicionales.</li>
                   </ul>
@@ -267,12 +267,12 @@ export default function Terminos() {
 
             <Section id="propiedad-intelectual" icon={Shield} title="Propiedad Intelectual" num="9">
               <p>
-                Todo el contenido del Sitio —incluyendo textos, imágenes, logotipos, diseño gráfico, código fuente y base de datos de productos— es propiedad de <strong>ARTDENT</strong> o de sus proveedores de contenido, y está protegido por las leyes argentinas e internacionales de <strong>propiedad intelectual</strong> (Ley 11.723 de Propiedad Intelectual y Ley 22.362 de Marcas).
+                Todo el contenido del Sitio —incluyendo textos, imágenes, logotipos, diseño gráfico, código fuente y base de datos de productos— es propiedad de <strong>ArtDent</strong> o de sus proveedores de contenido, y está protegido por las leyes argentinas e internacionales de <strong>propiedad intelectual</strong> (Ley 11.723 de Propiedad Intelectual y Ley 22.362 de Marcas).
               </p>
               <p>Queda prohibido sin autorización escrita previa:</p>
               <ul className="list-disc list-inside space-y-1 ml-1">
                 <li>Reproducir, copiar, distribuir o modificar el contenido del Sitio.</li>
-                <li>Utilizar el logotipo, nombre o marca ARTDENT con fines comerciales.</li>
+                <li>Utilizar el logotipo, nombre o marca ArtDent con fines comerciales.</li>
                 <li>Realizar ingeniería inversa del software del Sitio.</li>
               </ul>
               <p>
@@ -281,7 +281,7 @@ export default function Terminos() {
             </Section>
 
             <Section id="responsabilidad" icon={Scale} title="Limitación de Responsabilidad" num="10">
-              <p>ARTDENT no será responsable por:</p>
+              <p>ArtDent no será responsable por:</p>
               <ul className="list-disc list-inside space-y-1.5 ml-1">
                 <li>Interrupciones del servicio por mantenimiento, fallas técnicas o causas de fuerza mayor.</li>
                 <li>Daños derivados del uso incorrecto de los productos adquiridos, siempre que se hayan provisto las instrucciones de uso correspondientes.</li>
@@ -289,13 +289,13 @@ export default function Terminos() {
                 <li>Pérdidas de datos por causas ajenas a nuestra voluntad.</li>
               </ul>
               <p>
-                Esta limitación no aplica cuando medie dolo o culpa grave de ARTDENT, ni cuando se vulneren derechos irrenunciables del consumidor reconocidos por la <strong>Ley 24.240</strong>.
+                Esta limitación no aplica cuando medie dolo o culpa grave de ArtDent, ni cuando se vulneren derechos irrenunciables del consumidor reconocidos por la <strong>Ley 24.240</strong>.
               </p>
             </Section>
 
             <Section id="modificaciones" icon={RefreshCw} title="Modificaciones de los Términos" num="11">
               <p>
-                ARTDENT puede modificar estos Términos en cualquier momento. Los cambios entran en vigencia desde su publicación en el Sitio. Te notificaremos los cambios sustanciales por correo electrónico (si tenés cuenta registrada) con al menos <strong>15 días hábiles</strong> de anticipación.
+                ArtDent puede modificar estos Términos en cualquier momento. Los cambios entran en vigencia desde su publicación en el Sitio. Te notificaremos los cambios sustanciales por correo electrónico (si tenés cuenta registrada) con al menos <strong>15 días hábiles</strong> de anticipación.
               </p>
               <p>
                 El uso continuado del Sitio tras la entrada en vigencia de los nuevos Términos implica su aceptación. Si no estás de acuerdo, podés solicitar la eliminación de tu cuenta.

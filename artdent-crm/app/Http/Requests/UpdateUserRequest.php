@@ -23,7 +23,7 @@ class UpdateUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:191'],
             'email' => ['required', 'email', 'max:191', Rule::unique('users', 'email')->ignore($userId)->whereNull('deleted_at')],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'phone' => ['nullable', 'string', 'max:64'],
+            'phone' => ['nullable', 'string', 'max:64', Rule::unique('users', 'phone')->ignore($userId)->whereNotNull('phone')],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'is_active' => ['boolean'],
             'roles' => ['nullable', 'array'],
@@ -43,6 +43,7 @@ class UpdateUserRequest extends FormRequest
             'email.unique' => 'Ya existe un usuario con ese correo electrónico.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
+            'phone.unique' => 'Ya existe un usuario con ese número de teléfono.',
             'roles.*.exists' => 'Uno de los roles seleccionados no es válido.',
         ];
     }

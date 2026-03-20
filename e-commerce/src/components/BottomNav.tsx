@@ -8,7 +8,6 @@ import {
   MoreHorizontal,
   User,
   HelpCircle,
-  ArrowLeftRight,
   Phone,
   ChevronRight,
   X,
@@ -32,7 +31,7 @@ export default function BottomNav() {
 
   const TAB = (active: boolean) =>
     `flex-1 flex flex-col items-center justify-end gap-0.5 pb-2 pt-2 transition-colors ${
-      active ? 'text-[var(--brand-primary)]' : 'text-gray-400'
+      active ? 'text-white' : 'text-white/60'
     }`
 
   const cartActive = isActive('/carrito')
@@ -41,24 +40,24 @@ export default function BottomNav() {
     <>
       {/* ── Bottom bar ─────────────────────────────────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-white/20"
+        style={{ backgroundColor: 'var(--brand-primary)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {/* Carrito central elevado — absoluto relativo al nav */}
         <Link
           to="/carrito"
-          className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center gap-0.5"
+          className="absolute left-1/2 -translate-x-1/2 -top-3 flex flex-col items-center gap-0.5"
         >
           <div
-            className={`w-14 h-14 rounded-full border-4 border-white shadow-md flex items-center justify-center transition-colors ${
-              cartActive ? 'bg-[var(--brand-primary)]' : 'bg-white'
+            className={`w-14 h-14 rounded-full border-4 shadow-md flex items-center justify-center transition-colors ${
+              cartActive ? 'bg-white border-white' : 'bg-white/20 border-white/40'
             }`}
           >
             <div className="relative">
               <ShoppingCart
                 size={24}
                 strokeWidth={2}
-                className={cartActive ? 'text-white' : 'text-gray-500'}
+                className={cartActive ? 'text-[var(--brand-primary)]' : 'text-white'}
               />
               {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5 leading-none">
@@ -67,7 +66,7 @@ export default function BottomNav() {
               )}
             </div>
           </div>
-          <span className={`text-[10px] font-medium ${cartActive ? 'text-[var(--brand-primary)]' : 'text-gray-400'}`}>
+          <span className={`text-[10px] font-medium ${cartActive ? 'text-white' : 'text-white/60'}`}>
             Carrito
           </span>
         </Link>
@@ -80,10 +79,10 @@ export default function BottomNav() {
             <span className="text-[10px] font-medium">Inicio</span>
           </Link>
 
-          {/* Categorías */}
+          {/* Productos */}
           <Link to="/productos" className={TAB(isActive('/productos'))}>
             <LayoutGrid size={22} strokeWidth={isActive('/productos') ? 2.5 : 1.8} />
-            <span className="text-[10px] font-medium">Categorías</span>
+            <span className="text-[10px] font-medium">Productos</span>
           </Link>
 
           {/* Espacio central para el carrito elevado */}
@@ -133,11 +132,10 @@ export default function BottomNav() {
             </div>
             <ul className="px-4 py-2">
               {[
-                { icon: User,           label: 'Mi cuenta',           to: '/mi-cuenta' },
-                { icon: Tag,            label: 'Promociones',          to: '/promociones' },
-                { icon: ArrowLeftRight, label: 'Comparar productos',   to: '/comparar' },
-                { icon: HelpCircle,     label: 'Centro de ayuda',      to: '/ayuda' },
-                { icon: Phone,          label: 'Contacto',             to: '/contacto' },
+                { icon: User,       label: 'Mi cuenta',       to: '/mi-cuenta' },
+                { icon: Tag,        label: 'Promociones',      to: '/promociones' },
+                { icon: HelpCircle, label: 'Centro de ayuda',  to: '/ayuda' },
+                { icon: Phone,      label: 'Contacto',         to: '/contacto' },
               ].map(({ icon: Icon, label, to }) => (
                 <li key={to}>
                   <button

@@ -72,6 +72,15 @@ body {
   background: var(--brand-soft);
 }
 
+/* ── Inputs ── */
+.input {
+  @apply w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition;
+}
+.input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+
 /* ── Cards ── */
 .card {
   @apply rounded-2xl border bg-white shadow-sm;

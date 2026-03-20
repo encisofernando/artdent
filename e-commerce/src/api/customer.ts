@@ -1,4 +1,5 @@
 import { http } from './http'
+import type { PaymentReport } from './paymentReport'
 
 export type CustomerProfile = {
   id: number
@@ -71,6 +72,7 @@ export type CustomerOrder = {
   created_at: string
   items: CustomerOrderItem[]
   tracking: OrderTracking | null
+  payment_report: PaymentReport | null
 }
 
 export async function getProfile(): Promise<CustomerProfile> {

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
 use App\Models\Stock;
+use App\Services\MercadoPagoRefundService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -83,7 +85,7 @@ class EcommerceOrderController extends Controller
     {
         $validated = $request->validate([
             'status' => 'nullable|in:pending,confirmed,processing,shipped,delivered,cancelled,refunded',
-            'payment_status' => 'nullable|in:pending,paid,failed,refunded',
+            'payment_status' => 'nullable|in:pending,paid,failed,refunded,refund_failed',
             'admin_notes' => 'nullable|string|max:2000',
             'shipping_name' => 'nullable|string|max:255',
             'shipping_address' => 'nullable|string|max:500',
@@ -127,6 +129,21 @@ class EcommerceOrderController extends Controller
             // Cancel pending payment automatically
             if ($ecommerceOrder->payment_status === 'pending') {
                 $validated['payment_status'] = 'failed';
+            } elseif ($ecommerceOrder->payment_status === 'paid') {
+                $refunded = app(MercadoPagoRefundService::class)->refund($ecommerceOrder);
+
+                if ($refunded) {
+                    $validated['payment_status'] = 'refunded';
+                    $validated['status'] = 'refunded';
+                } else {
+                    CrmNotification::create([
+                        'type' => 'refund_failed',
+                        'title' => 'Reembolso fallido',
+                        'body' => "No se pudo reembolsar el pedido #{$ecommerceOrder->order_number}. Revisar manualmente en MercadoPago.",
+                        'url' => '/ecommerce-orders/'.$ecommerceOrder->id,
+                        'order_code' => $ecommerceOrder->order_number,
+                    ]);
+                }
             }
         }
 

@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { http } from '../api/http'
 
 export default function Register() {
   const { signIn } = useAuth()
-  const navigate = useNavigate()
 
   const [form, setForm] = useState({
     name: '',
@@ -43,7 +42,7 @@ export default function Register() {
         accepts_marketing: form.accepts_marketing,
       })
       await signIn(form.email, form.password)
-      navigate('/mi-cuenta')
+      window.location.replace('/mi-cuenta')
     } catch (err: any) {
       const msg = err?.response?.data?.errors
         ? Object.values(err.response.data.errors).flat().join(' ')
@@ -60,7 +59,7 @@ export default function Register() {
   return (
     <div className="mx-auto max-w-md px-4 py-10">
       <h1 className="text-2xl font-bold text-gray-900">Crear cuenta</h1>
-      <p className="mt-1 text-sm text-gray-500">Completá tus datos para registrarte en ARTDENT.</p>
+      <p className="mt-1 text-sm text-gray-500">Completá tus datos para registrarte en ArtDent.</p>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         <div>
@@ -106,7 +105,7 @@ export default function Register() {
             onChange={(e) => set('accepts_marketing', e.target.checked)}
             className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-[var(--brand-primary)]" />
           <span className="text-sm text-gray-600">
-            Quiero recibir novedades, ofertas y promociones de ARTDENT.
+            Quiero recibir novedades, ofertas y promociones de ArtDent.
           </span>
         </label>
 

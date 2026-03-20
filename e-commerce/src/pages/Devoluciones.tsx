@@ -131,7 +131,7 @@ export default function Devoluciones() {
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       {/* Hero */}
       <section className="bg-[var(--brand-primary)] text-white">
-        <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
+        <div className="mx-auto max-w-5xl px-4 py-8 md:py-10">
           <div className="mx-auto max-w-3xl text-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold mb-4">
               <RotateCcw size={15} />
@@ -147,7 +147,7 @@ export default function Devoluciones() {
 
       {/* Índice rápido */}
       <div className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-3 overflow-x-auto">
+        <div className="mx-auto max-w-5xl px-4 py-3 overflow-x-auto">
           <nav className="flex items-center gap-1 text-xs font-medium text-gray-600 whitespace-nowrap">
             {[
               { href: '#politica', label: 'Política de devoluciones' },
@@ -165,11 +165,11 @@ export default function Devoluciones() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:py-12">
+      <div className="mx-auto max-w-5xl px-4 py-8 md:py-12">
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Columna principal */}
-          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
+          <div className="lg:col-span-2 space-y-6 min-w-0 overflow-hidden">
 
             {/* Política general */}
             <section id="politica" className="card p-5 md:p-7 scroll-mt-24">
@@ -181,9 +181,9 @@ export default function Devoluciones() {
               </div>
               <div className="text-sm text-gray-700 space-y-3 leading-relaxed">
                 <p>
-                  En ARTDENT aceptamos devoluciones y cambios en los siguientes casos, siempre respetando los derechos establecidos por la <strong>Ley 24.240 de Defensa del Consumidor</strong>:
+                  En ArtDent aceptamos devoluciones y cambios en los siguientes casos, siempre respetando los derechos establecidos por la <strong>Ley 24.240 de Defensa del Consumidor</strong>:
                 </p>
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid md:grid-cols-2 gap-3">
                   {[
                     {
                       icon: RotateCcw,
@@ -249,9 +249,9 @@ export default function Devoluciones() {
                     <tbody>
                       {[
                         { caso: 'Arrepentimiento', plazo: '10 días hábiles desde recepción', costo: 'A cargo del cliente (salvo defecto)', reembolso: '10 días hábiles' },
-                        { caso: 'Defecto / garantía', plazo: '6 meses (prod. nuevo) · 3 meses (usado)', costo: 'A cargo de ARTDENT', reembolso: '10 días hábiles' },
-                        { caso: 'Error en el envío', plazo: '48 hs desde recepción', costo: 'A cargo de ARTDENT', reembolso: 'Al confirmar el error' },
-                        { caso: 'Daño en transporte', plazo: '48 hs desde recepción', costo: 'A cargo de ARTDENT', reembolso: 'Tras verificación' },
+                        { caso: 'Defecto / garantía', plazo: '6 meses (prod. nuevo) · 3 meses (usado)', costo: 'A cargo de ArtDent', reembolso: '10 días hábiles' },
+                        { caso: 'Error en el envío', plazo: '48 hs desde recepción', costo: 'A cargo de ArtDent', reembolso: 'Al confirmar el error' },
+                        { caso: 'Daño en transporte', plazo: '48 hs desde recepción', costo: 'A cargo de ArtDent', reembolso: 'Tras verificación' },
                       ].map((row, i) => (
                         <tr key={row.caso} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-4 py-3 border-b border-gray-100 font-medium text-gray-900">{row.caso}</td>
@@ -358,7 +358,7 @@ export default function Devoluciones() {
                 <form onSubmit={handleSubmit} className="space-y-4">
 
                   {/* Datos personales */}
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Nombre completo <span className="text-red-500">*</span>
@@ -379,7 +379,7 @@ export default function Devoluciones() {
                     </div>
                   </div>
 
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Teléfono</label>
                       <input name="telefono" type="tel" value={formData.telefono} onChange={handleChange}
@@ -425,7 +425,7 @@ export default function Devoluciones() {
                     <label className="block text-xs font-medium text-gray-700 mb-2">
                       ¿Qué preferís? <span className="text-red-500">*</span>
                     </label>
-                    <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="grid md:grid-cols-2 gap-3">
                       {[
                         { value: 'reembolso', label: 'Reembolso del importe', icon: CreditCard },
                         { value: 'cambio', label: 'Cambio por otro producto', icon: RotateCcw },
@@ -489,7 +489,7 @@ export default function Devoluciones() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4 order-first lg:order-last">
+          <div className="hidden lg:block space-y-4">
 
             <div className="card p-5">
               <h3 className="font-bold text-gray-900 mb-3">Contacto directo</h3>
@@ -559,7 +559,7 @@ export default function Devoluciones() {
       </div>
 
       <div className="border-t bg-white py-6">
-        <div className="mx-auto max-w-7xl px-4 text-center text-xs text-gray-500">
+        <div className="mx-auto max-w-5xl px-4 text-center text-xs text-gray-500">
           <p>Política de devoluciones sujeta a la <strong>Ley 24.240</strong> de Defensa del Consumidor de la República Argentina. Última actualización: marzo de 2026.</p>
         </div>
       </div>

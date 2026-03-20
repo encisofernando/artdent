@@ -83,7 +83,7 @@ export default function DefensaConsumidor() {
             </div>
             <h1 className="text-2xl font-bold md:text-4xl">Defensa del Consumidor</h1>
             <p className="mt-3 text-base text-white/90 max-w-xl mx-auto">
-              En ARTDENT respetamos y protegemos tus derechos como consumidor. Encontrá aquí toda la información obligatoria según la normativa argentina vigente.
+              En ArtDent respetamos y protegemos tus derechos como consumidor. Encontrá aquí toda la información obligatoria según la normativa argentina vigente.
             </p>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function DefensaConsumidor() {
             {/* Datos personales */}
             <Section id="datos-personales" icon={Lock} title="Protección de Datos Personales" badge="Ley 25.326">
               <p>
-                ARTDENT trata los datos personales de sus clientes con estricto cumplimiento de la <strong>Ley 25.326 de Protección de los Datos Personales</strong> (Ley de Habeas Data) y sus normas reglamentarias.
+                ArtDent trata los datos personales de sus clientes con estricto cumplimiento de la <strong>Ley 25.326 de Protección de los Datos Personales</strong> (Ley de Habeas Data) y sus normas reglamentarias.
               </p>
               <ul className="list-disc list-inside space-y-1 ml-1">
                 <li>Los datos recolectados son utilizados exclusivamente para la gestión de pedidos, facturación y comunicaciones comerciales que el usuario autorice.</li>
@@ -329,7 +329,7 @@ export default function DefensaConsumidor() {
               </p>
               <ul className="list-disc list-inside space-y-1 ml-1">
                 <li>Los precios pueden variar sin previo aviso. El precio aplicable es el vigente al momento de la confirmación del pedido.</li>
-                <li>ARTDENT emite comprobante fiscal (factura A o B según corresponda) por todas las transacciones.</li>
+                <li>ArtDent emite comprobante fiscal (factura A o B según corresponda) por todas las transacciones.</li>
                 <li>Para solicitar factura A, indicarlo al momento de la compra o comunicarse por email con el número de pedido y datos fiscales (razón social, CUIT, condición frente al IVA).</li>
                 <li>En caso de publicarse un precio erróneo por error técnico, nos reservamos el derecho a cancelar el pedido, notificando al consumidor dentro de las 24 hs para acordar la operación al precio correcto o proceder a la devolución íntegra del pago.</li>
               </ul>

@@ -118,6 +118,8 @@ class ProductController extends Controller
             $validated['slug'] = Str::slug($validated['name']).'-'.uniqid();
         }
 
+        $validated['min_stock'] = $validated['min_stock'] ?? 0;
+
         $product = \App\Models\Product::create($validated);
 
         // ── Imágenes ──────────────────────────────────────────────────────────

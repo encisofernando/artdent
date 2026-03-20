@@ -4,24 +4,10 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, ArrowRight, Check } from 'lucide-react'
 import { listProducts, type CatalogProduct } from '../api/products'
 import { productPath } from '../utils/slug'
-import { listCategories } from '../api/categories'
 import { listSidebarBanners, type SidebarBanner } from '../api/banners'
 import { listHeroSlides, type HeroSlide as ApiHeroSlide } from '../api/slides'
 import { storageUrl } from '../api/http'
 import { subscribeNewsletter } from '../api/newsletter'
-
-/* ─── Category icon map ─────────────────────────────────────────────── */
-const CAT_ICON: Record<string, string> = {
-  resina: '🧪', fresa: '🔩', yeso: '⬜', cera: '🕯️', acrílico: '💊',
-  silicona: '🫧', guante: '🧤', barbijo: '😷', impresión: '🖨️',
-  instrumental: '🔧', descartable: '🗑️', composite: '🔵', adhesivo: '🔗',
-  cemento: '🏗️', implante: '🦷', corona: '👑',
-}
-function catIcon(name: string): string {
-  const l = name.toLowerCase()
-  for (const [k, v] of Object.entries(CAT_ICON)) if (l.includes(k)) return v
-  return '🦷'
-}
 
 /* ─── Mini product card ─────────────────────────────────────────────── */
 function MiniCard({ p }: { p: CatalogProduct }) {
@@ -158,11 +144,6 @@ export default function Home() {
   const products = productsData?.data ?? []
 
   /* Categories */
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => listCategories(),
-  })
-
   /* Sidebar banners */
   const { data: sidebarBanners = [] } = useQuery({
     queryKey: ['sidebar_banners'],
@@ -436,37 +417,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ══════════════ EXPLORE CATEGORIES ══════════════ */}
-      {categories.length > 0 && (
-        <section style={{ background: 'var(--brand-primary)' }} className="py-12">
-          <div className="mx-auto max-w-7xl px-4">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-extrabold text-white tracking-tight">Explorar Categorías</h2>
-              <div className="w-14 h-0.5 bg-white/40 mx-auto mt-2 rounded-full" />
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-              {categories.slice(0, 16).map((cat) => (
-                <Link
-                  key={cat.id}
-                  to={`/productos?category_id=${cat.id}`}
-                  className="bg-white rounded-xl p-3 flex flex-col items-center gap-1.5 hover:bg-[var(--brand-soft)] hover:shadow-lg transition-all text-center group"
-                >
-                  <span className="text-2xl leading-none">{catIcon(cat.name)}</span>
-                  <span className="text-[10px] font-semibold text-gray-700 group-hover:text-[var(--brand-primary)] transition-colors leading-tight line-clamp-2">
-                    {cat.name}
-                  </span>
-                </Link>
-              ))}
-            </div>
-            <div className="text-center mt-6">
-              <Link to="/productos"
-                className="inline-flex items-center gap-2 bg-white text-[var(--brand-primary)] rounded-xl px-6 py-2.5 text-sm font-bold hover:shadow-lg transition-shadow">
-                Ver todas las categorías <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* ══════════════ NEWSLETTER ══════════════ */}
       <section className="mx-auto max-w-3xl px-4 pt-8 pb-0">

@@ -104,7 +104,7 @@ export default function NewsletterSubscribe({
           <div className="rounded-xl bg-green-50 border-2 border-green-500 p-6 text-center">
             <Check size={48} className="mx-auto mb-3 text-green-600" />
             <h3 className="text-xl font-bold text-green-900 mb-2">
-              ¡Bienvenido a ARTDENT!
+              ¡Bienvenido a ArtDent!
             </h3>
             <p className="text-green-700">
               Te hemos enviado un email de confirmación. Revisa tu bandeja de entrada.
@@ -148,7 +148,7 @@ export default function NewsletterSubscribe({
             </button>
 
             <p className="text-xs text-gray-500 text-center">
-              Al suscribirte, aceptas recibir emails promocionales de ARTDENT.
+              Al suscribirte, aceptas recibir emails promocionales de ArtDent.
               Puedes darte de baja en cualquier momento.
             </p>
           </form>

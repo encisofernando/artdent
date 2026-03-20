@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreUserRequest extends FormRequest
 {
@@ -20,7 +21,7 @@ class StoreUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:191'],
             'email' => ['required', 'email', 'max:191', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone' => ['nullable', 'string', 'max:64'],
+            'phone' => ['nullable', 'string', 'max:64', Rule::unique('users', 'phone')->whereNotNull('phone')],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'is_active' => ['boolean'],
             'roles' => ['nullable', 'array'],
@@ -41,6 +42,7 @@ class StoreUserRequest extends FormRequest
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
+            'phone.unique' => 'Ya existe un usuario con ese número de teléfono.',
             'roles.*.exists' => 'Uno de los roles seleccionados no es válido.',
         ];
     }

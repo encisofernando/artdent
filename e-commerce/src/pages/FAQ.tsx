@@ -82,7 +82,7 @@ const CATEGORIES: FAQCategory[] = [
       },
       {
         q: '¿Es seguro pagar en el sitio?',
-        a: 'Absolutamente. Las transacciones son procesadas íntegramente por MercadoPago, que cuenta con certificación PCI DSS nivel 1. ARTDENT no almacena ni tiene acceso a los datos de tu tarjeta. La conexión está cifrada con HTTPS/TLS.',
+        a: 'Absolutamente. Las transacciones son procesadas íntegramente por MercadoPago, que cuenta con certificación PCI DSS nivel 1. ArtDent no almacena ni tiene acceso a los datos de tu tarjeta. La conexión está cifrada con HTTPS/TLS.',
       },
       {
         q: '¿Por qué puede rechazarse mi pago?',
@@ -107,7 +107,7 @@ const CATEGORIES: FAQCategory[] = [
             Los plazos estimados son:<br />
             • <strong>Formosa Capital:</strong> 1 a 3 días hábiles.<br />
             • <strong>Interior del país:</strong> 3 a 8 días hábiles según destino.<br />
-            Estos plazos son estimativos y pueden verse afectados por feriados o situaciones externas al control de ARTDENT.
+            Estos plazos son estimativos y pueden verse afectados por feriados o situaciones externas al control de ArtDent.
           </span>
         ),
       },
@@ -187,7 +187,7 @@ const CATEGORIES: FAQCategory[] = [
     items: [
       {
         q: '¿Los productos son originales?',
-        a: 'Sí. ARTDENT comercializa únicamente productos originales adquiridos directamente de distribuidores y fabricantes autorizados. Cada producto cuenta con su embalaje y documentación original.',
+        a: 'Sí. ArtDent comercializa únicamente productos originales adquiridos directamente de distribuidores y fabricantes autorizados. Cada producto cuenta con su embalaje y documentación original.',
       },
       {
         q: '¿Cómo sé si el stock mostrado es en tiempo real?',
@@ -246,7 +246,7 @@ const CATEGORIES: FAQCategory[] = [
     color: 'text-teal-600 bg-teal-50',
     items: [
       {
-        q: '¿ARTDENT emite facturas?',
+        q: '¿ArtDent emite facturas?',
         a: 'Sí. Emitimos comprobante fiscal (factura A o B) por todas las transacciones realizadas en el sitio.',
       },
       {

@@ -1,18 +1,16 @@
 import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { ShoppingCart, ChevronDown, MapPin, X, Truck, LogOut, User, Heart, Bell, Package, ShoppingBag, CreditCard } from 'lucide-react'
+import { ShoppingCart, ChevronDown, MapPin, X, LogOut, User, Heart, Bell, Package, ShoppingBag, CreditCard } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../store/auth'
 import { useCart } from '../store/cart'
-import { getWishlist, removeFromWishlist, type WishlistItem } from '../api/wishlist'
+import { getWishlist, type WishlistItem } from '../api/wishlist'
 import { useNotifications, type AppNotification } from '../hooks/useNotifications'
 import logoBlanco from '../assets/logo-blanco.png'
 import AdvancedSearch from '../components/AdvancedSearch'
 import MobileMenu from '../components/MobileMenu'
 import { listCategories, type Category } from '../api/categories'
-import { storageUrl } from '../api/http'
-import { productPath } from '../utils/slug'
 
 type MegaMenuColumn = {
   title: string
@@ -120,7 +118,6 @@ export default function Header() {
   const { user, isAuthenticated, signOut } = useAuth()
   const cart = useCart()
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const count = cart.items.reduce((acc, it) => acc + (it.qty || 0), 0)
 
   const [menuOpen, setMenuOpen] = useState<null | 'productos' | 'marcas'>(null)
@@ -130,7 +127,7 @@ export default function Header() {
   const [showPostalModal, setShowPostalModal] = useState(false)
 
   // Favoritos — React Query para sincronizarse con WishlistButton automáticamente
-  const { data: wishlist = [] } = useQuery<WishlistItem[]>({
+  useQuery<WishlistItem[]>({
     queryKey: ['wishlist'],
     queryFn: getWishlist,
     enabled: isAuthenticated,
@@ -204,7 +201,7 @@ export default function Header() {
     },
   ], [])
 
-  const firstName = user?.name?.split(' ')[0] ?? ''
+  const initials = (user?.name ?? '').split(' ').filter(Boolean).slice(0, 3).map(w => w[0].toUpperCase()).join('')
 
   return (
     <>
@@ -214,37 +211,175 @@ export default function Header() {
 
       <header className="sticky top-0 z-50 safe-top">
 
-        {/* ── Fila 1: Logo | Buscador | Badge ──────────────────────────── */}
+        {/* ── Fila 1: Logo | Buscador | Acciones ───────────────────────── */}
         <div style={{ backgroundColor: 'var(--brand-primary)' }}>
           <div className="mx-auto max-w-7xl px-4 py-3">
 
             {/* Desktop */}
-            <div className="hidden md:grid grid-cols-[200px,1fr,auto] items-center gap-6">
+            <div className="hidden md:grid grid-cols-[180px,1fr,auto] items-center gap-6">
               <Link to="/">
                 <img src={logoBlanco} alt="ArtDent" className="h-12 w-auto" />
               </Link>
               <AdvancedSearch onSearch={(q) => navigate(`/productos?q=${encodeURIComponent(q)}`)} />
-              <div className="flex items-center gap-2 bg-white/15 border border-white/30 text-white rounded-lg px-4 py-2 select-none whitespace-nowrap">
-                <Truck size={18} className="shrink-0" />
-                <div className="leading-tight">
-                  <p className="text-[12px] font-black tracking-wide">ENVÍOS A TODO EL PAÍS</p>
-                  <p className="text-[10px] opacity-80 font-medium">a toda la Argentina</p>
-                </div>
+
+              {/* Acciones desktop */}
+              <div className="flex items-center gap-4 text-white self-center">
+
+                {/* Login / cuenta */}
+                {isAuthenticated ? (
+                  <div ref={wishlistRef} className="relative">
+                    <button onClick={() => setWishlistOpen((v) => !v)}
+                      className="flex items-center gap-2 hover:opacity-90 transition">
+                      {/* Avatar con iniciales */}
+                      <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow">
+                        <span className="text-[var(--brand-primary)] text-[11px] font-extrabold tracking-tight leading-none">
+                          {initials}
+                        </span>
+                      </div>
+                      <div className="leading-tight text-left">
+                        <p className="text-[13px] font-bold text-white uppercase leading-tight">{user?.name}</p>
+                        <p className="text-[11px] text-white/70">Mi cuenta ▾</p>
+                      </div>
+                    </button>
+                    {wishlistOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border z-50 overflow-hidden text-gray-800 text-sm">
+                        {/* Cabecera del dropdown */}
+                        <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--brand-primary)' }}>
+                            <span className="text-white text-[11px] font-extrabold">{initials}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-900 text-xs leading-tight truncate uppercase">{user?.name}</p>
+                            <p className="text-[11px] text-gray-500 truncate">{user?.email}</p>
+                          </div>
+                        </div>
+                        <Link to="/mi-cuenta" onClick={() => setWishlistOpen(false)}
+                          className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 border-b">
+                          <User size={15} className="text-[var(--brand-primary)]" /> Mi perfil
+                        </Link>
+                        <Link to="/mi-cuenta" onClick={() => setWishlistOpen(false)}
+                          className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 border-b">
+                          <Package size={15} className="text-[var(--brand-primary)]" /> Mis compras
+                        </Link>
+                        <Link to="/favoritos" onClick={() => setWishlistOpen(false)}
+                          className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 border-b">
+                          <Heart size={15} className="text-[var(--brand-primary)]" /> Favoritos
+                        </Link>
+                        <button onClick={async () => { setWishlistOpen(false); await signOut(); window.location.replace('/') }}
+                          className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 text-red-600">
+                          <LogOut size={15} /> Cerrar sesión
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Link to="/iniciar-sesion" className="flex items-center gap-2 hover:opacity-80 transition">
+                    <User size={26} strokeWidth={1.5} />
+                    <div className="leading-tight text-left">
+                      <p className="text-[13px] font-bold">¡Hola! Iniciá sesión</p>
+                      <p className="text-[11px] opacity-70">O podés registrarte</p>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Notificaciones (solo autenticado) */}
+                {isAuthenticated && (
+                  <div ref={notifRef} className="relative flex items-center">
+                    <button onClick={() => setNotifOpen((v) => !v)}
+                      className="relative flex items-center justify-center hover:opacity-80 transition" aria-label="Notificaciones">
+                      <Bell size={24} strokeWidth={1.5} />
+                      {unread > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                          {unread > 9 ? '9+' : unread}
+                        </span>
+                      )}
+                    </button>
+                    {notifOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border z-50 overflow-hidden">
+                        <div className="px-4 py-3 border-b flex items-center justify-between">
+                          <span className="font-semibold text-gray-800 text-sm">
+                            Notificaciones
+                            {unread > 0 && (
+                              <span className="ml-2 text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full">
+                                {unread} nuevas
+                              </span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {unread > 0 && (
+                              <button onClick={markAllRead} className="text-[11px] text-[var(--brand-primary)] hover:underline font-medium">Todo leído</button>
+                            )}
+                            <button onClick={() => setNotifOpen(false)}><X size={14} className="text-gray-400" /></button>
+                          </div>
+                        </div>
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                            <Bell size={28} className="mx-auto mb-2 text-gray-200" />
+                            No tenés notificaciones por el momento.
+                          </div>
+                        ) : (
+                          <ul className="max-h-80 overflow-y-auto divide-y">
+                            {notifications.map((n) => {
+                              const Icon = NOTIF_ICON_COMPONENTS[n.type] ?? Bell
+                              const color = NOTIF_COLORS[n.type]
+                              const handleClick = () => { markOneRead(n.id); setNotifOpen(false) }
+                              return (
+                                <li key={n.id} className="bg-blue-50 hover:bg-blue-100/60 transition cursor-pointer">
+                                  {n.orderCode ? (
+                                    <Link to={`/pedido/${n.orderCode}`} onClick={handleClick} className="flex items-start gap-3 px-4 py-3">
+                                      <Icon size={15} className={`${color} shrink-0 mt-0.5`} />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-gray-800">{n.title}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
+                                      </div>
+                                      <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
+                                    </Link>
+                                  ) : (
+                                    <div onClick={handleClick} className="flex items-start gap-3 px-4 py-3">
+                                      <Icon size={15} className={`${color} shrink-0 mt-0.5`} />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-gray-800">{n.title}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
+                                      </div>
+                                      <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
+                                    </div>
+                                  )}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                        <div className="px-4 py-3 border-t bg-gray-50">
+                          <Link to="/mi-cuenta" onClick={() => setNotifOpen(false)}
+                            className="text-xs font-semibold text-[var(--brand-primary)] hover:underline">
+                            Ver todos mis pedidos →
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Carrito */}
+                <Link to="/carrito" className="relative flex items-center justify-center hover:opacity-80 transition" aria-label="Carrito">
+                  <ShoppingCart size={24} strokeWidth={1.5} />
+                  {count > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
+                      {count > 99 ? '99+' : count}
+                    </span>
+                  )}
+                </Link>
+
               </div>
             </div>
 
             {/* Mobile */}
-            <div className="flex md:hidden items-center gap-3">
-              <Link to="/" className="flex-1 flex justify-center">
-                <img src={logoBlanco} alt="ArtDent" className="h-8 w-auto" />
+            <div className="flex md:hidden items-center justify-center">
+              <Link to="/">
+                <img src={logoBlanco} alt="ArtDent" className="h-11 w-auto" />
               </Link>
-              <div className="flex items-center gap-1 shrink-0">
-                {isAuthenticated && (
-                  <Link to="/mi-cuenta" className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/10 transition">
-                    <User size={19} className="text-white" />
-                  </Link>
-                )}
-              </div>
             </div>
 
             {/* Mobile: buscador */}
@@ -254,15 +389,15 @@ export default function Header() {
           </div>
         </div>
 
-        {/* ── Fila 2: Nav + Acciones ────────────────────────────────────── */}
+        {/* ── Fila 2: Nav centrado ──────────────────────────────────────── */}
         <div className="hidden md:block border-b"
           style={{ background: 'color-mix(in srgb, var(--brand-primary) 82%, black)' }}
           onMouseLeave={() => setMenuOpen(null)}>
           <div className="mx-auto max-w-7xl px-4">
-            <div className="relative flex items-center justify-between">
+            <div className="relative flex items-center justify-center">
 
               {/* Nav */}
-              <nav className="flex items-center gap-6 py-2.5 text-[13px] font-semibold">
+              <nav className="flex items-center gap-8 py-2.5 text-[15px] font-semibold">
                 <NavLink to="/" className={() => 'text-white/90 hover:text-white transition'}>Inicio</NavLink>
                 <Link to="/productos" className="flex items-center gap-1 text-white/90 hover:text-white transition"
                   onMouseEnter={() => setMenuOpen('productos')} onFocus={() => setMenuOpen('productos')}
@@ -276,246 +411,9 @@ export default function Header() {
                   Marcas
                   <ChevronDown size={16} className={`transition-transform ${menuOpen === 'marcas' ? 'rotate-180' : ''}`} />
                 </Link>
-                <NavLink to="/comparar" className={() => 'text-white/90 hover:text-white transition'}>Comparar</NavLink>
                 <NavLink to="/contacto" className={() => 'text-white/90 hover:text-white transition'}>Contacto</NavLink>
               </nav>
 
-              {/* User actions */}
-              <div className="flex items-center gap-3 text-[12px] text-white/90 py-2.5">
-                {isAuthenticated ? (
-                  <>
-                    <span className="font-semibold truncate max-w-[100px]">Hola, {firstName}</span>
-                    <span className="text-white/30">|</span>
-                    <Link to="/mi-cuenta" className="hover:text-white hover:underline transition">Mi cuenta</Link>
-                    <span className="text-white/30">|</span>
-                    <Link to="/mi-cuenta" className="hover:text-white hover:underline transition">Mis compras</Link>
-                    <span className="text-white/30">|</span>
-
-                    {/* ── Favoritos ── */}
-                    <div ref={wishlistRef} className="relative">
-                      <button onClick={() => setWishlistOpen((v) => !v)}
-                        className="flex items-center gap-1 hover:text-white transition font-medium relative">
-                        <Heart size={17} className={wishlist.length > 0 ? 'fill-white/60' : ''} />
-                        <span>Favoritos</span>
-                        {wishlist.length > 0 && (
-                          <span className="absolute -top-2 -right-3 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[var(--brand-primary)]">
-                            {wishlist.length > 9 ? '9+' : wishlist.length}
-                          </span>
-                        )}
-                      </button>
-
-                      {wishlistOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border z-50 overflow-hidden">
-                          <div className="px-4 py-3 border-b flex items-center justify-between">
-                            <span className="font-semibold text-gray-800 text-sm">Favoritos</span>
-                            <button onClick={() => setWishlistOpen(false)}><X size={14} className="text-gray-400" /></button>
-                          </div>
-                          {wishlist.length === 0 ? (
-                            <div className="px-4 py-8 text-center text-gray-400 text-sm">
-                              <Heart size={28} className="mx-auto mb-2 text-gray-200" />
-                              Agregá acá los productos que te gustaron para poder verlos más tarde.
-                            </div>
-                          ) : (
-                            <ul className="max-h-96 overflow-y-auto divide-y">
-                              {wishlist.slice(0, 5).map((item) => {
-                                const p = item.product
-                                if (!p) return null
-                                const src = storageUrl(p.primary_image_url)
-                                const base = p.price
-                                const final = p.price_final ?? p.pricing?.final ?? base
-                                const discountPct = p.pricing?.discount_percent
-                                  ?? (base > final ? Math.round((1 - final / base) * 100) : 0)
-                                const hasDiscount = discountPct > 0 && final < base
-                                return (
-                                  <li key={item.id} className="px-4 py-3 hover:bg-gray-50 transition">
-                                    <div className="flex items-start gap-3">
-                                      {/* Imagen */}
-                                      <Link to={productPath(p.id, p.name)} onClick={() => setWishlistOpen(false)}
-                                        className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden border">
-                                        {src
-                                          ? <img src={src} alt={p.name} className="w-full h-full object-contain p-1" />
-                                          : <Package size={20} className="text-gray-300" />}
-                                      </Link>
-                                      {/* Info */}
-                                      <div className="flex-1 min-w-0">
-                                        <Link to={productPath(p.id, p.name)} onClick={() => setWishlistOpen(false)}
-                                          className="text-xs text-gray-700 line-clamp-2 hover:text-[var(--brand-primary)] transition leading-snug">
-                                          {p.name}
-                                        </Link>
-                                        <div className="mt-1.5">
-                                          {hasDiscount && (
-                                            <p className="text-[10px] text-gray-400 line-through leading-none">
-                                              ${base.toLocaleString('es-AR')}
-                                            </p>
-                                          )}
-                                          <div className="flex items-center gap-1.5">
-                                            <p className="text-sm font-bold text-gray-900 leading-none">
-                                              ${final.toLocaleString('es-AR')}
-                                            </p>
-                                            {hasDiscount && (
-                                              <span className="text-[10px] font-semibold text-green-600">
-                                                {discountPct}% OFF
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <button
-                                          onClick={async () => {
-                                            await removeFromWishlist(item.id)
-                                            qc.invalidateQueries({ queryKey: ['wishlist'] })
-                                            qc.invalidateQueries({ queryKey: ['wishlist-check', item.product_id] })
-                                          }}
-                                          className="mt-1.5 text-[11px] text-[var(--brand-primary)] hover:underline">
-                                          Eliminar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </li>
-                                )
-                              })}
-                            </ul>
-                          )}
-                          <div className="px-4 py-3 border-t bg-gray-50">
-                            <Link to="/favoritos" onClick={() => setWishlistOpen(false)}
-                              className="text-xs font-semibold text-[var(--brand-primary)] hover:underline">
-                              Ver todos los favoritos y listas →
-                            </Link>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <span className="text-white/30">|</span>
-
-                    {/* ── Notificaciones ── */}
-                    <div ref={notifRef} className="relative">
-                      <button
-                        onClick={() => setNotifOpen((v) => !v)}
-                        className="relative flex items-center justify-center hover:text-white transition"
-                        aria-label="Notificaciones">
-                        <Bell size={17} />
-                        {unread > 0 && (
-                          <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                            {unread > 9 ? '9+' : unread}
-                          </span>
-                        )}
-                      </button>
-
-                      {notifOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border z-50 overflow-hidden">
-                          <div className="px-4 py-3 border-b flex items-center justify-between">
-                            <span className="font-semibold text-gray-800 text-sm">
-                              Notificaciones
-                              {unread > 0 && (
-                                <span className="ml-2 text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full">
-                                  {unread} nuevas
-                                </span>
-                              )}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              {unread > 0 && (
-                                <button
-                                  onClick={markAllRead}
-                                  className="text-[11px] text-[var(--brand-primary)] hover:underline font-medium"
-                                >
-                                  Todo leído
-                                </button>
-                              )}
-                              <button onClick={() => setNotifOpen(false)}><X size={14} className="text-gray-400" /></button>
-                            </div>
-                          </div>
-                          {notifications.length === 0 ? (
-                            <div className="px-4 py-8 text-center text-gray-400 text-sm">
-                              <Bell size={28} className="mx-auto mb-2 text-gray-200" />
-                              No tenés notificaciones por el momento.
-                            </div>
-                          ) : (
-                            <ul className="max-h-80 overflow-y-auto divide-y">
-                              {notifications.map((n) => {
-                                const Icon = NOTIF_ICON_COMPONENTS[n.type] ?? Bell
-                                const color = NOTIF_COLORS[n.type]
-                                const handleClick = () => {
-                                  markOneRead(n.id)
-                                  setNotifOpen(false)
-                                }
-                                return (
-                                  <li key={n.id} className="bg-blue-50 hover:bg-blue-100/60 transition cursor-pointer">
-                                    {n.orderCode ? (
-                                      <Link
-                                        to={`/pedido/${n.orderCode}`}
-                                        onClick={handleClick}
-                                        className="flex items-start gap-3 px-4 py-3"
-                                      >
-                                        <Icon size={15} className={`${color} shrink-0 mt-0.5`} />
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-xs font-semibold text-gray-800">{n.title}</p>
-                                          <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                                          <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
-                                        </div>
-                                        <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
-                                      </Link>
-                                    ) : (
-                                      <div onClick={handleClick} className="flex items-start gap-3 px-4 py-3">
-                                        <Icon size={15} className={`${color} shrink-0 mt-0.5`} />
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-xs font-semibold text-gray-800">{n.title}</p>
-                                          <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                                          <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
-                                        </div>
-                                        <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
-                                      </div>
-                                    )}
-                                  </li>
-                                )
-                              })}
-                            </ul>
-                          )}
-                          <div className="px-4 py-3 border-t bg-gray-50">
-                            <Link to="/mi-cuenta" onClick={() => setNotifOpen(false)}
-                              className="text-xs font-semibold text-[var(--brand-primary)] hover:underline">
-                              Ver todos mis pedidos →
-                            </Link>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <span className="text-white/30">|</span>
-
-                    {/* Carrito */}
-                    <Link to="/carrito" className="relative flex items-center gap-1 hover:text-white transition font-medium">
-                      <ShoppingCart size={18} />
-                      {count > 0 && (
-                        <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[var(--brand-primary)]">
-                          {count > 99 ? '99+' : count}
-                        </span>
-                      )}
-                    </Link>
-
-                    <button onClick={() => signOut()} title={`Cerrar sesión (${user?.email ?? ''})`}
-                      className="hover:text-red-300 transition" aria-label="Cerrar sesión">
-                      <LogOut size={16} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/registrarme" className="hover:text-white hover:underline transition">Creá tu cuenta</Link>
-                    <span className="text-white/30">|</span>
-                    <Link to="/iniciar-sesion" className="hover:text-white hover:underline transition font-semibold">Ingresá</Link>
-                    <span className="text-white/30">|</span>
-                    <Link to="/iniciar-sesion" className="hover:text-white hover:underline transition">Mis compras</Link>
-                    <span className="text-white/30">|</span>
-                    <Link to="/carrito" className="relative flex items-center gap-1 hover:text-white transition font-medium">
-                      <ShoppingCart size={18} />
-                      {count > 0 && (
-                        <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[var(--brand-primary)]">
-                          {count > 99 ? '99+' : count}
-                        </span>
-                      )}
-                    </Link>
-                  </>
-                )}
-              </div>
             </div>
 
             {/* Mega menu */}

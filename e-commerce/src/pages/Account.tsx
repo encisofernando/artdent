@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  User, MapPin, ShoppingBag, Lock, ChevronRight, Plus, Trash2, Edit2,
+  User, ShoppingBag, Lock, ChevronRight, Plus, Trash2, Edit2,
   Check, Package, Clock, CheckCircle2, Truck, XCircle, AlertTriangle,
-  RefreshCw, MapPinned, RotateCcw,
+  RefreshCw, MapPinned, RotateCcw, Phone, Mail, Home, IdCard, LogOut,
 } from 'lucide-react'
 import { useAuth } from '../store/auth'
 import {
@@ -13,6 +13,7 @@ import {
   cancelOrder,
   type CustomerProfile, type CustomerAddress, type CustomerOrder,
 } from '../api/customer'
+import PaymentReportButton from '../components/PaymentReportButton'
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
 function fmt(n: number) { return `$${Number(n || 0).toLocaleString('es-AR')}` }
@@ -101,13 +102,15 @@ function AddressForm({ initial, onSave, onCancel, saving }: {
 }
 
 /* ── Tabs ────────────────────────────────────────────────────────────── */
-type Tab = 'orders' | 'profile' | 'addresses' | 'security'
+type Tab = 'profile' | 'orders' | 'security'
 
 /* ══════════════════════════════════════════════════════════════════════ */
 export default function Account() {
   const { user, signOut } = useAuth()
   const qc = useQueryClient()
-  const [tab, setTab] = useState<Tab>('orders')
+  const [searchParams] = useSearchParams()
+  const initialTab = (searchParams.get('tab') as Tab | null) ?? 'profile'
+  const [tab, setTab] = useState<Tab>(initialTab)
 
   if (!user) {
     return (
@@ -118,27 +121,41 @@ export default function Account() {
     )
   }
 
+  const initials = (user.name ?? '').split(' ').filter(Boolean).slice(0, 3).map(w => w[0].toUpperCase()).join('')
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'orders',    label: 'Mis pedidos',   icon: <ShoppingBag size={16} /> },
-    { id: 'profile',   label: 'Mis datos',     icon: <User size={16} /> },
-    { id: 'addresses', label: 'Direcciones',   icon: <MapPin size={16} /> },
-    { id: 'security',  label: 'Seguridad',     icon: <Lock size={16} /> },
+    { id: 'profile',  label: 'Mi perfil',     icon: <User size={16} /> },
+    { id: 'orders',   label: 'Mis pedidos',   icon: <ShoppingBag size={16} /> },
+    { id: 'security', label: 'Seguridad',     icon: <Lock size={16} /> },
   ]
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mi cuenta</h1>
-          <p className="text-sm text-gray-500">{user.email}</p>
-        </div>
-        <button onClick={() => signOut()} className="btn btn-outline text-sm">Cerrar sesión</button>
+        <h1 className="text-2xl font-bold text-gray-900">Mi cuenta</h1>
+        <button
+          onClick={async () => { await signOut(); window.location.replace('/') }}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-500 transition"
+        >
+          <LogOut size={15} /> Cerrar sesión
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar */}
-        <nav className="md:w-52 flex-shrink-0">
+        <nav className="md:w-52 flex-shrink-0 md:sticky md:top-24 md:self-start">
+          {/* Avatar card */}
+          <div className="card p-4 mb-3 flex flex-col items-center gap-2 text-center">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'var(--brand-primary)' }}>
+              <span className="text-white text-lg font-extrabold tracking-tight leading-none">{initials}</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900 leading-tight">{user.name}</p>
+              <p className="text-xs text-gray-500 mt-0.5 break-all">{user.email}</p>
+            </div>
+          </div>
+
           <ul className="space-y-1">
             {tabs.map((t) => (
               <li key={t.id}>
@@ -159,11 +176,279 @@ export default function Account() {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {tab === 'orders'    && <OrdersTab qc={qc} />}
-          {tab === 'profile'   && <ProfileTab qc={qc} />}
-          {tab === 'addresses' && <AddressesTab qc={qc} />}
-          {tab === 'security'  && <SecurityTab />}
+          {tab === 'profile'  && <ProfilePage qc={qc} user={user} onChangePwd={() => setTab('security')} />}
+          {tab === 'orders'   && <OrdersTab qc={qc} />}
+          {tab === 'security' && <SecurityTab />}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── ProfilePage (perfil + domicilios) ───────────────────────────────── */
+function ProfilePage({ qc, user, onChangePwd }: { qc: ReturnType<typeof useQueryClient>; user: any; onChangePwd: () => void }) {
+  const initials = (user.name ?? '').split(' ').filter(Boolean).slice(0, 3).map((w: string) => w[0].toUpperCase()).join('')
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-lg font-bold text-gray-900">Mi perfil</h2>
+
+      {/* ── Header card ── */}
+      <div className="card p-5">
+        <div className="flex items-center gap-4">
+          {/* Avatar */}
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden"
+            style={{ background: 'var(--brand-primary)' }}>
+            <span className="text-white text-xl font-extrabold tracking-tight leading-none">{initials}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold text-gray-900 uppercase leading-tight">{user.name}</h3>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{user.email}</p>
+            <button
+              onClick={onChangePwd}
+              className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-primary)] hover:underline transition"
+            >
+              <Lock size={12} /> Cambiar contraseña
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Data card ── */}
+      <ProfileDataCard qc={qc} />
+
+      {/* ── Addresses ── */}
+      <AddressesSection qc={qc} />
+    </div>
+  )
+}
+
+/* ── ProfileDataCard ─────────────────────────────────────────────────── */
+function ProfileDataCard({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
+  const { data: profile, isLoading } = useQuery({ queryKey: ['customer_profile'], queryFn: getProfile })
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState<Partial<CustomerProfile>>({})
+  const [saved, setSaved] = useState(false)
+
+  const mutation = useMutation({
+    mutationFn: updateProfile,
+    onSuccess: (updated) => {
+      qc.setQueryData(['customer_profile'], updated)
+      setEditing(false)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    },
+  })
+
+  if (isLoading) return <div className="card p-6 text-sm text-gray-400 text-center py-10">Cargando datos…</div>
+  if (!profile) return null
+
+  if (editing) {
+    return (
+      <div className="card p-5">
+        <h3 className="font-bold text-gray-800 mb-4">Editar datos</h3>
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate(form) }}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {([
+              ['name', 'Nombre completo', 'text'],
+              ['phone', 'Teléfono', 'tel'],
+              ['dni', 'DNI / CUIT', 'text'],
+              ['address', 'Dirección fiscal', 'text'],
+              ['city', 'Ciudad', 'text'],
+              ['province', 'Provincia', 'text'],
+              ['postal_code', 'Código postal', 'text'],
+            ] as [keyof CustomerProfile, string, string][]).map(([field, lbl, type]) => (
+              <div key={field}>
+                <label className={labelCls}>{lbl}</label>
+                <input
+                  type={type}
+                  value={(form[field] as string) ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                  className={inputCls}
+                />
+              </div>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={!!form.accepts_marketing}
+              onChange={(e) => setForm((f) => ({ ...f, accepts_marketing: e.target.checked }))}
+              className="accent-[var(--brand-primary)]" />
+            Quiero recibir novedades y ofertas
+          </label>
+          {mutation.isError && (
+            <p className="text-sm text-red-600">{(mutation.error as any)?.response?.data?.message ?? 'Error al guardar.'}</p>
+          )}
+          <div className="flex gap-2">
+            <button type="submit" disabled={mutation.isPending} className="btn btn-primary flex-1 py-2.5">
+              {mutation.isPending ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+            <button type="button" onClick={() => setEditing(false)} className="btn btn-outline px-4">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    )
+  }
+
+  const rows: { icon: React.ReactNode; value: string; label: string; editable?: boolean }[] = [
+    { icon: <IdCard size={16} className="text-gray-400" />, value: profile.dni ?? '—', label: 'DNI / CUIT' },
+    { icon: <Phone size={16} className="text-gray-400" />, value: profile.phone ?? '—', label: 'Teléfono', editable: true },
+    { icon: <Mail size={16} className="text-gray-400" />, value: profile.email, label: 'Correo electrónico' },
+    { icon: <Home size={16} className="text-gray-400" />, value: [profile.address, profile.city, profile.province, profile.postal_code].filter(Boolean).join(', ') || '—', label: 'Domicilio fiscal' },
+  ]
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <h3 className="font-bold text-gray-800">Datos personales</h3>
+        <button
+          onClick={() => { setForm({ ...profile }); setEditing(true) }}
+          className="flex items-center gap-1.5 text-sm text-[var(--brand-primary)] font-semibold hover:underline"
+        >
+          <Edit2 size={13} /> Editar
+        </button>
+      </div>
+
+      {saved && (
+        <div className="px-5 py-2 bg-green-50 border-b border-green-100 text-sm text-green-700 flex items-center gap-2">
+          <Check size={14} /> Datos guardados correctamente.
+        </div>
+      )}
+
+      <div className="divide-y divide-gray-50">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center gap-4 px-5 py-3.5">
+            <div className="w-8 flex items-center justify-center shrink-0">{row.icon}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-800 truncate">{row.value}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{row.label}</p>
+            </div>
+            {row.editable && (
+              <button
+                onClick={() => { setForm({ ...profile }); setEditing(true) }}
+                className="text-xs text-gray-400 hover:text-[var(--brand-primary)] flex items-center gap-1 transition shrink-0"
+              >
+                <Edit2 size={12} /> Editar
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full ${profile.accepts_marketing ? 'bg-green-500' : 'bg-gray-300'}`} />
+        <span className="text-xs text-gray-500">
+          {profile.accepts_marketing ? 'Suscripto a novedades y ofertas' : 'No suscripto a novedades'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/* ── AddressesSection ────────────────────────────────────────────────── */
+function AddressesSection({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
+  const [showForm, setShowForm] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
+
+  const { data: addresses = [], isLoading } = useQuery({ queryKey: ['customer_addresses'], queryFn: getAddresses })
+
+  const createMut = useMutation({
+    mutationFn: createAddress,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer_addresses'] }); setShowForm(false) },
+  })
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Omit<CustomerAddress, 'id'> }) => updateAddress(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer_addresses'] }); setEditId(null) },
+  })
+  const deleteMut = useMutation({
+    mutationFn: deleteAddress,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customer_addresses'] }),
+  })
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <h3 className="font-bold text-gray-800">Domicilios de entrega</h3>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="btn btn-primary text-xs py-1.5 px-3 gap-1"
+          >
+            <Plus size={13} /> Agregar domicilio
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h4 className="text-sm font-bold text-gray-700 mb-3">Nueva dirección</h4>
+          <AddressForm
+            onSave={(d) => createMut.mutate(d)}
+            onCancel={() => setShowForm(false)}
+            saving={createMut.isPending}
+          />
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="px-5 py-6 text-sm text-gray-400 text-center">Cargando…</div>
+      )}
+
+      {!isLoading && addresses.length === 0 && !showForm && (
+        <div className="px-5 py-8 text-center text-sm text-gray-400">
+          No tenés domicilios guardados.
+        </div>
+      )}
+
+      <div className="divide-y divide-gray-50">
+        {addresses.map((addr) => (
+          <div key={addr.id} className="px-5 py-4">
+            {editId === addr.id ? (
+              <AddressForm
+                initial={{ ...addr }}
+                onSave={(d) => updateMut.mutate({ id: addr.id, data: d })}
+                onCancel={() => setEditId(null)}
+                saving={updateMut.isPending}
+              />
+            ) : (
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-sm font-bold text-gray-800 uppercase">{addr.recipient}</p>
+                    {addr.is_default && (
+                      <span className="text-[10px] font-bold bg-[var(--brand-soft)] text-[var(--brand-primary)] px-1.5 py-0.5 rounded-md">
+                        Predeterminada
+                      </span>
+                    )}
+                  </div>
+                  {addr.label && <p className="text-xs text-gray-400 mb-0.5">{addr.label}</p>}
+                  <p className="text-sm text-gray-600">{addr.address}</p>
+                  <p className="text-sm text-gray-500">
+                    {[addr.city, addr.province].filter(Boolean).join(' · ')}
+                    {addr.postal_code ? ` (${addr.postal_code})` : ''}
+                  </p>
+                  {addr.phone && <p className="text-xs text-gray-400 mt-0.5">{addr.phone}</p>}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setEditId(addr.id)}
+                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-[var(--brand-primary)] transition"
+                    title="Editar"
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => deleteMut.mutate(addr.id)}
+                    disabled={deleteMut.isPending}
+                    className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
+                    title="Eliminar"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -250,35 +535,16 @@ function TrackingCard({ tracking }: { tracking: NonNullable<CustomerOrder['track
         <p className="font-bold text-[var(--brand-primary)] text-sm">Seguimiento del envío</p>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-        {tracking.carrier && (
-          <div><span className="text-gray-500 text-xs">Carrier</span><p className="font-semibold text-gray-800">{tracking.carrier}</p></div>
-        )}
-        {tracking.tracking_code && (
-          <div>
-            <span className="text-gray-500 text-xs">Código de rastreo</span>
-            <p className="font-mono font-bold text-gray-800 text-xs">{tracking.tracking_code}</p>
-          </div>
-        )}
-        {tracking.status && (
-          <div><span className="text-gray-500 text-xs">Estado</span><p className="font-semibold text-gray-800">{TRACKING_LABELS[tracking.status] ?? tracking.status}</p></div>
-        )}
-        {tracking.estimated_delivery && (
-          <div><span className="text-gray-500 text-xs">Entrega estimada</span><p className="font-semibold text-gray-800">{new Date(tracking.estimated_delivery).toLocaleDateString('es-AR')}</p></div>
-        )}
-        {tracking.shipped_at && (
-          <div><span className="text-gray-500 text-xs">Despachado</span><p className="font-semibold text-gray-800">{new Date(tracking.shipped_at).toLocaleDateString('es-AR')}</p></div>
-        )}
-        {tracking.delivered_at && (
-          <div><span className="text-gray-500 text-xs">Entregado</span><p className="font-semibold text-gray-800">{new Date(tracking.delivered_at).toLocaleDateString('es-AR')}</p></div>
-        )}
+        {tracking.carrier && <div><span className="text-gray-500 text-xs">Carrier</span><p className="font-semibold text-gray-800">{tracking.carrier}</p></div>}
+        {tracking.tracking_code && <div><span className="text-gray-500 text-xs">Código de rastreo</span><p className="font-mono font-bold text-gray-800 text-xs">{tracking.tracking_code}</p></div>}
+        {tracking.status && <div><span className="text-gray-500 text-xs">Estado</span><p className="font-semibold text-gray-800">{TRACKING_LABELS[tracking.status] ?? tracking.status}</p></div>}
+        {tracking.estimated_delivery && <div><span className="text-gray-500 text-xs">Entrega estimada</span><p className="font-semibold text-gray-800">{new Date(tracking.estimated_delivery).toLocaleDateString('es-AR')}</p></div>}
+        {tracking.shipped_at && <div><span className="text-gray-500 text-xs">Despachado</span><p className="font-semibold text-gray-800">{new Date(tracking.shipped_at).toLocaleDateString('es-AR')}</p></div>}
+        {tracking.delivered_at && <div><span className="text-gray-500 text-xs">Entregado</span><p className="font-semibold text-gray-800">{new Date(tracking.delivered_at).toLocaleDateString('es-AR')}</p></div>}
       </div>
       {tracking.tracking_url && (
-        <a
-          href={tracking.tracking_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity"
-        >
+        <a href={tracking.tracking_url} target="_blank" rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity">
           Rastrear envío →
         </a>
       )}
@@ -349,10 +615,7 @@ function CancelButton({ order, onCancelled }: { order: CustomerOrder; onCancelle
   if (!confirm) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setConfirm(true)}
-          className="btn btn-outline text-sm border-red-300 text-red-600 hover:bg-red-50 gap-1.5"
-        >
+        <button onClick={() => setConfirm(true)} className="btn btn-outline text-sm border-red-300 text-red-600 hover:bg-red-50 gap-1.5">
           <XCircle size={14} /> Cancelar pedido
         </button>
         {timeLeft && (
@@ -374,10 +637,7 @@ function CancelButton({ order, onCancelled }: { order: CustomerOrder; onCancelle
           className="btn text-sm bg-red-600 hover:bg-red-700 text-white flex-1 py-2">
           {loading ? 'Cancelando…' : 'Sí, cancelar'}
         </button>
-        <button onClick={() => setConfirm(false)} disabled={loading}
-          className="btn btn-outline text-sm px-4">
-          No
-        </button>
+        <button onClick={() => setConfirm(false)} disabled={loading} className="btn btn-outline text-sm px-4">No</button>
       </div>
     </div>
   )
@@ -416,7 +676,6 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
       <h2 className="text-lg font-bold text-gray-900">Mis pedidos ({orders.length})</h2>
       {orders.map((order) => (
         <div key={order.id} className="card overflow-hidden">
-          {/* Header row */}
           <button
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
             onClick={() => setExpanded(expanded === order.id ? null : order.id)}
@@ -441,14 +700,9 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
             </div>
           </button>
 
-          {/* Expanded detail */}
           {expanded === order.id && (
             <div className="border-t px-4 pb-5 pt-4 space-y-5">
-
-              {/* Progress stepper */}
               <StatusStepper status={order.status} />
-
-              {/* Items */}
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Productos</p>
                 <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
@@ -466,25 +720,15 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
                   ))}
                 </div>
               </div>
-
-              {/* Totals */}
               <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm space-y-1.5">
                 <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{fmt(order.subtotal)}</span></div>
-                {(order.discount_amount ?? 0) > 0 && (
-                  <div className="flex justify-between text-green-700 font-medium"><span>Descuento</span><span>−{fmt(order.discount_amount)}</span></div>
-                )}
-                {(order.shipping_cost ?? 0) > 0 && (
-                  <div className="flex justify-between text-gray-600"><span>Envío</span><span>{fmt(order.shipping_cost)}</span></div>
-                )}
-                {(order.tax_amount ?? 0) > 0 && (
-                  <div className="flex justify-between text-gray-500"><span>IVA incluido</span><span>{fmt(order.tax_amount)}</span></div>
-                )}
+                {(order.discount_amount ?? 0) > 0 && <div className="flex justify-between text-green-700 font-medium"><span>Descuento</span><span>−{fmt(order.discount_amount)}</span></div>}
+                {(order.shipping_cost ?? 0) > 0 && <div className="flex justify-between text-gray-600"><span>Envío</span><span>{fmt(order.shipping_cost)}</span></div>}
+                {(order.tax_amount ?? 0) > 0 && <div className="flex justify-between text-gray-500"><span>IVA incluido</span><span>{fmt(order.tax_amount)}</span></div>}
                 <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-200 text-base">
                   <span>Total</span><span>{fmt(order.total)}</span>
                 </div>
               </div>
-
-              {/* Shipping address */}
               {order.shipping_address && (
                 <div className="flex gap-2 text-sm text-gray-600">
                   <MapPinned size={15} className="text-gray-400 mt-0.5 shrink-0" />
@@ -496,233 +740,25 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
                   </div>
                 </div>
               )}
-
-              {/* Tracking */}
               {order.tracking && <TrackingCard tracking={order.tracking} />}
-
-              {/* Customer notes */}
               {order.customer_notes && (
                 <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
                   <span className="font-semibold">Nota:</span> {order.customer_notes}
                 </div>
               )}
-
-              {/* Actions */}
               <div className="space-y-2 pt-1">
                 {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.status !== 'cancelled' && (
-                  <PayOrderButton code={order.code} failed={order.payment_status === 'failed'} />
+                  order.selected_payment_method === 'bank_transfer'
+                    ? <PaymentReportButton
+                        order={order}
+                        onReported={(report) => updateOrder({ ...order, payment_report: report })}
+                      />
+                    : <PayOrderButton code={order.code} failed={order.payment_status === 'failed'} />
                 )}
-                {canCancel(order) && (
-                  <CancelButton order={order} onCancelled={updateOrder} />
-                )}
-                {/* Link to public order page */}
-                <Link
-                  to={`/pedido/${order.code}`}
-                  className="flex items-center justify-center gap-1.5 text-xs text-[var(--brand-primary)] hover:underline py-1"
-                >
+                {canCancel(order) && <CancelButton order={order} onCancelled={updateOrder} />}
+                <Link to={`/pedido/${order.code}`} className="flex items-center justify-center gap-1.5 text-xs text-[var(--brand-primary)] hover:underline py-1">
                   <CheckCircle2 size={13} /> Ver página del pedido
                 </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/* ── ProfileTab ──────────────────────────────────────────────────────── */
-function ProfileTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
-  const { data: profile, isLoading } = useQuery({ queryKey: ['customer_profile'], queryFn: getProfile })
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState<Partial<CustomerProfile>>({})
-  const [saved, setSaved] = useState(false)
-
-  const mutation = useMutation({
-    mutationFn: updateProfile,
-    onSuccess: (updated) => {
-      qc.setQueryData(['customer_profile'], updated)
-      setEditing(false)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    },
-  })
-
-  if (isLoading) return <div className="text-sm text-gray-500 py-8 text-center">Cargando…</div>
-  if (!profile) return null
-
-  const startEdit = () => { setForm({ ...profile }); setEditing(true) }
-  const cancelEdit = () => setEditing(false)
-
-  if (!editing) {
-    return (
-      <div className="card p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold">Mis datos</h2>
-          {saved
-            ? <span className="flex items-center gap-1 text-sm text-green-600"><Check size={14} /> Guardado</span>
-            : <button onClick={startEdit} className="btn btn-outline text-sm gap-1"><Edit2 size={14} /> Editar</button>
-          }
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 text-sm">
-          {[
-            ['Nombre', profile.name],
-            ['Email', profile.email],
-            ['Teléfono', profile.phone ?? '—'],
-            ['DNI / CUIT', profile.dni ?? '—'],
-            ['Dirección', profile.address ?? '—'],
-            ['Ciudad', profile.city ?? '—'],
-            ['Provincia', profile.province ?? '—'],
-            ['Código postal', profile.postal_code ?? '—'],
-          ].map(([lbl, val]) => (
-            <div key={lbl}>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">{lbl}</p>
-              <p className="text-gray-800 font-medium mt-0.5">{val}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 pt-4 border-t">
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <span className={`h-3 w-3 rounded-full ${profile.accepts_marketing ? 'bg-green-500' : 'bg-gray-300'}`} />
-            {profile.accepts_marketing ? 'Suscripto a novedades' : 'No suscripto a novedades'}
-          </label>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="card p-6">
-      <h2 className="text-lg font-bold mb-5">Editar datos</h2>
-      <form
-        className="space-y-4"
-        onSubmit={(e) => { e.preventDefault(); mutation.mutate(form) }}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          {([
-            ['name', 'Nombre', 'text'],
-            ['phone', 'Teléfono', 'tel'],
-            ['dni', 'DNI / CUIT', 'text'],
-            ['address', 'Dirección', 'text'],
-            ['city', 'Ciudad', 'text'],
-            ['province', 'Provincia', 'text'],
-            ['postal_code', 'Código postal', 'text'],
-          ] as [keyof CustomerProfile, string, string][]).map(([field, lbl, type]) => (
-            <div key={field}>
-              <label className={labelCls}>{lbl}</label>
-              <input
-                type={type}
-                value={(form[field] as string) ?? ''}
-                onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                className={inputCls}
-              />
-            </div>
-          ))}
-        </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={!!form.accepts_marketing}
-            onChange={(e) => setForm((f) => ({ ...f, accepts_marketing: e.target.checked }))}
-            className="accent-[var(--brand-primary)]" />
-          Quiero recibir novedades y ofertas
-        </label>
-        {mutation.isError && (
-          <p className="text-sm text-red-600">{(mutation.error as any)?.response?.data?.message ?? 'Error al guardar.'}</p>
-        )}
-        <div className="flex gap-2">
-          <button type="submit" disabled={mutation.isPending} className="btn btn-primary flex-1 py-2.5">
-            {mutation.isPending ? 'Guardando…' : 'Guardar cambios'}
-          </button>
-          <button type="button" onClick={cancelEdit} className="btn btn-outline px-4">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  )
-}
-
-/* ── AddressesTab ────────────────────────────────────────────────────── */
-function AddressesTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
-
-  const { data: addresses = [], isLoading } = useQuery({ queryKey: ['customer_addresses'], queryFn: getAddresses })
-
-  const createMut = useMutation({
-    mutationFn: createAddress,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer_addresses'] }); setShowForm(false) },
-  })
-
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Omit<CustomerAddress, 'id'> }) => updateAddress(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer_addresses'] }); setEditId(null) },
-  })
-
-  const deleteMut = useMutation({
-    mutationFn: deleteAddress,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['customer_addresses'] }),
-  })
-
-  if (isLoading) return <div className="text-sm text-gray-500 py-8 text-center">Cargando…</div>
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Mis direcciones</h2>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)} className="btn btn-primary text-sm gap-1">
-            <Plus size={14} /> Agregar
-          </button>
-        )}
-      </div>
-
-      {showForm && (
-        <div className="card p-5">
-          <h3 className="text-sm font-bold mb-3">Nueva dirección</h3>
-          <AddressForm
-            onSave={(d) => createMut.mutate(d)}
-            onCancel={() => setShowForm(false)}
-            saving={createMut.isPending}
-          />
-        </div>
-      )}
-
-      {addresses.length === 0 && !showForm && (
-        <div className="card p-8 text-center text-gray-500 text-sm">
-          No tenés direcciones guardadas.
-        </div>
-      )}
-
-      {addresses.map((addr) => (
-        <div key={addr.id} className="card p-4">
-          {editId === addr.id ? (
-            <AddressForm
-              initial={{ ...addr }}
-              onSave={(d) => updateMut.mutate({ id: addr.id, data: d })}
-              onCancel={() => setEditId(null)}
-              saving={updateMut.isPending}
-            />
-          ) : (
-            <div className="flex items-start justify-between gap-3">
-              <div className="text-sm">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-bold text-gray-800">{addr.label || 'Dirección'}</span>
-                  {addr.is_default && <span className="badge badge-primary text-[10px]">Predeterminada</span>}
-                </div>
-                <p className="text-gray-700">{addr.recipient}</p>
-                <p className="text-gray-500">{addr.address}</p>
-                <p className="text-gray-500">{[addr.city, addr.province, addr.postal_code].filter(Boolean).join(', ')}</p>
-                {addr.phone && <p className="text-gray-500">{addr.phone}</p>}
-              </div>
-              <div className="flex gap-1 flex-shrink-0">
-                <button onClick={() => setEditId(addr.id)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
-                  <Edit2 size={14} />
-                </button>
-                <button
-                  onClick={() => deleteMut.mutate(addr.id)}
-                  disabled={deleteMut.isPending}
-                  className="p-2 rounded-lg hover:bg-red-50 text-red-400"
-                >
-                  <Trash2 size={14} />
-                </button>
               </div>
             </div>
           )}
@@ -740,7 +776,11 @@ function SecurityTab() {
 
   const mutation = useMutation({
     mutationFn: changePassword,
-    onSuccess: () => { setForm({ current_password: '', password: '', password_confirmation: '' }); setOk(true); setTimeout(() => setOk(false), 4000) },
+    onSuccess: () => {
+      setForm({ current_password: '', password: '', password_confirmation: '' })
+      setOk(true)
+      setTimeout(() => setOk(false), 4000)
+    },
   })
 
   return (
@@ -764,12 +804,10 @@ function SecurityTab() {
             />
           </div>
         ))}
-
         {mutation.isError && (
           <p className="text-sm text-red-600">{(mutation.error as any)?.response?.data?.errors?.current_password?.[0] ?? 'Error al cambiar contraseña.'}</p>
         )}
         {ok && <p className="text-sm text-green-600 flex items-center gap-1"><Check size={14} /> Contraseña actualizada.</p>}
-
         <button type="submit" disabled={mutation.isPending} className="btn btn-primary w-full py-2.5">
           {mutation.isPending ? 'Guardando…' : 'Cambiar contraseña'}
         </button>

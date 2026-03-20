@@ -80,7 +80,16 @@
       "Bash(grep -l \"vendors\\\\|purchases\" /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)",
       "Bash(find /home/infranet/Documentos/Proyectos/artdent/artdent-crm -name *.sql)",
       "Bash(vendor/bin/pint app/Models/VendorAccount.php app/Models/VendorAccountMove.php app/Models/VendorPayment.php app/Http/Controllers/PurchaseController.php app/Http/Controllers/VendorPaymentController.php app/Http/Controllers/VendorAccountController.php routes/modules/admin.php)",
-      "Bash(ls -lrt /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)"
+      "Bash(ls -lrt /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)",
+      "Bash(ls -1 database/migrations/*.php)",
+      "Bash(find . -path ./vendor -prune -o -type f -name *2014*10*create*users* -print)",
+      "Bash(ls -1 /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)",
+      "Bash(grep -l \"create.*table.*ecommerce_orders\\\\|Schema::create\\(''ecommerce_orders\" /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations/*.php)",
+      "Bash(find /home/infranet/Documentos/Proyectos/artdent/artdent-crm/database/migrations -type f -name *payment* -o -name *ecommerce*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Bash(done)",
+      "Bash(xargs sed:*)"
     ]
   }
 }

@@ -178,7 +178,7 @@ class AnalyticsService {
             item_id: product.id,
             item_name: product.name,
             item_category: product.category,
-            item_brand: product.brand || 'ARTDENT',
+            item_brand: product.brand || 'ArtDent',
             price: product.price,
           },
         ],

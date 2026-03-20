@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 
 export default function SignIn() {
   const { signIn } = useAuth()
-  const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as any)?.from?.pathname || '/productos'
 
@@ -26,7 +25,7 @@ export default function SignIn() {
           setIsSubmitting(true)
           try {
             await signIn(email, password)
-            navigate(from, { replace: true })
+            window.location.replace(from)
           } catch (err: any) {
             setError(err?.response?.data?.message || 'Correo o contraseña incorrectos.')
           } finally {

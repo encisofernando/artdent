@@ -66,6 +66,7 @@ Route::prefix('customer')->name('api.customer.')->middleware('auth:sanctum')->gr
     Route::get('orders/{code}', [CustomerController::class, 'orderDetail'])->name('orders.show');
     Route::post('orders/{code}/cancel', [CustomerController::class, 'cancelOrder'])->name('orders.cancel');
     Route::post('orders/{code}/payment-method', [CustomerController::class, 'changePaymentMethod'])->name('orders.payment-method');
+    Route::post('orders/{code}/payment-report', [CustomerController::class, 'storePaymentReport'])->name('orders.payment-report.store');
 
     Route::get('addresses', [CustomerController::class, 'addresses'])->name('addresses');
     Route::post('addresses', [CustomerController::class, 'storeAddress'])->name('addresses.store');

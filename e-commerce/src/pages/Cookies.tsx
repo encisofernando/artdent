@@ -66,21 +66,21 @@ function CookieBadge({ tipo }: { tipo: CookieRowProps['tipo'] }) {
 const COOKIES: CookieRowProps[] = [
   {
     nombre: 'artdent_session',
-    proveedor: 'ARTDENT',
+    proveedor: 'ArtDent',
     finalidad: 'Mantiene la sesión autenticada del usuario.',
     duracion: 'Sesión',
     tipo: 'necesaria',
   },
   {
     nombre: 'artdent_cart',
-    proveedor: 'ARTDENT',
+    proveedor: 'ArtDent',
     finalidad: 'Conserva los productos en el carrito de compras.',
     duracion: '30 días',
     tipo: 'necesaria',
   },
   {
     nombre: 'XSRF-TOKEN',
-    proveedor: 'ARTDENT',
+    proveedor: 'ArtDent',
     finalidad: 'Protección contra ataques CSRF (falsificación de solicitudes entre sitios).',
     duracion: 'Sesión',
     tipo: 'necesaria',
@@ -137,7 +137,7 @@ export default function Cookies() {
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       {/* Hero */}
       <section className="bg-[var(--brand-primary)] text-white">
-        <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
+        <div className="mx-auto max-w-5xl px-4 py-8 md:py-10">
           <div className="mx-auto max-w-3xl text-center">
             <div className="inline-flex flex-wrap justify-center items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold mb-4">
               <Cookie size={15} className="shrink-0" />
@@ -154,7 +154,7 @@ export default function Cookies() {
 
       {/* Índice */}
       <div className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-3 overflow-x-auto">
+        <div className="mx-auto max-w-5xl px-4 py-3 overflow-x-auto">
           <nav className="flex items-center gap-1 text-xs font-medium text-gray-600 whitespace-nowrap">
             {TOC.map((item) => (
               <a
@@ -170,11 +170,11 @@ export default function Cookies() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:py-12">
+      <div className="mx-auto max-w-5xl px-4 py-8 md:py-12">
         <div className="grid gap-6 lg:grid-cols-3">
 
           {/* Contenido principal */}
-          <div className="lg:col-span-2 space-y-6 order-last lg:order-first">
+          <div className="lg:col-span-2 space-y-6 min-w-0 overflow-hidden">
 
             <Section id="que-son" icon={Info} title="¿Qué son las cookies?" num="1">
               <p>
@@ -192,7 +192,7 @@ export default function Cookies() {
             </Section>
 
             <Section id="tipos" icon={Cookie} title="Tipos de cookies que utilizamos" num="2">
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid md:grid-cols-3 gap-3">
                 {[
                   {
                     icon: Lock,
@@ -316,7 +316,7 @@ export default function Cookies() {
               </p>
 
               <p className="font-semibold text-gray-900 mt-2">Instrucciones por navegador:</p>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-3">
                 {[
                   { nombre: 'Google Chrome', url: 'https://support.google.com/chrome/answer/95647' },
                   { nombre: 'Mozilla Firefox', url: 'https://support.mozilla.org/es/kb/cookies-informacion-que-los-sitios-web-guardan-en' },
@@ -405,7 +405,7 @@ export default function Cookies() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4 order-first lg:order-last">
+          <div className="hidden lg:block space-y-4">
 
             <div className="card p-5">
               <h3 className="font-bold text-gray-900 mb-3">Resumen de cookies</h3>
@@ -481,7 +481,7 @@ export default function Cookies() {
       </div>
 
       <div className="border-t bg-white py-6">
-        <div className="mx-auto max-w-7xl px-4 text-center text-xs text-gray-500">
+        <div className="mx-auto max-w-5xl px-4 text-center text-xs text-gray-500">
           <p>
             Esta Política de Cookies cumple con lo dispuesto por la <strong>Ley 25.326</strong> de Protección de los Datos Personales de la República Argentina.
           </p>

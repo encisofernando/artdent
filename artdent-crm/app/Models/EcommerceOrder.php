@@ -61,6 +61,8 @@ class EcommerceOrder extends Model
     protected $fillable = [
         'company_id',
         'customer_id',
+        'guest_email',
+        'guest_dni',
         'coupon_id',
         'shipping_method_id',
         'shipping_method_type',
@@ -109,5 +111,10 @@ class EcommerceOrder extends Model
     public function shipments()
     {
         return $this->hasMany(Shipment::class, 'order_id');
+    }
+
+    public function paymentReport()
+    {
+        return $this->hasOne(EcommercePaymentReport::class, 'order_id');
     }
 }
