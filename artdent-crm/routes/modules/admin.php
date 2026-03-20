@@ -23,7 +23,9 @@ use Illuminate\Support\Facades\Route;
 Route::resource('users', UserController::class);
 Route::resource('roles', RoleController::class);
 
-Route::resource('companys', CompanyController::class);
+Route::get('settings', [CompanyController::class, 'edit'])->name('settings.edit');
+Route::put('settings', [CompanyController::class, 'update'])->name('settings.update');
+
 Route::resource('branchs', BranchController::class);
 
 Route::resource('vendors', VendorController::class);

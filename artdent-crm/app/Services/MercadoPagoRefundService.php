@@ -29,7 +29,7 @@ class MercadoPagoRefundService
         $accessToken = $this->resolveAccessToken();
 
         if (empty($accessToken)) {
-            Log::error('MercadoPago refund skipped: no access token configured.', [
+            Log::channel('mercadopago')->error('MercadoPago refund skipped: no access token configured.', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
             ]);
@@ -39,7 +39,17 @@ class MercadoPagoRefundService
             return false;
         }
 
+        $idempotencyKey = 'refund-'.$order->id.'-'.uniqid();
+
+        Log::channel('mercadopago')->info('Initiating MercadoPago refund.', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'mp_payment_id' => $order->mp_payment_id,
+            'idempotency_key' => $idempotencyKey,
+        ]);
+
         $response = Http::withToken($accessToken)
+            ->withHeaders(['X-Idempotency-Key' => $idempotencyKey])
             ->when(! app()->isProduction(), fn ($h) => $h->withoutVerifying())
             ->post("https://api.mercadopago.com/v1/payments/{$order->mp_payment_id}/refunds");
 
@@ -49,7 +59,7 @@ class MercadoPagoRefundService
             return true;
         }
 
-        Log::error('MercadoPago refund failed.', [
+        Log::channel('mercadopago')->error('MercadoPago refund failed.', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'mp_payment_id' => $order->mp_payment_id,

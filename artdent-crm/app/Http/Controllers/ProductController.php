@@ -287,6 +287,8 @@ class ProductController extends Controller
             'cover_image_id' => 'nullable|integer',
         ]);
 
+        $validated['min_stock'] = $validated['min_stock'] ?? 0;
+
         // Subir archivos ANTES de la transacción (puede tardar y no necesita rollback de BD)
         $uploadedImages = [];
         if ($request->hasFile('images')) {

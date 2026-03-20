@@ -102,8 +102,13 @@ function PaymentCard({ config, pickupPoints, isDark }) {
         try {
             const res = await axios.put(route('ecommerce-payment-configs.update', config.type), form);
             // Update the access_token field to show the masked version returned by the server
-            if (config.type === 'mercadopago' && res.data?.config?.access_token) {
-                setForm(f => ({ ...f, config: { ...f.config, access_token: res.data.config.access_token } }));
+            if (config.type === 'mercadopago') {
+                if (res.data?.config?.access_token) {
+                    setForm(f => ({ ...f, config: { ...f.config, access_token: res.data.config.access_token } }));
+                }
+                if (res.data?.config?.webhook_secret) {
+                    setForm(f => ({ ...f, config: { ...f.config, webhook_secret: res.data.config.webhook_secret } }));
+                }
             }
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
@@ -181,6 +186,16 @@ function PaymentCard({ config, pickupPoints, isDark }) {
                                 placeholder="APP_USR-..."
                             />
                             <p className="text-xs text-slate-400 mt-1">Se envía al checkout del e-commerce.</p>
+                        </div>
+                        <div className="sm:col-span-2">
+                            <label className={lbl}>Webhook Secret (privado)</label>
+                            <PasswordInput
+                                className={inp}
+                                value={form.config.webhook_secret ?? ''}
+                                onChange={e => setConfigField('webhook_secret', e.target.value)}
+                                placeholder="Firma para validación de origen"
+                            />
+                            <p className="text-xs text-slate-400 mt-1">Garantiza la autenticidad de las notificaciones de Mercado Pago.</p>
                         </div>
                     </div>
                 )}

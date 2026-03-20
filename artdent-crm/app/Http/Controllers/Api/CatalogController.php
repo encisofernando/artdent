@@ -430,15 +430,18 @@ class CatalogController extends Controller
         foreach ($orderItems as $item) {
             $order->ecommerce_order_items()->create($item);
 
-            // Decrement stock
-            Stock::query()
-                ->where('product_id', $item['product_id'])
-                ->where('warehouse_id', $warehouseId)
-                ->where('variant_id', $item['variant_id'])
-                ->when($item['variant_id'] === null, fn ($q) => $q->whereNull('variant_id'))
-                ->decrement('quantity', $item['quantity']);
+            // Decrement stock immediately for non-MercadoPago orders.
+            // MercadoPago orders will deduct stock at Webhook level to avoid reserving unpaid items.
+            if (($validated['selected_payment_method'] ?? null) !== 'mercadopago') {
+                Stock::query()
+                    ->where('product_id', $item['product_id'])
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('variant_id', $item['variant_id'])
+                    ->when($item['variant_id'] === null, fn ($q) => $q->whereNull('variant_id'))
+                    ->decrement('quantity', $item['quantity']);
 
-            StockAlertService::checkAndNotify($item['product_id'], $item['variant_id'], $warehouseId);
+                StockAlertService::checkAndNotify($item['product_id'], $item['variant_id'], $warehouseId);
+            }
         }
 
         if ($coupon) {
@@ -468,6 +471,23 @@ class CatalogController extends Controller
             );
         } catch (\Throwable) {
             // Email failure must not roll back the order
+        }
+
+        if ($customerId) {
+            try {
+                if (($validated['selected_payment_method'] ?? null) !== 'mercadopago') {
+                    \App\Jobs\SendWhatsAppNotification::dispatch(
+                        $customerId,
+                        $companyId,
+                        'order_created',
+                        [
+                            ['type' => 'text', 'text' => $order->order_number]
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('WA Job Error (Checkout): ' . $e->getMessage());
+            }
         }
 
         return response()->json([

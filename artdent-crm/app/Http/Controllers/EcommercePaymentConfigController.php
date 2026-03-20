@@ -38,6 +38,7 @@ class EcommercePaymentConfigController extends Controller
             // MP
             'config.access_token' => ['nullable', 'string', 'max:255'],
             'config.public_key' => ['nullable', 'string', 'max:255'],
+            'config.webhook_secret' => ['nullable', 'string', 'max:255'],
             // Transfer
             'config.cbu' => ['nullable', 'string', 'max:50'],
             'config.alias' => ['nullable', 'string', 'max:50'],
@@ -49,10 +50,15 @@ class EcommercePaymentConfigController extends Controller
 
         $config->update($validated);
 
-        // Return config with access_token masked
+        // Return config with secret keys masked
         $data = $config->fresh()->toArray();
-        if ($type === 'mercadopago' && ! empty($data['config']['access_token'])) {
-            $data['config']['access_token'] = '••••••••'.substr($data['config']['access_token'], -6);
+        if ($type === 'mercadopago') {
+            if (! empty($data['config']['access_token'])) {
+                $data['config']['access_token'] = '••••••••'.substr($data['config']['access_token'], -6);
+            }
+            if (! empty($data['config']['webhook_secret'])) {
+                $data['config']['webhook_secret'] = '••••••••'.substr($data['config']['webhook_secret'], -6);
+            }
         }
 
         return response()->json($data);

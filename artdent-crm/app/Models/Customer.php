@@ -69,6 +69,7 @@ class Customer extends Authenticatable
         'email',
         'password',
         'phone',
+        'whatsapp_bsuid',
         'dni',
         'address',
         'city',

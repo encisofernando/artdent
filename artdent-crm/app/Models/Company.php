@@ -84,7 +84,9 @@ class Company extends Model
 		'postal_code',
 		'country',
 		'currency',
-		'timezone'
+		'timezone',
+		'whatsapp_phone_number_id',
+		'whatsapp_access_token'
 	];
 
 	public function branches()

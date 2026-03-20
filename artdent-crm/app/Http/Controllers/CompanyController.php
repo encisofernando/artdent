@@ -15,51 +15,33 @@ class CompanyController extends Controller
         //
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function edit()
     {
-        //
+        $companyId = auth()->user()->company_id ?? 1;
+        $company = Company::findOrFail($companyId);
+        
+        return \Inertia\Inertia::render('Admin/Settings', [
+            'company' => $company
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function update(Request $request)
     {
-        //
-    }
+        $companyId = auth()->user()->company_id ?? 1;
+        $company = Company::findOrFail($companyId);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Company $company)
-    {
-        //
-    }
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'fantasy_name' => 'nullable|string|max:150',
+            'cuit' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:150',
+            'phone' => 'nullable|string|max:50',
+            'whatsapp_phone_number_id' => 'nullable|string|max:100',
+            'whatsapp_access_token' => 'nullable|string|max:1000',
+        ]);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Company $company)
-    {
-        //
-    }
+        $company->update($validated);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Company $company)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Company $company)
-    {
-        //
+        return redirect()->back()->with('success', 'Configuración actualizada.');
     }
 }
