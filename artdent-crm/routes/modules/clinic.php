@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('jobs', [JobController::class, 'index'])->name('jobs.index')->middleware('permission:orders.view');
 Route::get('jobs/create', [JobController::class, 'create'])->name('jobs.create')->middleware('permission:orders.create');
 Route::post('jobs', [JobController::class, 'store'])->name('jobs.store')->middleware('permission:orders.create');
+Route::get('jobs/{job}', [JobController::class, 'show'])->name('jobs.show')->middleware('permission:orders.view');
 Route::get('jobs/{job}/edit', [JobController::class, 'edit'])->name('jobs.edit')->middleware('permission:orders.edit');
 Route::put('jobs/{job}', [JobController::class, 'update'])->name('jobs.update')->middleware('permission:orders.edit');
 Route::delete('jobs/{job}', [JobController::class, 'destroy'])->name('jobs.destroy')->middleware('permission:orders.delete');
