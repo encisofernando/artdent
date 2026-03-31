@@ -32,6 +32,7 @@ artdent-crm/vendor/
 artdent-crm/node_modules/
 
 electron-print-server/node_modules/
+electron-print-server/dist/
 
 # --- Sistemas / IDE ---
 *.swp
@@ -46,4 +47,3 @@ Antigravity.exe
 *.rar
 *.7z
 *.iso
-electron-print-server/dist/*.msi
