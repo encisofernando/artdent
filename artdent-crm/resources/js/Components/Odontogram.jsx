@@ -41,42 +41,74 @@ function toothType(n) {
     return "incisivo";
 }
 
-// Simplified SVG Tooth representation
+// Simplified SVG Tooth representation — realistic crown silhouettes
 function ToothSVG({ type, selected, color, isDark }) {
-    const fill = selected ? (color || "#397B9C") : "transparent";
-    const stroke = selected ? (color || "#397B9C") : (isDark ? "#475569" : "#CBD5E1");
-    const w = 24, h = type === "molar" || type === "molar3" ? 28 : 24;
+    const fill   = selected ? (color || "#397B9C") : (isDark ? "#1e293b" : "#f8fafc");
+    const stroke = selected ? (color || "#397B9C") : (isDark ? "#64748b" : "#94a3b8");
+    const detail = selected ? "rgba(255,255,255,0.25)" : (isDark ? "#2d3f55" : "#cbd5e1");
 
-    if (type === "molar" || type === "molar3") return (
-        <svg width={w} height={h} viewBox="0 0 28 32">
-            <rect x="2" y="4" width="24" height="24" rx="6" fill={fill} stroke={stroke} strokeWidth="1.5" />
-            <rect x="7" y="9" width="5" height="5" rx="1.5" fill={stroke} opacity="0.5" />
-            <rect x="16" y="9" width="5" height="5" rx="1.5" fill={stroke} opacity="0.5" />
-            <rect x="7" y="18" width="5" height="5" rx="1.5" fill={stroke} opacity="0.5" />
-            <rect x="16" y="18" width="5" height="5" rx="1.5" fill={stroke} opacity="0.5" />
-            <path d="M 14 4 Q 14 0 14 0" stroke={stroke} strokeWidth="1.5" fill="none" />
+    if (type === "molar3") return (
+        <svg width={30} height={30} viewBox="0 0 30 30">
+            {/* Wide molar del juicio with 5 cusp bumps */}
+            <path d="M3,27 Q3,29 15,29 Q27,29 27,27 L27,14 Q27,11 22,11 L22,8 Q20,3 17,3 Q15,1 13,3 Q10,3 8,8 L8,11 Q3,11 3,14 Z"
+                fill={fill} stroke={stroke} strokeWidth="1.5" strokeLinejoin="round"/>
+            {/* cusp line */}
+            <path d="M8,13 Q10,9 13,8 Q15,7 17,8 Q20,9 22,13"
+                fill="none" stroke={detail} strokeWidth="1" />
+            {/* central groove */}
+            <line x1="15" y1="13" x2="15" y2="22" stroke={detail} strokeWidth="1" />
+        </svg>
+    );
+
+    if (type === "molar") return (
+        <svg width={28} height={28} viewBox="0 0 28 28">
+            {/* Molar — wide with 4 cusps */}
+            <path d="M2,25 Q2,27 14,27 Q26,27 26,25 L26,13 Q26,10 21,10 L21,7 Q19,2 14,2 Q9,2 7,7 L7,10 Q2,10 2,13 Z"
+                fill={fill} stroke={stroke} strokeWidth="1.5" strokeLinejoin="round"/>
+            {/* cusp bumps */}
+            <path d="M7,12 Q9,7 14,6 Q19,7 21,12"
+                fill="none" stroke={detail} strokeWidth="1" />
+            {/* grooves */}
+            <line x1="14" y1="12" x2="14" y2="20" stroke={detail} strokeWidth="1" />
+            <line x1="8"  y1="16" x2="20" y2="16" stroke={detail} strokeWidth="0.8" />
         </svg>
     );
 
     if (type === "premolar") return (
-        <svg width={w} height={h} viewBox="0 0 28 28">
-            <rect x="2" y="4" width="24" height="22" rx="6" fill={fill} stroke={stroke} strokeWidth="1.5" />
-            <rect x="8" y="10" width="12" height="7" rx="2" fill={stroke} opacity="0.4" />
-            <path d="M 14 4 Q 14 0 14 0" stroke={stroke} strokeWidth="1.5" fill="none" />
+        <svg width={22} height={27} viewBox="0 0 22 27">
+            {/* Premolar — 2 cusps */}
+            <path d="M2,24 Q2,26 11,26 Q20,26 20,24 L20,11 Q20,9 17,9 L17,7 Q15,2 11,2 Q7,2 5,7 L5,9 Q2,9 2,11 Z"
+                fill={fill} stroke={stroke} strokeWidth="1.5" strokeLinejoin="round"/>
+            {/* 2 cusps */}
+            <path d="M5,11 Q7,6 11,5 Q15,6 17,11"
+                fill="none" stroke={detail} strokeWidth="1" />
+            {/* central groove */}
+            <line x1="11" y1="11" x2="11" y2="19" stroke={detail} strokeWidth="1" />
         </svg>
     );
 
     if (type === "canino") return (
-        <svg width={w} height={h} viewBox="0 0 28 28">
-            <path d="M 4 6 Q 4 3 14 3 Q 24 3 24 6 L 22 24 Q 22 26 14 26 Q 6 26 6 24 Z" fill={fill} stroke={stroke} strokeWidth="1.5" />
-            <path d="M 14 3 L 14 0" stroke={stroke} strokeWidth="1.5" />
+        <svg width={18} height={28} viewBox="0 0 18 28">
+            {/* Canino — single pointed cusp */}
+            <path d="M2,25 Q2,27 9,27 Q16,27 16,25 L16,12 Q14,7 9,2 Q4,7 2,12 Z"
+                fill={fill} stroke={stroke} strokeWidth="1.5" strokeLinejoin="round"/>
+            {/* cusp ridge */}
+            <path d="M4,13 Q6,8 9,4 Q12,8 14,13"
+                fill="none" stroke={detail} strokeWidth="1" />
         </svg>
     );
 
-    return ( // incisivo
-        <svg width={w} height={h} viewBox="0 0 28 28">
-            <rect x="4" y="4" width="20" height="22" rx="8" fill={fill} stroke={stroke} strokeWidth="1.5" />
-            <path d="M 14 4 L 14 0" stroke={stroke} strokeWidth="1.5" />
+    // incisivo
+    return (
+        <svg width={16} height={26} viewBox="0 0 16 26">
+            {/* Incisivo — flat incisal edge, slightly tapered */}
+            <path d="M1,23 Q1,25 8,25 Q15,25 15,23 L15,7 Q14,2 8,2 Q2,2 1,7 Z"
+                fill={fill} stroke={stroke} strokeWidth="1.5" strokeLinejoin="round"/>
+            {/* incisal edge highlight */}
+            <line x1="2" y1="5" x2="14" y2="5" stroke={detail} strokeWidth="1" />
+            {/* 2 mammelons (ridges on incisors) */}
+            <line x1="5"  y1="5" x2="5"  y2="8" stroke={detail} strokeWidth="0.8" />
+            <line x1="11" y1="5" x2="11" y2="8" stroke={detail} strokeWidth="0.8" />
         </svg>
     );
 }
@@ -177,7 +209,7 @@ export default function Odontogram({ open, onClose, onSelect, initialValue = [] 
 
                         {/* Inferior */}
                         <div className="flex gap-1 pt-2 mb-2">
-                            {[...CUADRANTES[2].nums, ...CUADRANTES[3].nums].map(n => (
+                            {[...CUADRANTES[3].nums, ...CUADRANTES[2].nums].map(n => (
                                 <button
                                     key={n}
                                     type="button"

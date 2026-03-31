@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * 
  * @property int $id
  * @property int $company_id
+ * @property string|null $scope
  * @property int|null $branch_id
  * @property int|null $expense_category_id
  * @property int|null $user_id
@@ -53,6 +54,7 @@ class Expense extends Model
 
 	protected $fillable = [
 		'company_id',
+		'scope',
 		'branch_id',
 		'expense_category_id',
 		'user_id',

@@ -9,8 +9,9 @@
  * ─────────────────────────────────────────────────────────────
  */
 
-import React, { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ─── BRAND TOKENS ────────────────────────────────────────────
 export const B = {
@@ -40,39 +41,39 @@ export const G = {
 export function useD(isDark) {
     return isDark
         ? {
-            // Backgrounds
-            bg: '#0b1520',
-            surface: '#0F1F2A',
-            card: '#172A36',
-            sidebar: '#0D1B24',
-            input: '#0F1F2A',
+            // Backgrounds — slate palette, consistent with app sidebar/layout
+            bg: '#020617',        // slate-950
+            surface: '#0f172a',   // slate-900
+            card: '#1e293b',      // slate-800
+            sidebar: '#0f172a',   // slate-900
+            input: '#1e293b',     // slate-800
             hover: 'rgba(255,255,255,0.04)',
             // Borders
-            border: 'rgba(255,255,255,0.07)',
+            border: 'rgba(148,163,184,0.12)',  // slate-400/12
             borderFocus: B.teal,
-            divider: 'rgba(255,255,255,0.07)',
+            divider: 'rgba(148,163,184,0.10)',
             // Text
-            text: '#E6EEF5',
-            muted: 'rgba(230,238,245,0.45)',
-            label: 'rgba(230,238,245,0.5)',
-            placeholder: 'rgba(230,238,245,0.25)',
+            text: '#cbd5e1',      // slate-300
+            muted: 'rgba(148,163,184,0.7)',    // slate-400
+            label: 'rgba(148,163,184,0.6)',
+            placeholder: 'rgba(148,163,184,0.35)',
             // Input border
-            inputBorder: 'rgba(255,255,255,0.10)',
+            inputBorder: 'rgba(148,163,184,0.15)',
         }
         : {
-            bg: '#F4F7FA',
-            surface: '#F4F7FA',
+            bg: '#f8fafc',        // slate-50
+            surface: '#f1f5f9',   // slate-100
             card: '#ffffff',
-            sidebar: '#EEF3F8',
+            sidebar: '#f8fafc',   // slate-50
             input: '#f8fafc',
             hover: 'rgba(0,0,0,0.03)',
             border: 'rgba(0,0,0,0.07)',
             borderFocus: B.teal,
             divider: 'rgba(0,0,0,0.07)',
-            text: '#1A202C',
-            muted: 'rgba(26,32,44,0.45)',
-            label: 'rgba(26,32,44,0.55)',
-            placeholder: 'rgba(26,32,44,0.3)',
+            text: '#1e293b',      // slate-800
+            muted: 'rgba(51,65,85,0.55)',      // slate-700
+            label: 'rgba(51,65,85,0.65)',
+            placeholder: 'rgba(51,65,85,0.35)',
             inputBorder: 'rgba(0,0,0,0.10)',
         };
 }
@@ -266,7 +267,7 @@ export function FAB({ children, onClick, badge = 0, color = G.success, className
     return (
         <button
             onClick={onClick}
-            className={`fixed bottom-6 right-5 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-transform ${className}`}
+            className={`fixed bottom-[76px] lg:bottom-6 right-5 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-transform ${className}`}
             style={{ background: color, boxShadow: `0 8px 24px ${B.green}55` }}
         >
             <Badge count={badge} color={B.blue}>
@@ -293,16 +294,16 @@ export function BottomSheet({ open, onClose, title, maxHeight = '85vh', D, child
 
     return (
         <>
-            {/* Backdrop */}
+            {/* Backdrop — z-[55] cubre la BottomNav (z-50) */}
             <div
-                className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 lg:hidden
+                className={`fixed inset-0 z-[55] bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 lg:hidden
                     ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
             />
 
-            {/* Sheet */}
+            {/* Sheet — z-[60] encima de todo */}
             <div
-                className={`fixed inset-x-0 bottom-0 z-50 flex flex-col transition-transform duration-300 ease-out lg:hidden
+                className={`fixed inset-x-0 bottom-0 z-[60] flex flex-col transition-transform duration-300 ease-out lg:hidden
                     ${open ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ maxHeight, borderRadius: '20px 20px 0 0', background: D?.sidebar || '#0D1B24' }}
             >
@@ -513,6 +514,226 @@ export function ProductCard({ product, cartItem, onAdd, isDark, D }) {
                 </div>
             </div>
         </div>
+    );
+}
+
+/**
+ * DatePicker — Selector de fecha con popover posicionado dinámicamente.
+ * Reemplaza <input type="date"> nativo para mantener el estilo del proyecto.
+ *
+ * Props:
+ *   value       — string YYYY-MM-DD (puede estar vacío)
+ *   onChange    — fn(string) llamada con YYYY-MM-DD o '' al borrar
+ *   placeholder — texto cuando no hay fecha
+ *   D           — design tokens de useD()
+ *   className   — clases extra para el trigger
+ *   style       — estilos extra para el trigger
+ */
+export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', D, className = '', style = {} }) {
+    const [open, setOpen]           = useState(false);
+    const [pos, setPos]             = useState({ top: 0, left: 0, width: 276 });
+    const triggerRef                = useRef(null);
+    const popoverRef                = useRef(null);
+
+    // Inicializar vista en el mes de la fecha seleccionada o el actual
+    const parsedDate = value ? new Date(value + 'T12:00:00') : null;
+    const [viewYear,  setViewYear]  = useState(() => parsedDate ? parsedDate.getFullYear()  : new Date().getFullYear());
+    const [viewMonth, setViewMonth] = useState(() => parsedDate ? parsedDate.getMonth()     : new Date().getMonth());
+
+    const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const DAYS   = ['L','M','M','J','V','S','D'];
+
+    // Posicionar el popover al abrir
+    useEffect(() => {
+        if (!open || !triggerRef.current) return;
+        const rect  = triggerRef.current.getBoundingClientRect();
+        const winH  = window.innerHeight;
+        const winW  = window.innerWidth;
+        // En mobile dejamos margen de 8px a cada lado
+        const calW  = Math.min(276, winW - 16);
+        const calH  = 300;
+
+        // BottomNav ocupa 56px en mobile (<= 1024px)
+        const bottomReserve = winW < 1024 ? 64 : 12;
+
+        let top  = rect.bottom + 6;
+        let left = rect.left;
+
+        if (top + calH > winH - bottomReserve) top  = rect.top - calH - 6;
+        if (left + calW > winW - 8)            left = winW - calW - 8;
+        if (left < 8)                          left = 8;
+        if (top < 8)                           top  = 8;
+
+        setPos({ top, left, width: calW });
+    }, [open]);
+
+    // Cerrar al click fuera
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => {
+            if (!triggerRef.current?.contains(e.target) && !popoverRef.current?.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    // Sincronizar vista si cambia value externamente
+    useEffect(() => {
+        if (value) {
+            const d = new Date(value + 'T12:00:00');
+            setViewYear(d.getFullYear());
+            setViewMonth(d.getMonth());
+        }
+    }, [value]);
+
+    const prevMonth = () => viewMonth === 0  ? (setViewMonth(11), setViewYear(y => y - 1)) : setViewMonth(m => m - 1);
+    const nextMonth = () => viewMonth === 11 ? (setViewMonth(0),  setViewYear(y => y + 1)) : setViewMonth(m => m + 1);
+
+    const getDaysInMonth   = (y, m) => new Date(y, m + 1, 0).getDate();
+    const getFirstWeekday  = (y, m) => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; };
+
+    const handleSelect = (day) => {
+        const mm  = String(viewMonth + 1).padStart(2, '0');
+        const dd  = String(day).padStart(2, '0');
+        onChange(`${viewYear}-${mm}-${dd}`);
+        setOpen(false);
+    };
+
+    const today    = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    const displayValue = parsedDate
+        ? parsedDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : '';
+
+    const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+    const firstDay    = getFirstWeekday(viewYear, viewMonth);
+    const cells       = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+    const bg     = D?.card    || '#0F1F2A';
+    const border = D?.border  || 'rgba(255,255,255,0.10)';
+    const text   = D?.text    || '#E6EEF5';
+    const muted  = D?.muted   || '#6B8A9A';
+    const hover  = D?.hover   || 'rgba(255,255,255,0.06)';
+
+    return (
+        <>
+            {/* Trigger — div para evitar <button> anidado */}
+            <div
+                ref={triggerRef}
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpen(o => !o)}
+                onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(o => !o)}
+                className={`flex items-center gap-2 text-left w-full cursor-pointer select-none ${className}`}
+                style={style}
+            >
+                <Calendar size={14} style={{ color: muted, flexShrink: 0 }} />
+                <span className="flex-1 text-[13px]" style={{ color: displayValue ? text : muted }}>
+                    {displayValue || placeholder}
+                </span>
+                {value && (
+                    <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={e => { e.stopPropagation(); onChange(''); }}
+                        onKeyDown={e => e.key === 'Enter' && (e.stopPropagation(), onChange(''))}
+                        className="p-0.5 rounded-full opacity-60 hover:opacity-100 cursor-pointer"
+                        style={{ color: muted }}
+                    >
+                        <X size={12} />
+                    </span>
+                )}
+            </div>
+
+            {/* Popover — portaled al body para evitar clipping */}
+            {open && createPortal(
+                <div
+                    ref={popoverRef}
+                    style={{
+                        position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
+                        width: pos.width, borderRadius: 16, overflow: 'hidden',
+                        background: bg, border: `1px solid ${border}`,
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                    }}
+                >
+                    {/* Header mes/año */}
+                    <div className="flex items-center justify-between px-4 py-3"
+                        style={{ background: G.horizontal }}>
+                        <button type="button" onClick={prevMonth}
+                            className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-white/20">
+                            <ChevronLeft size={16} color="white" />
+                        </button>
+                        <span className="font-extrabold text-[14px] text-white select-none">
+                            {MONTHS[viewMonth]} {viewYear}
+                        </span>
+                        <button type="button" onClick={nextMonth}
+                            className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-white/20">
+                            <ChevronRight size={16} color="white" />
+                        </button>
+                    </div>
+
+                    {/* Encabezado días */}
+                    <div className="grid grid-cols-7 px-3 pt-3 pb-1">
+                        {DAYS.map((d, i) => (
+                            <div key={i} className="text-center text-[10px] font-extrabold uppercase tracking-wider pb-1"
+                                style={{ color: muted }}>{d}</div>
+                        ))}
+                    </div>
+
+                    {/* Grilla de días */}
+                    <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+                        {cells.map((day, i) => {
+                            if (!day) return <div key={i} />;
+                            const mm     = String(viewMonth + 1).padStart(2, '0');
+                            const dd     = String(day).padStart(2, '0');
+                            const dayStr = `${viewYear}-${mm}-${dd}`;
+                            const isSel  = dayStr === value;
+                            const isToday = dayStr === todayStr;
+                            return (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => handleSelect(day)}
+                                    className="w-full aspect-square max-w-[34px] mx-auto flex items-center justify-center rounded-full text-[13px] transition-all"
+                                    style={{
+                                        background: isSel ? B.blue : isToday ? `${B.blue}25` : 'transparent',
+                                        color:      isSel ? '#fff' : isToday ? B.blue : text,
+                                        fontWeight: isSel ? 800 : isToday ? 700 : 400,
+                                        boxShadow:  isSel ? `0 2px 10px ${B.blue}60` : 'none',
+                                    }}
+                                    onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = hover; }}
+                                    onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = isToday ? `${B.blue}25` : 'transparent'; }}
+                                >
+                                    {day}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Acciones rápidas */}
+                    <div className="px-3 pb-3 flex gap-2" style={{ borderTop: `1px solid ${border}`, paddingTop: 10 }}>
+                        <button type="button"
+                            onClick={() => { const d = new Date(); handleSelect(d.getDate()); setViewMonth(d.getMonth()); setViewYear(d.getFullYear()); }}
+                            className="flex-1 py-1.5 rounded-[8px] text-[11px] font-bold transition-colors"
+                            style={{ background: `${B.blue}22`, color: B.blue }}>
+                            Hoy
+                        </button>
+                        {value && (
+                            <button type="button"
+                                onClick={() => { onChange(''); setOpen(false); }}
+                                className="flex-1 py-1.5 rounded-[8px] text-[11px] font-bold transition-colors"
+                                style={{ background: hover, color: muted }}>
+                                Borrar
+                            </button>
+                        )}
+                    </div>
+                </div>,
+                document.body
+            )}
+        </>
     );
 }
 

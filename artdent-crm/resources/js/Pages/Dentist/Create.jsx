@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Info, Building2, MapPin, Briefcase } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Create({ auth }) {
     const { isDark } = useTheme();
@@ -300,16 +301,16 @@ export default function Create({ auth }) {
                                 </div>
                                 <div>
                                     <label className={labelClasses}>Condición frente al IVA</label>
-                                    <select
+                                    <SearchableSelect
                                         value={data.iva_condition}
-                                        onChange={e => setData('iva_condition', e.target.value)}
-                                        className={inputClasses}
-                                    >
-                                        <option value="consumidor_final">Consumidor Final</option>
-                                        <option value="responsable_inscripto">Responsable Inscripto</option>
-                                        <option value="monotributista">Monotributista</option>
-                                        <option value="exento">Exento</option>
-                                    </select>
+                                        onChange={v => setData('iva_condition', v)}
+                                        options={[
+                                            { value: 'consumidor_final', label: 'Consumidor Final' },
+                                            { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+                                            { value: 'monotributista', label: 'Monotributista' },
+                                            { value: 'exento', label: 'Exento' },
+                                        ]}
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -441,18 +442,18 @@ export default function Create({ auth }) {
 
                             <div>
                                 <label className={labelClasses}>Origen / Fuente</label>
-                                <select
-                                    value={data.source}
-                                    onChange={e => setData('source', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">Seleccionar...</option>
-                                    <option value="referido">Referido</option>
-                                    <option value="publicidad">Publicidad</option>
-                                    <option value="espontaneo">Espontáneo</option>
-                                    <option value="red_social">Red Social</option>
-                                    <option value="otro">Otro</option>
-                                </select>
+                                <SearchableSelect
+                                    value={data.source || ''}
+                                    onChange={v => setData('source', v)}
+                                    placeholder="Seleccionar..."
+                                    options={[
+                                        { value: 'referido', label: 'Referido' },
+                                        { value: 'publicidad', label: 'Publicidad' },
+                                        { value: 'espontaneo', label: 'Espontáneo' },
+                                        { value: 'red_social', label: 'Red Social' },
+                                        { value: 'otro', label: 'Otro' },
+                                    ]}
+                                />
                                 {errors.source && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.source}</div>}
                             </div>
 
@@ -473,20 +474,20 @@ export default function Create({ auth }) {
 
                             <div>
                                 <label className={labelClasses}>Día de Entrega Preferido</label>
-                                <select
-                                    value={data.preferred_delivery_day}
-                                    onChange={e => setData('preferred_delivery_day', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">Sin preferencia</option>
-                                    <option value="1">Lunes</option>
-                                    <option value="2">Martes</option>
-                                    <option value="3">Miércoles</option>
-                                    <option value="4">Jueves</option>
-                                    <option value="5">Viernes</option>
-                                    <option value="6">Sábado</option>
-                                    <option value="7">Domingo</option>
-                                </select>
+                                <SearchableSelect
+                                    value={String(data.preferred_delivery_day || '')}
+                                    onChange={v => setData('preferred_delivery_day', v)}
+                                    placeholder="Sin preferencia"
+                                    options={[
+                                        { value: '1', label: 'Lunes' },
+                                        { value: '2', label: 'Martes' },
+                                        { value: '3', label: 'Miércoles' },
+                                        { value: '4', label: 'Jueves' },
+                                        { value: '5', label: 'Viernes' },
+                                        { value: '6', label: 'Sábado' },
+                                        { value: '7', label: 'Domingo' },
+                                    ]}
+                                />
                                 {errors.preferred_delivery_day && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.preferred_delivery_day}</div>}
                             </div>
                         </div>

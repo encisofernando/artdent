@@ -51,6 +51,7 @@ class AuthApiController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->whereNotNull('phone')],
             'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->whereNotNull('dni')],
+            'cuit' => ['nullable', 'string', 'max:20'],
             'accepts_marketing' => ['nullable', 'boolean'],
         ]);
 
@@ -60,6 +61,7 @@ class AuthApiController extends Controller
             'password' => Hash::make($validated['password']),
             'phone' => $validated['phone'] ?? null,
             'dni' => $validated['dni'] ?? null,
+            'cuit' => $validated['cuit'] ?? null,
             'accepts_marketing' => $validated['accepts_marketing'] ?? false,
             'is_active' => true,
         ]);

@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
+import { usePage } from '@inertiajs/react';
 import Sidebar from '@/Components/Sidebar';
 import Topbar from '@/Components/Topbar';
+import BottomNav from '@/Components/BottomNav';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Chatbot from '@/Components/Chatbot/Chatbot';
 
 export default function AuthenticatedLayout({ user, header, children }) {
+  const { auth } = usePage().props;
+  const currentUser = user || auth?.user;
   const { isDark } = useTheme();
   const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
 
@@ -47,7 +52,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
         <Topbar
-          user={user}
+          user={currentUser}
           onSidebarToggle={() => setSidebarOpenMobile(true)}
         />
 
@@ -65,11 +70,17 @@ export default function AuthenticatedLayout({ user, header, children }) {
           )}
 
           {/* Contenido de la página */}
-          <div className="p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto">
+          <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 w-full max-w-[1600px] mx-auto [&>*]:mx-auto">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Bottom navigation — mobile only */}
+      <BottomNav onMenuOpen={() => setSidebarOpenMobile(true)} />
+
+      {/* Chatbot Automatizado */}
+      <Chatbot />
     </div>
   );
 }

@@ -1,0 +1,25 @@
+USE `fer_artdent`;
+
+-- 1. Desactivamos las llaves foráneas
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- 2. Limpiamos las tablas (de hijos a padres)
+-- Usamos DELETE para evitar el error #1701
+DELETE FROM `customer_account_moves`;
+DELETE FROM `customer_accounts`;
+DELETE FROM `customer_addresses`;
+DELETE FROM `customer_password_reset_tokens`;
+DELETE FROM `ecommerce_order_items`;
+DELETE FROM `ecommerce_orders`;
+DELETE FROM `crm_notifications`;
+DELETE FROM `crm_interactions`;
+DELETE FROM `customers`;
+
+-- 3. Opcional: Reiniciar los contadores (ID auto-incremental) a 1
+ALTER TABLE `customer_account_moves` AUTO_INCREMENT = 1;
+ALTER TABLE `customer_accounts` AUTO_INCREMENT = 1;
+ALTER TABLE `ecommerce_orders` AUTO_INCREMENT = 1;
+ALTER TABLE `customers` AUTO_INCREMENT = 1;
+
+-- 4. Reactivamos las llaves foráneas
+SET FOREIGN_KEY_CHECKS = 1;

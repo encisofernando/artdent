@@ -71,7 +71,7 @@
             color: #555;
         }
 
-        input[type="number"], select {
+        input[type="number"], input[type="text"], select {
             padding: 10px;
             border: 2px solid var(--ad-light);
             border-radius: 8px;
@@ -79,6 +79,45 @@
             outline: none;
             box-sizing: border-box;
             font-family: inherit;
+        }
+
+        .input-hint {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .cups-help {
+            background: #f7fafc;
+            border: 1px solid var(--ad-light);
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        .cups-help summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--ad-teal);
+            list-style: none;
+        }
+
+        .cups-help summary::-webkit-details-marker { display: none; }
+        .cups-help summary::before { content: '▶ '; font-size: 0.7rem; }
+        details[open] .cups-help summary::before { content: '▼ '; }
+
+        .cups-help code {
+            display: block;
+            background: var(--dark-bg);
+            color: #A0AEC0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.82rem;
+            margin: 8px 0 4px;
+            user-select: all;
         }
 
         button {
@@ -142,11 +181,22 @@
         </div>
 
         <div class="form-group">
-            <label for="printerSelect">Impresora de Tickets:</label>
-            <select id="printerSelect">
-                <option value="">-- Usar predeterminada de Windows --</option>
-            </select>
+            <label for="printerInput">Impresora de Tickets:</label>
+            <input type="text" id="printerInput" list="printerList" placeholder="Predeterminada del sistema (dejar vacío)" autocomplete="off">
+            <datalist id="printerList"></datalist>
+            <div class="input-hint">Escribí el nombre CUPS de la impresora o dejá vacío para usar la predeterminada.</div>
         </div>
+
+        <details>
+            <summary class="input-hint" style="cursor:pointer;color:var(--ad-teal);font-weight:600;">▶ ¿La impresora no aparece en la lista? (Linux)</summary>
+            <div class="cups-help" style="margin-top:8px;">
+                Si tu impresora está en <b>/dev/usb/lp1</b>, registrala en CUPS con estos comandos:
+                <code>sudo lpinfo -v</code>
+                Copiá la URI que aparece para tu impresora (ej: <i>usb://Manufacturer/Model</i>) y ejecutá:
+                <code>sudo lpadmin -p TicketPrinter -E -v "usb://TU_URI" -m raw<br>sudo cupsaccept TicketPrinter<br>sudo cupsenable TicketPrinter</code>
+                Luego reiniciá el servicio — la impresora <b>TicketPrinter</b> aparecerá en la lista.
+            </div>
+        </details>
 
         <button onclick="saveConfig()">Guardar Configuración</button>
     </div>
@@ -164,24 +214,23 @@
         const { ipcRenderer } = require('electron');
         const logContainer = document.getElementById('log-container');
         const portInput = document.getElementById('portInput');
-        const printerSelect = document.getElementById('printerSelect');
+        const printerInput = document.getElementById('printerInput');
+        const printerList = document.getElementById('printerList');
 
         // Pedir datos iniciales al arrancar
         ipcRenderer.send('get-initial-data');
 
         ipcRenderer.on('initial-data', (event, data) => {
             portInput.value = data.port;
-            
-            // Limpiar y llenar el selector de impresoras
-            printerSelect.innerHTML = '<option value="">-- Usar predeterminada de Windows --</option>';
+            printerInput.value = data.printerName || '';
+
+            // Llenar el datalist con las impresoras detectadas por CUPS
+            printerList.innerHTML = '';
             data.printers.forEach(printer => {
                 const option = document.createElement('option');
                 option.value = printer.name;
-                option.textContent = printer.name + (printer.isDefault ? ' (Predeterminada)' : '');
-                if (printer.name === data.printerName) {
-                    option.selected = true;
-                }
-                printerSelect.appendChild(option);
+                option.label = printer.name + (printer.isDefault ? ' (Predeterminada)' : '');
+                printerList.appendChild(option);
             });
 
             updateLogUI(data.logs);
@@ -202,7 +251,7 @@
         function saveConfig() {
             const data = {
                 port: parseInt(portInput.value),
-                printerName: printerSelect.value
+                printerName: printerInput.value.trim()
             };
 
             if (data.port > 1024 && data.port < 65535) {

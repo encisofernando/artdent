@@ -12,6 +12,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ShippingMethodController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaxController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VariantAttributeValueController;
@@ -20,8 +21,24 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorPaymentController;
 use Illuminate\Support\Facades\Route;
 
-Route::resource('users', UserController::class);
-Route::resource('roles', RoleController::class);
+// Usuarios
+Route::get('users', [UserController::class, 'index'])->name('users.index')->middleware('permission:users.view');
+Route::get('users/create', [UserController::class, 'create'])->name('users.create')->middleware('permission:users.create');
+Route::post('users', [UserController::class, 'store'])->name('users.store')->middleware('permission:users.create');
+Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->middleware('permission:users.edit');
+Route::put('users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('permission:users.edit');
+Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('permission:users.delete');
+
+// Roles y Permisos
+Route::get('roles', [RoleController::class, 'index'])->name('roles.index')->middleware('permission:roles.view');
+Route::post('roles', [RoleController::class, 'store'])->name('roles.store')->middleware('permission:roles.create');
+Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update')->middleware('permission:roles.edit');
+Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->middleware('permission:roles.delete');
+
+// Suscripción SaaS
+Route::get('subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+Route::post('subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
+Route::post('subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
 
 Route::get('settings', [CompanyController::class, 'edit'])->name('settings.edit');
 Route::put('settings', [CompanyController::class, 'update'])->name('settings.update');
@@ -70,6 +87,32 @@ Route::resource('notifications', NotificationController::class);
 Route::resource('invoices', InvoiceController::class);
 Route::resource('invoice-items', InvoiceItemController::class);
 Route::resource('invoice-types', InvoiceTypeController::class);
+
+// ── AFIP / ARCA ─────────────────────────────────────────────────────────────
+use App\Http\Controllers\AfipController;
+
+Route::prefix('afip')->name('afip.')->group(function () {
+    // Genera comprobante de forma síncrona (respuesta inmediata)
+    Route::post('sales/{sale}/generate', [AfipController::class, 'generate'])->name('sales.generate');
+    // Despacha job en cola (asíncrono)
+    Route::post('sales/{sale}/dispatch', [AfipController::class, 'dispatch'])->name('sales.dispatch');
+    // Sube certificado o clave privada de la empresa
+    Route::post('upload-cert', [AfipController::class, 'uploadCert'])->name('upload-cert');
+    // Guarda configuración AFIP (entorno, auto-invoice, punto de venta)
+    Route::post('settings', [AfipController::class, 'saveSettings'])->name('settings');
+    // Valida archivos y consulta último comprobante autorizado
+    Route::get('test-connection', [AfipController::class, 'testConnection'])->name('test-connection');
+    // Genera clave privada RSA + CSR para registrar en portal ARCA
+    Route::post('generate-csr', [AfipController::class, 'generateCsr'])->name('generate-csr');
+});
+
+// ── Padrón ARCA ──────────────────────────────────────────────────────────────
+use App\Http\Controllers\PadronController;
+
+Route::prefix('padron')->name('padron.')->group(function () {
+    Route::get('{cuit}', [PadronController::class, 'lookup'])->name('lookup');
+    Route::delete('{cuit}/cache', [PadronController::class, 'invalidate'])->name('invalidate');
+});
 
 Route::resource('variant-attribute-values', VariantAttributeValueController::class);
 

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
+use App\Services\EmailTemplateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,8 +56,13 @@ class QuoteController extends Controller
                 return $arr;
             });
 
+        $customers = Customer::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'dni', 'phone', 'email', 'address', 'cuit', 'iva_condition']);
+
         return Inertia::render('Invoice/Create', [
             'products' => $products,
+            'customers' => $customers,
         ]);
     }
 
@@ -184,6 +192,29 @@ class QuoteController extends Controller
         $quote->update(['status' => $request->status]);
 
         return back()->with('success', 'Estado actualizado.');
+    }
+
+    public function sendEmail(Request $request, Invoice $quote): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($quote->reference_type === 'quote', 404);
+
+        $request->validate(['email' => 'required|email']);
+
+        $company = Company::findOrFail(auth()->user()->company_id ?? 1);
+        $shareUrl = route('quotes.public', $quote->public_token);
+
+        $vars = [
+            'empresa' => $company->fantasy_name ?: $company->name,
+            'numero' => $quote->quote_number ?? $quote->id,
+            'cliente' => $quote->recipient_name ?? 'Cliente',
+            'total' => '$'.number_format((float) $quote->total, 2, ',', '.'),
+            'fecha' => now()->format('d/m/Y'),
+            'link' => $shareUrl,
+        ];
+
+        app(EmailTemplateService::class)->send('quote', $request->email, $company, $vars);
+
+        return response()->json(['ok' => true]);
     }
 
     /** Public shareable view — no auth required */

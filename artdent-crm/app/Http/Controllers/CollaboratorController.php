@@ -22,8 +22,10 @@ class CollaboratorController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('document', 'like', "%{$search}%")
                     ->orWhere('specialty', 'like', "%{$search}%");
-            });
+                });
         }
+
+        $summaryQuery = clone $query;
 
         if ($status === 'active') {
             $query->where('is_active', 1);
@@ -38,6 +40,12 @@ class CollaboratorController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status,
+            ],
+            'summary' => [
+                'total' => (clone $summaryQuery)->count(),
+                'active' => (clone $summaryQuery)->where('is_active', 1)->count(),
+                'inactive' => (clone $summaryQuery)->where('is_active', 0)->count(),
+                'average_hourly_rate' => round((float) ((clone $summaryQuery)->avg('hourly_rate') ?? 0), 2),
             ],
         ]);
     }
@@ -77,6 +85,8 @@ class CollaboratorController extends Controller
 
     public function edit(Collaborator $collaborator)
     {
+        $this->ensureCompanyOwned($collaborator, auth()->user()->company_id ?? 1);
+
         $credentials = CollaboratorWebAuthnCredential::where('collaborator_id', $collaborator->id)
             ->select(['id', 'credential_id', 'device_label', 'created_at'])
             ->latest()
@@ -91,6 +101,8 @@ class CollaboratorController extends Controller
 
     public function update(Request $request, Collaborator $collaborator)
     {
+        $this->ensureCompanyOwned($collaborator, $request->user()->company_id ?? 1);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'document' => 'nullable|string|max:50',
@@ -112,8 +124,15 @@ class CollaboratorController extends Controller
 
     public function destroy(Collaborator $collaborator)
     {
+        $this->ensureCompanyOwned($collaborator, auth()->user()->company_id ?? 1);
+
         $collaborator->delete();
 
         return redirect()->route('collaborators.index')->with('success', 'Colaborador eliminado exitosamente.');
+    }
+
+    private function ensureCompanyOwned(Collaborator $collaborator, int $companyId): void
+    {
+        abort_unless((int) $collaborator->company_id === $companyId, 404);
     }
 }

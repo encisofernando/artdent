@@ -26,7 +26,7 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
     <div
         ref={ref}
         className={cn(
-            "relative flex flex-col bg-white shadow-lg overflow-hidden sm:rounded-2xl rounded-t-2xl w-full",
+            "relative flex flex-col shadow-lg overflow-hidden sm:rounded-2xl rounded-t-2xl w-full",
             className
         )}
         {...props}
@@ -62,4 +62,12 @@ const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DialogDescription.displayName = "DialogDescription"
 
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription }
+const DialogFooter = ({ className, ...props }) => (
+    <div
+        className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
+        {...props}
+    />
+)
+DialogFooter.displayName = "DialogFooter"
+
+export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter }

@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Tag, Settings2, Search, Package } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', teal: '#49949C' };
 
@@ -133,11 +134,11 @@ export default function Edit({ auth, item, products }) {
 
                             <div>
                                 <label className={lbl}>Tipo de Oferta *</label>
-                                <select value={data.type} onChange={(e) => setData('type', e.target.value)} className={inp}>
-                                    {TYPE_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    value={data.type}
+                                    onChange={v => setData('type', v)}
+                                    options={TYPE_OPTIONS}
+                                />
                                 {errors.type && <div className={err}>{errors.type}</div>}
                             </div>
 

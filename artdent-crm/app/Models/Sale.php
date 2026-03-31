@@ -124,4 +124,9 @@ class Sale extends Model
     {
         return $this->belongsTo(Dentist::class);
     }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 }

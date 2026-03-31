@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Printer, Download, CreditCard, User, Check } from 'lucide-react';
+import { ArrowLeft, Printer, Download, CreditCard, User, Check, FileCheck2, AlertTriangle, Loader2, ChevronDown, Mail, Send } from 'lucide-react';
 import axios from 'axios';
+import SearchableSelect from '@/Components/SearchableSelect';
+import FacturaA4 from '@/Components/Sale/FacturaA4';
+import { Ticket80, Ticket57 } from '@/Components/Sale/TicketBase';
 
 // ─── Paleta ArtDent (Manual de Identidad) ───────────────────────────────────
 const AD = {
@@ -21,477 +24,94 @@ const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigit
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString('es-AR') : '—';
 
-// ─── Logos reales de public/assets ───────────────────────────────────────────
-// logo-artdent-color.png  → sobre fondos claros (A4 header)
-// logo-artdent-blanco.png → sobre fondos oscuros
-// logo-artdent-icon.png   → solo el símbolo (footer, tickets)
-
-function LogoColor({ height = 50 }) {
+// ─── Logos — usa logo_url de la empresa si existe, si no el asset estático ────
+function CompanyLogo({ company, height = 50, variant = 'color' }) {
+    if (company?.logo_url) {
+        return (
+            <img
+                src={company.logo_url}
+                alt={company.fantasy_name || company.name || 'ArtDent'}
+                style={{ height, objectFit: 'contain', display: 'block', maxWidth: 180 }}
+            />
+        );
+    }
+    const src = variant === 'icon'
+        ? '/assets/logo-artdent-icon.png'
+        : variant === 'blanco'
+        ? '/assets/logo-artdent-blanco.png'
+        : '/assets/logo-artdent-color.png';
     return (
         <img
-            src="/assets/logo-artdent-color.png"
-            alt="ArtDent Laboratorio Odontológico"
-            style={{ height, objectFit: 'contain', display: 'block' }}
-        />
-    );
-}
-
-function LogoBlanco({ height = 40 }) {
-    return (
-        <img
-            src="/assets/logo-artdent-blanco.png"
+            src={src}
             alt="ArtDent"
             style={{ height, objectFit: 'contain', display: 'block' }}
         />
     );
 }
 
-function LogoIcon({ height = 32 }) {
-    return (
-        <img
-            src="/assets/logo-artdent-icon.png"
-            alt="ArtDent"
-            style={{ height, objectFit: 'contain', display: 'block' }}
-        />
-    );
+// Backwards-compat para usos previos
+function LogoColor({ height = 50, company }) {
+    return <CompanyLogo company={company} height={height} variant="color" />;
+}
+function LogoIcon({ height = 32, company }) {
+    return <CompanyLogo company={company} height={height} variant="icon" />;
 }
 
-// ─── TICKET COMPARTIDO (80mm y 57mm) ────────────────────────────────────────
-// Estructura: logo → condición → sep → FACTURA X → datos → tabla → totales → pago → footer
+// ─── Helpers fiscales ─────────────────────────────────────────────────────────
+const IVA_LABELS = {
+    responsable_inscripto: 'Responsable Inscripto',
+    monotributista: 'Responsable Monotributo',
+    exento: 'IVA Exento',
+    consumidor_final: 'Consumidor Final',
+};
 
-function TicketBase({ sale, widthMM = 80 }) {
-    const is57 = widthMM === 57;
-    const items = sale.sale_items || [];
-    const totalIVA = items.reduce((s, i) => s + Number(i.tax_amount || 0), 0);
-    const total = Number(sale.total || 0);
-    const clientName = sale.notes?.match(/Cliente:\s*(.+)/)?.[1]?.trim() || 'Consumidor Final';
-
-    // ── Datos derivados desde relaciones del backend ──────────────────────────
-    const receiptType = (sale.receipt_type || 'X').toUpperCase();
-    const company = sale.company || {};
-
-    // NRO COMPROBANTE: formato 00001-00000001
-    // Para X → punto de venta fijo '00001'
-    // Para A/B/C → companies.afip_point_sale (0-padded a 5 dígitos)
-    const pointSale = ['A', 'B', 'C'].includes(receiptType)
-        ? String(company.afip_point_sale ?? 1).padStart(5, '0')
-        : '00001';
-    // El sale_number ya viene formateado del backend, usarlo si tiene el formato
-    // sino construirlo desde el punto de venta y el número secuencial del id
-    const nroComp = sale.sale_number?.includes('-')
-        ? sale.sale_number  // ya viene en formato correcto del controller
-        : `${pointSale}-${String(sale.id ?? 1).padStart(8, '0')}`;
-
-    // IVA condition legible
-    const IVA_LABELS = {
-        responsable_inscripto: 'Responsable Inscripto',
-        monotributista: 'Responsable Monotributo',
-        exento: 'IVA Exento',
-        consumidor_final: 'Consumidor Final',
+// Parsea receipt_type (formato nuevo FA/FB/FC/NCA… o legacy A/B/C/X)
+function parseReceiptType(rt) {
+    const r = (rt || 'X').toUpperCase();
+    const MAP = {
+        X:   { letter: 'X', label: 'TICKET',       code: '00', isAfip: false },
+        A:   { letter: 'A', label: 'FACTURA A',     code: '01', isAfip: true  },
+        FA:  { letter: 'A', label: 'FACTURA A',     code: '01', isAfip: true  },
+        B:   { letter: 'B', label: 'FACTURA B',     code: '06', isAfip: true  },
+        FB:  { letter: 'B', label: 'FACTURA B',     code: '06', isAfip: true  },
+        C:   { letter: 'C', label: 'FACTURA C',     code: '11', isAfip: true  },
+        FC:  { letter: 'C', label: 'FACTURA C',     code: '11', isAfip: true  },
+        NCA: { letter: 'A', label: 'N. CRÉDITO A',  code: '02', isAfip: true  },
+        NCB: { letter: 'B', label: 'N. CRÉDITO B',  code: '07', isAfip: true  },
+        NCC: { letter: 'C', label: 'N. CRÉDITO C',  code: '12', isAfip: true  },
+        NDA: { letter: 'A', label: 'N. DÉBITO A',   code: '03', isAfip: true  },
+        NDB: { letter: 'B', label: 'N. DÉBITO B',   code: '08', isAfip: true  },
+        NDC: { letter: 'C', label: 'N. DÉBITO C',   code: '13', isAfip: true  },
     };
-    const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
+    return MAP[r] ?? { letter: r, label: r, code: '00', isAfip: false };
+}
 
-    // Medio de pago: primer pago de sale_payments, o fallback a payment_method
-    const primerPago = sale.sale_payments?.[0];
-    const medioPago = primerPago?.payment_method?.name
-        || sale.payment_method
-        || 'Efectivo';
-
-    // Cajero: usuario que hizo la venta
-    const cajero = sale.user?.name || sale.user?.email || 'Sistema';
-
-    // Título del comprobante según tipo
-    const tipoLabel = receiptType === 'X' ? 'TICKET X' : `FACTURA ${receiptType}`;
-
-    // Tipografías optimizadas para 57mm/80mm sin desbordar
-    const F = {
-        logo: is57 ? 28 : 36,
-        brand: is57 ? 13 : 15,
-        cond: is57 ? 9 : 10,
-        head: is57 ? 11 : 14,   // "FACTURA X"
-        label: is57 ? 8 : 10,   // Textos base 
-        value: is57 ? 8 : 10,
-        th: is57 ? 7.5 : 9,     // Tabla head
-        td: is57 ? 7.5 : 9,     // Tabla base
-        total: is57 ? 12 : 16,  // Total
-        small: is57 ? 7 : 8,
-        footer: is57 ? 7 : 8,
+// Genera la URL QR según especificación ARCA (https://www.arca.gob.ar/fe/qr/)
+function buildAfipQrUrl(invoice, company) {
+    if (!invoice?.cae) return null;
+    const cuitNum = parseInt(String(company?.cuit || '').replace(/\D/g, ''), 10);
+    const data = {
+        ver:        1,
+        fecha:      (invoice.issued_at || new Date().toISOString()).substring(0, 10),
+        cuit:       cuitNum,
+        ptoVta:     invoice.point_sale || company?.afip_point_sale || 1,
+        tipoCmp:    invoice.invoice_type?.afip_code || 11,
+        nroCmp:     invoice.number || 1,
+        importe:    Number(invoice.total),
+        moneda:     'PES',
+        ctz:        1,
+        tipoCodAut: 'E',
+        codAut:     parseInt(invoice.cae, 10),
     };
-    const PAD = '0'; // Thermal printers have unprintable margins physically
-    const LINE = `2px solid #000`; // Higher contrast line for thermal
-    const DASH = `2px dashed #000`; // Higher contrast dashed line
-
-    const Row = ({ label, value, bold = false }) => (
-        <div style={{ fontSize: `${F.label}pt`, marginBottom: 3, wordWrap: 'break-word', lineHeight: 1.25 }}>
-            <span style={{ fontWeight: 700, color: '#000', marginRight: 4 }}>{label}:</span>
-            <span style={{ fontWeight: bold ? 900 : 500, color: '#000' }}>{value}</span>
-        </div>
-    );
-
-    const pxWidth = is57 ? 50 : 74; // Native true-printable widths in mm
-
-    return (
-        <div id="print-zone" style={{
-            width: `${pxWidth}mm`,
-            fontFamily: "'Courier New', Courier, monospace", // Better for thermal printers
-            fontSize: `${F.label}pt`,
-            color: '#000', // Pure black text
-            padding: PAD,
-            background: '#fff',
-            lineHeight: 1.45,
-            boxSizing: 'border-box',
-        }}>
-            {/* ── LOGO ── */}
-            <div style={{ textAlign: 'center', marginBottom: is57 ? 5 : 7, marginTop: 5 }}>
-                <img
-                    src="/assets/logo-artdent-negro.png" // Pure black & white logo
-                    alt="ArtDent"
-                    style={{ height: F.logo, objectFit: 'contain', display: 'inline-block' }}
-                />
-            </div>
-
-            {/* Condición IVA */}
-            <div style={{ textAlign: 'center', fontSize: F.cond, fontWeight: 700, color: '#000', marginBottom: is57 ? 5 : 6 }}>
-                {ivaLabel}
-            </div>
-
-            {/* Separador */}
-            <div style={{ borderTop: LINE, marginBottom: is57 ? 5 : 6 }} />
-
-            {/* ── TIPO DE COMPROBANTE ── */}
-            <div style={{
-                textAlign: 'center',
-                fontWeight: 900,
-                fontSize: F.head,
-                letterSpacing: 0.5,
-                marginBottom: is57 ? 6 : 8,
-                padding: `${is57 ? 3 : 4}px 0`,
-                borderTop: `2px solid #000`, // Pure black border
-                borderBottom: `2px solid #000`,
-                color: '#000', // Pure black text
-                fontFamily: "'Courier New', Courier, monospace",
-            }}>
-                {tipoLabel}
-            </div>
-
-            {/* ── DATOS DEL COMPROBANTE ── */}
-            <div style={{ marginBottom: is57 ? 6 : 8 }}>
-                <Row label="NRO COMPROBANTE" value={nroComp} bold />
-                <Row
-                    label="FECHA"
-                    value={sale.sold_at
-                        ? `${fmtDate(sale.sold_at)}, ${new Date(sale.sold_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
-                        : fmtDate(sale.created_at)}
-                />
-                <Row label="CLIENTE" value={clientName} />
-            </div>
-
-            {/* Separador */}
-            <div style={{ borderTop: LINE, marginBottom: is57 ? 4 : 5 }} />
-
-            {/* ── TABLA DE ÍTEMS ── */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: F.th, marginBottom: is57 ? 4 : 6 }}>
-                <thead>
-                    <tr style={{ borderBottom: `2px solid #000` }}>
-                        {['Descripción', 'Can', 'Uni', 'Total'].map((h, i) => (
-                            <th key={h} style={{
-                                padding: `3px ${i === 0 ? 0 : 2}px`,
-                                textAlign: i === 0 ? 'left' : 'center',
-                                fontWeight: 900,
-                                fontSize: F.th,
-                                color: '#000',
-                                borderBottom: `2px solid #000`,
-                                whiteSpace: 'nowrap',
-                            }}>{h}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.map((item, i) => (
-                        <tr key={i} style={{ borderBottom: `1px solid #000` }}>
-                            <td style={{ padding: `3px 0`, fontSize: F.td, fontWeight: 600, color: '#000' }}>{item.product_name}</td>
-                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td, fontWeight: 700, color: '#000' }}>{Number(item.quantity)}</td>
-                            <td style={{ padding: `3px 2px`, textAlign: 'center', fontSize: F.td, fontWeight: 600, color: '#000' }}>{fmt(item.unit_price)}</td>
-                            <td style={{ padding: `3px 0`, textAlign: 'center', fontSize: F.td, fontWeight: 900, color: '#000' }}>{fmt(item.total)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            {/* Cantidad de ítems */}
-            <div style={{ fontSize: F.small, color: '#000', fontWeight: 700, marginBottom: is57 ? 5 : 6 }}>
-                Cantidad de ítems: {items.reduce((a, i) => a + Number(i.quantity || 1), 0)}
-            </div>
-
-            {/* Separador */}
-            <div style={{ borderTop: LINE, marginBottom: is57 ? 5 : 6 }} />
-
-            {/* ── TOTAL ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: F.total, fontWeight: 900, marginBottom: is57 ? 6 : 8 }}>
-                <span>TOTAL</span>
-                <span style={{ color: '#000' }}>$ {fmt(total)}</span>
-            </div>
-
-            {/* ── TRANSPARENCIA FISCAL ── */}
-            {totalIVA > 0 && (
-                <div style={{ marginBottom: is57 ? 5 : 7 }}>
-                    <div style={{ fontWeight: 700, fontSize: F.label, marginBottom: 3 }}>
-                        TRANSPARENCIA FISCAL
-                    </div>
-                    <Row label={`IVA 21%`} value={`$ ${fmt(totalIVA)}`} />
-                    <Row label="Otros Imp. Nac. Indirectos" value="$ 0,00" />
-                </div>
-            )}
-
-            {/* Separador */}
-            <div style={{ borderTop: DASH, marginBottom: is57 ? 5 : 6 }} />
-
-            {/* ── MEDIO DE PAGO ── */}
-            <div style={{ marginBottom: is57 ? 5 : 7 }}>
-                <Row label="MEDIO DE PAGO" value={medioPago} />
-                <Row label="CAJERO" value={cajero} />
-                {Number(sale.change_amount) > 0 && (
-                    <Row label="VUELTO" value={`$ ${fmt(sale.change_amount)}`} bold />
-                )}
-            </div>
-
-            {/* Separador */}
-            <div style={{ borderTop: DASH, marginBottom: is57 ? 5 : 7 }} />
-
-            {/* ── FOOTER ── */}
-            <div style={{ textAlign: 'center', fontSize: F.footer, color: '#000', fontWeight: 600 }}>
-                <div style={{ fontWeight: 900, color: '#000', fontFamily: "'Courier New', Courier, monospace", marginBottom: 2 }}>
-                    Gracias por su compra.
-                </div>
-                <div style={{ fontSize: F.small - 1, marginTop: 2, color: '#000', fontWeight: 500 }}>
-                    Comprobante no válido como factura
-                </div>
-            </div>
-
-        </div>
-    );
+    // Datos del receptor (de corresponder)
+    if (invoice.recipient_cuit) {
+        const doc = String(invoice.recipient_cuit).replace(/\D/g, '');
+        data.tipoDocRec = doc.length === 11 ? 80 : 96;
+        data.nroDocRec  = parseInt(doc, 10);
+    }
+    return `https://www.arca.gob.ar/fe/qr/?p=${btoa(JSON.stringify(data))}`;
 }
 
-function Ticket80({ sale }) {
-    return <TicketBase sale={sale} widthMM={80} />;
-}
-
-function Ticket57({ sale }) {
-    return <TicketBase sale={sale} widthMM={57} />;
-}
-
-// ─── FACTURA A4 ───────────────────────────────────────────────────────────────
-// ─── FACTURA A4 ───────────────────────────────────────────────────────────────
-function FacturaA4({ sale }) {
-    const items = sale.sale_items || [];
-    const subtotal = Number(sale.subtotal || 0);
-    const discount = Number(sale.discount_amount || 0);
-    const totalIVA = items.reduce((s, i) => s + Number(i.tax_amount || 0), 0);
-    const total = Number(sale.total || 0);
-    const clientName = sale.notes?.match(/Cliente:\s*(.+)/)?.[1]?.trim() || 'Consumidor Final';
-    const extraNotes = sale.notes?.replace(/^Cliente:[^\n]+\n?/, '') || '';
-
-    // Layout: flex column con minHeight A4. El spacer empuja el footer al fondo
-    // sin position:absolute (que causaba el espacio en blanco gigante).
-    return (
-        <div id="print-zone" style={{
-            width: '210mm', minHeight: '297mm',
-            fontFamily: "'Montserrat', sans-serif", fontSize: '10pt',
-            color: '#1A202C', background: '#fff',
-            display: 'flex', flexDirection: 'column',
-            boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
-        }}>
-
-
-            {/* Franja superior */}
-            <div style={{ background: `linear-gradient(135deg, ${AD.blue} 0%, ${AD.teal} 55%, ${AD.green} 100%)`, height: 8, flexShrink: 0 }} />
-
-            {/* ── HEADER ─────────────────────────────────────────────────────── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8mm 15mm 6mm', borderBottom: `1px solid ${AD.light}`, position: 'relative', zIndex: 1, flexShrink: 0 }}>
-                {/* Logo izquierda */}
-                <LogoColor height={52} />
-
-                {/* Tipo de comprobante centrado (estilo AFIP) */}
-                <div style={{ textAlign: 'center', border: '2.5px solid #222', padding: '6px 18px', minWidth: 108, alignSelf: 'center' }}>
-                    <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: -1 }}>X</div>
-                    <div style={{ borderTop: '1px solid #222', marginTop: 3, paddingTop: 3, fontSize: 7, fontWeight: 700, letterSpacing: 1 }}>CÓD. 00</div>
-                    <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: 1 }}>ORIGINAL</div>
-                </div>
-
-                {/* Datos del comprobante derecha */}
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: AD.blue, letterSpacing: -0.5 }}>TICKET</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#222', marginTop: 2 }}>{sale.sale_number}</div>
-                    <div style={{ fontSize: 8.5, color: '#555', marginTop: 5, lineHeight: 1.8 }}>
-                        <div><strong>Fecha de Emisión:</strong> {fmtDate(sale.sold_at || sale.created_at)}</div>
-                        <div><strong>Hora:</strong> {sale.sold_at ? new Date(sale.sold_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '—'}</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── EMISOR ──────────────────────────────────────────────────────── */}
-            <div style={{ padding: '5mm 15mm', borderBottom: `1px solid ${AD.light}`, position: 'relative', zIndex: 1, flexShrink: 0 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm', alignItems: 'start' }}>
-                    <div style={{ fontSize: 8.5, lineHeight: 1.8, color: '#333' }}>
-                        <div style={{ fontWeight: 800, fontSize: 10.5, color: '#111', marginBottom: 2 }}>ArtDent Laboratorio Odontológico</div>
-                        <div>Laboratorio Odontológico</div>
-                        <div>Argentina</div>
-                    </div>
-                    <div style={{ fontSize: 8.5, lineHeight: 1.8, color: '#333', textAlign: 'right' }}>
-                        <div><strong>Condición IVA:</strong> Monotributista</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── CLIENTE ─────────────────────────────────────────────────────── */}
-            <div style={{ padding: '4mm 15mm', borderBottom: `1px solid ${AD.light}`, position: 'relative', zIndex: 1, flexShrink: 0, background: '#fafcfe' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm' }}>
-                    <div style={{ fontSize: 8.5, lineHeight: 1.9 }}>
-                        <div><span style={{ fontWeight: 700 }}>Nombre: </span>{clientName}</div>
-                        {extraNotes && <div><span style={{ fontWeight: 700 }}>Notas: </span>{extraNotes}</div>}
-                        <div><span style={{ fontWeight: 700 }}>Cond. IVA: </span>Consumidor Final</div>
-                        <div><span style={{ fontWeight: 700 }}>Cond. Venta: </span>Contado</div>
-                    </div>
-                    <div style={{ fontSize: 8.5, lineHeight: 1.9 }}>
-                        {/* espacio para datos adicionales del cliente cuando existan */}
-                    </div>
-                </div>
-            </div>
-
-            {/* ── TABLA DE ÍTEMS ──────────────────────────────────────────────── */}
-            <div style={{ padding: '5mm 15mm 0', position: 'relative', zIndex: 1, flexShrink: 0 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
-                    <thead>
-                        <tr style={{ background: AD.blue, color: '#fff' }}>
-                            {[
-                                { label: 'Código', align: 'left', w: '14%' },
-                                { label: 'Descripción', align: 'left', w: '36%' },
-                                { label: 'Cantidad', align: 'center', w: '10%' },
-                                { label: 'U. Medida', align: 'center', w: '10%' },
-                                { label: 'P. Unit.', align: 'right', w: '13%' },
-                                { label: '% Bonif.', align: 'right', w: '8%' },
-                                { label: 'Importe', align: 'right', w: '9%' },
-                            ].map((h, i) => (
-                                <th key={h.label} style={{
-                                    padding: '5px 8px', textAlign: h.align, fontWeight: 700,
-                                    fontSize: 7.5, textTransform: 'uppercase', letterSpacing: 0.3,
-                                    width: h.w,
-                                    borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.15)' : 'none',
-                                }}>
-                                    {h.label}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {items.map((item, i) => (
-                            <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f5f9fc', borderBottom: `1px solid ${AD.light}` }}>
-                                <td style={{ padding: '6px 8px', color: '#666', fontSize: 8 }}>{item.sku || '—'}</td>
-                                <td style={{ padding: '6px 8px', fontWeight: 600, fontSize: 9 }}>{item.product_name}</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 9 }}>{Number(item.quantity)}</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 8.5, color: '#666' }}>Unid.</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9 }}>{fmt(item.unit_price)}</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9, color: Number(item.discount) > 0 ? '#c00' : '#999' }}>
-                                    {Number(item.discount) > 0 ? fmt(Number(item.discount) / Number(item.unit_price) * 100) + '%' : '0,00'}
-                                </td>
-                                <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 9, color: AD.blue }}>{fmt(item.total)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Spacer: empuja el bloque inferior al fondo del A4 */}
-            <div style={{ flex: 1, minHeight: '8mm' }} />
-
-            {/* ── BLOQUE INFERIOR (totales + footer) ──────────────────────────── */}
-            <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
-
-                {/* Totales + Transparencia Fiscal */}
-                <div style={{ padding: '0 15mm 5mm', borderTop: `1px solid ${AD.light}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '5mm' }}>
-                        <div style={{ width: '72mm' }}>
-                            {/* Descripción / Importe — estilo AFIP */}
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt', border: `1px solid ${AD.light}` }}>
-                                <thead>
-                                    <tr style={{ background: '#f0f4f8' }}>
-                                        <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 700, fontSize: 7.5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Descripción</th>
-                                        <th style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 7.5, textTransform: 'uppercase', letterSpacing: 0.3 }}>Importe</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {totalIVA > 0 && (
-                                        <tr style={{ borderTop: `1px solid ${AD.light}` }}>
-                                            <td style={{ padding: '4px 8px', fontSize: 8.5 }}>Importe Neto Gravado:</td>
-                                            <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(subtotal > 0 ? subtotal : total - totalIVA)}</td>
-                                        </tr>
-                                    )}
-                                    {totalIVA > 0 && (
-                                        <tr style={{ borderTop: `1px solid ${AD.light}` }}>
-                                            <td style={{ padding: '4px 8px', fontSize: 8.5 }}>IVA 21,00 %:</td>
-                                            <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(totalIVA)}</td>
-                                        </tr>
-                                    )}
-                                    {discount > 0 && (
-                                        <tr style={{ borderTop: `1px solid ${AD.light}` }}>
-                                            <td style={{ padding: '4px 8px', fontSize: 8.5 }}>Descuento:</td>
-                                            <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5, color: '#c00' }}>-{fmt(discount)}</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-
-                            {/* Total destacado */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '5px 8px', background: AD.blue, color: '#fff', marginTop: 0, borderRadius: '0 0 4px 4px' }}>
-                                <span style={{ fontWeight: 900, fontSize: '10pt', letterSpacing: 0.5 }}>IMPORTE TOTAL: $</span>
-                                <span style={{ fontWeight: 900, fontSize: '13pt' }}>{fmt(total)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Transparencia Fiscal Ley 27.743 */}
-                    {totalIVA > 0 && (
-                        <div style={{ marginTop: 8, fontSize: 7.5, lineHeight: 1.7, color: '#444' }}>
-                            <div style={{ fontWeight: 700 }}>Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)</div>
-                            <div style={{ display: 'flex', gap: 24 }}>
-                                <span>IVA Contenido: $ {fmt(totalIVA)}</span>
-                                <span>Otros Impuestos Nacionales Indirectos: $ 0,00</span>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Pago */}
-                    <div style={{ marginTop: 6, fontSize: 8, color: '#555' }}>
-                        <span style={{ fontWeight: 700 }}>Son: </span>
-                        <span style={{ fontStyle: 'italic' }}>{fmt(total)} pesos argentinos</span>
-                        {'  '}
-                        <span style={{ marginLeft: 12, fontWeight: 700 }}>Recibido: </span>${fmt(sale.paid_amount)}
-                        {Number(sale.change_amount) > 0 && <span style={{ marginLeft: 12 }}><strong>Vuelto: </strong>${fmt(sale.change_amount)}</span>}
-                    </div>
-                </div>
-
-                {/* Footer institucional */}
-                <div style={{ padding: '4mm 15mm', borderTop: `1px solid ${AD.light}`, background: '#fafcfe' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <LogoIcon height={26} />
-                            <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, fontFamily: "'Montserrat', sans-serif", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                Tu sonrisa, es nuestra prioridad.
-                            </span>
-                        </div>
-                        <div style={{ textAlign: 'right', fontSize: 7, color: '#bbb', lineHeight: 1.7 }}>
-                            <div>Comprobante no válido como factura</div>
-                            <div>Generado por ArtDent CRM — {fmtDate(new Date())}</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Franja inferior */}
-                <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 5 }} />
-            </div>
-        </div>
-    );
-}
 
 // ─── MODOS DE SALIDA ──────────────────────────────────────────────────────────
 const MODES = [
@@ -513,6 +133,70 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const [ccSuccess, setCcSuccess]       = useState(false);
     const hasCuentaCorriente = sale.status === 'pending' && sale.customer_id;
 
+    // ── Estado AFIP ───────────────────────────────────────────────────────────
+    const company = sale.company || {};
+    const needsAfip = parseReceiptType(sale.receipt_type).isAfip;
+    const allowedKeys = (() => {
+        const iva = company.iva_condition;
+        if (iva === 'responsable_inscripto') return ['FA', 'FB', 'NCA', 'NCB', 'NDA', 'NDB'];
+        return ['FC', 'NCC', 'NDC'];
+    })();
+    const RECEIPT_KEY_LABELS = {
+        FA: 'Factura A', FB: 'Factura B', FC: 'Factura C',
+        NCA: 'N. Crédito A', NCB: 'N. Crédito B', NCC: 'N. Crédito C',
+        NDA: 'N. Débito A',  NDB: 'N. Débito B',  NDC: 'N. Débito C',
+    };
+    const suggestedKey = (() => {
+        if (company.iva_condition === 'responsable_inscripto') {
+            return sale.customer?.cuit ? 'FA' : 'FB';
+        }
+        return 'FC';
+    })();
+
+    const [afipKey, setAfipKey]         = useState(suggestedKey);
+    const [afipLoading, setAfipLoading] = useState(false);
+    const [afipResult, setAfipResult]   = useState(sale.invoice || null);
+    const [afipError, setAfipError]     = useState('');
+
+    // ── Email ─────────────────────────────────────────────────────────────────
+    const [emailOpen, setEmailOpen]     = useState(false);
+    const [emailAddr, setEmailAddr]     = useState(sale.customer?.email || '');
+    const [emailSending, setEmailSending] = useState(false);
+    const [emailMsg, setEmailMsg]       = useState('');
+
+    const handleSendEmail = async () => {
+        if (!emailAddr) return;
+        setEmailSending(true);
+        setEmailMsg('');
+        try {
+            await axios.post(route('sales.send-email', sale.id), { email: emailAddr });
+            setEmailMsg('✓ Email enviado correctamente.');
+            setTimeout(() => { setEmailOpen(false); setEmailMsg(''); }, 2000);
+        } catch (e) {
+            setEmailMsg('✗ ' + (e.response?.data?.message || 'Error al enviar.'));
+        } finally {
+            setEmailSending(false);
+        }
+    };
+
+    const handleAfipGenerate = async () => {
+        setAfipLoading(true);
+        setAfipError('');
+        try {
+            const res = await axios.post(
+                route('afip.sales.generate', sale.id),
+                { receipt_key: afipKey },
+                { headers: { Accept: 'application/json' } }
+            );
+            setAfipResult(res.data.invoice);
+            router.reload({ only: ['sale'] });
+        } catch (e) {
+            setAfipError(e.response?.data?.error || 'Error al generar comprobante AFIP.');
+        } finally {
+            setAfipLoading(false);
+        }
+    };
+
     const handlePayCC = async () => {
         if (!pagoCC.amount || Number(pagoCC.amount) <= 0) {
             setCcError('Ingresá un monto válido.');
@@ -522,14 +206,18 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
         setCcError('');
         try {
             const res = await axios.post(
-                route('customers.account.payments', sale.customer_id),
-                { ...pagoCC, description: pagoCC.description || `Pago venta ${sale.sale_number}` },
+                route('sales.pay', sale.id),
+                {
+                    amount: pagoCC.amount,
+                    payment_method_id: pagoCC.payment_method_id || null,
+                    description: pagoCC.description || `Pago venta ${sale.sale_number}`,
+                },
                 { headers: { Accept: 'application/json' } }
             );
-            setCcBalance(res.data.balance);
+            if (res.data.balance !== null) setCcBalance(res.data.balance);
             setCcSuccess(true);
             setPagoCC({ amount: '', payment_method_id: '', description: '' });
-            // Reload to refresh sale status
+            // Recarga la venta y la cuenta para actualizar paid_amount, status y saldo CC
             router.reload({ only: ['sale', 'account'] });
         } catch (e) {
             setCcError(e.response?.data?.message || 'Error al registrar pago.');
@@ -539,64 +227,64 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
     };
 
     const handlePrint = async () => {
-        // Si es A4, usamos el flujo nativo del navegador para PDF
-        if (mode === 'a4') {
-            const el = document.getElementById('print-zone');
-            if (!el) return;
-            const win = window.open('', '_blank');
-            win.document.write(`<html><head><title>ArtDent — ${sale.sale_number}</title></head><body>${el.innerHTML}</body></html>`);
-            win.document.close();
-            setTimeout(() => { win.print(); win.close(); }, 500);
-            return;
-        }
-
-        // Para Tickets (80mm / 57mm): Capturamos el diseño exacto
         const printElement = document.getElementById('print-zone');
         if (!printElement) return;
 
-        // Recopilamos los estilos de la página para que Electron los aplique al ticket
-        const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-            .map(style => style.outerHTML)
-            .join('');
+        const isA4 = mode === 'a4';
+        const is57 = mode === '57mm';
 
-        const scale = mode === '57mm' ? '0.90' : '1';
+        const pageSize = isA4 ? 'A4' : 'auto';
+        const zoneWidth = isA4 ? '210mm' : is57 ? '180px' : '260px';
 
         const fullHTML = `
         <html>
             <head>
+                <title>ArtDent — ${sale.sale_number}</title>
                 <base href="${window.location.origin}">
                 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-                ${styles}
                 <style>
-                    @page { margin: 0; size: auto; }
-                    body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; }
-                    #print-zone { 
-                        width: ${printElement.style.width} !important; 
-                        max-width: ${printElement.style.width} !important; 
-                        box-shadow: none !important; margin: 0 !important; 
-                        box-sizing: border-box; 
-                        transform: scale(${scale}); 
-                        transform-origin: top left;
+                    @page { margin: 0; size: ${pageSize}; }
+                    * { box-sizing: border-box; }
+                    body {
+                        margin: 0; padding: 0;
+                        background: white;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
+                    #print-zone {
+                        ${zoneWidth ? `width: ${zoneWidth} !important; max-width: ${zoneWidth} !important;` : ''}
+                        box-shadow: none !important;
+                        margin: 0 !important;
+                        /* El Electron captura a 388px en térmicos de 57mm. El HTML es de 180px base */
+                        ${!isA4 ? `zoom: ${mode === '57mm' ? 388/180 : 576/260}; transform-origin: top left; background: #fff !important;` : ''}
+                    }
+                    img { display: block; }
                 </style>
             </head>
             <body>${printElement.outerHTML}</body>
-        </html>
-    `;
+        </html>`;
 
+        if (isA4) {
+            const win = window.open('', '_blank');
+            win.document.write(fullHTML);
+            win.document.close();
+            setTimeout(() => { win.print(); win.close(); }, 700);
+            return;
+        }
+
+        // Tickets → servidor de impresión Electron
         try {
             const response = await fetch('http://localhost:1234/print', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html: fullHTML, mode: mode })
+                body: JSON.stringify({ html: fullHTML, mode }),
             });
-
             if (!response.ok) {
                 const result = await response.json();
-                alert("Error en el servidor de impresión: " + result.error);
+                alert('Error en el servidor de impresión: ' + result.error);
             }
-        } catch (err) {
-            alert("⚠️ El gestor de impresión ArtDent no está activo. Por favor, inicie la aplicación.");
+        } catch {
+            alert('⚠️ El gestor de impresión ArtDent no está activo. Por favor, inicie la aplicación.');
         }
     };
 
@@ -624,15 +312,56 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                             </p>
                         </div>
                     </div>
-                    <Button
-                        onClick={handlePrint}
-                        className="text-white border-none shadow-md rounded-xl"
-                        style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal})` }}
-                    >
-                        {mode === 'a4'
-                            ? <><Download size={16} className="mr-2" />Exportar PDF</>
-                            : <><Printer size={16} className="mr-2" />Imprimir Ticket</>}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {/* Enviar por email */}
+                        <div className="relative">
+                            <Button
+                                variant="outline"
+                                onClick={() => setEmailOpen(v => !v)}
+                                className={`rounded-xl gap-2 ${isDark ? 'border-slate-700 hover:bg-slate-800' : ''}`}
+                            >
+                                <Mail size={16} /> Email
+                            </Button>
+
+                            {emailOpen && (
+                                <div className={`absolute right-0 top-12 z-50 w-72 rounded-2xl border shadow-xl p-4 space-y-3 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <p className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Enviar comprobante por email
+                                    </p>
+                                    <input
+                                        type="email"
+                                        value={emailAddr}
+                                        onChange={e => setEmailAddr(e.target.value)}
+                                        placeholder="destinatario@email.com"
+                                        className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
+                                    />
+                                    {emailMsg && (
+                                        <p className={`text-xs font-medium ${emailMsg.startsWith('✓') ? 'text-emerald-500' : 'text-red-500'}`}>
+                                            {emailMsg}
+                                        </p>
+                                    )}
+                                    <div className="flex gap-2">
+                                        <Button size="sm" disabled={emailSending || !emailAddr} onClick={handleSendEmail} className="flex-1 gap-1.5">
+                                            <Send size={13} /> {emailSending ? 'Enviando…' : 'Enviar'}
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => setEmailOpen(false)}>
+                                            Cancelar
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <Button
+                            onClick={handlePrint}
+                            className="text-white border-none shadow-md rounded-xl"
+                            style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal})` }}
+                        >
+                            {mode === 'a4'
+                                ? <><Download size={16} className="mr-2" />Exportar PDF</>
+                                : <><Printer size={16} className="mr-2" />Imprimir Ticket</>}
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="flex flex-col xl:flex-row gap-6">
@@ -736,23 +465,12 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                                             fontFamily: 'inherit',
                                         }}
                                     />
-                                    <select
-                                        value={pagoCC.payment_method_id}
-                                        onChange={e => setPagoCC(p => ({ ...p, payment_method_id: e.target.value }))}
-                                        className="w-full outline-none text-sm"
-                                        style={{
-                                            padding: '8px 10px', borderRadius: 8,
-                                            border: `1.5px solid ${isDark ? '#334155' : '#cbd5e1'}`,
-                                            background: isDark ? '#1e293b' : '#fff',
-                                            color: isDark ? '#f1f5f9' : '#1e293b',
-                                            fontFamily: 'inherit',
-                                        }}
-                                    >
-                                        <option value="">— Método de pago —</option>
-                                        {paymentMethods.map(pm => (
-                                            <option key={pm.id} value={pm.id}>{pm.name}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        value={String(pagoCC.payment_method_id || '')}
+                                        onChange={v => setPagoCC(p => ({ ...p, payment_method_id: v }))}
+                                        placeholder="— Método de pago —"
+                                        options={paymentMethods.map(pm => ({ value: String(pm.id), label: pm.name }))}
+                                    />
                                     <button
                                         onClick={handlePayCC}
                                         disabled={savingCC || !pagoCC.amount}
@@ -768,6 +486,71 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                                 </div>
                             </div>
                         )}
+                    {/* Panel AFIP / ARCA */}
+                    {needsAfip && (
+                        <div className={`mt-3 p-4 rounded-xl border ${isDark ? 'bg-slate-900 border-blue-700/40' : 'bg-blue-50/60 border-blue-200'}`}>
+                            <div className="flex items-center gap-2 mb-3">
+                                <FileCheck2 size={14} style={{ color: AD.blue }} />
+                                <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: AD.blue }}>
+                                    Comprobante AFIP
+                                </h4>
+                            </div>
+
+                            {/* Ya tiene CAE */}
+                            {(afipResult?.cae || sale.invoice?.cae) ? (
+                                <div className="space-y-1.5">
+                                    <div className={`flex items-center gap-1.5 text-[11.5px] font-semibold text-emerald-500`}>
+                                        <Check size={12} /> Autorizado por AFIP
+                                    </div>
+                                    {[
+                                        ['Tipo', sale.invoice?.invoice_type?.name || afipKey],
+                                        ['Nº', sale.invoice?.number || afipResult?.number],
+                                        ['CAE', sale.invoice?.cae || afipResult?.cae],
+                                        ['Vto CAE', sale.invoice?.cae_expiry
+                                            ? new Date(sale.invoice.cae_expiry).toLocaleDateString('es-AR')
+                                            : afipResult?.cae_expiry],
+                                    ].map(([l, v]) => v && (
+                                        <div key={l} className="flex justify-between text-[11px]">
+                                            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{l}</span>
+                                            <span className={`font-semibold font-mono ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{v}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {/* Selector de tipo */}
+                                    <SearchableSelect
+                                        value={String(afipKey || '')}
+                                        onChange={v => setAfipKey(v)}
+                                        options={allowedKeys.map(k => ({ value: k, label: RECEIPT_KEY_LABELS[k] }))}
+                                    />
+
+                                    {afipError && (
+                                        <div className="flex items-start gap-1.5 text-[11px] text-red-500">
+                                            <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                                            <span>{afipError}</span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleAfipGenerate}
+                                        disabled={afipLoading}
+                                        className="w-full py-2 rounded-lg text-[12px] font-bold text-white flex items-center justify-center gap-1.5 transition-opacity"
+                                        style={{ background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`, opacity: afipLoading ? 0.7 : 1 }}
+                                    >
+                                        {afipLoading
+                                            ? <><Loader2 size={13} className="animate-spin" /> Procesando…</>
+                                            : <><FileCheck2 size={13} /> Generar con AFIP</>}
+                                    </button>
+
+                                    <p className={`text-[10px] text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                        Ambiente: {company.afip_environment === 'prod' ? 'Producción' : 'Homologación'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     </div>
 
                     {/* Panel de preview */}

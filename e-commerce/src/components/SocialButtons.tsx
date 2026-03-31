@@ -1,0 +1,114 @@
+import { useState } from 'react'
+import { useAuth } from '../store/auth'
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            client_id: string
+            scope: string
+            callback: (response: { access_token?: string; error?: string }) => void
+          }) => { requestAccessToken: () => void }
+        }
+      }
+    }
+  }
+}
+
+type Props = {
+  onSuccess?: () => void
+  onError?: (msg: string) => void
+}
+
+export default function SocialButtons({ onSuccess, onError }: Props) {
+  const { signInWithSocial } = useAuth()
+  const [loadingProvider, setLoadingProvider] = useState<'google' | null>(null)
+
+  /* ────────── Google ────────── */
+  const handleGoogle = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      onError?.('Google Client ID no configurado.')
+      return
+    }
+
+    // Dynamically load Google Identity Services script if not yet loaded
+    const loadGsiAndLogin = () => {
+      if (!window.google?.accounts?.oauth2) {
+        const script = document.createElement('script')
+        script.src = 'https://accounts.google.com/gsi/client'
+        script.async = true
+        script.defer = true
+        script.onload = () => doGoogleLogin(clientId)
+        document.head.appendChild(script)
+      } else {
+        doGoogleLogin(clientId)
+      }
+    }
+
+    const doGoogleLogin = (clientId: string) => {
+      setLoadingProvider('google')
+      try {
+        const client = window.google!.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'openid email profile',
+          callback: (response) => {
+            if (!response.access_token) {
+              setLoadingProvider(null)
+              onError?.('No se pudo obtener el token de Google.')
+              return
+            }
+            // Move async logic to a wrapper to avoid "asyncfunction" error
+            const login = async () => {
+              try {
+                await signInWithSocial('google', response.access_token!)
+                onSuccess?.()
+              } catch (err: any) {
+                const msg = err?.response?.data?.message || 'Error al iniciar sesión con Google.'
+                onError?.(msg)
+              } finally {
+                setLoadingProvider(null)
+              }
+            }
+            login()
+          },
+        })
+        client.requestAccessToken()
+      } catch {
+        setLoadingProvider(null)
+        onError?.('Error al inicializar Google Sign-In.')
+      }
+    }
+
+    loadGsiAndLogin()
+  }
+
+  const btnBase =
+    'flex w-full items-center justify-center gap-3 rounded-xl border py-2.5 text-sm font-semibold transition-all duration-150 disabled:opacity-60'
+
+  return (
+    <div className="space-y-3">
+      {/* Google */}
+      <button
+        type="button"
+        onClick={handleGoogle}
+        disabled={!!loadingProvider}
+        className={`${btnBase} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300`}
+      >
+        {loadingProvider === 'google' ? (
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5">
+            <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>
+            <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/>
+            <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/>
+            <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/>
+          </svg>
+        )}
+        {loadingProvider === 'google' ? 'Conectando...' : 'Continuar con Google'}
+      </button>
+    </div>
+  )
+}

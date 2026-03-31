@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { ArrowLeft, Printer, Eye } from 'lucide-react';
 
@@ -13,18 +13,21 @@ const fmtDate = (d) => {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
 };
 
-// ─── Ticket térmico 80mm ──────────────────────────────────────────────────────
-function ReciboTicket({ receipt, extras, discounts, company }) {
+function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
     const collab = receipt.collaborator || {};
+    const is57mm = mode === '57mm';
+    const ticketWidth = is57mm ? '54mm' : '74mm';
+    const baseFontSize = is57mm ? '8pt' : '9pt';
+    const logoHeight = is57mm ? 26 : 32;
 
     return (
-        <div id="print-zone" style={{ width: '74mm', fontFamily: "'Courier New', Courier, monospace", fontSize: '9pt', color: '#000', background: '#fff', lineHeight: 1.5, boxSizing: 'border-box' }}>
+        <div id="print-zone" style={{ width: ticketWidth, fontFamily: "'Courier New', Courier, monospace", fontSize: baseFontSize, color: '#000', background: '#fff', lineHeight: 1.5, boxSizing: 'border-box' }}>
             {/* Top stripe */}
             <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 4, marginBottom: 7 }} />
 
             {/* Logo */}
             <div style={{ textAlign: 'center', marginBottom: 6 }}>
-                <img src="/assets/logo-artdent-negro.png" alt="ArtDent" style={{ height: 32, objectFit: 'contain', display: 'inline-block' }} />
+                <img src="/assets/logo-artdent-negro.png" alt="ArtDent" style={{ height: logoHeight, objectFit: 'contain', display: 'inline-block' }} />
             </div>
 
             {company?.name && (
@@ -97,9 +100,9 @@ function ReciboTicket({ receipt, extras, discounts, company }) {
             </table>
 
             {/* NETO */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '5px 6px', background: AD.blue, color: '#fff', borderRadius: 4, marginBottom: 8 }}>
-                <span style={{ fontWeight: 900, fontSize: '9.5pt' }}>NETO A COBRAR: $</span>
-                <span style={{ fontWeight: 900, fontSize: '14pt' }}>{fmt(receipt.net)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '5px 6px', background: AD.blue, color: '#fff', borderRadius: 4, marginBottom: 8, gap: 6 }}>
+                <span style={{ fontWeight: 900, fontSize: is57mm ? '8.5pt' : '9.5pt' }}>NETO A COBRAR: $</span>
+                <span style={{ fontWeight: 900, fontSize: is57mm ? '11pt' : '14pt' }}>{fmt(receipt.net)}</span>
             </div>
 
             {/* Extras detail */}
@@ -194,7 +197,7 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
             const response = await fetch('http://localhost:1234/print', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html: fullHTML, mode: '80mm' }),
+                body: JSON.stringify({ html: fullHTML, mode }),
             });
             if (!response.ok) {
                 const result = await response.json();
@@ -230,10 +233,33 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
                             <p style={{ fontSize: 12, color: D.sub, margin: 0, marginTop: 2 }}>{collab.name}</p>
                         </div>
                     </div>
-                    <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 11, border: 'none', background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: `0 4px 14px rgba(57,123,156,0.3)` }}>
-                        <Printer size={15} />
-                        Imprimir
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 12, border: `1px solid ${D.border}`, background: D.card }}>
+                            {['57mm', '80mm'].map((ticketMode) => (
+                                <button
+                                    key={ticketMode}
+                                    type="button"
+                                    onClick={() => setMode(ticketMode)}
+                                    style={{
+                                        padding: '7px 12px',
+                                        borderRadius: 9,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        fontWeight: 700,
+                                        fontSize: 12,
+                                        background: mode === ticketMode ? AD.blue : 'transparent',
+                                        color: mode === ticketMode ? '#fff' : D.sub,
+                                    }}
+                                >
+                                    {ticketMode}
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 11, border: 'none', background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: `0 4px 14px rgba(57,123,156,0.3)` }}>
+                            <Printer size={15} />
+                            Imprimir
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex flex-col xl:flex-row gap-4">
@@ -241,6 +267,10 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
                     <div style={{ width: '100%', maxWidth: 220 }} className="xl:flex-shrink-0">
                         <div style={{ background: D.card, border: `1.5px solid ${D.border}`, borderRadius: 14, padding: 14 }}>
                             <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: D.sub, marginBottom: 10 }}>Resumen</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '5px 0', borderBottom: `1px solid ${D.border}` }}>
+                                <span style={{ fontSize: 11, color: D.sub }}>Formato ticket</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: D.text }}>{mode}</span>
+                            </div>
                             {[
                                 ['Colaborador', collab.name],
                                 ['Período', `${fmtDate(receipt.period_from)} al ${fmtDate(receipt.period_to)}`],
@@ -271,12 +301,12 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 6 }}>
                                     <Eye size={12} color={D.sub} />
-                                    <span style={{ fontSize: 11, color: D.sub }}>Vista previa — Ticket 80mm</span>
+                                    <span style={{ fontSize: 11, color: D.sub }}>{`Vista previa — Ticket ${mode}`}</span>
                                 </div>
                             </div>
                             <div style={{ overflow: 'auto', padding: 24, display: 'flex', justifyContent: 'center', minHeight: 480, maxHeight: '72vh', background: isDark ? '#09111c' : '#dde2e8' }}>
                                 <div style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'inline-block' }}>
-                                    <ReciboTicket receipt={receipt} extras={extras} discounts={discounts} company={company} />
+                                    <ReciboTicket receipt={receipt} extras={extras} discounts={discounts} company={company} mode={mode} />
                                 </div>
                             </div>
                         </div>

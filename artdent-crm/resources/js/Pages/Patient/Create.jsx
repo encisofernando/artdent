@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, User, FileText, Phone } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Create({ auth, dentists }) {
     const { isDark } = useTheme();
@@ -73,19 +74,13 @@ export default function Create({ auth, dentists }) {
                             <label className={labelClasses}>
                                 Odontólogo / Clínica Asociada *
                             </label>
-                            <select
-                                value={data.dentist_id}
-                                onChange={e => setData('dentist_id', e.target.value)}
-                                className={inputClasses}
+                            <SearchableSelect
+                                value={String(data.dentist_id || '')}
+                                onChange={v => setData('dentist_id', v)}
+                                placeholder="-- Seleccionar Odontólogo --"
                                 required
-                            >
-                                <option value="">-- Seleccionar Odontólogo --</option>
-                                {dentists.map((dentist) => (
-                                    <option key={dentist.id} value={dentist.id}>
-                                        {dentist.name} {dentist.code ? `(${dentist.code})` : ''}
-                                    </option>
-                                ))}
-                            </select>
+                                options={dentists.map(d => ({ value: String(d.id), label: `${d.name}${d.code ? ` (${d.code})` : ''}` }))}
+                            />
                             {errors.dentist_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dentist_id}</div>}
                         </div>
                     </div>
@@ -132,16 +127,16 @@ export default function Create({ auth, dentists }) {
 
                             <div>
                                 <label className={labelClasses}>Género</label>
-                                <select
-                                    value={data.gender}
-                                    onChange={e => setData('gender', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">Seleccionar...</option>
-                                    <option value="Masculino">Masculino</option>
-                                    <option value="Femenino">Femenino</option>
-                                    <option value="Otro">Otro</option>
-                                </select>
+                                <SearchableSelect
+                                    value={data.gender || ''}
+                                    onChange={v => setData('gender', v)}
+                                    placeholder="Seleccionar..."
+                                    options={[
+                                        { value: 'Masculino', label: 'Masculino' },
+                                        { value: 'Femenino', label: 'Femenino' },
+                                        { value: 'Otro', label: 'Otro' },
+                                    ]}
+                                />
                                 {errors.gender && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.gender}</div>}
                             </div>
 

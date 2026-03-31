@@ -1,131 +1,1198 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { useTheme } from '@/Contexts/ThemeContext';
+import {
+    Building2, Receipt, MapPin, Globe, MessageSquare,
+    Save, UploadCloud, X, Camera, CheckCircle2,
+    ShieldCheck, KeyRound, FileCheck2, Loader2, Wifi, CircleCheck, CircleX, FileCog,
+    Mail, Printer, Bot,
+} from 'lucide-react';
+import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
+import axios from 'axios';
+
+const CHATBOT_MODEL_OPTIONS = {
+    openai: [
+        { value: 'gpt-5.4-nano', label: 'gpt-5.4-nano · cache + menor costo' },
+        { value: 'gpt-4o-mini', label: 'gpt-4o-mini · rápido y económico' },
+        { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini · razonamiento ligero' },
+        { value: 'gpt-4.1', label: 'gpt-4.1 · mayor calidad' },
+    ],
+    gemini: [
+        { value: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro · máximo razonamiento' },
+        { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
+        { value: 'gemini-3.0-flash', label: 'Gemini 3 Flash' },
+        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+        { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+        { value: 'gemini-2.0-flash', label: 'Gemini 2 Flash' },
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash · clásico estable' },
+    ],
+};
+
+const DEFAULT_CHATBOT_MODELS = {
+    openai: 'gpt-5.4-nano',
+    gemini: 'gemini-2.5-flash',
+};
 
 export default function Settings({ company }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const { isDark } = useTheme();
+    const { flash } = usePage().props;
+    const [activeTab, setActiveTab] = useState('perfil');
+    const [ticketFormat, setTicketFormat] = useState(
+        () => localStorage.getItem('artdent_ticket_format') || '80mm'
+    );
+
+    const saveTicketFormat = (fmt) => {
+        setTicketFormat(fmt);
+        localStorage.setItem('artdent_ticket_format', fmt);
+    };
+    const [logoPreview, setLogoPreview] = useState(company.logo_url || null);
+    const fileInputRef = useRef(null);
+
+    const { data, setData, post, processing, errors, progress } = useForm({
+        _method: 'put', // Using POST with _method=put to handle file uploads in Laravel
         name: company.name || '',
         fantasy_name: company.fantasy_name || '',
+        logo: null,
         cuit: company.cuit || '',
+        iva_condition: company.iva_condition || '',
+        iibb: company.iibb || '',
+        start_date: company.start_date ? String(company.start_date).substring(0, 10) : '',
+        afip_point_sale: company.afip_point_sale || '',
         email: company.email || '',
         phone: company.phone || '',
+        website: company.website || '',
+        address: company.address || '',
+        city: company.city || '',
+        province: company.province || '',
+        postal_code: company.postal_code || '',
+        country: company.country || '',
+        currency: company.currency || 'ARS',
+        timezone: company.timezone || 'America/Argentina/Buenos_Aires',
         whatsapp_phone_number_id: company.whatsapp_phone_number_id || '',
         whatsapp_access_token: company.whatsapp_access_token || '',
+        whatsapp_message_template: company.whatsapp_message_template || '',
+        email_sale_subject: company.email_sale_subject || '',
+        email_sale_body: company.email_sale_body || '',
+        email_quote_subject: company.email_quote_subject || '',
+        email_quote_body: company.email_quote_body || '',
+        email_payment_subject: company.email_payment_subject || '',
+        email_payment_body: company.email_payment_body || '',
+        chatbot_enabled: company.chatbot_enabled ?? true,
+        chatbot_provider: company.chatbot_provider || 'gemini',
+        chatbot_model: company.chatbot_model || DEFAULT_CHATBOT_MODELS[company.chatbot_provider || 'gemini'],
+        chatbot_openai_key: company.chatbot_openai_key || '',
+        chatbot_gemini_key: company.chatbot_gemini_key || '',
     });
+
+    const TABS = [
+        { id: 'perfil', label: 'Perfil de Empresa', icon: Building2 },
+        { id: 'fiscal', label: 'Datos Fiscales', icon: Receipt },
+        { id: 'ubicacion', label: 'Ubicación', icon: MapPin },
+        { id: 'preferencias', label: 'Preferencias', icon: Globe },
+        { id: 'integraciones', label: 'Integraciones', icon: MessageSquare },
+        { id: 'emails', label: 'Emails', icon: Mail },
+        { id: 'afip', label: 'AFIP / ARCA', icon: ShieldCheck },
+    ];
+
+    // ── Estado AFIP ──────────────────────────────────────────────────────────
+    const [afipSettings, setAfipSettings] = useState({
+        afip_environment:  company.afip_environment  ?? 'homo',
+        afip_auto_invoice: company.afip_auto_invoice ?? false,
+        afip_point_sale:   company.afip_point_sale   ?? '',
+    });
+    const [afipSaving,    setAfipSaving]    = useState(false);
+    const [afipMsg,       setAfipMsg]       = useState('');
+    const [afipError,     setAfipError]     = useState('');
+    const [certUploading, setCertUploading] = useState({ cert_prod: false, cert_homo: false, key: false });
+    const [certStatus,    setCertStatus]    = useState({
+        cert_prod: company.afip_cert_path      ? 'ok' : null,
+        cert_homo: company.afip_homo_cert_path ? 'ok' : null,
+        key:       company.afip_key_path       ? 'ok' : null,
+    });
+    const [testingConn,   setTestingConn]   = useState(null); // null | 'homo' | 'prod'
+    const [testResult,    setTestResult]    = useState(null); // null | { success, environment, checks, error }
+    const certProdRef = useRef(null);
+    const certHomoRef = useRef(null);
+    const keyRef      = useRef(null);
+
+    // ── Estado CSR ───────────────────────────────────────────────────────────
+    const [csrAlias,      setCsrAlias]      = useState('');
+    const [csrGenerating, setCsrGenerating] = useState(false);
+    const [csrResult,     setCsrResult]     = useState(null); // null | { success, csr, alias, message, error }
+
+    const handleAfipSave = async () => {
+        setAfipSaving(true);
+        setAfipMsg('');
+        setAfipError('');
+        try {
+            await axios.post(route('afip.settings'), afipSettings);
+            setAfipMsg('Configuración AFIP guardada correctamente.');
+        } catch (e) {
+            setAfipError(e.response?.data?.errors
+                ? Object.values(e.response.data.errors).flat().join(' ')
+                : (e.response?.data?.message || 'Error al guardar.'));
+        } finally {
+            setAfipSaving(false);
+        }
+    };
+
+    // slotKey: 'cert_prod' | 'cert_homo' | 'key'
+    const handleCertUpload = async (slotKey) => {
+        const refMap = { cert_prod: certProdRef, cert_homo: certHomoRef, key: keyRef };
+        const ref = refMap[slotKey];
+        const file = ref.current?.files?.[0];
+        if (!file) return;
+        setCertUploading(s => ({ ...s, [slotKey]: true }));
+        setCertStatus(s => ({ ...s, [slotKey]: null }));
+        setAfipError('');
+        try {
+            const form = new FormData();
+            form.append('type', slotKey === 'key' ? 'key' : 'cert');
+            form.append('env',  slotKey === 'cert_homo' ? 'homo' : 'prod');
+            form.append('file', file);
+            await axios.post(route('afip.upload-cert'), form);
+            setCertStatus(s => ({ ...s, [slotKey]: 'ok' }));
+        } catch (e) {
+            setCertStatus(s => ({ ...s, [slotKey]: 'error' }));
+            setAfipError(e.response?.data?.message || 'Error al subir el archivo.');
+        } finally {
+            setCertUploading(s => ({ ...s, [slotKey]: false }));
+            ref.current.value = '';
+        }
+    };
+
+    const handleGenerateCsr = async () => {
+        setCsrGenerating(true);
+        setCsrResult(null);
+        try {
+            const { data } = await axios.post(route('afip.generate-csr'), { alias: csrAlias });
+            setCsrResult(data);
+            if (data.success) {
+                // La clave privada se guardó automáticamente — reflejar en el indicador de estado
+                setCertStatus(s => ({ ...s, key: 'ok' }));
+            }
+        } catch (e) {
+            setCsrResult(e.response?.data ?? { success: false, error: 'Error de red o servidor.' });
+        } finally {
+            setCsrGenerating(false);
+        }
+    };
+
+    const handleDownloadCsr = () => {
+        if (!csrResult?.csr) return;
+        const blob = new Blob([csrResult.csr], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${csrResult.alias}.csr`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleTestConnection = async (env) => {
+        setTestingConn(env);
+        setTestResult(null);
+        try {
+            const { data } = await axios.get(route('afip.test-connection'), { params: { env } });
+            setTestResult(data);
+        } catch (e) {
+            setTestResult(e.response?.data ?? { success: false, error: 'Error de red o servidor.' });
+        } finally {
+            setTestingConn(null);
+        }
+    };
+
+    const handleLogoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setData('logo', file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setLogoPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeLogo = () => {
+        setData('logo', null);
+        setLogoPreview(company.logo_url || null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('settings.update'));
+        // Inertia uses POST for multipart form data, even when updating. We injected _method: 'put'.
+        post(route('settings.update'), {
+            preserveScroll: true,
+            forceFormData: true,
+        });
     };
+
+    const setChatbotProvider = (provider) => {
+        const safeProvider = provider || 'gemini';
+        const options = CHATBOT_MODEL_OPTIONS[safeProvider] || [];
+        const hasCurrentModel = options.some(option => option.value === data.chatbot_model);
+
+        setData('chatbot_provider', safeProvider);
+
+        if (!hasCurrentModel) {
+            setData('chatbot_model', DEFAULT_CHATBOT_MODELS[safeProvider]);
+        }
+    };
+
+    const renderInput = (id, label, type = 'text', placeholder = '', className = '') => (
+        <div className={className}>
+            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {label}
+            </label>
+            <input
+                type={type}
+                value={data[id]}
+                onChange={e => setData(id, e.target.value)}
+                placeholder={placeholder}
+                className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                    }`}
+            />
+            {errors[id] && <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors[id]}</div>}
+        </div>
+    );
 
     return (
         <AuthenticatedLayout>
             <Head title="Configuración de la Empresa" />
 
-            <div className="py-6">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg max-w-3xl">
-                        <div className="p-6 text-gray-900">
-                            <h2 className="text-xl font-semibold mb-6">Configuración de la Empresa</h2>
-                            
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Razón Social</label>
-                                        <input
-                                            type="text"
-                                            value={data.name}
-                                            onChange={e => setData('name', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                        />
-                                        {errors.name && <div className="text-red-600 text-sm mt-1">{errors.name}</div>}
-                                    </div>
+            <div className="max-w-6xl mx-auto space-y-8 pt-8 pb-10">
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Nombre de Fantasía</label>
-                                        <input
-                                            type="text"
-                                            value={data.fantasy_name}
-                                            onChange={e => setData('fantasy_name', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">CUIT</label>
-                                        <input
-                                            type="text"
-                                            value={data.cuit}
-                                            onChange={e => setData('cuit', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Email de Contacto</label>
-                                        <input
-                                            type="email"
-                                            value={data.email}
-                                            onChange={e => setData('email', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-                                        <input
-                                            type="text"
-                                            value={data.phone}
-                                            onChange={e => setData('phone', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mt-8 border-t pt-6">
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Integración WhatsApp Cloud API</h3>
-                                    <p className="text-sm text-gray-500 mb-6">Configura tus credenciales de Meta for Developers para enviar notificaciones automáticas BSUID a clientes.</p>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Phone Number ID</label>
-                                            <input
-                                                type="text"
-                                                value={data.whatsapp_phone_number_id}
-                                                onChange={e => setData('whatsapp_phone_number_id', e.target.value)}
-                                                placeholder="Ej: 104598...23"
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                            />
-                                            {errors.whatsapp_phone_number_id && <div className="text-red-600 text-sm mt-1">{errors.whatsapp_phone_number_id}</div>}
-                                        </div>
-
-                                        <div className="col-span-1 md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700">Access Token (Permanente)</label>
-                                            <input
-                                                type="password"
-                                                value={data.whatsapp_access_token}
-                                                onChange={e => setData('whatsapp_access_token', e.target.value)}
-                                                placeholder="EAAMb..."
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                            />
-                                            {errors.whatsapp_access_token && <div className="text-red-600 text-sm mt-1">{errors.whatsapp_access_token}</div>}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end pt-4">
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="bg-indigo-600 border border-transparent rounded-md shadow-sm py-2 px-4 inline-flex justify-center text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                                    >
-                                        {processing ? 'Guardando...' : 'Guardar Configuración'}
-                                    </button>
-                                </div>
-                            </form>
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                <Building2 className="text-blue-600 dark:text-blue-400" size={18} />
+                            </div>
+                            <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">
+                                Plataforma & Empresa
+                            </h1>
                         </div>
+                        <p className="text-slate-500 font-medium text-sm mt-1">
+                            Gestioná la identidad, fiscalidad y preferencias globales de tu organización.
+                        </p>
                     </div>
                 </div>
+
+                {/* Form Container */}
+                <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
+
+                    {/* Sidebar Tabs */}
+                    <div className="w-full lg:w-64 shrink-0">
+                        <div className={`rounded-2xl border p-2 flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-visible sticky top-24 shadow-xl ${isDark ? 'bg-slate-900/80 backdrop-blur-xl border-slate-800' : 'bg-white/90 backdrop-blur-xl border-slate-100'
+                            }`}>
+                            {TABS.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+                                            ? (isDark ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700')
+                                            : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900')
+                                        }`}
+                                >
+                                    <tab.icon size={18} className={activeTab === tab.id ? (isDark ? 'text-blue-300' : 'text-blue-600') : ''} />
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className={`flex-1 rounded-3xl border p-8 shadow-2xl ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
+                        }`}>
+
+                        {/* Tab Content: PERFIL */}
+                        {activeTab === 'perfil' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-6 ${isDark ? 'text-white' : 'text-slate-800'}`}>Identidad Visual y Pública</h3>
+
+                                    {/* Logo Upload Area */}
+                                    <div className="mb-8 flex items-start gap-6">
+                                        <div className="relative group">
+                                            <div className={`w-32 h-32 rounded-3xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-300 bg-slate-50'
+                                                } ${logoPreview ? 'border-transparent' : ''}`}>
+                                                {logoPreview ? (
+                                                    <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain p-2" />
+                                                ) : (
+                                                    <Camera size={32} className={isDark ? 'text-slate-600' : 'text-slate-400'} />
+                                                )}
+                                            </div>
+
+                                            {/* Hover Upload Button */}
+                                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 cursor-pointer rounded-3xl transition-opacity">
+                                                <div className="flex flex-col items-center">
+                                                    <UploadCloud size={24} className="mb-1" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Cambiar</span>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    ref={fileInputRef}
+                                                    onChange={handleLogoChange}
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                />
+                                            </label>
+
+                                            {data.logo && (
+                                                <button
+                                                    type="button"
+                                                    onClick={removeLogo}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 active:scale-95 transition-all"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 mt-2">
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logo de la Empresa</label>
+                                            <p className={`text-sm mb-3 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                                Recomendamos una imagen PNG transparente de al menos 400x400 para verse bien en reportes y tickets. Tamaño máximo 2MB.
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className={`rounded-xl text-xs font-bold gap-2 ${isDark ? 'border-slate-700 hover:bg-slate-800' : ''}`}
+                                            >
+                                                <UploadCloud size={14} /> Subir Imagen
+                                            </Button>
+                                            {errors.logo && <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-2">{errors.logo}</div>}
+                                            {progress && (
+                                                <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 dark:bg-slate-700">
+                                                    <div className="bg-blue-600 h-1.5 rounded-full transition-all" style={{ width: `${progress.percentage}%` }}></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {renderInput('name', 'Razón Social (Legal)', 'text', 'Ej: ArtDent S.A.')}
+                                        {renderInput('fantasy_name', 'Nombre Comercial (Fantasía)', 'text', 'Ej: ArtDent Insumos')}
+                                        {renderInput('email', 'Correo Corporativo', 'email', 'contacto@empresa.com')}
+                                        {renderInput('phone', 'Teléfono Principal', 'text', '+54 11 1234-5678')}
+                                        {renderInput('website', 'Sitio Web', 'url', 'https://www.empresa.com', 'md:col-span-2')}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tab Content: FISCAL */}
+                        {activeTab === 'fiscal' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-6 ${isDark ? 'text-white' : 'text-slate-800'}`}>Configuración Impositiva (AFIP)</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {renderInput('cuit', 'CUIT', 'text', '20-12345678-9')}
+
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Condición frente al IVA</label>
+                                            <SearchableSelect
+                                                value={data.iva_condition || ''}
+                                                onChange={v => setData('iva_condition', v)}
+                                                placeholder="Seleccionar condición"
+                                                options={[
+                                                    { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+                                                    { value: 'monotributista', label: 'Monotributista' },
+                                                    { value: 'exento', label: 'Exento' },
+                                                    { value: 'consumidor_final', label: 'Consumidor Final' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        {renderInput('iibb', 'Ingresos Brutos (IIBB)', 'text', 'Ej: 901-123456-1')}
+                                        {renderInput('afip_point_sale', 'Punto de Venta Predeterminado', 'number', 'Ej: 1 o 5')}
+                                        {renderInput('start_date', 'Fecha Inicio Actividades', 'date')}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tab Content: UBICACION */}
+                        {activeTab === 'ubicacion' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-6 ${isDark ? 'text-white' : 'text-slate-800'}`}>Dirección Legal y Comercial</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {renderInput('address', 'Dirección Completa (Calle y Núm)', 'text', 'Av. Corrientes 1234', 'md:col-span-2')}
+                                        {renderInput('city', 'Ciudad / Localidad')}
+                                        {renderInput('province', 'Provincia / Estado')}
+                                        {renderInput('postal_code', 'Código Postal', 'text', 'Ej: C1043')}
+                                        {renderInput('country', 'País', 'text', 'Ej: Argentina')}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tab Content: PREFERENCIAS */}
+                        {activeTab === 'preferencias' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {/* Preferencias Regionales */}
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-6 ${isDark ? 'text-white' : 'text-slate-800'}`}>Preferencias Regionales</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Moneda Principal</label>
+                                            <SearchableSelect
+                                                value={data.currency || ''}
+                                                onChange={v => setData('currency', v)}
+                                                options={[
+                                                    { value: 'ARS', label: 'ARS - Peso Argentino' },
+                                                    { value: 'USD', label: 'USD - Dólar Estadounidense' },
+                                                    { value: 'EUR', label: 'EUR - Euro' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Zona Horaria</label>
+                                            <SearchableSelect
+                                                value={data.timezone || ''}
+                                                onChange={v => setData('timezone', v)}
+                                                options={[
+                                                    { value: 'America/Argentina/Buenos_Aires', label: 'America/Argentina/Buenos_Aires (ART)' },
+                                                    { value: 'America/Santiago', label: 'America/Santiago (CLT)' },
+                                                    { value: 'America/Montevideo', label: 'America/Montevideo (UYT)' },
+                                                ]}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Impresión de Tickets */}
+                                <div className={`rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-slate-50/60'}`}>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDark ? 'bg-teal-500/15' : 'bg-teal-50'}`}>
+                                            <Printer size={18} className="text-teal-500" />
+                                        </div>
+                                        <div>
+                                            <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Impresión de Tickets</h4>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Formato predeterminado para el botón "Imprimir" del POS
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mt-5">
+                                        {[
+                                            { id: '80mm', label: '80 mm', desc: 'Rollo estándar', icon: '🖨️' },
+                                            { id: '57mm', label: '57 mm', desc: 'Rollo compacto', icon: '🧾' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => saveTicketFormat(opt.id)}
+                                                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 font-bold text-sm transition-all
+                                                    ${ticketFormat === opt.id
+                                                        ? 'border-teal-500 bg-teal-500/10 text-teal-500'
+                                                        : isDark
+                                                            ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                                                            : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                                    }`}
+                                            >
+                                                <span className="text-2xl">{opt.icon}</span>
+                                                <span className="font-black">{opt.label}</span>
+                                                <span className={`text-[11px] font-medium ${ticketFormat === opt.id ? 'text-teal-400' : isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {opt.desc}
+                                                </span>
+                                                {ticketFormat === opt.id && (
+                                                    <span className="text-[10px] font-black tracking-wide uppercase bg-teal-500 text-white px-2 py-0.5 rounded-full">
+                                                        Activo
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                        Esta preferencia se guarda en este navegador. Para cambiarla en otra computadora, configurá desde allí.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tab Content: AFIP / ARCA */}
+                        {activeTab === 'emails' && (
+                            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>Emails transaccionales</h3>
+                                    <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Personalizá el asunto y el cuerpo de cada email. Si se dejan vacíos se usa la plantilla predeterminada del sistema.
+                                    </p>
+                                </div>
+
+                                {[
+                                    {
+                                        key: 'sale',
+                                        label: 'Comprobante de venta',
+                                        icon: '🧾',
+                                        defaultSubject: 'Comprobante #{numero} · {empresa}',
+                                        defaultBody: 'Hola {cliente},\n\nTe enviamos el comprobante de tu compra.\n\nN° {numero} · {fecha} · {total}\n\n{link}\n\n{empresa}',
+                                        vars: ['{empresa}', '{numero}', '{cliente}', '{total}', '{fecha}', '{link}'],
+                                    },
+                                    {
+                                        key: 'quote',
+                                        label: 'Presupuesto',
+                                        icon: '📋',
+                                        defaultSubject: 'Presupuesto #{numero} · {empresa}',
+                                        defaultBody: 'Hola {cliente},\n\nTe compartimos el presupuesto solicitado.\n\nN° {numero} · {fecha} · {total}\n\n{link}\n\n{empresa}',
+                                        vars: ['{empresa}', '{numero}', '{cliente}', '{total}', '{fecha}', '{link}'],
+                                    },
+                                    {
+                                        key: 'payment',
+                                        label: 'Confirmación de pago',
+                                        icon: '💳',
+                                        defaultSubject: 'Confirmación de pago · {empresa}',
+                                        defaultBody: 'Hola {cliente},\n\nConfirmamos la recepción de tu pago.\n\nMonto: {monto} · Fecha: {fecha} · Método: {metodo}\n\n{empresa}',
+                                        vars: ['{empresa}', '{cliente}', '{monto}', '{fecha}', '{metodo}'],
+                                    },
+                                ].map(({ key, label, icon, defaultSubject, defaultBody, vars }) => (
+                                    <div key={key} className={`rounded-2xl border p-6 space-y-4 ${isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-slate-50/60'}`}>
+                                        <h4 className={`font-bold text-sm flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                            <span>{icon}</span> {label}
+                                        </h4>
+
+                                        {/* Variables */}
+                                        <div className="flex flex-wrap gap-2">
+                                            {vars.map(v => (
+                                                <button
+                                                    key={v}
+                                                    type="button"
+                                                    title={`Insertar ${v}`}
+                                                    onClick={() => {
+                                                        const bodyKey = `email_${key}_body`;
+                                                        setData(bodyKey, (data[bodyKey] || '') + v);
+                                                    }}
+                                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${isDark
+                                                        ? 'bg-slate-800 border-slate-700 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/50'
+                                                        : 'bg-white border-slate-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 shadow-sm'}`}
+                                                >
+                                                    {v}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Asunto */}
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Asunto
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={data[`email_${key}_subject`]}
+                                                onChange={e => setData(`email_${key}_subject`, e.target.value)}
+                                                placeholder={defaultSubject}
+                                                className={`w-full rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-0 ${isDark
+                                                    ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                    : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'}`}
+                                            />
+                                        </div>
+
+                                        {/* Cuerpo */}
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Cuerpo del email
+                                            </label>
+                                            <textarea
+                                                rows={6}
+                                                value={data[`email_${key}_body`]}
+                                                onChange={e => setData(`email_${key}_body`, e.target.value)}
+                                                placeholder={defaultBody}
+                                                className={`w-full rounded-xl border text-sm font-medium font-mono transition-colors focus:outline-none focus:ring-0 resize-none px-4 py-3 ${isDark
+                                                    ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                    : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'}`}
+                                            />
+                                            <p className={`text-[11px] mt-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                Si se deja vacío se usa la plantilla predeterminada. Hacé clic en las variables para insertarlas en el cuerpo.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'afip' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+                                {/* Entorno y auto-factura */}
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                        Configuración AFIP / ARCA
+                                    </h3>
+                                    <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Configurá el entorno, el punto de venta y la facturación automática.
+                                    </p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Entorno */}
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Entorno
+                                            </label>
+                                            <SearchableSelect
+                                                value={afipSettings.afip_environment || ''}
+                                                onChange={v => setAfipSettings(s => ({ ...s, afip_environment: v }))}
+                                                options={[
+                                                    { value: 'homo', label: 'Homologación (Testing)' },
+                                                    { value: 'prod', label: 'Producción' },
+                                                ]}
+                                            />
+                                            {afipSettings.afip_environment === 'homo' && (
+                                                <p className="text-[10px] text-amber-500 font-bold mt-1 pl-1">
+                                                    Los comprobantes en homologación no tienen validez fiscal.
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Punto de venta */}
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Punto de Venta AFIP
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="99999"
+                                                value={afipSettings.afip_point_sale}
+                                                onChange={e => setAfipSettings(s => ({ ...s, afip_point_sale: e.target.value }))}
+                                                placeholder="Ej: 1"
+                                                className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                    ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm'}`}
+                                            />
+                                        </div>
+
+                                        {/* Auto-facturación */}
+                                        <div className="md:col-span-2">
+                                            <div className={`flex items-start gap-4 p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAfipSettings(s => ({ ...s, afip_auto_invoice: !s.afip_auto_invoice }))}
+                                                    className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${afipSettings.afip_auto_invoice ? 'bg-blue-600' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                                                >
+                                                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${afipSettings.afip_auto_invoice ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                </button>
+                                                <div>
+                                                    <p className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                        Facturación automática
+                                                    </p>
+                                                    <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        Al cerrar una venta con tipo A, B o C se enviará automáticamente a AFIP para obtener el CAE.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Mensajes */}
+                                    {afipMsg && (
+                                        <div className="flex items-center gap-2 mt-4 text-emerald-500 text-sm font-bold bg-emerald-500/10 px-4 py-2 rounded-xl">
+                                            <CheckCircle2 size={15} /> {afipMsg}
+                                        </div>
+                                    )}
+                                    {afipError && (
+                                        <div className="mt-4 text-red-500 text-sm font-bold bg-red-500/10 px-4 py-2 rounded-xl">
+                                            {afipError}
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        type="button"
+                                        onClick={handleAfipSave}
+                                        disabled={afipSaving}
+                                        className="mt-5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl gap-2 h-11 px-6 shadow-lg shadow-blue-500/20"
+                                    >
+                                        {afipSaving ? <><Loader2 size={16} className="animate-spin" /> Guardando…</> : <><Save size={16} /> Guardar configuración AFIP</>}
+                                    </Button>
+                                </div>
+
+                                {/* Generar CSR */}
+                                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <FileCog size={18} className={isDark ? 'text-teal-400' : 'text-teal-600'} />
+                                        <h3 className={`text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                            Generar solicitud de certificado (CSR)
+                                        </h3>
+                                    </div>
+                                    <p className={`text-sm mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Generá el par de claves y el archivo CSR directamente desde la plataforma. Luego subí el CSR al portal ARCA para obtener el certificado.
+                                    </p>
+
+                                    {/* Stepper */}
+                                    <div className="flex flex-col sm:flex-row gap-2 mb-6">
+                                        {[
+                                            { n: '1', text: 'Completá el alias y generá el par clave\u00a0+\u00a0CSR' },
+                                            { n: '2', text: 'Subí el archivo CSR al portal ARCA (wsass.afip.gov.ar)' },
+                                            { n: '3', text: 'Descargá el .crt que te da ARCA y subilo abajo' },
+                                        ].map(({ n, text }) => (
+                                            <div key={n} className={`flex items-start gap-2 flex-1 p-3 rounded-xl border text-xs font-medium ${isDark ? 'bg-slate-700/50 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
+                                                <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${isDark ? 'bg-teal-500/20 text-teal-300' : 'bg-teal-100 text-teal-700'}`}>{n}</span>
+                                                {text}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Alias input */}
+                                    <div className="mb-4">
+                                        <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            Alias del certificado
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={csrAlias}
+                                            onChange={e => setCsrAlias(e.target.value)}
+                                            placeholder="artdent-wsfe"
+                                            maxLength={40}
+                                            className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                ? 'bg-slate-800/50 border-slate-700 text-white focus:border-teal-500 placeholder:text-slate-600'
+                                                : 'bg-white border-slate-200 text-slate-800 focus:border-teal-500 placeholder:text-slate-400 shadow-sm'}`}
+                                        />
+                                        <p className={`text-[10px] mt-1 pl-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            Solo letras, números y guiones. Ej: artdent-wsfe
+                                        </p>
+                                    </div>
+
+                                    {/* Generate button */}
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateCsr}
+                                        disabled={csrGenerating || !csrAlias.trim()}
+                                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                            isDark
+                                                ? 'bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-600/30'
+                                                : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200'
+                                        }`}
+                                    >
+                                        {csrGenerating
+                                            ? <><Loader2 size={15} className="animate-spin" /> Generando…</>
+                                            : <><KeyRound size={15} /> Generar clave privada y CSR</>}
+                                    </button>
+
+                                    {/* Result */}
+                                    {csrResult && (
+                                        <div className={`mt-4 rounded-2xl border p-4 space-y-3 ${
+                                            csrResult.success
+                                                ? isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                                                : isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-200'
+                                        }`}>
+                                            {csrResult.success ? (
+                                                <>
+                                                    <div className="flex items-center gap-2 text-emerald-500 font-black text-sm">
+                                                        <CircleCheck size={16} /> {csrResult.message}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDownloadCsr}
+                                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+                                                            isDark
+                                                                ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-600/30'
+                                                                : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200'
+                                                        }`}
+                                                    >
+                                                        <FileCheck2 size={14} /> Descargar CSR (.pem)
+                                                    </button>
+                                                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        La clave privada fue guardada automáticamente. Solo necesitás subir el .crt de ARCA.
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
+                                                    <CircleX size={16} /> {csrResult.error}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Certificados */}
+                                <div>
+                                    <h3 className={`text-base font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                        Certificados Digitales
+                                    </h3>
+                                    <p className={`text-sm mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Subí el certificado (.crt) de cada entorno y la clave privada (.key) compartida, emitidos por ARCA para tu CUIT.
+                                    </p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {[
+                                            { slotKey: 'cert_homo', label: 'Cert. Homologación',  ref: certHomoRef, icon: FileCheck2, accept: '.crt,.txt',     badge: 'HOMO' },
+                                            { slotKey: 'cert_prod', label: 'Cert. Producción',    ref: certProdRef, icon: FileCheck2, accept: '.crt,.txt',     badge: 'PROD' },
+                                            { slotKey: 'key',       label: 'Clave Privada (compartida)', ref: keyRef, icon: KeyRound, accept: '.key,.pem,.txt', badge: null  },
+                                        ].map(({ slotKey, label, ref, icon: Icon, accept, badge }) => (
+                                            <div key={slotKey} className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <Icon size={15} className={certStatus[slotKey] === 'ok' ? 'text-emerald-500' : 'text-slate-400'} />
+                                                    <span className={`text-[11px] font-black uppercase tracking-wider flex-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                        {label}
+                                                    </span>
+                                                    {badge && (
+                                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                                                            badge === 'HOMO'
+                                                                ? 'bg-amber-500/20 text-amber-500'
+                                                                : 'bg-blue-500/20 text-blue-500'
+                                                        }`}>{badge}</span>
+                                                    )}
+                                                </div>
+                                                {certStatus[slotKey] === 'ok' && (
+                                                    <div className="text-[10px] font-bold text-emerald-500 mb-2">✓ Cargado</div>
+                                                )}
+                                                {certStatus[slotKey] === 'error' && (
+                                                    <div className="text-[10px] font-bold text-red-500 mb-2">✗ Error</div>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    ref={ref}
+                                                    accept={accept}
+                                                    className="hidden"
+                                                    onChange={() => handleCertUpload(slotKey)}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => ref.current?.click()}
+                                                    disabled={certUploading[slotKey]}
+                                                    className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed text-xs font-bold transition-colors ${
+                                                        isDark
+                                                            ? 'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-400'
+                                                            : 'border-slate-300 text-slate-500 hover:border-blue-400 hover:text-blue-500'
+                                                    }`}
+                                                >
+                                                    {certUploading[slotKey]
+                                                        ? <><Loader2 size={13} className="animate-spin" /> Subiendo…</>
+                                                        : <><UploadCloud size={13} /> {certStatus[slotKey] === 'ok' ? 'Reemplazar' : 'Seleccionar'}</>}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className={`mt-4 p-4 rounded-xl text-xs leading-relaxed ${isDark ? 'bg-blue-500/5 border border-blue-500/20 text-blue-300' : 'bg-blue-50 border border-blue-100 text-blue-700'}`}>
+                                        <strong>Instrucciones:</strong> En el portal ARCA obtenenés un certificado por entorno (Homo y Prod) desde el mismo CSR/clave privada.
+                                        La <strong>clave privada</strong> (.key/.pem) es única y compartida por ambos entornos.
+                                        Los archivos se guardan de forma segura fuera del acceso público.
+                                    </div>
+
+                                    {/* Botones de conexión por entorno */}
+                                    <div className="mt-6 flex flex-wrap gap-3">
+                                        {[
+                                            { env: 'homo', label: 'Probar Homologación', color: 'amber' },
+                                            { env: 'prod', label: 'Probar Producción',   color: 'teal'  },
+                                        ].map(({ env, label, color }) => (
+                                            <button
+                                                key={env}
+                                                type="button"
+                                                onClick={() => handleTestConnection(env)}
+                                                disabled={testingConn !== null}
+                                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+                                                    color === 'amber'
+                                                        ? isDark ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30' : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
+                                                        : isDark ? 'bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-600/30'   : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200'
+                                                }`}
+                                            >
+                                                {testingConn === env
+                                                    ? <><Loader2 size={15} className="animate-spin" /> Validando…</>
+                                                    : <><Wifi size={15} /> {label}</>}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Resultado */}
+                                    {testResult && (
+                                        <div className={`mt-4 rounded-2xl border p-4 space-y-2 ${
+                                            testResult.success
+                                                ? isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                                                : isDark ? 'bg-red-500/5 border-red-500/20'         : 'bg-red-50 border-red-200'
+                                        }`}>
+                                            <div className={`flex items-center gap-2 font-black text-sm ${testResult.success ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                {testResult.success
+                                                    ? <><CircleCheck size={16} /> Conexión exitosa — Entorno: {testResult.environment === 'homo' ? 'Homologación' : 'Producción'}</>
+                                                    : <><CircleX size={16} /> Error de validación</>}
+                                            </div>
+                                            {testResult.checks?.length > 0 && (
+                                                <div className="space-y-1 pt-1">
+                                                    {testResult.checks.map((c, i) => (
+                                                        <div key={i} className="flex items-start gap-2 text-xs">
+                                                            {c.ok
+                                                                ? <CircleCheck size={13} className="text-emerald-500 shrink-0 mt-0.5" />
+                                                                : <CircleX size={13} className="text-red-500 shrink-0 mt-0.5" />}
+                                                            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+                                                                <strong>{c.label}:</strong> {c.detail}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {!testResult.success && testResult.error && (
+                                                <p className="text-xs text-red-500 font-medium pt-1">{testResult.error}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                            </div>
+                        )}
+
+                        {/* Tab Content: INTEGRACIONES */}
+                        {activeTab === 'integraciones' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Artie AI / Chatbot</h3>
+                                    <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Activá el asistente interno, elegí el proveedor de IA y el modelo que querés usar para la empresa actual.
+                                    </p>
+
+                                    <div className={`rounded-2xl border p-6 space-y-6 ${isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50/70 border-blue-100'}`}>
+                                        <div className="flex items-start gap-4">
+                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${isDark ? 'bg-blue-500/15' : 'bg-white shadow-sm'}`}>
+                                                <Bot size={20} className="text-blue-500" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex flex-wrap gap-3">
+                                                    {[
+                                                        { value: true, label: 'Chatbot activo', desc: 'Visible para los usuarios autenticados' },
+                                                        { value: false, label: 'Chatbot desactivado', desc: 'Oculta el widget en toda la empresa' },
+                                                    ].map(option => (
+                                                        <button
+                                                            key={String(option.value)}
+                                                            type="button"
+                                                            onClick={() => setData('chatbot_enabled', option.value)}
+                                                            className={`flex-1 min-w-[220px] rounded-2xl border px-4 py-3 text-left transition-colors ${data.chatbot_enabled === option.value
+                                                                ? (isDark ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-blue-300 bg-white text-blue-700 shadow-sm')
+                                                                : (isDark ? 'border-slate-700 bg-slate-900/60 text-slate-400' : 'border-slate-200 bg-white/70 text-slate-500')
+                                                            }`}
+                                                        >
+                                                            <div className="font-black text-sm">{option.label}</div>
+                                                            <div className={`text-xs mt-1 ${data.chatbot_enabled === option.value
+                                                                ? (isDark ? 'text-blue-300/80' : 'text-blue-600')
+                                                                : (isDark ? 'text-slate-500' : 'text-slate-400')
+                                                            }`}>
+                                                                {option.desc}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                {errors.chatbot_enabled && (
+                                                    <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-2">{errors.chatbot_enabled}</div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    Proveedor de IA
+                                                </label>
+                                                <SearchableSelect
+                                                    value={data.chatbot_provider}
+                                                    onChange={setChatbotProvider}
+                                                    options={[
+                                                        { value: 'gemini', label: 'Google Gemini' },
+                                                        { value: 'openai', label: 'OpenAI' },
+                                                    ]}
+                                                    placeholder="Seleccionar proveedor"
+                                                    error={errors.chatbot_provider}
+                                                />
+                                                <p className={`text-[11px] mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    El proveedor usa la API key configurada en el servidor para ese servicio.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    Modelo
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={data.chatbot_model}
+                                                    onChange={e => setData('chatbot_model', e.target.value)}
+                                                    placeholder={DEFAULT_CHATBOT_MODELS[data.chatbot_provider] || ''}
+                                                    className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                        : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                                    }`}
+                                                />
+                                                {errors.chatbot_model && (
+                                                    <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_model}</div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Modelos sugeridos
+                                            </label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(CHATBOT_MODEL_OPTIONS[data.chatbot_provider] || []).map(option => (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => setData('chatbot_model', option.value)}
+                                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${data.chatbot_model === option.value
+                                                            ? (isDark ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-blue-300 bg-white text-blue-700 shadow-sm')
+                                                            : (isDark ? 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-500' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')
+                                                        }`}
+                                                    >
+                                                        {option.value}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className={`mt-3 text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                OpenAI usa <code>chatbot_openai_key</code>. Gemini usa <code>chatbot_gemini_key</code>.
+                                                Si no las especificas, el sistema intenta usar las claves configuradas globalmente por el administrador.
+                                            </div>
+                                        </div>
+
+                                        {/* API Keys (Dynamic based on selected provider) */}
+                                        <div className="pt-4 border-t border-blue-500/10">
+                                            <h4 className={`text-sm font-black tracking-tight mb-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                                Credenciales de API (Opcional)
+                                            </h4>
+                                            
+                                            {data.chatbot_provider === 'openai' && (
+                                                <div className="mb-4">
+                                                    <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        OpenAI API Key
+                                                    </label>
+                                                    <input
+                                                        type="password"
+                                                        value={data.chatbot_openai_key}
+                                                        onChange={e => setData('chatbot_openai_key', e.target.value)}
+                                                        placeholder="sk-proj-..."
+                                                        className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                            ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                            : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                                        }`}
+                                                    />
+                                                    {errors.chatbot_openai_key && (
+                                                        <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_openai_key}</div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {data.chatbot_provider === 'gemini' && (
+                                                <div className="mb-4">
+                                                    <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        Google Gemini API Key
+                                                    </label>
+                                                    <input
+                                                        type="password"
+                                                        value={data.chatbot_gemini_key}
+                                                        onChange={e => setData('chatbot_gemini_key', e.target.value)}
+                                                        placeholder="AIzaSy..."
+                                                        className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                            ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                            : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                                        }`}
+                                                    />
+                                                    {errors.chatbot_gemini_key && (
+                                                        <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_gemini_key}</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>WhatsApp Cloud API</h3>
+                                    <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Ingresá las credenciales de Meta for Developers para habilitar las notificaciones automáticas y envíos masivos.
+                                    </p>
+                                    <div className="grid grid-cols-1 gap-6 bg-green-500/5 border border-green-500/20 rounded-2xl p-6">
+                                        {renderInput('whatsapp_phone_number_id', 'Phone Number ID', 'text', 'Ej: 104598...23')}
+                                        {renderInput('whatsapp_access_token', 'Access Token (Permanente)', 'password', 'EAAMb...')}
+                                    </div>
+                                </div>
+
+                                {/* Mensaje WhatsApp */}
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                        Mensaje de comprobante
+                                    </h3>
+                                    <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Texto que se envía por WhatsApp al compartir un comprobante. Usá las variables de abajo para incluir datos dinámicos.
+                                    </p>
+
+                                    {/* Variables disponibles */}
+                                    <div className={`flex flex-wrap gap-2 mb-4`}>
+                                        {[
+                                            ['{empresa}', 'Nombre de la empresa'],
+                                            ['{numero}', 'N° de comprobante'],
+                                            ['{cliente}', 'Nombre del cliente'],
+                                            ['{total}', 'Monto total'],
+                                            ['{fecha}', 'Fecha de la venta'],
+                                            ['{link}', 'URL del comprobante'],
+                                        ].map(([v, desc]) => (
+                                            <button
+                                                key={v}
+                                                type="button"
+                                                title={desc}
+                                                onClick={() => setData('whatsapp_message_template', (data.whatsapp_message_template || '') + v)}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${isDark
+                                                    ? 'bg-slate-800 border-slate-700 text-green-400 hover:bg-green-500/10 hover:border-green-500/50'
+                                                    : 'bg-white border-slate-200 text-green-700 hover:bg-green-50 hover:border-green-300 shadow-sm'}`}
+                                            >
+                                                {v}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div>
+                                        <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            Plantilla del mensaje
+                                        </label>
+                                        <textarea
+                                            rows={7}
+                                            value={data.whatsapp_message_template}
+                                            onChange={e => setData('whatsapp_message_template', e.target.value)}
+                                            placeholder={`🦷 *{empresa}* — Comprobante {numero}\nCliente: {cliente}\nTotal: ${'{total}'}\nFecha: {fecha}\n\n📄 Ver comprobante: {link}`}
+                                            className={`w-full rounded-xl border text-sm font-medium font-mono transition-colors focus:ring-0 resize-none ${isDark
+                                                ? 'bg-slate-800/50 border-slate-700 text-white focus:border-green-500 placeholder:text-slate-600'
+                                                : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-green-500 placeholder:text-slate-400 shadow-sm'}`}
+                                        />
+                                        {errors.whatsapp_message_template && (
+                                            <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.whatsapp_message_template}</div>
+                                        )}
+                                        <p className={`text-[11px] mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            Si se deja vacío se usa el mensaje predeterminado del sistema.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Footer Action Area */}
+                        <div className={`mt-8 pt-6 border-t flex items-center justify-between ${isDark ? 'border-slate-800' : 'border-slate-100'
+                            }`}>
+                            <div className="flex items-center gap-2">
+                                {flash?.success && (
+                                    <div className="flex items-center gap-2 text-emerald-500 text-sm font-bold bg-emerald-500/10 px-4 py-2 rounded-xl animate-in fade-in slide-in-from-left-4">
+                                        <CheckCircle2 size={16} />
+                                        {flash.success}
+                                    </div>
+                                )}
+                            </div>
+                            <Button
+                                type="submit"
+                                disabled={processing}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl gap-2 h-12 px-8 shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-sm uppercase tracking-wider"
+                            >
+                                <Save size={18} />
+                                {processing ? 'Guardando...' : 'Aplicar Cambios'}
+                            </Button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </AuthenticatedLayout>
     );

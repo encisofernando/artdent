@@ -37,7 +37,7 @@ Route::middleware('lab.network')->group(function () {
     Route::post('/attendance-kiosk/webauthn/verify', [\App\Http\Controllers\WebAuthnKioskController::class, 'verify'])->name('attendance-kiosk.webauthn.verify');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['tenant.session', 'auth'])->group(function () {
 
     require __DIR__.'/modules/dashboard.php';
 
@@ -65,10 +65,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('{crmNotification}/read', [\App\Http\Controllers\CrmNotificationController::class, 'markRead'])->name('read');
     });
 
+    // Chatbot API
+    Route::get('/api/chatbot/conversations', [\App\Http\Controllers\ChatbotController::class, 'index'])->name('api.chatbot.index');
+    Route::get('/api/chatbot/history/{id?}', [\App\Http\Controllers\ChatbotController::class, 'history'])->name('api.chatbot.history');
+    Route::post('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'handle'])->name('api.chatbot');
+    Route::delete('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'reset'])->name('api.chatbot.reset');
+
 });
 
 // Presupuesto público — sin autenticación (link compartible por WhatsApp)
 Route::get('/q/{token}', [\App\Http\Controllers\QuoteController::class, 'publicShow'])->name('quotes.public');
+
+// Portal del cliente — sin autenticación, acceso por token único
+Route::get('/portal/{token}', [\App\Http\Controllers\CustomerPortalController::class, 'show'])->name('customer.portal');
 
 // Panel de asignación — usa auth:sanctum (Bearer token) fuera del grupo de sesión
 require __DIR__.'/modules/assign-panel.php';

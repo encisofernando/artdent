@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Tag, Settings2 } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', teal: '#49949C' };
 
@@ -80,10 +81,14 @@ export default function Create({ auth }) {
 
                             <div>
                                 <label className={lbl}>Tipo de Descuento *</label>
-                                <select value={data.type} onChange={e => setData('type', e.target.value)} className={inp}>
-                                    <option value="percentage">Porcentaje (%)</option>
-                                    <option value="fixed">Monto Fijo ($)</option>
-                                </select>
+                                <SearchableSelect
+                                    value={data.type}
+                                    onChange={v => setData('type', v)}
+                                    options={[
+                                        { value: 'percentage', label: 'Porcentaje (%)' },
+                                        { value: 'fixed', label: 'Monto Fijo ($)' },
+                                    ]}
+                                />
                                 {errors.type && <div className={err}>{errors.type}</div>}
                             </div>
 

@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, MessageSquare } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: "#397B9C", teal: "#49949C" };
 
@@ -101,34 +102,28 @@ export default function Index({ auth, items, dentists, filters }) {
                         />
                     </div>
 
-                    <select
+                    <SearchableSelect
                         value={type}
-                        onChange={(e) => setType(e.target.value)}
-                        className={`px-3 py-2 rounded-xl border text-sm transition-colors outline-none
-                            ${isDark ? 'bg-slate-900 border-slate-700/60 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}
-                        `}
-                    >
-                        <option value="all">Todos los tipos</option>
-                        <option value="llamada">Llamada</option>
-                        <option value="email">Email</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="visita">Visita</option>
-                        <option value="reunion">Reunión</option>
-                        <option value="otro">Otro</option>
-                    </select>
+                        onChange={v => setType(v)}
+                        options={[
+                            { value: 'all', label: 'Todos los tipos' },
+                            { value: 'llamada', label: 'Llamada' },
+                            { value: 'email', label: 'Email' },
+                            { value: 'whatsapp', label: 'WhatsApp' },
+                            { value: 'visita', label: 'Visita' },
+                            { value: 'reunion', label: 'Reunión' },
+                            { value: 'otro', label: 'Otro' },
+                        ]}
+                    />
 
-                    <select
+                    <SearchableSelect
                         value={dentistId}
-                        onChange={(e) => setDentistId(e.target.value)}
-                        className={`px-3 py-2 rounded-xl border text-sm transition-colors outline-none
-                            ${isDark ? 'bg-slate-900 border-slate-700/60 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}
-                        `}
-                    >
-                        <option value="all">Todos los odontólogos</option>
-                        {dentists?.map(d => (
-                            <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                    </select>
+                        onChange={v => setDentistId(v)}
+                        options={[
+                            { value: 'all', label: 'Todos los odontólogos' },
+                            ...(dentists || []).map(d => ({ value: String(d.id), label: d.name })),
+                        ]}
+                    />
                 </div>
 
                 {/* Table */}

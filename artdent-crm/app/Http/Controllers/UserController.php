@@ -31,7 +31,7 @@ class UserController extends Controller
                 'roles' => $u->roles->map(fn (Role $r) => [
                     'id' => $r->id,
                     'name' => $r->name,
-                    'display_name' => $r->display_name,
+                    'display_name' => $r->display_name ?? $r->name,
                 ]),
             ]);
 
@@ -43,7 +43,10 @@ class UserController extends Controller
     public function create(): Response
     {
         return Inertia::render('Users/Create', [
-            'roles' => Role::query()->orderBy('display_name')->get(['id', 'name', 'display_name']),
+            'roles' => Role::query()
+                ->where('name', '!=', 'Super Admin')
+                ->orderBy('display_name')
+                ->get(['id', 'name', 'display_name']),
             'branches' => Branch::query()
                 ->where('company_id', auth()->user()->company_id)
                 ->orderBy('name')
@@ -66,7 +69,12 @@ class UserController extends Controller
         ]);
 
         if (! empty($validated['roles'])) {
-            $user->roles()->sync($validated['roles']);
+            // Asegurar que no se asigne Super Admin por accidente desde el frontend
+            $roles = Role::whereIn('id', $validated['roles'])
+                ->where('name', '!=', 'Super Admin')
+                ->pluck('id');
+
+            $user->syncRoles($roles);
         }
 
         return redirect()->route('users.index')
@@ -86,8 +94,12 @@ class UserController extends Controller
                 'branch_id' => $user->branch_id,
                 'is_active' => $user->is_active,
                 'roles' => $user->roles->pluck('id'),
+                'is_super_admin' => $user->hasRole('Super Admin'),
             ],
-            'roles' => Role::query()->orderBy('display_name')->get(['id', 'name', 'display_name']),
+            'roles' => Role::query()
+                ->where('name', '!=', 'Super Admin')
+                ->orderBy('display_name')
+                ->get(['id', 'name', 'display_name']),
             'branches' => Branch::query()
                 ->where('company_id', auth()->user()->company_id)
                 ->orderBy('name')
@@ -112,7 +124,16 @@ class UserController extends Controller
         }
 
         $user->update($data);
-        $user->roles()->sync($validated['roles'] ?? []);
+
+        // No permitir cambiar roles ni permisos si es Super Admin
+        if (! $user->hasRole('Super Admin')) {
+            // Asegurar que no se asigne Super Admin a otros usuarios
+            $roles = Role::whereIn('id', $validated['roles'] ?? [])
+                ->where('name', '!=', 'Super Admin')
+                ->pluck('id');
+
+            $user->syncRoles($roles);
+        }
 
         return redirect()->route('users.index')
             ->with('success', "Usuario {$user->name} actualizado correctamente.");
@@ -120,6 +141,10 @@ class UserController extends Controller
 
     public function destroy(User $user): RedirectResponse
     {
+        if ($user->hasRole('Super Admin')) {
+            return back()->with('error', 'No se puede eliminar a un usuario con rol de Super Administrador.');
+        }
+
         $user->roles()->detach();
         $user->delete();
 

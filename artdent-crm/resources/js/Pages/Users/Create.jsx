@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { UserPlus, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -24,27 +25,13 @@ function Input({ isDark, ...props }) {
             {...props}
             className={`px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors
                 ${isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500 focus:border-slate-500'
+                    ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder-slate-500 focus:border-slate-500'
                     : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-slate-400'
                 }`}
         />
     );
 }
 
-function Select({ isDark, children, ...props }) {
-    return (
-        <select
-            {...props}
-            className={`px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors
-                ${isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-100 focus:border-slate-500'
-                    : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-slate-400'
-                }`}
-        >
-            {children}
-        </select>
-    );
-}
 
 export default function Create({ auth, roles, branches }) {
     const { isDark } = useTheme();
@@ -122,13 +109,13 @@ export default function Create({ auth, roles, branches }) {
                             </Field>
 
                             <Field label="Sucursal" error={errors.branch_id} isDark={isDark}>
-                                <Select isDark={isDark} value={data.branch_id}
-                                    onChange={e => setData('branch_id', e.target.value)}>
-                                    <option value="">Sin sucursal asignada</option>
-                                    {branches.map(b => (
-                                        <option key={b.id} value={b.id}>{b.name}</option>
-                                    ))}
-                                </Select>
+                                <SearchableSelect
+                                    value={data.branch_id}
+                                    onChange={v => setData('branch_id', v)}
+                                    options={branches.map(b => ({ value: String(b.id), label: b.name }))}
+                                    placeholder="Sin sucursal asignada"
+                                    error={errors.branch_id}
+                                />
                             </Field>
                         </div>
                     </div>

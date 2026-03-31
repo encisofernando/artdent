@@ -270,6 +270,7 @@ class CatalogController extends Controller
             'customer_email' => ['required', 'email'],
             'customer_phone' => ['nullable', 'string', 'max:50'],
             'customer_dni' => ['nullable', 'string', 'max:30'],
+            'customer_cuit' => ['nullable', 'string', 'max:20'],
             'shipping_address' => ['nullable', 'string'],
             'shipping_city' => ['nullable', 'string', 'max:100'],
             'shipping_province' => ['nullable', 'string', 'max:100'],
@@ -404,7 +405,8 @@ class CatalogController extends Controller
             'company_id' => $companyId,
             'customer_id' => $customerId,
             'guest_email' => $customerId ? null : strtolower(trim($validated['customer_email'])),
-            'guest_dni' => $customerId ? null : ($validated['customer_dni'] ?? null),
+            'guest_dni' => preg_replace('/\D/', '', $validated['customer_dni'] ?? ''),
+            'guest_cuit' => preg_replace('/\D/', '', $validated['customer_cuit'] ?? ''),
             'coupon_id' => $couponId,
             'order_number' => strtoupper(Str::random(3)).'-'.strtoupper(Str::random(6)),
             'status' => 'pending',
@@ -481,12 +483,12 @@ class CatalogController extends Controller
                         $companyId,
                         'order_created',
                         [
-                            ['type' => 'text', 'text' => $order->order_number]
+                            ['type' => 'text', 'text' => $order->order_number],
                         ]
                     );
                 }
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('WA Job Error (Checkout): ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('WA Job Error (Checkout): '.$e->getMessage());
             }
         }
 

@@ -51,6 +51,8 @@ class CustomerController extends Controller
             'password' => ['nullable', 'string'],
             'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->whereNotNull('phone')],
             'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->whereNotNull('dni')],
+            'cuit' => ['nullable', 'string', 'max:20'],
+            'iva_condition' => ['nullable', 'string', 'in:consumidor_final,responsable_inscripto,monotributista,exento'],
             'address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'],
             'province' => ['nullable', 'string', 'max:100'],
@@ -87,6 +89,9 @@ class CustomerController extends Controller
     {
         return Inertia::render('Customer/Edit', [
             'item' => $customer,
+            'portalUrl' => $customer->portal_token
+                ? route('customer.portal', $customer->portal_token)
+                : null,
         ]);
     }
 
@@ -101,6 +106,8 @@ class CustomerController extends Controller
             'password' => ['nullable', 'string'],
             'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->ignore($customer->id)->whereNotNull('phone')],
             'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->ignore($customer->id)->whereNotNull('dni')],
+            'cuit' => ['nullable', 'string', 'max:20'],
+            'iva_condition' => ['nullable', 'string', 'in:consumidor_final,responsable_inscripto,monotributista,exento'],
             'address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'],
             'province' => ['nullable', 'string', 'max:100'],

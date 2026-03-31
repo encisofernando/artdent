@@ -4,6 +4,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Clock, Calendar, X, Check } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -44,11 +45,13 @@ function AttendanceForm({ form, collaborators, isEdit = false, isDark }) {
             {!isEdit && (
                 <div>
                     <label className={labelClass}>Colaborador *</label>
-                    <select className={inputClass} value={form.data.collaborator_id} onChange={e => form.setData('collaborator_id', e.target.value)}>
-                        <option value="">Seleccionar...</option>
-                        {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    {form.errors.collaborator_id && <p className="text-red-500 text-xs mt-1">{form.errors.collaborator_id}</p>}
+                    <SearchableSelect
+                        value={form.data.collaborator_id}
+                        onChange={v => form.setData('collaborator_id', v)}
+                        options={collaborators.map(c => ({ value: String(c.id), label: c.name }))}
+                        placeholder="Seleccionar..."
+                        error={form.errors.collaborator_id}
+                    />
                 </div>
             )}
             <div>
@@ -69,12 +72,16 @@ function AttendanceForm({ form, collaborators, isEdit = false, isDark }) {
             </div>
             <div>
                 <label className={labelClass}>Método</label>
-                <select className={inputClass} value={form.data.method} onChange={e => form.setData('method', e.target.value)}>
-                    <option value="manual">Manual</option>
-                    <option value="biometric">Biométrico</option>
-                    <option value="webauthn">Huella</option>
-                    <option value="system">Sistema</option>
-                </select>
+                <SearchableSelect
+                    value={form.data.method}
+                    onChange={v => form.setData('method', v)}
+                    options={[
+                        { value: 'manual', label: 'Manual' },
+                        { value: 'biometric', label: 'Biométrico' },
+                        { value: 'webauthn', label: 'Huella' },
+                        { value: 'system', label: 'Sistema' },
+                    ]}
+                />
             </div>
             <div>
                 <label className={labelClass}>Notas</label>
@@ -84,7 +91,7 @@ function AttendanceForm({ form, collaborators, isEdit = false, isDark }) {
     );
 }
 
-export default function Index({ auth, items, collaborators, filters }) {
+export default function Index({ auth, items, collaborators, filters, summary }) {
     const { isDark } = useTheme();
     const data = items?.data || [];
 
@@ -93,6 +100,11 @@ export default function Index({ auth, items, collaborators, filters }) {
     const [to, setTo] = useState(filters?.to || '');
     const [showCreate, setShowCreate] = useState(false);
     const [editItem, setEditItem] = useState(null);
+    const hasPermission = (permission) => auth.user?.is_super_admin || auth.user?.permissions?.includes(permission);
+    const canCreate = hasPermission('staff.edit');
+    const canEdit = hasPermission('staff.edit');
+    const canDelete = hasPermission('staff.delete');
+    const showActions = canEdit || canDelete;
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -101,14 +113,20 @@ export default function Index({ auth, items, collaborators, filters }) {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            router.get(route('collaborator-attendances.index'), {
-                collaborator_id: collaboratorFilter,
-                from,
-                to,
-            }, { preserveState: true, preserveScroll: true, replace: true });
+            if (
+                collaboratorFilter !== (filters?.collaborator_id || '') ||
+                from !== (filters?.from || '') ||
+                to !== (filters?.to || '')
+            ) {
+                router.get(route('collaborator-attendances.index'), {
+                    collaborator_id: collaboratorFilter,
+                    from,
+                    to,
+                }, { preserveState: true, preserveScroll: true, replace: true });
+            }
         }, 400);
         return () => clearTimeout(timer);
-    }, [collaboratorFilter, from, to]);
+    }, [collaboratorFilter, from, to, filters?.collaborator_id, filters?.from, filters?.to]);
 
     const openEdit = (item) => {
         setEditItem(item);
@@ -153,23 +171,48 @@ export default function Index({ auth, items, collaborators, filters }) {
                         <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Asistencias</h1>
                         <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Registro de fichajes de colaboradores</p>
                     </div>
-                    <Button
-                        onClick={() => setShowCreate(true)}
-                        className="text-white border-none shadow-md rounded-xl"
-                        style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
-                    >
-                        <Plus className="mr-2" size={16} />
-                        Nuevo Registro
-                    </Button>
+                    {canCreate && (
+                        <Button
+                            onClick={() => setShowCreate(true)}
+                            className="text-white border-none shadow-md rounded-xl"
+                            style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
+                        >
+                            <Plus className="mr-2" size={16} />
+                            Nuevo Registro
+                        </Button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {[
+                        { label: 'Registros', value: summary?.records ?? 0 },
+                        { label: 'Colaboradores', value: summary?.collaborators ?? 0 },
+                        { label: 'Horas', value: `${summary?.hours ?? 0}h` },
+                        { label: 'Importe', value: `$${fmt(summary?.amount)}` },
+                    ].map(({ label, value }) => (
+                        <div
+                            key={label}
+                            className={`rounded-2xl border p-4 shadow-sm ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/70'}`}
+                        >
+                            <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                {label}
+                            </p>
+                            <p className={`mt-2 text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                {value}
+                            </p>
+                        </div>
+                    ))}
                 </div>
 
                 <div className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div className="flex items-center gap-2">
                         <Search size={16} className="text-slate-400" />
-                        <select className={inputClass} value={collaboratorFilter} onChange={e => setCollaboratorFilter(e.target.value)}>
-                            <option value="">Todos los colaboradores</option>
-                            {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                        <SearchableSelect
+                            value={collaboratorFilter}
+                            onChange={v => setCollaboratorFilter(v)}
+                            options={collaborators.map(c => ({ value: String(c.id), label: c.name }))}
+                            placeholder="Todos los colaboradores"
+                        />
                     </div>
                     <div className="flex items-center gap-2">
                         <Calendar size={16} className="text-slate-400" />
@@ -201,7 +244,7 @@ export default function Index({ auth, items, collaborators, filters }) {
                             <table className="w-full text-sm">
                                 <thead className={`border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                                     <tr>
-                                        {['Colaborador', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Importe', 'Método', ''].map(h => (
+                                        {['Colaborador', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Importe', 'Método', ...(showActions ? [''] : [])].map(h => (
                                             <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
                                         ))}
                                     </tr>
@@ -232,16 +275,22 @@ export default function Index({ auth, items, collaborators, filters }) {
                                                     {METHOD_LABELS[item.method] || item.method || '—'}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-2 justify-end">
-                                                    <button onClick={() => openEdit(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}>
-                                                        <Edit size={14} />
-                                                    </button>
-                                                    <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}>
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                            {showActions && (
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-2 justify-end">
+                                                        {canEdit && (
+                                                            <button onClick={() => openEdit(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}>
+                                                                <Edit size={14} />
+                                                            </button>
+                                                        )}
+                                                        {canDelete && (
+                                                            <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}>
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -267,7 +316,7 @@ export default function Index({ auth, items, collaborators, filters }) {
                 )}
             </div>
 
-            {showCreate && (
+            {showCreate && canCreate && (
                 <Modal title="Nuevo Registro de Asistencia" onClose={() => setShowCreate(false)}>
                     <form onSubmit={submitCreate}>
                         <AttendanceForm form={createForm} collaborators={collaborators} isDark={isDark} />
@@ -284,7 +333,7 @@ export default function Index({ auth, items, collaborators, filters }) {
                 </Modal>
             )}
 
-            {editItem && (
+            {editItem && canEdit && (
                 <Modal title="Editar Asistencia" onClose={() => setEditItem(null)}>
                     <div className={`mb-4 px-3 py-2 rounded-xl text-sm font-semibold ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
                         {editItem.collaborator?.name}

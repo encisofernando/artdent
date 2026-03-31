@@ -8,12 +8,14 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Class IncomeRecord
  * 
  * @property int $id
  * @property int $company_id
+ * @property string|null $scope
  * @property int|null $expense_category_id
  * @property int|null $user_id
  * @property int|null $payment_method_id
@@ -43,6 +45,7 @@ class IncomeRecord extends Model
 
 	protected $fillable = [
 		'company_id',
+		'scope',
 		'expense_category_id',
 		'user_id',
 		'payment_method_id',
@@ -56,4 +59,19 @@ class IncomeRecord extends Model
 	{
 		return $this->belongsTo(Company::class);
 	}
+
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');
+    }
 }

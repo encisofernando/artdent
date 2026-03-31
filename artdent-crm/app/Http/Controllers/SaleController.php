@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\CustomerAccountMove;
@@ -13,9 +14,11 @@ use App\Models\SalePayment;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\EmailTemplateService;
 use App\Services\StockAlertService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class SaleController extends Controller
@@ -25,7 +28,7 @@ class SaleController extends Controller
         $search = $request->input('search');
         $status = $request->input('status', 'all');
 
-        $query = Sale::with('sale_items')
+        $query = Sale::with(['sale_items', 'customer:id,name'])
             ->where('company_id', auth()->user()->company_id ?? 1);
 
         if ($search) {
@@ -94,9 +97,15 @@ class SaleController extends Controller
                 return $arr;
             });
 
+        $company = \App\Models\Company::where('id', auth()->user()->company_id ?? 1)
+            ->first(['id', 'iva_condition', 'afip_point_sale', 'cuit', 'name', 'fantasy_name',
+                'address', 'city', 'province', 'phone', 'email', 'iibb', 'start_date', 'logo_url',
+                'whatsapp_message_template']);
+
         return Inertia::render('Sale/Create', [
             'products' => $products,
             'customers' => $this->getActiveCustomers(),
+            'company' => $company,
         ]);
     }
 
@@ -263,12 +272,43 @@ class SaleController extends Controller
 
             DB::commit();
 
+            // ── Auto-facturación AFIP ─────────────────────────────────────────
+            // Mapa de receipt_type (formato legacy A/B/C y nuevo FA/FB/FC) → receipt_key AFIP
+            $afipKeyMap = [
+                'A' => 'FA', 'FA' => 'FA',
+                'B' => 'FB', 'FB' => 'FB',
+                'C' => 'FC', 'FC' => 'FC',
+                'NCA' => 'NCA', 'NCB' => 'NCB', 'NCC' => 'NCC',
+                'NDA' => 'NDA', 'NDB' => 'NDB', 'NDC' => 'NDC',
+            ];
+            if (isset($afipKeyMap[$receiptType])) {
+                $company->refresh();
+                if ($company->afip_auto_invoice) {
+                    try {
+                        \App\Jobs\GenerateAfipInvoiceJob::dispatch(
+                            $sale->id,
+                            $afipKeyMap[$receiptType]
+                        );
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('Auto-factura AFIP falló (no bloquea la venta)', [
+                            'sale_id' => $sale->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // Revertir a ticket X para que el operador pueda reintentar manualmente
+                        $sale->update(['receipt_type' => 'X']);
+                        $sale->refresh();
+                    }
+                }
+            }
+            // ─────────────────────────────────────────────────────────────────
+
             // Cargar relaciones para el modal post-venta del frontend
             $sale->load([
                 'sale_items',
                 'sale_payments.paymentMethod',
                 'company',
                 'user',
+                'invoice',
             ]);
 
             // Retornamos Sale/Create con el prop 'sale' para que el modal
@@ -310,6 +350,11 @@ class SaleController extends Controller
                         return $arr;
                     }),
                 'customers' => $this->getActiveCustomers(),
+                'company' => $company ? $company->only([
+                    'id', 'iva_condition', 'afip_point_sale', 'cuit', 'name', 'fantasy_name',
+                    'address', 'city', 'province', 'phone', 'email', 'iibb', 'start_date', 'logo_url',
+                    'whatsapp_message_template',
+                ]) : null,
                 'sale' => array_merge($sale->toArray(), [
                     'sale_payments' => $sale->sale_payments->map(fn ($p) => [
                         'amount' => $p->amount,
@@ -343,6 +388,7 @@ class SaleController extends Controller
             'company',
             'user',
             'customer',
+            'invoice.invoice_type',
         ]);
 
         $accountData = null;
@@ -373,6 +419,81 @@ class SaleController extends Controller
             ]),
             'account' => $accountData,
             'paymentMethods' => $paymentMethods,
+        ]);
+    }
+
+    /**
+     * POST /sales/{sale}/pay
+     * Registra un cobro parcial o total sobre la venta, actualiza paid_amount/status
+     * y acredita la cuenta corriente del cliente si corresponde.
+     */
+    public function pay(Request $request, Sale $sale)
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_method_id' => ['nullable', 'integer', 'exists:payment_methods,id'],
+            'description' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $amount = (float) $validated['amount'];
+
+        DB::beginTransaction();
+        try {
+            $newPaid = (float) $sale->paid_amount + $amount;
+            $newStatus = $newPaid >= (float) $sale->total ? 'completed' : 'partial';
+
+            $sale->update([
+                'paid_amount' => $newPaid,
+                'status' => $newStatus,
+            ]);
+
+            // Registrar el pago en la tabla de pagos de la venta
+            SalePayment::create([
+                'sale_id' => $sale->id,
+                'payment_method_id' => $validated['payment_method_id'] ?? null,
+                'amount' => $amount,
+                'paid_at' => now(),
+            ]);
+
+            // Si el cliente tiene cuenta corriente, acreditar el movimiento
+            if ($sale->customer_id) {
+                $account = CustomerAccount::firstOrCreate(
+                    ['customer_id' => $sale->customer_id],
+                    ['balance' => 0]
+                );
+
+                $description = $validated['description']
+                    ?? "Pago venta {$sale->sale_number}";
+
+                $newBalance = $account->balance - $amount;
+                $move = CustomerAccountMove::create([
+                    'customer_account_id' => $account->id,
+                    'user_id' => auth()->id(),
+                    'type' => CustomerAccountMove::TYPE_PAYMENT,
+                    'amount' => $amount,
+                    'balance_after' => $newBalance,
+                    'description' => $description,
+                    'payment_method_id' => $validated['payment_method_id'] ?? null,
+                    'reference_type' => 'sale',
+                    'reference_id' => $sale->id,
+                    'move_date' => now()->toDateString(),
+                ]);
+                $account->applyMove($move);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json(['message' => 'Error al registrar el pago: '.$e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'paid_amount' => $sale->fresh()->paid_amount,
+            'status' => $sale->fresh()->status,
+            'balance' => $sale->customer_id
+                ? CustomerAccount::where('customer_id', $sale->customer_id)->value('balance')
+                : null,
         ]);
     }
 
@@ -433,5 +554,48 @@ class SaleController extends Controller
 
             return back()->withErrors(['error' => 'Error al cancelar: '.$e->getMessage()]);
         }
+    }
+
+    /**
+     * Genera un PDF del comprobante a partir del HTML renderizado en el frontend
+     * y devuelve la URL pública para compartir (ej. por WhatsApp).
+     */
+    /**
+     * Guarda el HTML del comprobante como página estática y devuelve la URL
+     * pública para compartir por WhatsApp. Sin dependencias de Node/Chrome.
+     */
+    public function sendEmail(Request $request, Sale $sale): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $company = Company::findOrFail(auth()->user()->company_id ?? 1);
+        $customer = $sale->customer;
+        $saleUrl = route('quotes.public', ['token' => $sale->public_token ?? ''])
+                    ?: url("/sales/{$sale->id}");
+
+        $vars = [
+            'empresa' => $company->fantasy_name ?: $company->name,
+            'numero' => $sale->sale_number ?? $sale->id,
+            'cliente' => $customer?->name ?? 'Cliente',
+            'total' => '$'.number_format((float) $sale->total, 2, ',', '.'),
+            'fecha' => now()->format('d/m/Y'),
+            'link' => $saleUrl,
+        ];
+
+        app(EmailTemplateService::class)->send('sale', $request->email, $company, $vars);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function generatePdf(Request $request, Sale $sale): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['html' => 'required|string|max:2000000']);
+
+        $filename = 'sale-'.($sale->sale_number ?? $sale->id).'.html';
+        Storage::disk('public')->put('receipts/'.$filename, $request->html);
+
+        return response()->json([
+            'url' => Storage::disk('public')->url('receipts/'.$filename),
+        ]);
     }
 }

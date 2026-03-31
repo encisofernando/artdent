@@ -7,9 +7,11 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Observers\JobObserver;
 
 /**
  * Class Job
@@ -49,6 +51,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Collection|JobStatusHistory[] $job_status_histories
  * @property Collection|JobTeeth[] $job_teeths
  */
+#[ObservedBy([JobObserver::class])]
 class Job extends Model
 {
     use SoftDeletes;
@@ -131,7 +134,7 @@ class Job extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'assigned_user_id');
+        return $this->belongsTo(Collaborator::class, 'assigned_user_id');
     }
 
     public function job_attachments()

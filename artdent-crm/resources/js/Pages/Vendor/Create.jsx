@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Store, Factory } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Create({ auth }) {
     const { isDark } = useTheme();
@@ -102,16 +103,16 @@ export default function Create({ auth }) {
                             
                             <div className="md:col-span-1">
                                 <label className={labelClasses}>Condición frente al IVA</label>
-                                <select
+                                <SearchableSelect
                                     value={data.iva_condition}
-                                    onChange={e => setData('iva_condition', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">Seleccione...</option>
-                                    <option value="responsable_inscripto">Responsable Inscripto</option>
-                                    <option value="monotributista">Monotributista</option>
-                                    <option value="exento">Exento</option>
-                                </select>
+                                    onChange={v => setData('iva_condition', v)}
+                                    placeholder="Seleccione..."
+                                    options={[
+                                        { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+                                        { value: 'monotributista', label: 'Monotributista' },
+                                        { value: 'exento', label: 'Exento' },
+                                    ]}
+                                />
                                 {errors.iva_condition && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.iva_condition}</div>}
                             </div>
                         </div>

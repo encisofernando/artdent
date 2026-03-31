@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Search } from 'lucide-react';
+import axios from 'axios';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Create({ auth }) {
     const { isDark } = useTheme();
@@ -12,12 +14,41 @@ export default function Create({ auth }) {
         email: '',
         phone: '',
         dni: '',
+        cuit: '',
+        iva_condition: 'consumidor_final',
         address: '',
         city: '',
         province: '',
         postal_code: '',
-        is_active: 1, // Default boolean or 1/0 depending on DB
+        is_active: 1,
     });
+
+    const [padronLoading, setPadronLoading] = useState(false);
+    const [padronResult, setPadronResult] = useState(null);
+    const [padronError, setPadronError] = useState('');
+
+    const handlePadronLookup = async () => {
+        const cuit = data.cuit.replace(/\D/g, '');
+        if (cuit.length !== 11) { setPadronError('El CUIT debe tener 11 dígitos.'); return; }
+        setPadronLoading(true);
+        setPadronError('');
+        setPadronResult(null);
+        try {
+            const res = await axios.get(route('padron.lookup', { cuit }), { headers: { Accept: 'application/json' } });
+            const d = res.data.data;
+            setPadronResult(d);
+            setData(prev => ({
+                ...prev,
+                name: d.razon_social || prev.name,
+                address: d.direccion || prev.address,
+                iva_condition: d.condicion_iva || prev.iva_condition,
+            }));
+        } catch (e) {
+            setPadronError(e.response?.data?.error || 'No se encontró el CUIT en el padrón ARCA.');
+        } finally {
+            setPadronLoading(false);
+        }
+    };
 
     const submit = (e) => {
         e.preventDefault();
@@ -79,9 +110,44 @@ export default function Create({ auth }) {
                                 {errors.name && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.name}</div>}
                             </div>
 
-                            {/* DNI/CUIT */}
+                            {/* CUIT + Padrón */}
+                            <div className="md:col-span-2">
+                                <label className={labelClasses}>CUIT</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={data.cuit}
+                                        onChange={e => { setData('cuit', e.target.value); setPadronResult(null); setPadronError(''); }}
+                                        className={inputClasses + ' flex-1'}
+                                        placeholder="Sin guiones ni espacios (11 dígitos)"
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={handlePadronLookup}
+                                        disabled={padronLoading}
+                                        className={`shrink-0 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200 border-slate-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'} border`}
+                                        variant="outline"
+                                    >
+                                        <Search size={15} className="mr-1.5" />
+                                        {padronLoading ? 'Buscando…' : 'Buscar ARCA'}
+                                    </Button>
+                                </div>
+                                {padronError && <div className="text-red-500 text-xs mt-1.5 font-medium">{padronError}</div>}
+                                {errors.cuit && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.cuit}</div>}
+                                {padronResult && (
+                                    <div className={`mt-2 p-3 rounded-xl text-sm border ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-emerald-50 border-emerald-200 text-slate-700'}`}>
+                                        <span className="font-semibold">{padronResult.razon_social}</span>
+                                        <span className={isDark ? 'text-slate-400' : 'text-slate-500'}> · {padronResult.condicion_iva_label}</span>
+                                        {padronResult.estado && padronResult.estado !== 'ACTIVO' && (
+                                            <span className="text-amber-500 font-semibold"> · {padronResult.estado}</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* DNI */}
                             <div>
-                                <label className={labelClasses}>DNI / CUIT</label>
+                                <label className={labelClasses}>DNI</label>
                                 <input
                                     type="text"
                                     value={data.dni}
@@ -90,6 +156,22 @@ export default function Create({ auth }) {
                                     placeholder="Sin guiones ni espacios"
                                 />
                                 {errors.dni && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dni}</div>}
+                            </div>
+
+                            {/* Condición IVA */}
+                            <div>
+                                <label className={labelClasses}>Condición IVA</label>
+                                <SearchableSelect
+                                    value={data.iva_condition}
+                                    onChange={v => setData('iva_condition', v)}
+                                    options={[
+                                        { value: 'consumidor_final', label: 'Consumidor Final' },
+                                        { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+                                        { value: 'monotributista', label: 'Monotributista' },
+                                        { value: 'exento', label: 'Exento' },
+                                    ]}
+                                />
+                                {errors.iva_condition && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.iva_condition}</div>}
                             </div>
 
                             {/* Email */}

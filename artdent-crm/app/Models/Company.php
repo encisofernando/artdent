@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class Company
- * 
+ *
  * @property int $id
  * @property string $name
  * @property string|null $fantasy_name
@@ -34,7 +34,6 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $timezone
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * 
  * @property Collection|Branch[] $branches
  * @property Collection|CashDrawer[] $cash_drawers
  * @property Collection|CollaboratorAttendance[] $collaborator_attendances
@@ -54,133 +53,162 @@ use Illuminate\Database\Eloquent\Model;
  * @property Collection|User[] $users
  * @property Collection|Vendor[] $vendors
  * @property Collection|Warehouse[] $warehouses
- *
- * @package App\Models
  */
 class Company extends Model
 {
-	protected $table = 'companies';
+    protected $table = 'companies';
 
-	protected $casts = [
-		'start_date' => 'datetime',
-		'afip_point_sale' => 'int'
-	];
+    protected $casts = [
+        'start_date' => 'datetime',
+        'afip_point_sale' => 'int',
+        'chatbot_enabled' => 'bool',
+    ];
 
-	protected $fillable = [
-		'name',
-		'fantasy_name',
-		'logo_url',
-		'cuit',
-		'iva_condition',
-		'iibb',
-		'start_date',
-		'afip_point_sale',
-		'email',
-		'phone',
-		'website',
-		'address',
-		'city',
-		'province',
-		'postal_code',
-		'country',
-		'currency',
-		'timezone',
-		'whatsapp_phone_number_id',
-		'whatsapp_access_token'
-	];
+    protected $fillable = [
+        'name',
+        'fantasy_name',
+        'logo_url',
+        'cuit',
+        'iva_condition',
+        'iibb',
+        'start_date',
+        'afip_point_sale',
+        'afip_cert_path',
+        'afip_homo_cert_path',
+        'afip_key_path',
+        'afip_environment',
+        'afip_auto_invoice',
+        'email',
+        'phone',
+        'website',
+        'address',
+        'city',
+        'province',
+        'postal_code',
+        'country',
+        'currency',
+        'timezone',
+        'whatsapp_phone_number_id',
+        'whatsapp_access_token',
+        'whatsapp_message_template',
+        'email_sale_subject',
+        'email_sale_body',
+        'email_quote_subject',
+        'email_quote_body',
+        'email_payment_subject',
+        'email_payment_body',
+        'chatbot_enabled',
+        'chatbot_provider',
+        'chatbot_model',
+        'chatbot_openai_key',
+        'chatbot_gemini_key',
+    ];
 
-	public function branches()
-	{
-		return $this->hasMany(Branch::class);
-	}
+    /** Devuelve el path del certificado según el entorno activo (o el solicitado). */
+    public function afipCertPath(?string $env = null): ?string
+    {
+        $env ??= $this->afip_environment ?? 'homo';
 
-	public function cash_drawers()
-	{
-		return $this->hasMany(CashDrawer::class);
-	}
+        return $env === 'homo' ? $this->afip_homo_cert_path : $this->afip_cert_path;
+    }
 
-	public function collaborator_attendances()
-	{
-		return $this->hasMany(CollaboratorAttendance::class);
-	}
+    public function branches()
+    {
+        return $this->hasMany(Branch::class);
+    }
 
-	public function collaborators()
-	{
-		return $this->hasMany(Collaborator::class);
-	}
+    public function cash_drawers()
+    {
+        return $this->hasMany(CashDrawer::class);
+    }
 
-	public function crm_clients()
-	{
-		return $this->hasMany(CrmClient::class);
-	}
+    public function collaborator_attendances()
+    {
+        return $this->hasMany(CollaboratorAttendance::class);
+    }
 
-	public function dentists()
-	{
-		return $this->hasMany(Dentist::class);
-	}
+    public function collaborators()
+    {
+        return $this->hasMany(Collaborator::class);
+    }
 
-	public function ecommerce_orders()
-	{
-		return $this->hasMany(EcommerceOrder::class);
-	}
+    public function crm_clients()
+    {
+        return $this->hasMany(CrmClient::class);
+    }
 
-	public function expenses()
-	{
-		return $this->hasMany(Expense::class);
-	}
+    public function dentists()
+    {
+        return $this->hasMany(Dentist::class);
+    }
 
-	public function income_records()
-	{
-		return $this->hasMany(IncomeRecord::class);
-	}
+    public function ecommerce_orders()
+    {
+        return $this->hasMany(EcommerceOrder::class);
+    }
 
-	public function invoices()
-	{
-		return $this->hasMany(Invoice::class);
-	}
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
+    }
 
-	public function job_types()
-	{
-		return $this->hasMany(JobType::class);
-	}
+    public function income_records()
+    {
+        return $this->hasMany(IncomeRecord::class);
+    }
 
-	public function jobs()
-	{
-		return $this->hasMany(Job::class);
-	}
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
 
-	public function products()
-	{
-		return $this->hasMany(Product::class);
-	}
+    public function job_types()
+    {
+        return $this->hasMany(JobType::class);
+    }
 
-	public function purchases()
-	{
-		return $this->hasMany(Purchase::class);
-	}
+    public function jobs()
+    {
+        return $this->hasMany(Job::class);
+    }
 
-	public function sales()
-	{
-		return $this->hasMany(Sale::class);
-	}
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 
-	public function tariffs()
-	{
-		return $this->hasMany(Tariff::class);
-	}
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
+    }
 
-	public function users()
-	{
-		return $this->hasMany(User::class);
-	}
+    public function sales()
+    {
+        return $this->hasMany(Sale::class);
+    }
 
-	public function vendors()
-	{
-		return $this->hasMany(Vendor::class);
-	}
+    public function tariffs()
+    {
+        return $this->hasMany(Tariff::class);
+    }
 
-	public function warehouses()
-	{
-		return $this->hasMany(Warehouse::class);
-	}
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function chatbot_conversations()
+    {
+        return $this->hasMany(ChatbotConversation::class);
+    }
+
+    public function vendors()
+    {
+        return $this->hasMany(Vendor::class);
+    }
+
+    public function warehouses()
+    {
+        return $this->hasMany(Warehouse::class);
+    }
 }

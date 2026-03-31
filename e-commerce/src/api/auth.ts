@@ -12,10 +12,19 @@ export type User = {
   postal_code?: string | null
   accepts_marketing?: boolean | null
   company_id?: number | null
+  has_password?: boolean
 }
 
 export async function login(email: string, password: string): Promise<{ token: string }> {
   const { data } = await http.post('/auth/login', { email, password })
+  return data
+}
+
+export async function socialLogin(
+  provider: 'google' | 'facebook',
+  accessToken: string,
+): Promise<{ token: string; user: User }> {
+  const { data } = await http.post('/auth/social-login', { provider, access_token: accessToken })
   return data
 }
 

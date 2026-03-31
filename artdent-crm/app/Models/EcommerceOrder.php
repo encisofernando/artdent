@@ -63,6 +63,7 @@ class EcommerceOrder extends Model
         'customer_id',
         'guest_email',
         'guest_dni',
+        'guest_cuit',
         'coupon_id',
         'shipping_method_id',
         'shipping_method_type',

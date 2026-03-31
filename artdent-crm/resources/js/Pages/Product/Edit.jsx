@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import VariantGenerator from '@/Components/VariantGenerator';
 import RichTextEditor from '@/Components/RichTextEditor';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -70,20 +71,6 @@ function Textarea({ isDark, ...props }) {
     );
 }
 
-function Select({ isDark, children, ...props }) {
-    return (
-        <select
-            {...props}
-            className={`w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-all
-                ${isDark
-                    ? 'bg-slate-800 border-slate-700 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
-                    : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/15 focus:bg-white'
-                }`}
-        >
-            {children}
-        </select>
-    );
-}
 
 function Toggle({ checked, onChange, label, color = 'blue', isDark }) {
     const colors = { blue: 'bg-blue-500', emerald: 'bg-emerald-500', purple: 'bg-purple-500' };
@@ -526,35 +513,35 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
                                     />
                                 </Field>
                                 <Field label="Proveedor" error={errors.vendor_id}>
-                                    <Select isDark={isDark} value={data.vendor_id}
-                                        onChange={e => setData('vendor_id', e.target.value)}
-                                    >
-                                        <option value="">Sin proveedor</option>
-                                        {vendors.map(v => (
-                                            <option key={v.id} value={v.id}>{v.name}</option>
-                                        ))}
-                                    </Select>
+                                    <SearchableSelect
+                                        value={String(data.vendor_id || '')}
+                                        onChange={v => setData('vendor_id', v)}
+                                        placeholder="Sin proveedor"
+                                        options={vendors.map(v => ({ value: String(v.id), label: v.name }))}
+                                    />
                                 </Field>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field label="Categoría" error={errors.category_id}>
-                                    <Select isDark={isDark} value={rootCatId} onChange={e => handleRootChange(e.target.value)}>
-                                        <option value="">Sin categoría</option>
-                                        {categories.map(cat => (
-                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                        ))}
-                                    </Select>
+                                    <SearchableSelect
+                                        value={String(rootCatId || '')}
+                                        onChange={v => handleRootChange(v)}
+                                        placeholder="Sin categoría"
+                                        options={categories.map(cat => ({ value: String(cat.id), label: cat.name }))}
+                                    />
                                 </Field>
 
                                 {selectedRoot?.categories?.length > 0 && (
                                     <Field label="Subcategoría" error={errors.category_id}>
-                                        <Select isDark={isDark} value={data.category_id} onChange={e => setData('category_id', e.target.value || rootCatId)}>
-                                            <option value={rootCatId}>— Sin subcategoría —</option>
-                                            {selectedRoot.categories.map(sub => (
-                                                <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                            ))}
-                                        </Select>
+                                        <SearchableSelect
+                                            value={String(data.category_id || '')}
+                                            onChange={v => setData('category_id', v || rootCatId)}
+                                            options={[
+                                                { value: String(rootCatId), label: '— Sin subcategoría —' },
+                                                ...selectedRoot.categories.map(sub => ({ value: String(sub.id), label: sub.name })),
+                                            ]}
+                                        />
                                     </Field>
                                 )}
                             </div>

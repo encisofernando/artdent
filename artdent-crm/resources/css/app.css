@@ -105,3 +105,75 @@
 .dark .rich-editor .tiptap p.is-editor-empty:first-child::before {
   color: #475569;
 }
+
+/* ── Select dropdowns ── */
+select {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+select option {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+.dark select {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.dark select option {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+/* ── Prevent horizontal overflow (evita que selects y elementos se salgan de pantalla) ── */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Los select nativos deben respetar el ancho de su contenedor */
+select {
+  max-width: 100%;
+}
+
+/* ── Mobile / Touch improvements ── */
+
+/* Prevent zoom on input focus in iOS (font-size must be >= 16px) */
+@media (max-width: 1024px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="date"],
+  input[type="search"],
+  input[type="tel"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Larger touch targets */
+@media (max-width: 1024px) {
+  button, a[role="button"], [type="submit"] {
+    min-height: 44px;
+  }
+}
+
+/* Smooth native scroll on iOS */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove tap highlight on mobile */
+a, button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active press feedback */
+@media (hover: none) {
+  a:active, button:active {
+    opacity: 0.7;
+  }
+}

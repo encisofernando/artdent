@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth'
+import SocialButtons from '../components/SocialButtons'
 
 export default function SignIn() {
   const { signIn } = useAuth()
@@ -12,13 +13,30 @@ export default function SignIn() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const handleSuccess = () => window.location.replace(from)
+  const handleError = (msg: string) => setError(msg)
+
   return (
     <div className="mx-auto max-w-md px-4 py-10">
       <h1 className="text-3xl font-bold">Iniciar sesión</h1>
       <p className="mt-2 text-sm text-gray-600">Ingresa con tu cuenta de usuario.</p>
 
+      {/* Social buttons */}
+      <div className="mt-6">
+        <SocialButtons onSuccess={handleSuccess} onError={handleError} />
+      </div>
+
+      {/* Divider */}
+      <div className="relative my-6 flex items-center">
+        <div className="flex-grow border-t border-gray-200" />
+        <span className="mx-4 shrink-0 text-xs text-gray-400 font-medium uppercase tracking-wide">
+          o ingresá con email
+        </span>
+        <div className="flex-grow border-t border-gray-200" />
+      </div>
+
       <form
-        className="mt-8 space-y-4"
+        className="space-y-4"
         onSubmit={async (e) => {
           e.preventDefault()
           setError(null)

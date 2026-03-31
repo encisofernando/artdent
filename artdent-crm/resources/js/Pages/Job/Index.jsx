@@ -191,7 +191,7 @@ export default function Index({ auth, items, filters }) {
                                             {/* Left */}
                                             <div style={{ minWidth: 0, flex: 1 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-                                                    <Link href={route('jobs.show', job.id)}>
+                                                    <Link href={route('jobs.edit', job.id)}>
                                                         <span style={{ fontWeight: 900, fontSize: 14, color: AD.teal, letterSpacing: -0.2, cursor: 'pointer' }}>
                                                             {job.job_number}
                                                         </span>
@@ -240,7 +240,7 @@ export default function Index({ auth, items, filters }) {
                                                 Rec: {fmtDate(job.received_at)}
                                             </span>
                                             <div style={{ display: 'flex', gap: 6 }}>
-                                                <Link href={route('jobs.show', job.id)}>
+                                                <Link href={route('jobs.edit', job.id)}>
                                                     <button className="action-btn" title="Ver detalle" style={{ padding: '6px 10px', borderRadius: 9, border: `1px solid ${D.border}`, background: 'transparent', color: AD.blue, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
                                                         <Eye size={14} />
                                                         <span className="desktop-only">Ver</span>

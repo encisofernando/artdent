@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, RefreshCcw } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: "#397B9C", teal: "#49949C" };
 
@@ -70,72 +71,60 @@ export default function Create({ auth, jobs, prefillJobId }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className={labelClasses}>Trabajo (nuevo) *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.job_id}
-                                    onChange={e => setData('job_id', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('job_id', v)}
+                                    options={(jobs || []).map(j => ({ value: String(j.id), label: `${j.job_number}${j.dentist?.name ? ` — ${j.dentist.name}` : ''}` }))}
+                                    placeholder="-- Seleccionar trabajo --"
                                     required
-                                >
-                                    <option value="">-- Seleccionar trabajo --</option>
-                                    {jobs?.map(j => (
-                                        <option key={j.id} value={j.id}>
-                                            {j.job_number}{j.dentist?.name ? ` — ${j.dentist.name}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.job_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.job_id}</div>}
+                                    error={errors.job_id}
+                                />
                             </div>
 
                             <div>
                                 <label className={labelClasses}>Trabajo Original *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.original_job_id}
-                                    onChange={e => setData('original_job_id', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('original_job_id', v)}
+                                    options={(jobs || []).filter(j => String(j.id) !== String(data.job_id)).map(j => ({ value: String(j.id), label: `${j.job_number}${j.dentist?.name ? ` — ${j.dentist.name}` : ''}` }))}
+                                    placeholder="-- Seleccionar trabajo original --"
                                     required
-                                >
-                                    <option value="">-- Seleccionar trabajo original --</option>
-                                    {jobs?.filter(j => String(j.id) !== String(data.job_id)).map(j => (
-                                        <option key={j.id} value={j.id}>
-                                            {j.job_number}{j.dentist?.name ? ` — ${j.dentist.name}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.original_job_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.original_job_id}</div>}
+                                    error={errors.original_job_id}
+                                />
                             </div>
 
                             <div>
                                 <label className={labelClasses}>Responsabilidad *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.responsibility}
-                                    onChange={e => setData('responsibility', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('responsibility', v)}
+                                    options={[
+                                        { value: 'lab', label: 'Laboratorio' },
+                                        { value: 'dentist', label: 'Odontólogo' },
+                                        { value: 'patient', label: 'Paciente' },
+                                        { value: 'material', label: 'Material' },
+                                        { value: 'unknown', label: 'Desconocido' },
+                                    ]}
+                                    placeholder="Seleccionar..."
                                     required
-                                >
-                                    <option value="">Seleccionar...</option>
-                                    <option value="lab">Laboratorio</option>
-                                    <option value="dentist">Odontólogo</option>
-                                    <option value="patient">Paciente</option>
-                                    <option value="material">Material</option>
-                                    <option value="unknown">Desconocido</option>
-                                </select>
-                                {errors.responsibility && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.responsibility}</div>}
+                                    error={errors.responsibility}
+                                />
                             </div>
 
                             <div>
                                 <label className={labelClasses}>Cargado a *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.charged_to}
-                                    onChange={e => setData('charged_to', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('charged_to', v)}
+                                    options={[
+                                        { value: 'lab', label: 'Laboratorio' },
+                                        { value: 'dentist', label: 'Odontólogo' },
+                                        { value: 'insurance', label: 'Seguro' },
+                                    ]}
+                                    placeholder="Seleccionar..."
                                     required
-                                >
-                                    <option value="">Seleccionar...</option>
-                                    <option value="lab">Laboratorio</option>
-                                    <option value="dentist">Odontólogo</option>
-                                    <option value="insurance">Seguro</option>
-                                </select>
-                                {errors.charged_to && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.charged_to}</div>}
+                                    error={errors.charged_to}
+                                />
                             </div>
 
                             <div>

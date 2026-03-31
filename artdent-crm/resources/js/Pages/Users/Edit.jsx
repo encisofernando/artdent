@@ -1,8 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { Save, ArrowLeft, ShieldCheck, KeyRound } from 'lucide-react';
+import { Save, ArrowLeft, ShieldCheck, KeyRound, Info } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -24,27 +25,13 @@ function Input({ isDark, ...props }) {
             {...props}
             className={`px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors
                 ${isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500 focus:border-slate-500'
+                    ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder-slate-500 focus:border-slate-500'
                     : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-slate-400'
                 }`}
         />
     );
 }
 
-function Select({ isDark, children, ...props }) {
-    return (
-        <select
-            {...props}
-            className={`px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors
-                ${isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-100 focus:border-slate-500'
-                    : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-slate-400'
-                }`}
-        >
-            {children}
-        </select>
-    );
-}
 
 export default function Edit({ auth, user, roles, branches }) {
     const { isDark } = useTheme();
@@ -120,13 +107,13 @@ export default function Edit({ auth, user, roles, branches }) {
                             </Field>
 
                             <Field label="Sucursal" error={errors.branch_id} isDark={isDark}>
-                                <Select isDark={isDark} value={data.branch_id}
-                                    onChange={e => setData('branch_id', e.target.value)}>
-                                    <option value="">Sin sucursal asignada</option>
-                                    {branches.map(b => (
-                                        <option key={b.id} value={b.id}>{b.name}</option>
-                                    ))}
-                                </Select>
+                                <SearchableSelect
+                                    value={data.branch_id}
+                                    onChange={v => setData('branch_id', v)}
+                                    options={branches.map(b => ({ value: String(b.id), label: b.name }))}
+                                    placeholder="Sin sucursal asignada"
+                                    error={errors.branch_id}
+                                />
                             </Field>
                         </div>
                     </div>
@@ -167,14 +154,23 @@ export default function Edit({ auth, user, roles, branches }) {
                         </div>
                         {errors.roles && <p className="text-xs text-red-400 mb-3">{errors.roles}</p>}
                         <div className="flex flex-col gap-2">
+                            {user.is_super_admin && (
+                                <div className={`mb-2 p-3 rounded-xl flex items-center gap-2 text-xs font-semibold
+                                    ${isDark ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                                    <Info size={14} />
+                                    Los roles de un Super Administrador están protegidos y no se pueden modificar.
+                                </div>
+                            )}
                             {roles.map(role => {
                                 const selected = data.roles.includes(role.id);
                                 return (
                                     <button
                                         key={role.id}
                                         type="button"
-                                        onClick={() => toggleRole(role.id)}
+                                        onClick={() => !user.is_super_admin && toggleRole(role.id)}
+                                        disabled={user.is_super_admin}
                                         className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all
+                                            ${user.is_super_admin ? 'opacity-50 cursor-not-allowed' : ''}
                                             ${selected
                                                 ? isDark
                                                     ? 'border-teal-600/60 bg-teal-900/20'

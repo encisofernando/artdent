@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, MessageSquare } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: "#397B9C", teal: "#49949C" };
 
@@ -79,66 +80,58 @@ export default function Edit({ auth, item, dentists, crmClients }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className={labelClasses}>Odontólogo (opcional)</label>
-                                <select
+                                <SearchableSelect
                                     value={data.dentist_id}
-                                    onChange={e => setData('dentist_id', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">-- Sin odontólogo --</option>
-                                    {dentists?.map(d => (
-                                        <option key={d.id} value={d.id}>{d.name}</option>
-                                    ))}
-                                </select>
-                                {errors.dentist_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dentist_id}</div>}
+                                    onChange={v => setData('dentist_id', v)}
+                                    options={(dentists || []).map(d => ({ value: String(d.id), label: d.name }))}
+                                    placeholder="-- Sin odontólogo --"
+                                    error={errors.dentist_id}
+                                />
                             </div>
 
                             <div>
                                 <label className={labelClasses}>Cliente CRM (opcional)</label>
-                                <select
+                                <SearchableSelect
                                     value={data.crm_client_id}
-                                    onChange={e => setData('crm_client_id', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">-- Sin cliente --</option>
-                                    {crmClients?.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
-                                {errors.crm_client_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.crm_client_id}</div>}
+                                    onChange={v => setData('crm_client_id', v)}
+                                    options={(crmClients || []).map(c => ({ value: String(c.id), label: c.name }))}
+                                    placeholder="-- Sin cliente --"
+                                    error={errors.crm_client_id}
+                                />
                             </div>
 
                             <div>
                                 <label className={labelClasses}>Tipo *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.type}
-                                    onChange={e => setData('type', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('type', v)}
+                                    options={[
+                                        { value: 'llamada', label: 'Llamada' },
+                                        { value: 'email', label: 'Email' },
+                                        { value: 'whatsapp', label: 'WhatsApp' },
+                                        { value: 'visita', label: 'Visita' },
+                                        { value: 'reunion', label: 'Reunión' },
+                                        { value: 'otro', label: 'Otro' },
+                                    ]}
+                                    placeholder="Seleccionar..."
                                     required
-                                >
-                                    <option value="">Seleccionar...</option>
-                                    <option value="llamada">Llamada</option>
-                                    <option value="email">Email</option>
-                                    <option value="whatsapp">WhatsApp</option>
-                                    <option value="visita">Visita</option>
-                                    <option value="reunion">Reunión</option>
-                                    <option value="otro">Otro</option>
-                                </select>
-                                {errors.type && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.type}</div>}
+                                    error={errors.type}
+                                />
                             </div>
 
                             <div>
                                 <label className={labelClasses}>Dirección *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.direction}
-                                    onChange={e => setData('direction', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('direction', v)}
+                                    options={[
+                                        { value: 'inbound', label: 'Entrante' },
+                                        { value: 'outbound', label: 'Saliente' },
+                                    ]}
+                                    placeholder="Seleccionar..."
                                     required
-                                >
-                                    <option value="">Seleccionar...</option>
-                                    <option value="inbound">Entrante</option>
-                                    <option value="outbound">Saliente</option>
-                                </select>
-                                {errors.direction && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.direction}</div>}
+                                    error={errors.direction}
+                                />
                             </div>
 
                             <div>

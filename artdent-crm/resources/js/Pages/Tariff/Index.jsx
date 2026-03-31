@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Banknote, List } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, categories, filters }) {
     const { isDark } = useTheme();
@@ -62,18 +63,14 @@ export default function Index({ auth, items, categories, filters }) {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                        <select
+                        <SearchableSelect
                             value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            className={`px-3 py-2 rounded-xl border text-sm transition-colors w-full sm:w-auto outline-none
-                                ${isDark ? 'bg-slate-900 border-slate-700/60 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}
-                            `}
-                        >
-                            <option value="all">Todas las Categorías</option>
-                            {categories?.map((cat, idx) => (
-                                <option key={idx} value={cat}>{cat}</option>
-                            ))}
-                        </select>
+                            onChange={v => setCategory(v)}
+                            options={[
+                                { value: 'all', label: 'Todas las Categorías' },
+                                ...(categories || []).map(cat => ({ value: cat, label: cat })),
+                            ]}
+                        />
 
                         <div className={`flex items-center px-3 py-2 rounded-xl border transition-colors w-full sm:w-auto
                             ${isDark ? 'bg-slate-900 border-slate-700/60 focus-within:border-slate-500' : 'bg-white border-slate-200 focus-within:border-slate-400'}

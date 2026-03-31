@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -71,6 +72,8 @@ class Customer extends Authenticatable
         'phone',
         'whatsapp_bsuid',
         'dni',
+        'cuit',
+        'iva_condition',
         'address',
         'city',
         'province',
@@ -79,7 +82,29 @@ class Customer extends Authenticatable
         'remember_token',
         'accepts_marketing',
         'is_active',
+        'google_id',
+        'facebook_id',
+        'portal_token',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Customer $customer) {
+            if (empty($customer->portal_token)) {
+                $customer->portal_token = Str::random(48);
+            }
+        });
+    }
+
+    public function customer_account()
+    {
+        return $this->hasOne(CustomerAccount::class);
+    }
+
+    public function sales()
+    {
+        return $this->hasMany(Sale::class);
+    }
 
     public function crm_clients()
     {

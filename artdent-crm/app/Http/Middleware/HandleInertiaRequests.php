@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\ChatbotService;
+use App\Support\CrmMode;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -32,14 +34,26 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? [
+                    ...$request->user()->toArray(),
+                    'is_super_admin' => $request->user()->hasRole('Super Admin'),
+                    'permissions' => $request->user()->getAllPermissions()->pluck('name'),
+                ] : null,
             ],
+            'app_context' => [
+                'crm_mode' => config('crm.mode'),
+                'billing_enabled' => CrmMode::billingEnabled(),
+            ],
+            'tenant_info' => fn () => CrmMode::tenantInfo(),
             // Flash data para todos los componentes Inertia
             'flash' => [
-                'success'   => $request->session()->get('success'),
-                'error'     => $request->session()->get('error'),
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
                 'new_token' => $request->session()->get('new_token'),
             ],
+            'chatbot' => fn () => $request->user()
+                ? app(ChatbotService::class)->getFrontendConfig()
+                : null,
         ];
     }
 }

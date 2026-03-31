@@ -29,9 +29,15 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
+        $tenant = $request->authenticate();
 
         $request->session()->regenerate();
+
+        if ($tenant) {
+            session(['tenant_id' => $tenant->id]);
+        } else {
+            $request->session()->forget('tenant_id');
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
@@ -42,6 +48,12 @@ class AuthenticatedSessionController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
+
+        $request->session()->forget('tenant_id');
+
+        if (tenancy()->initialized) {
+            tenancy()->end();
+        }
 
         $request->session()->invalidate();
 

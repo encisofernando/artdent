@@ -4,6 +4,8 @@
  * Desktop: Split layout 65/35
  */
 import React, { useState, useMemo, useEffect } from 'react';
+import FacturaA4 from '@/Components/Sale/FacturaA4';
+import { Ticket80, Ticket57 } from '@/Components/Sale/TicketBase';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
@@ -12,20 +14,53 @@ import {
     ShoppingCart, User, Search, Plus, Minus, Trash2,
     CreditCard, X, Package, ReceiptText, Store,
     Download, Share2, Printer, MessageCircle, Check,
-    ChevronRight,
+    ChevronRight, Loader2,
 } from 'lucide-react';
 import {
     B, G, useD, fmt,
     FAB, BottomSheet, Modal, Btn, ProductCard, TabStrip,
     Badge,
 } from '@/Components/_appkit';
+import SearchableSelect from '@/Components/SearchableSelect';
 
-const TIPOS = [
-    { id: 'X', label: 'Ticket X',  desc: 'Sin factura',    accentColor: '#64748b' },
-    { id: 'A', label: 'Factura A', desc: 'Resp. Inscripto', accentColor: B.blue   },
-    { id: 'B', label: 'Factura B', desc: 'Cons. Final',     accentColor: B.green  },
-    { id: 'C', label: 'Factura C', desc: 'Monotributista',  accentColor: B.teal   },
+const ALL_TIPOS = [
+    { id: 'X',   label: 'Ticket X',          desc: 'Sin factura',    accentColor: '#64748b', condition: null },
+    { id: 'A',   label: 'Factura A',          desc: 'Resp. Inscripto', accentColor: B.blue,   condition: 'responsable_inscripto' },
+    { id: 'NCA', label: 'Nota de Crédito A',  desc: 'Resp. Inscripto', accentColor: B.blue,   condition: 'responsable_inscripto' },
+    { id: 'NDA', label: 'Nota de Débito A',   desc: 'Resp. Inscripto', accentColor: B.blue,   condition: 'responsable_inscripto' },
+    { id: 'B',   label: 'Factura B',          desc: 'Cons. Final',    accentColor: B.green,  condition: 'responsable_inscripto' },
+    { id: 'NCB', label: 'Nota de Crédito B',  desc: 'Cons. Final',    accentColor: B.green,  condition: 'responsable_inscripto' },
+    { id: 'NDB', label: 'Nota de Débito B',   desc: 'Cons. Final',    accentColor: B.green,  condition: 'responsable_inscripto' },
+    { id: 'C',   label: 'Factura C',          desc: 'Monotributista', accentColor: B.teal,   condition: 'monotributista' },
+    { id: 'NCC', label: 'Nota de Crédito C',  desc: 'Monotributista', accentColor: B.teal,   condition: 'monotributista' },
+    { id: 'NDC', label: 'Nota de Débito C',   desc: 'Monotributista', accentColor: B.teal,   condition: 'monotributista' },
 ];
+
+function getTipos(ivaCondition) {
+    const always = ALL_TIPOS.filter(t => t.condition === null);
+    const filtered = ALL_TIPOS.filter(t => t.condition === ivaCondition);
+    return [...always, ...filtered];
+}
+
+function parseReceiptType(rt) {
+    const r = (rt || 'X').toUpperCase();
+    const MAP = {
+        X:   { letter: 'X', label: 'TICKET',        code: '00', isAfip: false },
+        A:   { letter: 'A', label: 'FACTURA A',      code: '01', isAfip: true  },
+        FA:  { letter: 'A', label: 'FACTURA A',      code: '01', isAfip: true  },
+        B:   { letter: 'B', label: 'FACTURA B',      code: '06', isAfip: true  },
+        FB:  { letter: 'B', label: 'FACTURA B',      code: '06', isAfip: true  },
+        C:   { letter: 'C', label: 'FACTURA C',      code: '11', isAfip: true  },
+        FC:  { letter: 'C', label: 'FACTURA C',      code: '11', isAfip: true  },
+        NCA: { letter: 'A', label: 'N. CRÉDITO A',   code: '02', isAfip: true  },
+        NCB: { letter: 'B', label: 'N. CRÉDITO B',   code: '07', isAfip: true  },
+        NCC: { letter: 'C', label: 'N. CRÉDITO C',   code: '12', isAfip: true  },
+        NDA: { letter: 'A', label: 'N. DÉBITO A',    code: '03', isAfip: true  },
+        NDB: { letter: 'B', label: 'N. DÉBITO B',    code: '08', isAfip: true  },
+        NDC: { letter: 'C', label: 'N. DÉBITO C',    code: '13', isAfip: true  },
+    };
+    return MAP[r] ?? { letter: r, label: r, code: '00', isAfip: false };
+}
 
 const PAYMENT_METHODS = [
     { id: 'cash',              name: 'Efectivo',        requiresCustomer: false },
@@ -40,176 +75,18 @@ const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE'
 const G_bar     = `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`;
 const G_primary = `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`;
 const fmtDate   = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
-const fmtTime   = (d) => d ? new Date(d).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '—';
+// ─── Ticket80 / Ticket57 — importados desde @/Components/Sale/TicketBase ─────
 
-// ─── Ticket thermal (80mm / 57mm) ────────────────────────────
-function TicketBase({ sale, widthMM = 80 }) {
-    const is57   = widthMM === 57;
-    const items  = sale.sale_items || sale.items || [];
-    const total  = Number(sale.total || 0);
-    const fmtN   = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
-    const medioPago = sale.sale_payments?.[0]?.payment_method?.name || sale.payment_method || 'Efectivo';
-    const cajero    = sale.user?.name || 'Sistema';
-    const nroComp   = sale.sale_number || `VNT-${String(sale.id ?? 1).padStart(8, '0')}`;
-    const F = { logo: is57?28:36, cond: is57?9:10, head: is57?11:14, label: is57?8:10, th: is57?7.5:9, td: is57?7.5:9, total: is57?12:16, small: is57?7:8 };
-    const LINE = '2px solid #000', DASH = '2px dashed #000';
-    const Row = ({ label, value }) => (
-        <div style={{ fontSize:`${F.label}pt`, marginBottom:3, lineHeight:1.25, wordWrap:'break-word' }}>
-            <span style={{ fontWeight:700, marginRight:4 }}>{label}:</span>
-            <span style={{ fontWeight:500 }}>{value}</span>
-        </div>
-    );
-    return (
-        <div style={{ width:`${is57?50:74}mm`, fontFamily:"'Courier New',Courier,monospace", fontSize:`${F.label}pt`, color:'#000', background:'#fff', lineHeight:1.45, boxSizing:'border-box' }}>
-            <div style={{ textAlign:'center', marginBottom:is57?5:7, marginTop:5 }}>
-                <img src="/assets/logo-artdent-negro.png" alt="ArtDent" style={{ height:F.logo, objectFit:'contain', display:'inline-block' }} />
-            </div>
-            <div style={{ textAlign:'center', fontSize:F.cond, fontWeight:700, marginBottom:is57?5:6 }}>MONOTRIBUTISTA</div>
-            <div style={{ borderTop:LINE, marginBottom:is57?5:6 }} />
-            <div style={{ textAlign:'center', fontWeight:900, fontSize:F.head, marginBottom:is57?6:8, padding:`${is57?3:4}px 0`, borderTop:'2px solid #000', borderBottom:'2px solid #000' }}>
-                TICKET X
-            </div>
-            <div style={{ marginBottom:is57?6:8 }}>
-                <Row label="NRO" value={nroComp} />
-                <Row label="FECHA" value={`${fmtDate(sale.sold_at)}, ${fmtTime(sale.sold_at)}`} />
-                <Row label="CLIENTE" value={sale.customer_name || 'Consumidor Final'} />
-            </div>
-            <div style={{ borderTop:LINE, marginBottom:is57?4:5 }} />
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:F.th, marginBottom:is57?4:6 }}>
-                <thead><tr style={{ borderBottom:'2px solid #000' }}>
-                    {['Descripción','Can','Uni','Total'].map((h,i) => (
-                        <th key={h} style={{ padding:`3px ${i===0?0:2}px`, textAlign:i===0?'left':'center', fontWeight:900, fontSize:F.th, borderBottom:'2px solid #000', whiteSpace:'nowrap' }}>{h}</th>
-                    ))}
-                </tr></thead>
-                <tbody>
-                    {items.map((it, i) => (
-                        <tr key={i} style={{ borderBottom:'1px solid #000' }}>
-                            <td style={{ padding:'3px 0', fontSize:F.td, fontWeight:600 }}>{it.name || it.product_name}</td>
-                            <td style={{ padding:'3px 2px', textAlign:'center', fontSize:F.td, fontWeight:700 }}>{Number(it.quantity)}</td>
-                            <td style={{ padding:'3px 2px', textAlign:'center', fontSize:F.td }}>{fmtN(it.unit_price)}</td>
-                            <td style={{ padding:'3px 0', textAlign:'center', fontSize:F.td, fontWeight:900 }}>{fmtN(it.total)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            <div style={{ borderTop:LINE, marginBottom:is57?5:6 }} />
-            <div style={{ display:'flex', justifyContent:'space-between', fontSize:F.total, fontWeight:900, marginBottom:is57?6:8 }}>
-                <span>TOTAL</span><span>$ {fmtN(total)}</span>
-            </div>
-            <div style={{ borderTop:DASH, marginBottom:is57?5:6 }} />
-            <Row label="MEDIO DE PAGO" value={medioPago} />
-            <Row label="CAJERO" value={cajero} />
-            {Number(sale.change_amount) > 0 && <Row label="VUELTO" value={`$ ${fmtN(sale.change_amount)}`} />}
-            <div style={{ borderTop:DASH, marginBottom:is57?5:7 }} />
-            <div style={{ textAlign:'center', fontSize:F.small, fontWeight:600 }}>
-                <div style={{ fontWeight:900 }}>Gracias por su compra.</div>
-                <div style={{ marginTop:2, fontWeight:500 }}>Comprobante no válido como factura</div>
-            </div>
-        </div>
-    );
-}
-
-// ─── Factura A4 ───────────────────────────────────────────────
-function FacturaA4({ sale }) {
-    const items    = sale.sale_items || sale.items || [];
-    const total    = Number(sale.total || 0);
-    const discount = Number(sale.discount_amount || 0);
-    const fmtN     = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
-    return (
-        <div id="postsale-a4" style={{ width:'210mm', minHeight:'297mm', fontFamily:"'Montserrat',sans-serif", fontSize:'10pt', color:'#1A202C', background:'#fff', display:'flex', flexDirection:'column', boxSizing:'border-box' }}>
-            <div style={{ background:G_bar, height:8, flexShrink:0 }} />
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'8mm 15mm 6mm', borderBottom:`1px solid ${AD.light||'#DAE6F0'}`, flexShrink:0 }}>
-                <img src="/assets/logo-artdent-color.png" alt="ArtDent" style={{ height:52, objectFit:'contain' }} />
-                <div style={{ textAlign:'center', border:'2.5px solid #222', padding:'6px 18px', minWidth:108, alignSelf:'center' }}>
-                    <div style={{ fontSize:32, fontWeight:900, lineHeight:1, letterSpacing:-1 }}>X</div>
-                    <div style={{ borderTop:'1px solid #222', marginTop:3, paddingTop:3, fontSize:7, fontWeight:700, letterSpacing:1 }}>CÓD. 00</div>
-                    <div style={{ fontSize:7, fontWeight:700, letterSpacing:1 }}>ORIGINAL</div>
-                </div>
-                <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:22, fontWeight:900, color:AD.blue, letterSpacing:-0.5 }}>TICKET</div>
-                    <div style={{ fontSize:12, fontWeight:700, color:'#222', marginTop:2 }}>{sale.sale_number || `VNT-${String(sale.id??1).padStart(8,'0')}`}</div>
-                    <div style={{ fontSize:8.5, color:'#555', marginTop:5, lineHeight:1.8 }}>
-                        <div><strong>Fecha:</strong> {fmtDate(sale.sold_at)}</div>
-                        <div><strong>Hora:</strong> {fmtTime(sale.sold_at)}</div>
-                    </div>
-                </div>
-            </div>
-            <div style={{ padding:'5mm 15mm', borderBottom:`1px solid #DAE6F0`, flexShrink:0 }}>
-                <div style={{ fontSize:8.5, lineHeight:1.8, color:'#333' }}>
-                    <div style={{ fontWeight:800, fontSize:10.5, color:'#111', marginBottom:2 }}>ArtDent Laboratorio Odontológico</div>
-                    <div>Argentina · <strong>Cond. IVA:</strong> Monotributista</div>
-                </div>
-            </div>
-            <div style={{ padding:'4mm 15mm', borderBottom:`1px solid #DAE6F0`, flexShrink:0, background:'#fafcfe' }}>
-                <div style={{ fontSize:8.5, lineHeight:1.9 }}>
-                    <div><strong>Nombre:</strong> {sale.customer_name || 'Consumidor Final'}</div>
-                    <div><strong>Cond. Venta:</strong> Contado</div>
-                </div>
-            </div>
-            <div style={{ padding:'5mm 15mm 0', flexShrink:0 }}>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'8.5pt' }}>
-                    <thead><tr style={{ background:AD.blue, color:'#fff' }}>
-                        {[{l:'Descripción',w:'44%',a:'left'},{l:'Cantidad',w:'12%',a:'center'},{l:'P. Unit.',w:'18%',a:'right'},{l:'Importe',w:'14%',a:'right'}].map((h,i) => (
-                            <th key={h.l} style={{ padding:'5px 8px', textAlign:h.a, fontWeight:700, fontSize:7.5, textTransform:'uppercase', letterSpacing:0.3, width:h.w, borderLeft:i>0?'1px solid rgba(255,255,255,0.15)':'none' }}>{h.l}</th>
-                        ))}
-                    </tr></thead>
-                    <tbody>
-                        {items.map((it, i) => (
-                            <tr key={i} style={{ background:i%2===0?'#fff':'#f5f9fc', borderBottom:`1px solid #DAE6F0` }}>
-                                <td style={{ padding:'6px 8px', fontWeight:600, fontSize:9 }}>{it.name || it.product_name}</td>
-                                <td style={{ padding:'6px 8px', textAlign:'center', fontSize:9 }}>{Number(it.quantity)}</td>
-                                <td style={{ padding:'6px 8px', textAlign:'right', fontSize:9 }}>{fmtN(it.unit_price)}</td>
-                                <td style={{ padding:'6px 8px', textAlign:'right', fontWeight:700, fontSize:9, color:AD.blue }}>{fmtN(it.total)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <div style={{ flex:1, minHeight:'8mm' }} />
-            <div style={{ flexShrink:0 }}>
-                <div style={{ padding:'0 15mm 5mm', borderTop:`1px solid #DAE6F0` }}>
-                    <div style={{ display:'flex', justifyContent:'flex-end', paddingTop:'5mm' }}>
-                        <div style={{ width:'72mm' }}>
-                            {discount > 0 && (
-                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4, fontSize:'8.5pt' }}>
-                                    <span>Descuento:</span><span style={{ color:'#c00' }}>-{fmtN(discount)}</span>
-                                </div>
-                            )}
-                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', padding:'5px 8px', background:AD.blue, color:'#fff', borderRadius:4 }}>
-                                <span style={{ fontWeight:900, fontSize:'10pt' }}>IMPORTE TOTAL: $</span>
-                                <span style={{ fontWeight:900, fontSize:'13pt' }}>{fmtN(total)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ marginTop:6, fontSize:8, color:'#555' }}>
-                        <strong>Recibido:</strong> ${fmtN(sale.paid_amount)}
-                        {Number(sale.change_amount) > 0 && <span style={{ marginLeft:12 }}><strong>Vuelto:</strong> ${fmtN(sale.change_amount)}</span>}
-                    </div>
-                </div>
-                <div style={{ padding:'4mm 15mm', borderTop:`1px solid #DAE6F0`, background:'#fafcfe', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <img src="/assets/logo-artdent-icon.png" alt="ArtDent" style={{ height:26, objectFit:'contain' }} />
-                        <span style={{ fontSize:7.5, color:AD.teal, fontWeight:600, textTransform:'uppercase', letterSpacing:0.5 }}>Tu sonrisa, es nuestra prioridad.</span>
-                    </div>
-                    <div style={{ textAlign:'right', fontSize:7, color:'#bbb', lineHeight:1.7 }}>
-                        <div>Comprobante no válido como factura</div>
-                        <div>Generado por ArtDent CRM</div>
-                    </div>
-                </div>
-                <div style={{ background:G_bar, height:5 }} />
-            </div>
-        </div>
-    );
-}
-
-export default function Create({ auth, products, customers = [] }) {
+export default function Create({ auth, products, customers = [], company = null }) {
     const { isDark, sidebarCollapsed } = useTheme();
     const D = useD(isDark);
+
+    const TIPOS = getTipos(company?.iva_condition ?? '');
 
     // ── State ────────────────────────────────────────────────
     const [busca, setBusca]               = useState('');
     const [cart, setCart]                 = useState([]);
-    const [receiptType, setReceiptType]   = useState('C');
+    const [receiptType, setReceiptType]   = useState('X');
     const [customerName, setCustomerName] = useState('Consumidor Final');
     const [customerId, setCustomerId]     = useState('');
     const [notes, setNotes]               = useState('');
@@ -232,7 +109,9 @@ export default function Create({ auth, products, customers = [] }) {
 
     // Alta rápida cliente
     const [altaClienteOpen, setAltaClienteOpen] = useState(false);
-    const [newCliente, setNewCliente]           = useState({ name: '', phone: '', dni: '' });
+    const [newCliente, setNewCliente]           = useState({ name: '', phone: '', dni: '', cuit: '', iva_condition: 'consumidor_final', address: '' });
+    const [padronLoading, setPadronLoading]     = useState(false);
+    const [padronResult, setPadronResult]       = useState(null);
     const [savingCliente, setSavingCliente]     = useState(false);
     const [clienteError, setClienteError]       = useState('');
     const [clienteSearch, setClienteSearch]     = useState('');
@@ -243,10 +122,12 @@ export default function Create({ auth, products, customers = [] }) {
     // Post-sale modal
     const [postSale, setPostSale]         = useState(null);  // sale object returned from server
     const [postSaleOpen, setPostSaleOpen] = useState(false);
-    const [printMode, setPrintMode]       = useState('80mm'); // '80mm' | '57mm'
-    const [printView, setPrintView]       = useState('actions'); // 'actions' | 'print'
+    const [printMode, setPrintMode]       = useState(() => localStorage.getItem('artdent_ticket_format') || '80mm');
+    const [printView, setPrintView]       = useState('actions'); // 'actions' | 'print' (kept for WhatsApp flow compat)
     const [waPhone, setWaPhone]           = useState('');
     const [waStep, setWaStep]             = useState('actions'); // 'actions' | 'phone'
+    const [waLoading, setWaLoading]       = useState(false);
+    const [pdfUrl, setPdfUrl]             = useState(null);
 
     // ── Derived ──────────────────────────────────────────────
     const filteredProducts = useMemo(() => {
@@ -264,7 +145,7 @@ export default function Create({ auth, products, customers = [] }) {
         cart.forEach(item => {
             const lineTotal = item.total;
             total += lineTotal;
-            if (item.tax_rate > 0 && !['C', 'X'].includes(receiptType)) {
+            if (item.tax_rate > 0 && ['A', 'B', 'NCA', 'NDA', 'NCB', 'NDB'].includes(receiptType)) {
                 const lineNeto = lineTotal / (1 + item.tax_rate);
                 neto += lineNeto;
                 iva  += lineTotal - lineNeto;
@@ -386,6 +267,7 @@ export default function Create({ auth, products, customers = [] }) {
                 setPrintView('actions');
                 setWaStep('actions');
                 setWaPhone('');
+                setPdfUrl(null);
                 setPostSaleOpen(true);
             },
             onError: (errs) => {
@@ -398,7 +280,7 @@ export default function Create({ auth, products, customers = [] }) {
     // ── Post-sale actions ─────────────────────────────────────
     const handleExportPDF = () => {
         if (!postSale) return;
-        const el = document.getElementById('postsale-a4');
+        const el = document.getElementById('print-zone');
         if (!el) return;
         const win = window.open('', '_blank');
         win.document.write(`<!DOCTYPE html><html><head>
@@ -416,38 +298,97 @@ export default function Create({ auth, products, customers = [] }) {
 
     const handleShare = async () => {
         if (!postSale) return;
-        const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
-        const text = `🦷 *ArtDent* — Comprobante ${postSale.sale_number}\nTotal: $${Number(postSale.total).toLocaleString('es-AR')}\nFecha: ${new Date().toLocaleDateString('es-AR')}`;
+        const el = document.getElementById('print-zone');
+        if (!el) return;
 
-        if (isMobile && navigator.share) {
-            try { await navigator.share({ title: 'Comprobante ArtDent', text }); } catch {}
-            return;
+        setWaLoading(true);
+        try {
+            const html = `<!DOCTYPE html><html><head>
+                <title>ArtDent — ${postSale.sale_number || 'Comprobante'}</title>
+                <base href="${window.location.origin}">
+                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
+                <style>
+                    @page { size: A4; margin: 0; }
+                    body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                </style>
+                </head><body>${el.outerHTML}</body></html>`;
+
+            const res = await axios.post(`/sales/${postSale.id}/generate-pdf`, { html });
+            setPdfUrl(res.data.url);
+            setWaStep('phone');
+        } catch (e) {
+            alert('Error al generar PDF: ' + (e.response?.data?.message || e.message));
+        } finally {
+            setWaLoading(false);
         }
-        // Desktop → WhatsApp
-        setWaStep('phone');
     };
 
     const handleSendWhatsApp = () => {
         if (!postSale) return;
         const phone = waPhone.replace(/\D/g, '');
-        const text  = encodeURIComponent(
-            `🦷 *ArtDent* — Comprobante ${postSale.sale_number}\n` +
-            `Cliente: ${postSale.customer_name || 'Consumidor Final'}\n` +
-            `Total: $${Number(postSale.total).toLocaleString('es-AR')}\n` +
-            `Fecha: ${new Date().toLocaleDateString('es-AR')}\n\n` +
-            `_ArtDent Laboratorio Odontológico_`
-        );
-        window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+
+        const vars = {
+            '{empresa}': company?.name || company?.fantasy_name || 'ArtDent',
+            '{numero}':  postSale.sale_number || '',
+            '{cliente}': postSale.customer_name || 'Consumidor Final',
+            '{total}':   `$${Number(postSale.total).toLocaleString('es-AR')}`,
+            '{fecha}':   new Date().toLocaleDateString('es-AR'),
+            '{link}':    pdfUrl || '',
+        };
+
+        const defaultTemplate =
+            `🦷 *{empresa}* — Comprobante {numero}\n` +
+            `Cliente: {cliente}\n` +
+            `Total: {total}\n` +
+            `Fecha: {fecha}` +
+            (pdfUrl ? `\n\n📄 Ver comprobante: {link}` : '');
+
+        const template = company?.whatsapp_message_template || defaultTemplate;
+        const text = template.replace(/\{empresa\}|\{numero\}|\{cliente\}|\{total\}|\{fecha\}|\{link\}/g, m => vars[m] ?? m);
+
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     const handlePrint = async () => {
         if (!postSale) return;
-        const el = document.getElementById('postsale-ticket');
+        const el = document.getElementById('print-zone');
         if (!el) return;
-        const html = `<!DOCTYPE html><html><head>
-            <base href="${window.location.origin}">
-            <style>@page{margin:0;size:auto}body{margin:0;background:#fff;-webkit-print-color-adjust:exact}</style>
-            </head><body>${el.outerHTML}</body></html>`;
+
+        const isA4 = printMode === 'a4';
+        const is57 = printMode === '57mm';
+
+        const pageSize = isA4 ? 'A4' : 'auto';
+        const zoneWidth = isA4 ? '210mm' : is57 ? '180px' : '260px';
+
+        const html = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>ArtDent — ${postSale.sale_number || 'Comprobante'}</title>
+                <base href="${window.location.origin}">
+                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
+                <style>
+                    @page { margin: 0; size: ${pageSize}; }
+                    * { box-sizing: border-box; }
+                    body {
+                        margin: 0; padding: 0;
+                        background: white;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    #print-zone {
+                        ${zoneWidth ? `width: ${zoneWidth} !important; max-width: ${zoneWidth} !important;` : ''}
+                        box-shadow: none !important;
+                        margin: 0 !important;
+                        /* El Electron captura a 388px en térmicos de 57mm. El HTML es de 180px base */
+                        ${!isA4 ? `zoom: ${is57 ? 388/180 : 576/260}; transform-origin: top left; background: #fff !important;` : ''}
+                    }
+                    img { display: block; }
+                </style>
+            </head>
+            <body>${el.outerHTML}</body>
+        </html>`;
+
         try {
             const res = await fetch('http://localhost:1234/print', {
                 method: 'POST',
@@ -464,8 +405,7 @@ export default function Create({ auth, products, customers = [] }) {
         setPostSaleOpen(false);
         setPostSale(null);
         clearCart();
-        // navegar al index de ventas
-        router.visit(route('sales.index'));
+        router.visit(route('sales.create'));
     };
 
     // ── Alta rápida ──────────────────────────────────────────
@@ -507,13 +447,44 @@ export default function Create({ auth, products, customers = [] }) {
             setCustomerId(String(c.id));
             setCustomerName(c.name);
             setAltaClienteOpen(false);
-            setNewCliente({ name: '', phone: '', dni: '' });
+            setNewCliente({ name: '', phone: '', dni: '', cuit: '', iva_condition: 'consumidor_final', address: '' });
+            setPadronResult(null);
             setClienteOpen(false);
         } catch (e) {
             setClienteError(e.response?.data?.message || 'Error al crear cliente');
         } finally {
             setSavingCliente(false);
         }
+    };
+
+    // ── Padrón ARCA lookup ───────────────────────────────────
+    const handlePadronLookup = async () => {
+        const cuit = newCliente.cuit.replace(/\D/g, '');
+        if (cuit.length !== 11) { setClienteError('El CUIT debe tener 11 dígitos.'); return; }
+        setPadronLoading(true);
+        setClienteError('');
+        setPadronResult(null);
+        try {
+            const res = await axios.get(route('padron.lookup', { cuit }), { headers: { Accept: 'application/json' } });
+            const d = res.data.data;
+            setPadronResult(d);
+            setNewCliente(p => ({
+                ...p,
+                name: d.razon_social || p.name,
+                address: d.direccion || p.address,
+                iva_condition: d.condicion_iva || p.iva_condition,
+            }));
+        } catch (e) {
+            setClienteError(e.response?.data?.error || 'No se encontró el CUIT en el padrón ARCA.');
+        } finally {
+            setPadronLoading(false);
+        }
+    };
+
+    // Persiste el formato de ticket en localStorage
+    const savePrintMode = (mode) => {
+        setPrintMode(mode);
+        localStorage.setItem('artdent_ticket_format', mode);
     };
 
     // ── Input styles (inline, compatibles con light/dark) ────
@@ -566,22 +537,11 @@ export default function Create({ auth, products, customers = [] }) {
                 </button>
 
                 {/* Tipo comprobante */}
-                <div className="relative">
-                    <select
-                        value={receiptType}
-                        onChange={e => setReceiptType(e.target.value)}
-                        className="w-full appearance-none outline-none font-bold cursor-pointer"
-                        style={{ ...inputStyle, padding: '9px 32px 9px 12px', fontSize: 13 }}
-                    >
-                        {TIPOS.map(t => (
-                            <option key={t.id} value={t.id}>{t.id} — {t.label} ({t.desc})</option>
-                        ))}
-                    </select>
-                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                        width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 4l4 4 4-4" stroke={D.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                </div>
+                <SearchableSelect
+                    value={receiptType}
+                    onChange={v => setReceiptType(v)}
+                    options={TIPOS.map(t => ({ value: t.id, label: `${t.id} — ${t.label} (${t.desc})` }))}
+                />
             </div>
 
             {/* Items */}
@@ -641,13 +601,13 @@ export default function Create({ auth, products, customers = [] }) {
                 <div className="px-4 pt-3 pb-4 flex-shrink-0 space-y-2"
                     style={{ borderTop: `1px solid ${D.divider}` }}>
                     <div className="space-y-1 text-[11.5px]">
-                        {['A', 'B'].includes(receiptType) && (
+                        {['A', 'B', 'NCA', 'NDA', 'NCB', 'NDB'].includes(receiptType) && (
                             <div className="flex justify-between">
                                 <span style={{ color: D.muted }}>Subtotal neto</span>
                                 <span className="font-semibold" style={{ color: D.text }}>${fmt(totals.neto)}</span>
                             </div>
                         )}
-                        {totals.iva > 0 && !['C', 'X'].includes(receiptType) && (
+                        {totals.iva > 0 && ['A', 'B', 'NCA', 'NDA', 'NCB', 'NDB'].includes(receiptType) && (
                             <div className="flex justify-between">
                                 <span style={{ color: D.muted }}>IVA 21%</span>
                                 <span className="font-semibold" style={{ color: D.text }}>${fmt(totals.iva)}</span>
@@ -684,13 +644,14 @@ export default function Create({ auth, products, customers = [] }) {
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title="Facturar POS" />
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
             {/*
                 Full-viewport container. Ocupa todo el espacio después del nav (top-16 = 64px).
                 En desktop también compensa el sidebar (left-64 / left-20).
             */}
             <div
-                className={`fixed inset-0 top-16 z-[5] flex flex-col lg:flex-row overflow-hidden transition-all duration-300
+                className={`fixed top-16 right-0 left-0 bottom-14 lg:bottom-0 z-[5] flex flex-col lg:flex-row overflow-hidden transition-all duration-300
                     ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'}
                 `}
                 style={{ background: D.surface }}
@@ -766,7 +727,7 @@ export default function Create({ auth, products, customers = [] }) {
             <div className="lg:hidden">
                 <button
                     onClick={() => setCartOpen(true)}
-                    className="fixed bottom-6 right-5 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-transform"
+                    className="fixed bottom-[76px] right-5 z-[56] w-14 h-14 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-transform"
                     style={{ background: G.success, boxShadow: `0 8px 24px ${B.green}55` }}
                 >
                     <Badge count={itemCount} color={B.blue}>
@@ -968,6 +929,45 @@ export default function Create({ auth, products, customers = [] }) {
                         </button>
 
                         <div className="space-y-3">
+                            {/* CUIT + Padrón */}
+                            <div>
+                                <label className="block text-[10.5px] font-bold tracking-widest mb-1" style={{ color: D.label }}>
+                                    CUIT
+                                </label>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <input
+                                        type="text"
+                                        value={newCliente.cuit}
+                                        onChange={e => { setNewCliente(p => ({ ...p, cuit: e.target.value })); setPadronResult(null); }}
+                                        placeholder="Sin guiones (11 dígitos)"
+                                        className="outline-none"
+                                        style={{ ...inputStyle, flex: 1 }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handlePadronLookup}
+                                        disabled={padronLoading}
+                                        style={{
+                                            padding: '0 12px', borderRadius: 11, fontSize: 12, fontWeight: 700,
+                                            background: D.accent, color: '#fff', border: 'none', cursor: padronLoading ? 'not-allowed' : 'pointer',
+                                            opacity: padronLoading ? 0.6 : 1, whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {padronLoading ? '…' : 'Buscar ARCA'}
+                                    </button>
+                                </div>
+                                {padronResult && (
+                                    <div style={{ marginTop: 6, padding: '6px 10px', borderRadius: 8, background: D.inputBorder + '33', fontSize: 11, lineHeight: 1.5 }}>
+                                        <span style={{ fontWeight: 700, color: D.text }}>{padronResult.razon_social}</span>
+                                        <span style={{ color: D.muted }}> · {padronResult.condicion_iva_label}</span>
+                                        {padronResult.estado && padronResult.estado !== 'ACTIVO' && (
+                                            <span style={{ color: '#f59e0b', fontWeight: 700 }}> · {padronResult.estado}</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Nombre */}
                             <div>
                                 <label className="block text-[10.5px] font-bold tracking-widest mb-1" style={{ color: D.label }}>
                                     NOMBRE *
@@ -982,6 +982,24 @@ export default function Create({ auth, products, customers = [] }) {
                                     autoFocus
                                 />
                             </div>
+
+                            {/* Condición IVA */}
+                            <div>
+                                <label className="block text-[10.5px] font-bold tracking-widest mb-1" style={{ color: D.label }}>
+                                    CONDICIÓN IVA
+                                </label>
+                                <SearchableSelect
+                                    value={newCliente.iva_condition}
+                                    onChange={v => setNewCliente(p => ({ ...p, iva_condition: v }))}
+                                    options={[
+                                        { value: 'consumidor_final', label: 'Consumidor Final' },
+                                        { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+                                        { value: 'monotributista', label: 'Monotributista' },
+                                        { value: 'exento', label: 'Exento' },
+                                    ]}
+                                />
+                            </div>
+
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block text-[10.5px] font-bold tracking-widest mb-1" style={{ color: D.label }}>
@@ -1182,25 +1200,16 @@ export default function Create({ auth, products, customers = [] }) {
                         </div>
                         <div className="w-[100px]">
                             <label className="block text-[11px] font-bold tracking-widest mb-1.5" style={{ color: D.label }}>IVA</label>
-                            <div className="relative">
-                                <select value={newProd.tax_rate}
-                                    onChange={e => setNewProd({ ...newProd, tax_rate: e.target.value })}
-                                    className="w-full outline-none appearance-none"
-                                    style={{
-                                        padding: '10px 28px 10px 12px', borderRadius: 11,
-                                        border: `1.5px solid ${D.inputBorder}`,
-                                        background: D.input, color: D.text, fontSize: 13.5, fontFamily: 'inherit',
-                                    }}>
-                                    <option value="0">0%</option>
-                                    <option value="10.5">10.5%</option>
-                                    <option value="21">21%</option>
-                                    <option value="27">27%</option>
-                                </select>
-                                <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                                    width="11" height="11" viewBox="0 0 12 12" fill="none">
-                                    <path d="M2 4l4 4 4-4" stroke={D.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </div>
+                            <SearchableSelect
+                                value={String(newProd.tax_rate)}
+                                onChange={v => setNewProd({ ...newProd, tax_rate: v })}
+                                options={[
+                                    { value: '0', label: '0%' },
+                                    { value: '10.5', label: '10.5%' },
+                                    { value: '21', label: '21%' },
+                                    { value: '27', label: '27%' },
+                                ]}
+                            />
                         </div>
                     </div>
                 </div>
@@ -1281,52 +1290,76 @@ export default function Create({ auth, products, customers = [] }) {
                                         </button>
 
                                         {/* COMPARTIR */}
-                                        <button onClick={handleShare} style={{
+                                        <button onClick={handleShare} disabled={waLoading} style={{
                                             display:'flex', alignItems:'center', gap:14,
                                             padding:'14px 16px', borderRadius:14,
                                             border:`1.5px solid ${isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)'}`,
                                             background: isDark?'rgba(255,255,255,0.04)':'#f8fafc',
-                                            cursor:'pointer', fontFamily:'inherit', textAlign:'left', width:'100%',
+                                            cursor: waLoading ? 'not-allowed' : 'pointer',
+                                            opacity: waLoading ? 0.7 : 1,
+                                            fontFamily:'inherit', textAlign:'left', width:'100%',
                                             transition:'all .13s',
                                         }}
-                                            onMouseEnter={e=>{e.currentTarget.style.background=`rgba(90,173,156,0.08)`;e.currentTarget.style.borderColor=AD.green}}
-                                            onMouseLeave={e=>{e.currentTarget.style.background=isDark?'rgba(255,255,255,0.04)':'#f8fafc';e.currentTarget.style.borderColor=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)'}}
+                                            onMouseEnter={e=>{ if (!waLoading) { e.currentTarget.style.background=`rgba(90,173,156,0.08)`;e.currentTarget.style.borderColor=AD.green; }}}
+                                            onMouseLeave={e=>{ e.currentTarget.style.background=isDark?'rgba(255,255,255,0.04)':'#f8fafc';e.currentTarget.style.borderColor=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)'; }}
                                         >
                                             <div style={{ width:38, height:38, borderRadius:10, background:`rgba(90,173,156,0.13)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                                {isMobileDevice ? <Share2 size={19} color={AD.green} /> : <MessageCircle size={19} color={AD.green} />}
+                                                {waLoading
+                                                    ? <Loader2 size={19} color={AD.green} style={{ animation:'spin 1s linear infinite' }} />
+                                                    : isMobileDevice ? <Share2 size={19} color={AD.green} /> : <MessageCircle size={19} color={AD.green} />
+                                                }
                                             </div>
                                             <div style={{ flex:1 }}>
                                                 <p style={{ margin:0, fontWeight:700, fontSize:13, color: isDark?'#e2e8f0':'#1e293b' }}>
                                                     {isMobileDevice ? 'Compartir' : 'Enviar por WhatsApp'}
                                                 </p>
                                                 <p style={{ margin:'2px 0 0', fontSize:11, color: isDark?'#64748b':'#94a3b8' }}>
-                                                    {isMobileDevice ? 'Abre opciones del sistema' : 'Genera link de WhatsApp'}
+                                                    {waLoading ? 'Generando PDF…' : isMobileDevice ? 'Abre opciones del sistema' : 'Genera link de WhatsApp'}
                                                 </p>
                                             </div>
-                                            <ChevronRight size={15} color={isDark?'#475569':'#cbd5e1'} />
+                                            {!waLoading && <ChevronRight size={15} color={isDark?'#475569':'#cbd5e1'} />}
                                         </button>
 
-                                        {/* IMPRIMIR */}
-                                        <button onClick={() => setPrintView('print')} style={{
-                                            display:'flex', alignItems:'center', gap:14,
-                                            padding:'14px 16px', borderRadius:14,
-                                            border:`1.5px solid ${isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)'}`,
-                                            background: isDark?'rgba(255,255,255,0.04)':'#f8fafc',
-                                            cursor:'pointer', fontFamily:'inherit', textAlign:'left', width:'100%',
-                                            transition:'all .13s',
-                                        }}
-                                            onMouseEnter={e=>{e.currentTarget.style.background=`rgba(73,148,156,0.08)`;e.currentTarget.style.borderColor=AD.teal}}
-                                            onMouseLeave={e=>{e.currentTarget.style.background=isDark?'rgba(255,255,255,0.04)':'#f8fafc';e.currentTarget.style.borderColor=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)'}}
-                                        >
-                                            <div style={{ width:38, height:38, borderRadius:10, background:`rgba(73,148,156,0.13)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                                <Printer size={19} color={AD.teal} />
+                                        {/* IMPRIMIR — directo con formato guardado */}
+                                        <div style={{ display:'flex', gap:8 }}>
+                                            <button onClick={handlePrint} style={{
+                                                flex:1, display:'flex', alignItems:'center', gap:14,
+                                                padding:'14px 16px', borderRadius:14,
+                                                border:`1.5px solid ${isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)'}`,
+                                                background: isDark?'rgba(255,255,255,0.04)':'#f8fafc',
+                                                cursor:'pointer', fontFamily:'inherit', textAlign:'left',
+                                                transition:'all .13s',
+                                            }}
+                                                onMouseEnter={e=>{e.currentTarget.style.background=`rgba(73,148,156,0.08)`;e.currentTarget.style.borderColor=AD.teal}}
+                                                onMouseLeave={e=>{e.currentTarget.style.background=isDark?'rgba(255,255,255,0.04)':'#f8fafc';e.currentTarget.style.borderColor=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)'}}
+                                            >
+                                                <div style={{ width:38, height:38, borderRadius:10, background:`rgba(73,148,156,0.13)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                                    <Printer size={19} color={AD.teal} />
+                                                </div>
+                                                <div style={{ flex:1 }}>
+                                                    <p style={{ margin:0, fontWeight:700, fontSize:13, color: isDark?'#e2e8f0':'#1e293b' }}>Imprimir ticket</p>
+                                                    <p style={{ margin:'2px 0 0', fontSize:11, color: isDark?'#64748b':'#94a3b8' }}>
+                                                        Formato: <strong style={{ color: AD.teal }}>{printMode}</strong> · vía ArtDent Print
+                                                    </p>
+                                                </div>
+                                                <Printer size={15} color={AD.teal} />
+                                            </button>
+                                            {/* Toggle rápido 80mm / 57mm */}
+                                            <div style={{ display:'flex', flexDirection:'column', gap:4, flexShrink:0 }}>
+                                                {['80mm','57mm'].map(m => (
+                                                    <button key={m} onClick={() => savePrintMode(m)} style={{
+                                                        padding:'0 10px', height:'100%', maxHeight:28, borderRadius:8,
+                                                        border:`1.5px solid ${printMode===m ? AD.teal : (isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)')}`,
+                                                        background: printMode===m ? `rgba(73,148,156,0.15)` : 'transparent',
+                                                        color: printMode===m ? AD.teal : (isDark?'#64748b':'#94a3b8'),
+                                                        fontWeight:700, fontSize:10, cursor:'pointer', fontFamily:'inherit',
+                                                        transition:'all .12s',
+                                                    }}>
+                                                        {m}
+                                                    </button>
+                                                ))}
                                             </div>
-                                            <div style={{ flex:1 }}>
-                                                <p style={{ margin:0, fontWeight:700, fontSize:13, color: isDark?'#e2e8f0':'#1e293b' }}>Imprimir ticket</p>
-                                                <p style={{ margin:'2px 0 0', fontSize:11, color: isDark?'#64748b':'#94a3b8' }}>Térmica 80mm o 57mm vía ArtDent</p>
-                                            </div>
-                                            <ChevronRight size={15} color={isDark?'#475569':'#cbd5e1'} />
-                                        </button>
+                                        </div>
                                     </div>
 
                                     {/* Botón cerrar / ir a ventas */}
@@ -1343,52 +1376,13 @@ export default function Create({ auth, products, customers = [] }) {
                                 </>
                             )}
 
-                            {/* ── Vista IMPRIMIR ── */}
-                            {printView === 'print' && (
-                                <>
-                                    <div style={{ padding:'16px 20px 14px', borderBottom:`1px solid ${isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)'}`, display:'flex', alignItems:'center', gap:12 }}>
-                                        <button onClick={() => setPrintView('actions')} style={{ background:'none', border:'none', cursor:'pointer', color: isDark?'#94a3b8':'#64748b', padding:0 }}>
-                                            <ChevronRight size={20} style={{ transform:'rotate(180deg)' }} />
-                                        </button>
-                                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                                            <Printer size={18} color={AD.teal} />
-                                            <p style={{ margin:0, fontWeight:900, fontSize:15, color: isDark?'#e2e8f0':'#1e293b' }}>Imprimir ticket</p>
-                                        </div>
-                                    </div>
-                                    <div style={{ padding:'18px 20px' }}>
-                                        {/* Selector 80mm / 57mm */}
-                                        <p style={{ margin:'0 0 10px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.7, color: isDark?'#64748b':'#94a3b8' }}>Ancho de papel</p>
-                                        <div style={{ display:'flex', gap:10, marginBottom:20 }}>
-                                            {['80mm','57mm'].map(m => (
-                                                <button key={m} onClick={() => setPrintMode(m)} style={{
-                                                    flex:1, padding:'12px 0', borderRadius:12,
-                                                    border:`2px solid ${printMode===m ? AD.teal : (isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)')}`,
-                                                    background: printMode===m ? 'rgba(73,148,156,0.13)' : 'transparent',
-                                                    color: printMode===m ? AD.teal : (isDark?'#94a3b8':'#64748b'),
-                                                    fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit',
-                                                    transition:'all .13s',
-                                                }}>
-                                                    🖨️ {m}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        {/* Hidden ticket para captura */}
-                                        <div style={{ position:'absolute', left:-9999, top:-9999, pointerEvents:'none' }}>
-                                            <div id="postsale-ticket">
-                                                <TicketBase sale={postSale} widthMM={printMode==='57mm'?57:80} />
-                                            </div>
-                                        </div>
-                                        <button onClick={handlePrint} style={{
-                                            width:'100%', padding:'13px', borderRadius:13, border:'none',
-                                            background:`linear-gradient(135deg, ${AD.teal}, ${AD.green})`,
-                                            color:'#fff', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit',
-                                            boxShadow:'0 4px 14px rgba(73,148,156,0.30)',
-                                        }}>
-                                            Imprimir {printMode}
-                                        </button>
-                                    </div>
-                                </>
-                            )}
+                            {/* Ticket oculto — siempre renderizado para que handlePrint() lo encuentre */}
+                            <div style={{ position:'absolute', left:-9999, top:-9999, pointerEvents:'none' }}>
+                                {printMode === '57mm'
+                                    ? <Ticket57 sale={{ ...postSale, company, sale_items: postSale.sale_items || postSale.items }} />
+                                    : <Ticket80 sale={{ ...postSale, company, sale_items: postSale.sale_items || postSale.items }} />
+                                }
+                            </div>
 
                             {/* ── Vista WHATSAPP (solo desktop) ── */}
                             {waStep === 'phone' && printView === 'actions' && (
@@ -1449,7 +1443,7 @@ export default function Create({ auth, products, customers = [] }) {
 
                             {/* Ticket A4 oculto para PDF export */}
                             <div style={{ position:'absolute', left:-9999, top:-9999, pointerEvents:'none' }}>
-                                <FacturaA4 sale={postSale} />
+                                <FacturaA4 sale={{ ...postSale, company, sale_items: postSale.sale_items || postSale.items }} />
                             </div>
                         </div>
                     </div>

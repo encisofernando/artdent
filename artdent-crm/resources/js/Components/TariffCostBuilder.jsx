@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { Plus, Trash2, Box, PenTool, Truck, Hammer, Hexagon } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const TYPE_ICONS = {
     'material': { icon: Box, color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -114,17 +115,17 @@ export default function TariffCostBuilder({ costs, onChange }) {
                                             <div className={`absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded-md ${iconBg} ${iconColor}`}>
                                                 <Icon size={12} />
                                             </div>
-                                            <select
+                                            <SearchableSelect
                                                 value={cost.type}
-                                                onChange={e => updateCost(idx, 'type', e.target.value)}
-                                                className={`${inputClass} pl-8 py-1.5`}
-                                            >
-                                                <option value="material">Material</option>
-                                                <option value="mano_obra">Mano de Obra</option>
-                                                <option value="herramienta">Herramienta</option>
-                                                <option value="logistica">Logística</option>
-                                                <option value="otros">Otros / Varios</option>
-                                            </select>
+                                                onChange={v => updateCost(idx, 'type', v)}
+                                                options={[
+                                                    { value: 'material', label: 'Material' },
+                                                    { value: 'mano_obra', label: 'Mano de Obra' },
+                                                    { value: 'herramienta', label: 'Herramienta' },
+                                                    { value: 'logistica', label: 'Logística' },
+                                                    { value: 'otros', label: 'Otros / Varios' },
+                                                ]}
+                                            />
                                         </div>
                                     </div>
                                     <div className="md:col-span-5">

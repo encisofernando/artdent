@@ -70,6 +70,7 @@ class EcommerceOrderController extends Controller
     public function show(EcommerceOrder $ecommerceOrder)
     {
         $ecommerceOrder->load([
+            'company',
             'customer',
             'coupon',
             'ecommerce_order_items.product.product_images',

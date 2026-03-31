@@ -1,17 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Trash2, Power, Users } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Power, Users, DollarSign } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 
-export default function Index({ auth, items, filters }) {
+const fmtMoney = (value) => Number(value || 0).toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
+
+export default function Index({ auth, items, filters, summary }) {
     const { isDark } = useTheme();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
     const [status, setStatus] = useState(filters?.status || 'all');
     const [debouncedSearch, setDebouncedSearch] = useState(search);
+    const hasPermission = (permission) => auth.user?.is_super_admin || auth.user?.permissions?.includes(permission);
+    const canCreate = hasPermission('staff.create');
+    const canEdit = hasPermission('staff.edit');
+    const canDelete = hasPermission('staff.delete');
+    const canSeeAttendances = hasPermission('staff.view');
+    const canSeeReceipts = hasPermission('staff.edit');
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -48,6 +59,12 @@ export default function Index({ auth, items, filters }) {
         green: "#5AAD9C",
         teal: "#49949C"
     };
+    const summaryCards = [
+        { label: 'Colaboradores', value: summary?.total ?? 0, accent: B.blue, icon: Users },
+        { label: 'Activos', value: summary?.active ?? 0, accent: B.green, icon: Power },
+        { label: 'Inactivos', value: summary?.inactive ?? 0, accent: '#ef4444', icon: Power },
+        { label: 'Promedio por hora', value: `$${fmtMoney(summary?.average_hourly_rate)}`, accent: B.teal, icon: DollarSign },
+    ];
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -104,16 +121,41 @@ export default function Index({ auth, items, filters }) {
                             ))}
                         </div>
 
-                        <Link href={route('collaborators.create')} className="w-full sm:w-auto">
-                            <Button
-                                className="w-full text-white border-none shadow-md hover:shadow-lg transition-all rounded-xl"
-                                style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
-                            >
-                                <Plus className="mr-2" size={18} />
-                                Nuevo Colaborador
-                            </Button>
-                        </Link>
+                        {canCreate && (
+                            <Link href={route('collaborators.create')} className="w-full sm:w-auto">
+                                <Button
+                                    className="w-full text-white border-none shadow-md hover:shadow-lg transition-all rounded-xl"
+                                    style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
+                                >
+                                    <Plus className="mr-2" size={18} />
+                                    Nuevo Colaborador
+                                </Button>
+                            </Link>
+                        )}
                     </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {summaryCards.map(({ label, value, accent, icon: Icon }) => (
+                        <div
+                            key={label}
+                            className={`rounded-2xl border p-4 shadow-sm ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/70'}`}
+                        >
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                        {label}
+                                    </p>
+                                    <p className={`mt-2 text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                        {value}
+                                    </p>
+                                </div>
+                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
+                                    <Icon size={20} style={{ color: accent }} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
                 {items?.total > 0 && (
@@ -141,7 +183,7 @@ export default function Index({ auth, items, filters }) {
                         <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {search ? 'Probá con otros términos de búsqueda' : 'Comenzá agregando el primer colaborador al equipo'}
                         </p>
-                        {!search && (
+                        {!search && canCreate && (
                             <Link href={route('collaborators.create')}>
                                 <Button style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} className="text-white border-none rounded-xl">
                                     <Plus className="mr-2" size={16} />
@@ -164,15 +206,17 @@ export default function Index({ auth, items, filters }) {
                                         <div className="px-2 py-0.5 rounded border border-red-500/40 bg-red-500/20 text-red-500 font-bold text-[10px] tracking-wider">
                                             INACTIVO
                                         </div>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => toggleStatus(item)}
-                                            style={{ background: `linear-gradient(90deg, ${B.green}, ${B.teal})` }}
-                                            className="text-white border-none rounded-lg shadow-lg font-bold text-xs"
-                                        >
-                                            <Power className="mr-1.5" size={14} />
-                                            Activar
-                                        </Button>
+                                        {canEdit && (
+                                            <Button
+                                                size="sm"
+                                                onClick={() => toggleStatus(item)}
+                                                style={{ background: `linear-gradient(90deg, ${B.green}, ${B.teal})` }}
+                                                className="text-white border-none rounded-lg shadow-lg font-bold text-xs"
+                                            >
+                                                <Power className="mr-1.5" size={14} />
+                                                Activar
+                                            </Button>
+                                        )}
                                     </div>
                                 )}
 
@@ -196,22 +240,28 @@ export default function Index({ auth, items, filters }) {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 relative z-20">
-                                        <Link href={route('collaborators.edit', item.id)}>
-                                            <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-                                                ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200'}
-                                            `}>
-                                                <Edit size={14} />
-                                            </button>
-                                        </Link>
-                                        <button 
-                                            onClick={() => handleDelete(item.id)}
-                                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-                                            ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}
-                                        `}>
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
+                                    {(canEdit || canDelete) && (
+                                        <div className="flex gap-2 relative z-20">
+                                            {canEdit && (
+                                                <Link href={route('collaborators.edit', item.id)}>
+                                                    <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                                                        ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200'}
+                                                    `}>
+                                                        <Edit size={14} />
+                                                    </button>
+                                                </Link>
+                                            )}
+                                            {canDelete && (
+                                                <button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                                                    ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}
+                                                `}>
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="pt-2">
@@ -235,6 +285,27 @@ export default function Index({ auth, items, filters }) {
                                         </span>
                                     </div>
                                 </div>
+
+                                {(canSeeAttendances || canSeeReceipts) && (
+                                    <div className={`mt-4 pt-4 border-t flex flex-wrap gap-2 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                        {canSeeAttendances && (
+                                            <Link
+                                                href={route('collaborator-attendances.index', { collaborator_id: item.id })}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'}`}
+                                            >
+                                                Ver asistencias
+                                            </Link>
+                                        )}
+                                        {canSeeReceipts && (
+                                            <Link
+                                                href={route('collaborator-receipts.index', { collaborator_id: item.id })}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-blue-950/30 text-blue-300 hover:text-white' : 'bg-blue-50 text-blue-600 hover:text-blue-700'}`}
+                                            >
+                                                Ver recibos
+                                            </Link>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

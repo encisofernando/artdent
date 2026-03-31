@@ -6,6 +6,8 @@ use App\Models\LabAccount;
 use App\Models\LabAccountMove;
 use App\Models\Dentist;
 use App\Models\PaymentMethod;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,11 @@ class LabAccountMoveController extends Controller
         $companyId = auth()->user()->company_id ?? 1;
 
         $search = $request->input('search');
+        $period = $request->input('period', 'week');
+        $from = $request->input('from');
+        $to = $request->input('to');
+
+        [$resolvedFrom, $resolvedTo] = $this->resolveDateRange($period, $from, $to);
 
         $query = LabAccountMove::with(['account.dentist', 'paymentMethod', 'user'])
             ->whereHas('account.dentist', function ($q) use ($companyId) {
@@ -36,16 +43,87 @@ class LabAccountMoveController extends Controller
             });
         }
 
+        $query->whereBetween('move_date', [
+            $resolvedFrom->toDateString(),
+            $resolvedTo->toDateString(),
+        ]);
+
         $moves = $query
             ->orderByDesc('move_date')
             ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
 
+        $debtors = LabAccount::with('dentist')
+            ->where('balance', '>', 0)
+            ->whereHas('dentist', function ($q) use ($companyId, $search) {
+                $q->where('company_id', $companyId);
+
+                if ($search) {
+                    $q->where(function ($dentistQuery) use ($search) {
+                        $dentistQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%");
+                    });
+                }
+            })
+            ->orderByDesc('balance')
+            ->get()
+            ->map(fn (LabAccount $account) => [
+                'id' => $account->id,
+                'balance' => (float) $account->balance,
+                'dentist' => $account->dentist ? [
+                    'id' => $account->dentist->id,
+                    'name' => $account->dentist->name,
+                    'last_name' => $account->dentist->last_name,
+                ] : null,
+            ])
+            ->values();
+
         return Inertia::render('LabAccountMove/Index', [
             'moves' => $moves,
-            'filters' => ['search' => $search]
+            'debtors' => $debtors,
+            'filters' => [
+                'search' => $search,
+                'period' => $period,
+                'from' => $resolvedFrom->toDateString(),
+                'to' => $resolvedTo->toDateString(),
+            ],
         ]);
+    }
+
+    private function resolveDateRange(string $period, ?string $from, ?string $to): array
+    {
+        $today = Carbon::today();
+
+        [$start, $end] = match ($period) {
+            'today' => [$today->copy(), $today->copy()],
+            'month' => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()],
+            'year' => [$today->copy()->startOfYear(), $today->copy()->endOfYear()],
+            'range' => [
+                $this->parseDateOrFallback($from, $today->copy()->startOfWeek(CarbonInterface::MONDAY)),
+                $this->parseDateOrFallback($to, $today->copy()->endOfWeek(CarbonInterface::SUNDAY)),
+            ],
+            default => [$today->copy()->startOfWeek(CarbonInterface::MONDAY), $today->copy()->endOfWeek(CarbonInterface::SUNDAY)],
+        };
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        return [$start, $end];
+    }
+
+    private function parseDateOrFallback(?string $value, Carbon $fallback): Carbon
+    {
+        if (! $value) {
+            return $fallback;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return $fallback;
+        }
     }
 
     /**

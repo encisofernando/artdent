@@ -3,15 +3,18 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
+import { ArrowLeft, Save, ExternalLink } from 'lucide-react';
 
-export default function Edit({ auth, item }) {
+export default function Edit({ auth, item, portalUrl }) {
     const { isDark } = useTheme();
     const { data, setData, put, processing, errors } = useForm({
         name: item.name || '',
         email: item.email || '',
         phone: item.phone || '',
         dni: item.dni || '',
+        cuit: item.cuit || '',
+        iva_condition: item.iva_condition || 'consumidor_final',
         address: item.address || '',
         city: item.city || '',
         province: item.province || '',
@@ -50,6 +53,14 @@ export default function Edit({ auth, item }) {
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {portalUrl && (
+                            <a href={portalUrl} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" className={`gap-2 ${isDark ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : ''}`}>
+                                    <ExternalLink size={14} />
+                                    Ver Portal
+                                </Button>
+                            </a>
+                        )}
                         <Link href={route('customers.index')}>
                             <Button variant="outline" className={isDark ? "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : ""}>
                                 <ArrowLeft className="mr-2" size={16} />
@@ -79,9 +90,22 @@ export default function Edit({ auth, item }) {
                                 {errors.name && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.name}</div>}
                             </div>
 
-                            {/* DNI/CUIT */}
+                            {/* CUIT */}
                             <div>
-                                <label className={labelClasses}>DNI / CUIT</label>
+                                <label className={labelClasses}>CUIT</label>
+                                <input
+                                    type="text"
+                                    value={data.cuit}
+                                    onChange={e => setData('cuit', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Sin guiones (11 dígitos)"
+                                />
+                                {errors.cuit && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.cuit}</div>}
+                            </div>
+
+                            {/* DNI */}
+                            <div>
+                                <label className={labelClasses}>DNI</label>
                                 <input
                                     type="text"
                                     value={data.dni}
@@ -90,6 +114,22 @@ export default function Edit({ auth, item }) {
                                     placeholder="Sin guiones ni espacios"
                                 />
                                 {errors.dni && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dni}</div>}
+                            </div>
+
+                            {/* Condición IVA */}
+                            <div>
+                                <label className={labelClasses}>Condición IVA</label>
+                                <SearchableSelect
+                                    value={data.iva_condition}
+                                    onChange={v => setData('iva_condition', v)}
+                                    options={[
+                                        { value: 'consumidor_final', label: 'Consumidor Final' },
+                                        { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+                                        { value: 'monotributista', label: 'Monotributista' },
+                                        { value: 'exento', label: 'Exento' },
+                                    ]}
+                                />
+                                {errors.iva_condition && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.iva_condition}</div>}
                             </div>
 
                             {/* Email */}

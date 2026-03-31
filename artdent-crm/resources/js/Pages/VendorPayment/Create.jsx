@@ -4,9 +4,12 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, CreditCard } from 'lucide-react';
+import { DatePicker, useD } from '@/Components/_appkit';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Create({ auth, vendors, paymentMethods }) {
     const { isDark } = useTheme();
+    const D = useD(isDark);
     const B = { blue: '#397B9C', teal: '#49949C' };
 
     const today = new Date().toISOString().split('T')[0];
@@ -63,11 +66,14 @@ export default function Create({ auth, vendors, paymentMethods }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div className="md:col-span-2">
                                 <label className={labelCls}>Proveedor *</label>
-                                <select value={data.vendor_id} onChange={e => setData('vendor_id', e.target.value)} className={inputCls} required>
-                                    <option value="">Seleccionar proveedor...</option>
-                                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                                </select>
-                                {errors.vendor_id && <p className="text-red-500 text-xs mt-1">{errors.vendor_id}</p>}
+                                <SearchableSelect
+                                    value={data.vendor_id}
+                                    onChange={v => setData('vendor_id', v)}
+                                    options={vendors.map(v => ({ value: String(v.id), label: v.name }))}
+                                    placeholder="Seleccionar proveedor..."
+                                    required
+                                    error={errors.vendor_id}
+                                />
                             </div>
 
                             <div>
@@ -85,22 +91,23 @@ export default function Create({ auth, vendors, paymentMethods }) {
 
                             <div>
                                 <label className={labelCls}>Fecha de Pago *</label>
-                                <input
-                                    type="date"
+                                <DatePicker
                                     value={data.payment_date}
-                                    onChange={e => setData('payment_date', e.target.value)}
+                                    onChange={v => setData('payment_date', v)}
                                     className={inputCls}
-                                    required
+                                    D={D}
                                 />
                                 {errors.payment_date && <p className="text-red-500 text-xs mt-1">{errors.payment_date}</p>}
                             </div>
 
                             <div>
                                 <label className={labelCls}>Método de Pago</label>
-                                <select value={data.payment_method_id} onChange={e => setData('payment_method_id', e.target.value)} className={inputCls}>
-                                    <option value="">Sin especificar</option>
-                                    {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    value={data.payment_method_id}
+                                    onChange={v => setData('payment_method_id', v)}
+                                    options={paymentMethods.map(m => ({ value: String(m.id), label: m.name }))}
+                                    placeholder="Sin especificar"
+                                />
                             </div>
 
                             <div>

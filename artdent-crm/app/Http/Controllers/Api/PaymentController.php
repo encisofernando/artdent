@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\NewEcommerceOrderEvent;
 use App\Http\Controllers\Controller;
 use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
@@ -83,6 +84,19 @@ class PaymentController extends Controller
             'pending' => "{$ecommerceUrl}/pedido/{$order->order_number}?mp=pending",
         ];
 
+        // Separate phone into area_code and number for better compatibility with MP
+        $fullPhone = preg_replace('/\D/', '', $order->shipping_phone ?? '');
+        $areaCode = '';
+        $number = $fullPhone;
+
+        if (strlen($fullPhone) >= 10) {
+            // Standard Argentina: last 7 or 8 digits as number, preceding as area code
+            // We use a safe heuristic: 3 digits for area code if it starts with 3 (like 370), 2 if 11, etc.
+            // Simplified: last 7 digits as number, the rest (up to 3-4) as area code.
+            $number = substr($fullPhone, -7);
+            $areaCode = substr($fullPhone, -10, 3);
+        }
+
         $payload = [
             'items' => $items,
             'external_reference' => $order->order_number,
@@ -90,8 +104,18 @@ class PaymentController extends Controller
             'notification_url' => "{$apiUrl}/api/payment/mp/webhook",
             'payer' => [
                 'name' => $order->shipping_name ?? '',
-                'phone' => ['number' => $order->shipping_phone ?? ''],
+                'phone' => [
+                    'area_code' => $areaCode,
+                    'number' => $number,
+                ],
+                'identification' => [
+                    'type' => strlen($order->guest_dni ?? '') > 8 ? 'CUIT' : 'DNI',
+                    'number' => preg_replace('/\D/', '', $order->guest_dni ?? ''),
+                ],
             ],
+            'binary_mode' => true, // Force immediate approval or rejection
+            'expires' => true,
+            'expiration_date_to' => now()->addHours(24)->toIso8601String(),
         ];
 
         if (! $isLocalhost) {
@@ -135,7 +159,7 @@ class PaymentController extends Controller
         Log::channel('mercadopago')->info('Webhook IPN received', [
             'type' => $request->input('type') ?? $request->input('topic'),
             'id' => $request->input('data.id') ?? $request->input('id'),
-            'request_id' => $request->header('x-request-id')
+            'request_id' => $request->header('x-request-id'),
         ]);
 
         $type = $request->input('type') ?? $request->input('topic');
@@ -154,15 +178,20 @@ class PaymentController extends Controller
             $ts = null;
             $v1 = null;
             foreach ($parts as $part) {
-                if (str_starts_with($part, 'ts=')) $ts = substr($part, 3);
-                if (str_starts_with($part, 'v1=')) $v1 = substr($part, 3);
+                if (str_starts_with($part, 'ts=')) {
+                    $ts = substr($part, 3);
+                }
+                if (str_starts_with($part, 'v1=')) {
+                    $v1 = substr($part, 3);
+                }
             }
 
             if ($ts && $v1) {
                 $manifest = "id:{$dataId};request-id:{$requestId};ts:{$ts};";
                 $hmac = hash_hmac('sha256', $manifest, $webhookSecret);
-                if (!hash_equals($hmac, $v1)) {
+                if (! hash_equals($hmac, $v1)) {
                     Log::channel('mercadopago')->warning('MercadoPago webhook invalid signature.', ['request_id' => $requestId, 'signature' => $signature]);
+
                     return response()->json(['message' => 'Invalid signature'], 403);
                 }
             }
@@ -227,20 +256,20 @@ class PaymentController extends Controller
                         $stockQuery = \App\Models\Stock::query()
                             ->where('product_id', $item->product_id)
                             ->where('warehouse_id', $warehouseId)
-                            ->when($item->variant_id, fn($q) => $q->where('variant_id', $item->variant_id), fn($q) => $q->whereNull('variant_id'));
-                        
+                            ->when($item->variant_id, fn ($q) => $q->where('variant_id', $item->variant_id), fn ($q) => $q->whereNull('variant_id'));
+
                         $stock = $stockQuery->first();
                         if ($stock) {
                             $stockIdsToLock[] = $stock->id;
                         }
                     }
 
-                    if (!empty($stockIdsToLock)) {
+                    if (! empty($stockIdsToLock)) {
                         $lockedStocks = \App\Models\Stock::whereIn('id', $stockIdsToLock)
                             ->lockForUpdate()
                             ->get()
                             ->keyBy('id');
-                            
+
                         // Verificamos si hay stock suficiente en los locks
                         foreach ($orderItems as $item) {
                             $stockId = null;
@@ -250,8 +279,8 @@ class PaymentController extends Controller
                                     break;
                                 }
                             }
-                            
-                            if (!$stockId || $lockedStocks[$stockId]->quantity < $item->quantity) {
+
+                            if (! $stockId || $lockedStocks[$stockId]->quantity < $item->quantity) {
                                 $hasSufficientStock = false;
                                 break;
                             }
@@ -265,7 +294,7 @@ class PaymentController extends Controller
                             \App\Models\Stock::query()
                                 ->where('product_id', $item->product_id)
                                 ->where('warehouse_id', $warehouseId)
-                                ->when($item->variant_id, fn($q) => $q->where('variant_id', $item->variant_id), fn($q) => $q->whereNull('variant_id'))
+                                ->when($item->variant_id, fn ($q) => $q->where('variant_id', $item->variant_id), fn ($q) => $q->whereNull('variant_id'))
                                 ->decrement('quantity', $item->quantity);
 
                             \App\Services\StockAlertService::checkAndNotify($item->product_id, $item->variant_id, $warehouseId);
@@ -288,6 +317,20 @@ class PaymentController extends Controller
                         'order_code' => $order->order_number,
                     ]);
 
+                    // Broadcast real-time notification to CRM dashboard
+                    try {
+                        NewEcommerceOrderEvent::dispatch($order);
+                    } catch (\Throwable $e) {
+                        Log::warning('Reverb broadcast failed: '.$e->getMessage());
+                    }
+
+                    // Auto-generate AFIP invoice for MercadoPago payments
+                    try {
+                        \App\Jobs\GenerateEcommerceAfipInvoiceJob::dispatch($order->id);
+                    } catch (\Throwable $e) {
+                        Log::channel('mercadopago')->error('Failed to dispatch AFIP invoice job: '.$e->getMessage());
+                    }
+
                     if ($order->customer_id) {
                         try {
                             \App\Jobs\SendWhatsAppNotification::dispatch(
@@ -295,12 +338,20 @@ class PaymentController extends Controller
                                 $order->company_id,
                                 'payment_approved',
                                 [
-                                    ['type' => 'text', 'text' => $order->order_number]
+                                    ['type' => 'text', 'text' => $order->order_number],
                                 ]
                             );
                         } catch (\Throwable $e) {
-                            Log::channel('mercadopago')->error('WA Job Error (Webhook): ' . $e->getMessage());
+                            Log::channel('mercadopago')->error('WA Job Error (Webhook): '.$e->getMessage());
                         }
+                    }
+                }
+
+                if ($paymentStatus === 'refunded' && $currentStatus !== 'refunded') {
+                    try {
+                        \App\Jobs\GenerateEcommerceCreditNoteJob::dispatch($order->id);
+                    } catch (\Throwable $e) {
+                        Log::channel('mercadopago')->error('Failed to dispatch credit note job: '.$e->getMessage());
                     }
                 }
 
@@ -308,15 +359,29 @@ class PaymentController extends Controller
                     'order' => $externalRef,
                     'mp_status' => $mpStatus,
                     'payment_status' => $paymentStatus,
-                    'payload' => $payment
+                    'payload' => $payment,
                 ]);
             });
         } catch (\Exception $e) {
             Log::channel('mercadopago')->error('MercadoPago webhook transaction failed.', [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
-                'external_reference' => $externalRef
+                'external_reference' => $externalRef,
             ]);
+
+            // Create a critical CRM notification for the admin
+            try {
+                CrmNotification::create([
+                    'type' => 'payment_error',
+                    'title' => 'Error crítico en Webhook de Mercado Pago',
+                    'body' => "No se pudo procesar el pago del pedido #{$externalRef}. Error: ".$e->getMessage(),
+                    'url' => $externalRef ? '/ecommerce-orders/search?q='.$externalRef : '/ecommerce-orders',
+                    'order_code' => $externalRef,
+                ]);
+            } catch (\Throwable $notifEx) {
+                Log::channel('mercadopago')->error('Failed to create CRM notification for webhook error: '.$notifEx->getMessage());
+            }
+
             return response()->json(['message' => 'Internal error'], 500);
         }
 

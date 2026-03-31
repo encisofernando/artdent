@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { http } from '../api/http'
+import SocialButtons from '../components/SocialButtons'
 
 export default function Register() {
   const { signIn } = useAuth()
@@ -32,13 +33,17 @@ export default function Register() {
 
     setIsSubmitting(true)
     try {
+      const cleanDoc = form.dni.replace(/\D/g, '')
+      const isCuit = cleanDoc.length === 11
+
       await http.post('/auth/register', {
         name: form.name,
         email: form.email,
         password: form.password,
         password_confirmation: form.password_confirmation,
         phone: form.phone || undefined,
-        dni: form.dni || undefined,
+        dni: !isCuit && cleanDoc ? cleanDoc : undefined,
+        cuit: isCuit ? cleanDoc : undefined,
         accepts_marketing: form.accepts_marketing,
       })
       await signIn(form.email, form.password)
@@ -61,7 +66,24 @@ export default function Register() {
       <h1 className="text-2xl font-bold text-gray-900">Crear cuenta</h1>
       <p className="mt-1 text-sm text-gray-500">Completá tus datos para registrarte en ArtDent.</p>
 
-      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+      {/* Social buttons */}
+      <div className="mt-6">
+        <SocialButtons
+          onSuccess={() => window.location.replace('/mi-cuenta')}
+          onError={(msg) => setError(msg)}
+        />
+      </div>
+
+      {/* Divider */}
+      <div className="relative my-6 flex items-center">
+        <div className="flex-grow border-t border-gray-200" />
+        <span className="mx-4 shrink-0 text-xs text-gray-400 font-medium uppercase tracking-wide">
+          o registrate con email
+        </span>
+        <div className="flex-grow border-t border-gray-200" />
+      </div>
+
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
           <label className={labelCls}>Nombre completo *</label>
           <input value={form.name} onChange={(e) => set('name', e.target.value)}

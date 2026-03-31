@@ -13,8 +13,9 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft, Download, Copy, Check, Trash2,
-    Send, CheckCircle2, XCircle, Clock, FileText,
+    Send, CheckCircle2, XCircle, Clock, FileText, Mail,
 } from 'lucide-react';
+import axios from 'axios';
 
 // ── Brand ──────────────────────────────────────────────────────────────────────
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE', light: '#DAE6F0' };
@@ -206,8 +207,28 @@ function QuoteA4({ quote }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Show({ auth, item, shareUrl }) {
     const { isDark } = useTheme();
-    const [copied, setCopied]       = useState(false);
-    const [changing, setChanging]   = useState(false);
+    const [copied, setCopied]         = useState(false);
+    const [changing, setChanging]     = useState(false);
+    const emailFromNotes = (item.notes || '').split('\n').find(l => l.startsWith('Email:'))?.replace('Email: ', '') || '';
+    const [emailOpen, setEmailOpen]   = useState(false);
+    const [emailAddr, setEmailAddr]   = useState(emailFromNotes);
+    const [emailSending, setEmailSending] = useState(false);
+    const [emailMsg, setEmailMsg]     = useState('');
+
+    const handleSendEmail = async () => {
+        if (!emailAddr) { return; }
+        setEmailSending(true);
+        setEmailMsg('');
+        try {
+            await axios.post(route('quotes.send-email', item.id), { email: emailAddr });
+            setEmailMsg('✓ Email enviado correctamente.');
+            setTimeout(() => { setEmailOpen(false); setEmailMsg(''); }, 2000);
+        } catch (e) {
+            setEmailMsg('✗ ' + (e.response?.data?.message || 'Error al enviar.'));
+        } finally {
+            setEmailSending(false);
+        }
+    };
 
     const handlePrint = () => {
         if (shareUrl) {
@@ -297,6 +318,57 @@ export default function Show({ auth, item, shareUrl }) {
                                 </button>
                             </a>
                         )}
+
+                        {/* Email */}
+                        <div className="relative">
+                            <button
+                                onClick={() => { setEmailOpen(o => !o); setEmailMsg(''); }}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all
+                                    ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                <Mail size={15} />
+                                Enviar por email
+                            </button>
+                            {emailOpen && (
+                                <div className={`absolute right-0 top-full mt-2 w-72 rounded-2xl border shadow-xl z-50 p-4 space-y-3
+                                    ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <p className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                        Enviar presupuesto por email
+                                    </p>
+                                    <input
+                                        type="email"
+                                        value={emailAddr}
+                                        onChange={e => setEmailAddr(e.target.value)}
+                                        placeholder="correo@cliente.com"
+                                        className={`w-full text-sm px-3 py-2 rounded-xl border outline-none
+                                            ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200 placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                                    />
+                                    {emailMsg && (
+                                        <p className={`text-xs ${emailMsg.startsWith('✓') ? 'text-emerald-500' : 'text-red-500'}`}>
+                                            {emailMsg}
+                                        </p>
+                                    )}
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleSendEmail}
+                                            disabled={emailSending || !emailAddr}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-50"
+                                            style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal})` }}
+                                        >
+                                            <Mail size={13} />
+                                            {emailSending ? 'Enviando...' : 'Enviar'}
+                                        </button>
+                                        <button
+                                            onClick={() => setEmailOpen(false)}
+                                            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors
+                                                ${isDark ? 'border-slate-700 text-slate-400 hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Print / PDF */}
                         <button

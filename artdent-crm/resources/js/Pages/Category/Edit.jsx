@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Info } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Edit({ auth, item, categories }) {
     const { isDark } = useTheme();
@@ -88,16 +89,12 @@ export default function Edit({ auth, item, categories }) {
 
                             <div className="md:col-span-1">
                                 <label className={labelClasses}>Categoría Padre</label>
-                                <select
-                                    value={data.parent_id || ''}
-                                    onChange={e => setData('parent_id', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">Ninguna (Categoría Raíz)</option>
-                                    {categories?.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    value={String(data.parent_id || '')}
+                                    onChange={v => setData('parent_id', v)}
+                                    placeholder="Ninguna (Categoría Raíz)"
+                                    options={(categories ?? []).map(cat => ({ value: String(cat.id), label: cat.name }))}
+                                />
                                 {errors.parent_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.parent_id}</div>}
                             </div>
 

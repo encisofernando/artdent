@@ -1,28 +1,35 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductAttributeController;
 use App\Http\Controllers\ProductAttributeValueController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductVariantController;
-use App\Http\Controllers\ProductosController;
-use App\Http\Controllers\CategoryController;
+use Illuminate\Support\Facades\Route;
 
-// Rutas especiales ANTES del resource (evita que {product} capture estos segmentos)
-Route::post('products/import-csv', [ProductController::class, 'importCsv'])->name('products.import-csv');
-Route::post('products/import-sql', [ProductController::class, 'importSql'])->name('products.import-sql');
+// Productos y Catálogo
+Route::get('products', [ProductController::class, 'index'])->name('products.index')->middleware('permission:products.view');
+Route::get('products/create', [ProductController::class, 'create'])->name('products.create')->middleware('permission:products.create');
+Route::post('products', [ProductController::class, 'store'])->name('products.store')->middleware('permission:products.create');
+Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit')->middleware('permission:products.edit');
+Route::match(['post', 'put'], 'products/{product}', [ProductController::class, 'update'])->name('products.update')->middleware('permission:products.edit');
+Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy')->middleware('permission:products.delete');
 
-// Update vía multipart/form-data (imágenes) — también antes del resource
-Route::match(['post', 'put'], 'products/{product}', [ProductController::class, 'update'])->name('products.update');
+// Importaciones
+Route::post('products/import-csv', [ProductController::class, 'importCsv'])->name('products.import-csv')->middleware('permission:products.create');
+Route::post('products/import-sql', [ProductController::class, 'importSql'])->name('products.import-sql')->middleware('permission:products.create');
 
-Route::resource('products', ProductController::class)->except(['update']);
+// Categorías
+Route::get('categorys', [CategoryController::class, 'index'])->name('categorys.index')->middleware('permission:products.view');
+Route::get('categorys/create', [CategoryController::class, 'create'])->name('categorys.create')->middleware('permission:products.create');
+Route::post('categorys', [CategoryController::class, 'store'])->name('categorys.store')->middleware('permission:products.create');
+Route::get('categorys/{category}/edit', [CategoryController::class, 'edit'])->name('categorys.edit')->middleware('permission:products.edit');
+Route::put('categorys/{category}', [CategoryController::class, 'update'])->name('categorys.update')->middleware('permission:products.edit');
+Route::delete('categorys/{category}', [CategoryController::class, 'destroy'])->name('categorys.destroy')->middleware('permission:products.delete');
 
-Route::resource('products', ProductController::class)->except(['update']);
-
-Route::resource('product-attributes', ProductAttributeController::class);
-Route::resource('product-attribute-values', ProductAttributeValueController::class);
-Route::resource('product-images', ProductImageController::class);
-Route::resource('product-variants', ProductVariantController::class);
-Route::resource('productos', ProductosController::class);
-Route::resource('categorys', CategoryController::class);
+// Sub-recursos (simplificados con el mismo permiso de productos por ahora)
+Route::resource('product-attributes', ProductAttributeController::class)->middleware('permission:products.edit');
+Route::resource('product-attribute-values', ProductAttributeValueController::class)->middleware('permission:products.edit');
+Route::resource('product-images', ProductImageController::class)->middleware('permission:products.edit');
+Route::resource('product-variants', ProductVariantController::class)->middleware('permission:products.edit');

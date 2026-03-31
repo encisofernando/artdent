@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\Tenant;
+use App\Models\UserTenantMap;
+use App\Support\CrmMode;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -37,11 +40,57 @@ class LoginRequest extends FormRequest
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function authenticate(): void
+    public function authenticate(): ?Tenant
     {
         $this->ensureIsNotRateLimited();
 
+        $email = Str::lower(trim((string) $this->input('email')));
+        $this->merge(['email' => $email]);
+
+        if (CrmMode::isOwner()) {
+            if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => trans('auth.failed'),
+                ]);
+            }
+
+            RateLimiter::clear($this->throttleKey());
+
+            return null;
+        }
+
+        // Identify tenant by email before attempting authentication
+        $map = UserTenantMap::query()->where('email', $email)->first();
+
+        if (! $map) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => trans('auth.failed'),
+            ]);
+        }
+
+        $tenant = Tenant::find($map->tenant_id);
+
+        if (! $tenant) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => trans('auth.failed'),
+            ]);
+        }
+
+        if (! $tenant->isActive()) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => ['La cuenta del tenant no se encuentra activa.'],
+            ]);
+        }
+
+        tenancy()->initialize($tenant);
+
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            tenancy()->end();
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -50,6 +99,8 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        return $tenant;
     }
 
     /**

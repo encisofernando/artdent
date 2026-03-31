@@ -6,6 +6,7 @@ type AuthState = {
   isLoading: boolean
   isAuthenticated: boolean
   signIn: (email: string, password: string) => Promise<void>
+  signInWithSocial: (provider: 'google' | 'facebook', accessToken: string) => Promise<void>
   signOut: () => Promise<void>
   refreshMe: () => Promise<void>
 }
@@ -40,6 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refreshMe()
   }
 
+  async function signInWithSocial(provider: 'google' | 'facebook', accessToken: string) {
+    const { token } = await AuthAPI.socialLogin(provider, accessToken)
+    localStorage.setItem('artdent_token', token)
+    await refreshMe()
+  }
+
   async function signOut() {
     try {
       await AuthAPI.logout()
@@ -59,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     isAuthenticated: !!user,
     signIn,
+    signInWithSocial,
     signOut,
     refreshMe
   }), [user, isLoading])

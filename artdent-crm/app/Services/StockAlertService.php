@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\LowStockAlertEvent;
 use App\Models\CrmNotification;
 use App\Models\Product;
 use App\Models\Stock;
@@ -53,5 +54,21 @@ class StockAlertService
             'url' => '/products/'.$productId.'/edit',
             'order_code' => "product_{$productId}",
         ]);
+
+        // Broadcast via Reverb for real-time UI notification
+        $stockRecord = Stock::query()
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->when($variantId, fn ($q) => $q->where('variant_id', $variantId), fn ($q) => $q->whereNull('variant_id'))
+            ->with('product:id,name,sku,company_id')
+            ->first();
+
+        if ($stockRecord && $stockRecord->product) {
+            try {
+                LowStockAlertEvent::dispatch($stockRecord, $stockRecord->product->company_id);
+            } catch (\Throwable) {
+                // Reverb may not be running; silence broadcast errors
+            }
+        }
     }
 }

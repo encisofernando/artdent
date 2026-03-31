@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
+    "@vitejs/plugin-basic-ssl": "^2.2.0",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "jspdf": "^4.1.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^25.5.0",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.3",

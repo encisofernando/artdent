@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     Search, Plus, Eye, FileText,
-    TrendingUp, TrendingDown, Clock, CheckCircle2, ListFilter,
+    TrendingUp, TrendingDown, Clock, CheckCircle2, ListFilter, Download,
 } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
@@ -92,7 +92,7 @@ export default function Index({ auth, items, filters }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="Presupuestos" />
 
-            <div className={`fixed inset-0 top-16 z-[5] overflow-hidden transition-all duration-300
+            <div className={`fixed top-16 right-0 left-0 bottom-14 lg:bottom-0 z-[5] overflow-hidden transition-all duration-300
                 ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'}
             `}>
                 <div className={`h-full overflow-y-auto ${isDark ? 'bg-[#0b1520]' : 'bg-slate-50'}`}
@@ -153,6 +153,13 @@ export default function Index({ auth, items, filters }) {
                                         </button>
                                     ))}
                                 </div>
+
+                                <a href={route('export.quotes')} className="hidden sm:block">
+                                    <Button variant="outline" className="rounded-xl gap-2">
+                                        <Download size={15} />
+                                        CSV
+                                    </Button>
+                                </a>
 
                                 <Link href={route('quotes.create')} className="hidden sm:block w-full sm:w-auto">
                                     <Button className="w-full text-white border-none shadow-md hover:shadow-lg transition-all rounded-xl"
@@ -345,7 +352,7 @@ export default function Index({ auth, items, filters }) {
                 {/* FAB — mobile */}
                 <Link href={route('quotes.create')} className="sm:hidden">
                     <button style={{
-                        position: 'fixed', bottom: 22, right: 20, zIndex: 40,
+                        position: 'fixed', bottom: 76, right: 20, zIndex: 56,
                         width: 56, height: 56, borderRadius: '50%', border: 'none',
                         background: `linear-gradient(135deg, ${B.blue}, ${B.teal})`,
                         color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',

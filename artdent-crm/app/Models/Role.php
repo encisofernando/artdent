@@ -6,36 +6,25 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Models\Role as SpatieRole;
 
 /**
  * Class Role
- * 
+ *
  * @property int $id
  * @property string $name
  * @property string|null $display_name
  * @property string|null $description
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * 
- * @property Collection|User[] $users
- *
- * @package App\Models
+ * @property string $guard_name
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
  */
-class Role extends Model
+class Role extends SpatieRole
 {
-	protected $table = 'roles';
-
-	protected $fillable = [
-		'name',
-		'display_name',
-		'description'
-	];
-
-	public function users()
-	{
-		return $this->belongsToMany(User::class);
-	}
+    protected $fillable = [
+        'name',
+        'display_name',
+        'description',
+        'guard_name',
+    ];
 }

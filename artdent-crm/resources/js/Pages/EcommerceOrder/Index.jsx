@@ -90,7 +90,7 @@ export default function Index({ auth, items, filters, kpis }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="Pedidos E-commerce" />
 
-            <div className={`fixed inset-0 top-16 z-[5] overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'}`}>
+            <div className={`fixed top-16 right-0 left-0 bottom-14 lg:bottom-0 z-[5] overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'}`}>
                 <div className={`h-full overflow-y-auto ${isDark ? 'bg-[#0b1520]' : 'bg-slate-50'}`}
                     style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(73,148,156,0.2) transparent' }}>
                     <div className="flex flex-col gap-6 font-sans p-4 sm:p-6 pb-24 sm:pb-8">

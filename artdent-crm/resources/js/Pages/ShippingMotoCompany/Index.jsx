@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Bike, CheckCircle2, XCircle } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
@@ -72,11 +73,15 @@ export default function Index({ auth, items, filters }) {
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
-                    <select className={inp} value={status} onChange={e => setStatus(e.target.value)}>
-                        <option value="all">Todos</option>
-                        <option value="active">Activos</option>
-                        <option value="inactive">Inactivos</option>
-                    </select>
+                    <SearchableSelect
+                        value={status}
+                        onChange={v => setStatus(v)}
+                        options={[
+                            { value: 'all', label: 'Todos' },
+                            { value: 'active', label: 'Activos' },
+                            { value: 'inactive', label: 'Inactivos' },
+                        ]}
+                    />
                 </div>
 
                 <div className={`${card} overflow-hidden`}>

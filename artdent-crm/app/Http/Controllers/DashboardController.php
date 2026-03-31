@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\EcommerceOrder;
+use App\Models\Expense;
 use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\Stock;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,7 +24,7 @@ class DashboardController extends Controller
 
         [$start, $end, $prevStart, $prevEnd] = $this->periodRanges($period);
 
-        // ── Current period ────────────────────────────────────────────────────
+        // ── Revenue (POS + Ecommerce) ──────────────────────────────────────────
         $posRevenue = (float) Sale::where('company_id', $companyId)
             ->where('status', '!=', 'cancelled')
             ->whereBetween('sold_at', [$start, $end])
@@ -43,7 +48,21 @@ class DashboardController extends Controller
         $avgTicket = $totalSales > 0 ? round($revenue / $totalSales, 2) : 0.0;
         $newCustomers = Customer::whereBetween('created_at', [$start, $end])->count();
 
-        // ── Previous period (for trends) ──────────────────────────────────────
+        // ── Expenses ──────────────────────────────────────────────────────────
+        $expenses = (float) Expense::where('company_id', $companyId)
+            ->whereBetween('expense_date', [$start, $end])
+            ->sum('amount');
+
+        // ── Cash flow ─────────────────────────────────────────────────────────
+        $cashFlow = $revenue - $expenses;
+
+        // ── Cobros pendientes (ventas en cuenta corriente sin cobrar) ─────────
+        $pendingCollections = (float) Sale::where('company_id', $companyId)
+            ->where('status', '!=', 'cancelled')
+            ->whereRaw('COALESCE(total, 0) > COALESCE(paid_amount, 0)')
+            ->sum(DB::raw('COALESCE(total, 0) - COALESCE(paid_amount, 0)'));
+
+        // ── Previous period ───────────────────────────────────────────────────
         $prevPosRevenue = (float) Sale::where('company_id', $companyId)
             ->where('status', '!=', 'cancelled')
             ->whereBetween('sold_at', [$prevStart, $prevEnd])
@@ -66,6 +85,73 @@ class DashboardController extends Controller
         $prevTotalSales = $prevPosCount + $prevEcoCount;
         $prevAvgTicket = $prevTotalSales > 0 ? round($prevRevenue / $prevTotalSales, 2) : 0.0;
         $prevNewCustomers = Customer::whereBetween('created_at', [$prevStart, $prevEnd])->count();
+        $prevExpenses = (float) Expense::where('company_id', $companyId)
+            ->whereBetween('expense_date', [$prevStart, $prevEnd])
+            ->sum('amount');
+        $prevCashFlow = $prevRevenue - $prevExpenses;
+
+        // ── Top products ──────────────────────────────────────────────────────
+        $topProducts = SaleItem::select(
+            'product_name',
+            DB::raw('SUM(quantity) as qty_sold'),
+            DB::raw('SUM(total) as revenue')
+        )
+            ->whereHas('sale', fn ($q) => $q
+                ->where('company_id', $companyId)
+                ->where('status', '!=', 'cancelled')
+                ->whereBetween('sold_at', [$start, $end])
+            )
+            ->groupBy('product_name')
+            ->orderByDesc('revenue')
+            ->limit(5)
+            ->get()
+            ->map(fn ($row) => [
+                'name' => $row->product_name,
+                'qty' => (float) $row->qty_sold,
+                'revenue' => (float) $row->revenue,
+            ])
+            ->toArray();
+
+        // ── Top customers ─────────────────────────────────────────────────────
+        $topCustomers = Sale::select(
+            'customer_id',
+            DB::raw('SUM(total) as revenue'),
+            DB::raw('COUNT(*) as orders')
+        )
+            ->where('company_id', $companyId)
+            ->where('status', '!=', 'cancelled')
+            ->whereBetween('sold_at', [$start, $end])
+            ->whereNotNull('customer_id')
+            ->with('customer:id,name')
+            ->groupBy('customer_id')
+            ->orderByDesc('revenue')
+            ->limit(5)
+            ->get()
+            ->map(fn ($row) => [
+                'name' => $row->customer?->name ?? '—',
+                'revenue' => (float) $row->revenue,
+                'orders' => (int) $row->orders,
+            ])
+            ->toArray();
+
+        // ── Low stock alerts ──────────────────────────────────────────────────
+        $lowStock = Stock::with('product:id,name,sku')
+            ->whereHas('product', fn ($q) => $q
+                ->where('company_id', $companyId)
+                ->where('track_stock', true)
+                ->where('is_active', true)
+            )
+            ->whereRaw('quantity <= min_quantity AND min_quantity > 0')
+            ->orderBy('quantity')
+            ->limit(5)
+            ->get()
+            ->map(fn ($s) => [
+                'name' => $s->product?->name ?? '—',
+                'sku' => $s->product?->sku ?? '',
+                'quantity' => (float) $s->quantity,
+                'min' => (float) $s->min_quantity,
+            ])
+            ->toArray();
 
         return Inertia::render('Dashboard', [
             'stats' => [
@@ -74,16 +160,24 @@ class DashboardController extends Controller
                     'revenue' => $revenue,
                     'new_customers' => $newCustomers,
                     'avg_ticket' => $avgTicket,
+                    'expenses' => $expenses,
+                    'cashflow' => $cashFlow,
+                    'pending_collections' => $pendingCollections,
                 ],
                 'trends' => [
                     'sales' => $this->trendPct($totalSales, $prevTotalSales),
                     'revenue' => $this->trendPct($revenue, $prevRevenue),
                     'customers' => $this->trendPct($newCustomers, $prevNewCustomers),
                     'avg_ticket' => $this->trendPct($avgTicket, $prevAvgTicket),
+                    'expenses' => $this->trendPct($expenses, $prevExpenses),
+                    'cashflow' => $this->trendPct($cashFlow, $prevCashFlow),
                 ],
             ],
             'chartData' => $this->buildChartData($period, $start, $end, $companyId),
             'recentTransactions' => $this->buildRecentTransactions($start, $end, $companyId),
+            'topProducts' => $topProducts,
+            'topCustomers' => $topCustomers,
+            'lowStock' => $lowStock,
             'period' => $period,
         ]);
     }
@@ -101,10 +195,10 @@ class DashboardController extends Controller
                 $now->copy()->subDay()->endOfDay(),
             ],
             'week' => [
-                $now->copy()->subDays(6)->startOfDay(),
-                $now->copy()->endOfDay(),
-                $now->copy()->subDays(13)->startOfDay(),
-                $now->copy()->subDays(7)->endOfDay(),
+                $now->copy()->startOfWeek(CarbonInterface::MONDAY),
+                $now->copy()->endOfWeek(CarbonInterface::SUNDAY),
+                $now->copy()->subWeek()->startOfWeek(CarbonInterface::MONDAY),
+                $now->copy()->subWeek()->endOfWeek(CarbonInterface::SUNDAY),
             ],
             'year' => [
                 $now->copy()->startOfYear(),
@@ -150,7 +244,15 @@ class DashboardController extends Controller
                     ->whereBetween('created_at', [$hStart, $hEnd])
                     ->sum('total');
 
-                $points[] = ['label' => $cursor->format('H:00'), 'revenue' => round($posR + $ecoR, 2)];
+                $exp = (float) Expense::where('company_id', $companyId)
+                    ->whereBetween('expense_date', [$hStart, $hEnd])
+                    ->sum('amount');
+
+                $points[] = [
+                    'label' => $cursor->format('H:00'),
+                    'revenue' => round($posR + $ecoR, 2),
+                    'expenses' => round($exp, 2),
+                ];
                 $cursor->addHour();
             }
 
@@ -174,7 +276,15 @@ class DashboardController extends Controller
                     ->whereBetween('created_at', [$mStart, $mEnd])
                     ->sum('total');
 
-                $points[] = ['label' => $cursor->translatedFormat('M'), 'revenue' => round($posR + $ecoR, 2)];
+                $exp = (float) Expense::where('company_id', $companyId)
+                    ->whereBetween('expense_date', [$mStart, $mEnd])
+                    ->sum('amount');
+
+                $points[] = [
+                    'label' => $cursor->translatedFormat('M'),
+                    'revenue' => round($posR + $ecoR, 2),
+                    'expenses' => round($exp, 2),
+                ];
                 $cursor->addMonth();
             }
 
@@ -198,7 +308,15 @@ class DashboardController extends Controller
                 ->whereBetween('created_at', [$dStart, $dEnd])
                 ->sum('total');
 
-            $points[] = ['label' => $cursor->format('d/m'), 'revenue' => round($posR + $ecoR, 2)];
+            $exp = (float) Expense::where('company_id', $companyId)
+                ->whereBetween('expense_date', [$dStart, $dEnd])
+                ->sum('amount');
+
+            $points[] = [
+                'label' => $cursor->format('d/m'),
+                'revenue' => round($posR + $ecoR, 2),
+                'expenses' => round($exp, 2),
+            ];
             $cursor->addDay();
         }
 

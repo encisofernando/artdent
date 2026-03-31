@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Trash2, CreditCard } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, vendors, filters }) {
     const { isDark } = useTheme();
@@ -76,14 +77,12 @@ export default function Index({ auth, items, vendors, filters }) {
                             className={`ml-2 bg-transparent border-none focus:ring-0 p-0 text-sm outline-none w-full ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'}`}
                         />
                     </div>
-                    <select
+                    <SearchableSelect
                         value={vendorId}
-                        onChange={e => setVendorId(e.target.value)}
-                        className={`rounded-xl border px-3 py-2 text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
-                    >
-                        <option value="">Todos los proveedores</option>
-                        {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                    </select>
+                        onChange={v => setVendorId(v)}
+                        options={vendors.map(v => ({ value: String(v.id), label: v.name }))}
+                        placeholder="Todos los proveedores"
+                    />
                 </div>
 
                 {/* Summary */}

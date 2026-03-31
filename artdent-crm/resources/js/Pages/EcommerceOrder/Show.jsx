@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag, MapPin, Banknote, QrCode } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag, MapPin, Banknote, QrCode, Printer } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -62,9 +63,280 @@ function Section({ title, icon: Icon, children, isDark }) {
     );
 }
 
+// ─── Paleta ArtDent ───────────────────────────────────────────────────────────
+const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', light: '#DAE6F0' };
+
+const fmtAR = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+
+const PAYMENT_LABEL = {
+    mercadopago:   'MercadoPago',
+    bank_transfer: 'Transferencia bancaria',
+    qr:            'Pago QR',
+    cash:          'Efectivo',
+};
+
+// ─── REMITO E-COMMERCE ────────────────────────────────────────────────────────
+function RemitoEcommerce({ order }) {
+    const company = order.company || {};
+    const items   = order.ecommerce_order_items || [];
+    const shipment = order.shipments?.[0] ?? null;
+
+    const subtotal = Number(order.subtotal  || 0);
+    const shipping = Number(order.shipping_cost || 0);
+    const discount = Number(order.discount_amount || 0);
+    const total    = Number(order.total || 0);
+
+    const paymentLabel = PAYMENT_LABEL[order.selected_payment_method] ?? order.selected_payment_method ?? '—';
+
+    // Dirección destino
+    const destLines = [
+        order.shipping_name,
+        order.shipping_address,
+        [order.shipping_city, order.shipping_province, order.shipping_postal].filter(Boolean).join(', '),
+        'Argentina',
+    ].filter(Boolean);
+
+    // Remitente (empresa)
+    const remLines = [
+        company.fantasy_name || company.name || 'ArtDent',
+        company.address,
+        [company.city, company.province, company.postal_code].filter(Boolean).join(', '),
+        company.country || 'Argentina',
+    ].filter(Boolean);
+
+    const orderDate = fmtDateShort(order.created_at);
+
+    return (
+        <div id="remito-print-zone" style={{
+            width: '210mm', minHeight: '297mm',
+            fontFamily: "'Arial', sans-serif", fontSize: '9pt',
+            color: '#111', background: '#fff',
+            display: 'flex', flexDirection: 'column',
+            boxSizing: 'border-box',
+            padding: '12mm 14mm 10mm',
+        }}>
+            {/* ── HEADER ─────────────────────────────────────────────────── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #111', paddingBottom: 10, marginBottom: 10 }}>
+                <div>
+                    <div style={{ fontSize: 8.5, color: '#555' }}>
+                        Orden #{order.order_number} — Paquete #1
+                    </div>
+                    <div style={{ fontSize: 8, color: '#777', marginTop: 2 }}>
+                        Realizada el {orderDate}
+                    </div>
+                </div>
+
+                {/* Logo ArtDent */}
+                <div style={{ textAlign: 'right' }}>
+                    {company.logo_url ? (
+                        <img
+                            src={company.logo_url}
+                            alt={company.fantasy_name || company.name || 'ArtDent'}
+                            style={{ height: 44, objectFit: 'contain', display: 'block', marginLeft: 'auto' }}
+                        />
+                    ) : (
+                        <img
+                            src="/assets/logo-artdent-color.png"
+                            alt="ArtDent"
+                            style={{ height: 44, objectFit: 'contain', display: 'block', marginLeft: 'auto' }}
+                        />
+                    )}
+                    {(company.city || company.province) && (
+                        <div style={{ fontSize: 8, color: '#777', marginTop: 3, fontWeight: 600 }}>
+                            {[company.city, company.province].filter(Boolean).join(', ')}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Título REMITO */}
+            <div style={{ textAlign: 'center', fontSize: 22, fontWeight: 900, letterSpacing: 3, color: AD.blue, marginBottom: 12 }}>
+                REMITO
+            </div>
+
+            {/* ── TABLA DE PRODUCTOS ─────────────────────────────────────── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14 }}>
+                <thead>
+                    <tr style={{ background: AD.blue, color: '#fff' }}>
+                        <th style={{ padding: '5px 8px', textAlign: 'left',   fontSize: 8, fontWeight: 700, width: '44%' }}>Producto</th>
+                        <th style={{ padding: '5px 8px', textAlign: 'center', fontSize: 8, fontWeight: 700, width: '10%' }}>Cant.</th>
+                        <th style={{ padding: '5px 8px', textAlign: 'center', fontSize: 8, fontWeight: 700, width: '16%' }}>SKU</th>
+                        <th style={{ padding: '5px 8px', textAlign: 'right',  fontSize: 8, fontWeight: 700, width: '14%' }}>Precio unit.</th>
+                        <th style={{ padding: '5px 8px', textAlign: 'right',  fontSize: 8, fontWeight: 700, width: '16%' }}>Precio total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items.map((item, idx) => (
+                        <tr key={idx} style={{ background: idx % 2 === 0 ? '#fff' : '#f5f9fc', borderBottom: '1px solid #dde' }}>
+                            <td style={{ padding: '6px 8px', fontWeight: 600, fontSize: 9 }}>
+                                {item.product_name}
+                            </td>
+                            <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 9 }}>
+                                {item.quantity} x
+                            </td>
+                            <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 8, color: '#666', fontFamily: 'monospace' }}>
+                                {item.sku || '—'}
+                            </td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9 }}>
+                                $ {fmtAR(item.unit_price)}
+                            </td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 9, color: AD.blue }}>
+                                $ {fmtAR(item.total)}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {/* ── TOTALES ────────────────────────────────────────────────── */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                <table style={{ borderCollapse: 'collapse', minWidth: 200, border: '1px solid #dde' }}>
+                    <tbody>
+                        <tr>
+                            <td style={{ padding: '5px 10px', fontSize: 8.5, borderBottom: '1px solid #dde' }}>
+                                Subtotal ({items.reduce((a, i) => a + i.quantity, 0)} {items.reduce((a, i) => a + i.quantity, 0) === 1 ? 'unidad' : 'unidades'})
+                            </td>
+                            <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 8.5, borderBottom: '1px solid #dde' }}>
+                                $ {fmtAR(subtotal)}
+                            </td>
+                        </tr>
+                        {shipping > 0 && (
+                            <tr>
+                                <td style={{ padding: '5px 10px', fontSize: 8.5, borderBottom: '1px solid #dde' }}>Costo de envío</td>
+                                <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 8.5, borderBottom: '1px solid #dde' }}>
+                                    $ {fmtAR(shipping)}
+                                </td>
+                            </tr>
+                        )}
+                        {discount > 0 && (
+                            <tr>
+                                <td style={{ padding: '5px 10px', fontSize: 8.5, color: '#c00', borderBottom: '1px solid #dde' }}>Descuento</td>
+                                <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 8.5, color: '#c00', borderBottom: '1px solid #dde' }}>
+                                    -$ {fmtAR(discount)}
+                                </td>
+                            </tr>
+                        )}
+                        <tr style={{ background: AD.blue }}>
+                            <td style={{ padding: '6px 10px', fontSize: 10, fontWeight: 900, color: '#fff' }}>Total:</td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', fontSize: 11, fontWeight: 900, color: '#fff' }}>
+                                $ {fmtAR(total)}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* ── MEDIO DE PAGO ──────────────────────────────────────────── */}
+            <div style={{ marginBottom: 14, fontSize: 8.5 }}>
+                <strong>Medio de pago:</strong> {paymentLabel}
+            </div>
+
+            {/* ── BLOQUES: DIRECCIÓN + REMITENTE ─────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                {/* Dirección de envío / retiro */}
+                <div style={{ border: '1px solid #ccc', padding: '10px 12px', borderRadius: 4 }}>
+                    <div style={{ fontWeight: 800, fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, color: AD.teal, marginBottom: 6, borderBottom: '1px solid #dde', paddingBottom: 4 }}>
+                        Dirección de envío
+                    </div>
+                    {destLines.map((l, i) => (
+                        <div key={i} style={{ fontSize: 8.5, lineHeight: 1.75 }}>{l}</div>
+                    ))}
+                    {order.shipping_phone && (
+                        <div style={{ fontSize: 8.5, marginTop: 4 }}>
+                            <strong>Teléfono:</strong> {order.shipping_phone}
+                        </div>
+                    )}
+                    {(order.customer?.dni || order.guest_dni) && (
+                        <div style={{ fontSize: 8.5, marginTop: 2 }}>
+                            <strong>DNI/CUIT:</strong> {order.customer?.dni || order.guest_dni}
+                        </div>
+                    )}
+                </div>
+
+                {/* Remitente */}
+                <div style={{ border: '1px solid #ccc', padding: '10px 12px', borderRadius: 4 }}>
+                    <div style={{ fontWeight: 800, fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, color: AD.teal, marginBottom: 6, borderBottom: '1px solid #dde', paddingBottom: 4 }}>
+                        Remitente
+                    </div>
+                    {remLines.map((l, i) => (
+                        <div key={i} style={{ fontSize: 8.5, lineHeight: 1.75, fontWeight: i === 0 ? 700 : 400 }}>{l}</div>
+                    ))}
+                    {company.cuit && (
+                        <div style={{ fontSize: 8, color: '#555', marginTop: 4 }}>
+                            CUIT: {company.cuit}
+                        </div>
+                    )}
+                    {company.phone && (
+                        <div style={{ fontSize: 8, color: '#555' }}>Tel: {company.phone}</div>
+                    )}
+                </div>
+            </div>
+
+            {/* Número de orden al pie */}
+            <div style={{ textAlign: 'center', fontSize: 8, color: '#888', marginBottom: 14 }}>
+                Orden #{order.order_number} — Paquete #1
+            </div>
+
+            {/* ── DATOS DE QUIEN RETIRA ──────────────────────────────────── */}
+            <div style={{ border: '1px solid #aaa', borderRadius: 4, padding: '10px 14px' }}>
+                <div style={{ fontWeight: 800, fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, borderBottom: '1px solid #ccc', paddingBottom: 5, color: AD.blue }}>
+                    Datos de quien retira
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px' }}>
+                    <div>
+                        <div style={{ fontSize: 8, color: '#555', marginBottom: 3 }}>Nombre completo:</div>
+                        <div style={{ borderBottom: '1px solid #888', height: 20 }} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: 8, color: '#555', marginBottom: 3 }}>DNI:</div>
+                        <div style={{ display: 'flex', gap: 20 }}>
+                            <div style={{ borderBottom: '1px solid #888', flex: 1, height: 20 }} />
+                            <div style={{ fontSize: 8, color: '#555', alignSelf: 'flex-end', whiteSpace: 'nowrap' }}>Fecha:</div>
+                            <div style={{ borderBottom: '1px solid #888', width: 70, height: 20 }} />
+                        </div>
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: 8, color: '#555', marginBottom: 3 }}>Firma:</div>
+                        <div style={{ borderBottom: '1px solid #888', height: 36 }} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Franja inferior ArtDent */}
+            <div style={{ flex: 1 }} />
+            <div style={{ marginTop: 10, background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 5, borderRadius: 2 }} />
+            <div style={{ textAlign: 'center', fontSize: 7, color: '#aaa', marginTop: 4 }}>
+                Generado por ArtDent CRM — {fmtDateShort(new Date())}
+            </div>
+        </div>
+    );
+}
+
 export default function Show({ auth, order }) {
     const { isDark } = useTheme();
     const [saved, setSaved] = useState(false);
+
+    const handlePrintRemito = () => {
+        const el = document.getElementById('remito-print-zone');
+        if (!el) return;
+        const win = window.open('', '_blank');
+        win.document.write(`
+            <html>
+            <head>
+                <title>Remito — Orden #${order.order_number}</title>
+                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
+                <style>
+                    @page { margin: 0; size: A4; }
+                    body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                </style>
+            </head>
+            <body>${el.outerHTML}</body>
+            </html>
+        `);
+        win.document.close();
+        setTimeout(() => { win.print(); win.close(); }, 600);
+    };
 
     const shipment = order.shipments?.[0] ?? null;
 
@@ -161,6 +433,14 @@ export default function Show({ auth, order }) {
                             </span>
                         )}
                         <Button
+                            onClick={handlePrintRemito}
+                            variant="outline"
+                            className={`border-slate-300 ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                        >
+                            <Printer size={15} className="mr-2" />
+                            Remito
+                        </Button>
+                        <Button
                             onClick={submit}
                             disabled={processing}
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
@@ -253,7 +533,7 @@ export default function Show({ auth, order }) {
                                     <p className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{order.customer.name}</p>
                                     <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{order.customer.email}</p>
                                     {order.customer.phone && <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{order.customer.phone}</p>}
-                                    <Link href={route('customers.show', order.customer.id)}
+                                    <Link href={route('customers.edit', order.customer.id)}
                                         className="inline-block mt-2 text-xs font-semibold" style={{ color: B.teal }}>
                                         Ver perfil →
                                     </Link>
@@ -269,24 +549,32 @@ export default function Show({ auth, order }) {
                             <form onSubmit={submit} className="space-y-4">
                                 <div>
                                     <label className={lbl}>Estado del Pedido</label>
-                                    <select value={data.status} onChange={e => setData('status', e.target.value)} className={inp}>
-                                        <option value="pending">Pendiente</option>
-                                        <option value="confirmed">Confirmado</option>
-                                        <option value="processing">En proceso</option>
-                                        <option value="shipped">Enviado</option>
-                                        <option value="delivered">Entregado</option>
-                                        <option value="cancelled">Cancelado</option>
-                                        <option value="refunded">Reembolsado</option>
-                                    </select>
+                                    <SearchableSelect
+                                        value={data.status}
+                                        onChange={v => setData('status', v)}
+                                        options={[
+                                            { value: 'pending', label: 'Pendiente' },
+                                            { value: 'confirmed', label: 'Confirmado' },
+                                            { value: 'processing', label: 'En proceso' },
+                                            { value: 'shipped', label: 'Enviado' },
+                                            { value: 'delivered', label: 'Entregado' },
+                                            { value: 'cancelled', label: 'Cancelado' },
+                                            { value: 'refunded', label: 'Reembolsado' },
+                                        ]}
+                                    />
                                 </div>
                                 <div>
                                     <label className={lbl}>Estado del Pago</label>
-                                    <select value={data.payment_status} onChange={e => setData('payment_status', e.target.value)} className={inp}>
-                                        <option value="pending">Pendiente</option>
-                                        <option value="paid">Pagado</option>
-                                        <option value="failed">Fallido</option>
-                                        <option value="refunded">Reembolsado</option>
-                                    </select>
+                                    <SearchableSelect
+                                        value={data.payment_status}
+                                        onChange={v => setData('payment_status', v)}
+                                        options={[
+                                            { value: 'pending', label: 'Pendiente' },
+                                            { value: 'paid', label: 'Pagado' },
+                                            { value: 'failed', label: 'Fallido' },
+                                            { value: 'refunded', label: 'Reembolsado' },
+                                        ]}
+                                    />
                                 </div>
                                 <div>
                                     <label className={lbl}>Notas Internas</label>
@@ -370,12 +658,12 @@ export default function Show({ auth, order }) {
                                 </div>
                                 <div>
                                     <label className={lbl}>Estado del envío</label>
-                                    <select value={data.tracking_status} onChange={e => setData('tracking_status', e.target.value)} className={inp}>
-                                        <option value="">— Sin estado —</option>
-                                        {Object.entries(TRACKING_STATUS_LABELS).map(([v, l]) => (
-                                            <option key={v} value={v}>{l}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        value={data.tracking_status || ''}
+                                        onChange={v => setData('tracking_status', v)}
+                                        placeholder="— Sin estado —"
+                                        options={Object.entries(TRACKING_STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+                                    />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
@@ -403,6 +691,11 @@ export default function Show({ auth, order }) {
                 </div>
 
 
+            </div>
+
+            {/* Remito oculto — sólo se imprime, no se muestra en pantalla */}
+            <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+                <RemitoEcommerce order={order} />
             </div>
         </AuthenticatedLayout>
     );

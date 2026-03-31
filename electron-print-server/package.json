@@ -4,18 +4,21 @@
   "description": "Servidor de Impresion ArtDent",
   "main": "main.js",
   "author": "ArtDent",
+  "homepage": "https://artdent.com.ar",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
   },
   "build": {
     "appId": "com.artdent.print",
     "productName": "ArtDentPrint",
+    "icon": "icon.png",
     "win": {
       "target": [
         "msi"
       ],
-      "icon": "icon.png",
       "signAndEditExecutable": false
     },
     "msi": {
@@ -25,12 +28,26 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
       "shortcutName": "ArtDent Print Service"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "maintainer": "ArtDent",
+      "synopsis": "Servidor de Impresion ArtDent"
+    },
+    "deb": {
+      "packageCategory": "utils",
+      "depends": ["libcups2"]
     }
   },
   "dependencies": {
     "cors": "^2.8.6",
     "electron-settings": "^4.0.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "jimp": "^0.22.12"
   },
   "devDependencies": {
     "electron": "^40.8.0",

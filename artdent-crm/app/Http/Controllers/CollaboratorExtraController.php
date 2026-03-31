@@ -2,64 +2,146 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Collaborator;
 use App\Models\CollaboratorExtra;
+use App\Services\CollaboratorReceiptSyncService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class CollaboratorExtraController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService)
     {
-        //
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function index(Request $request): \Inertia\Response
     {
-        //
+        $companyId = $request->user()->company_id ?? 1;
+        $collaboratorId = $request->input('collaborator_id');
+        $search = trim((string) $request->input('search', ''));
+        $from = $request->input('from');
+        $to = $request->input('to');
+
+        $query = CollaboratorExtra::query()
+            ->with('collaborator')
+            ->where('company_id', $companyId);
+
+        if ($collaboratorId) {
+            $query->where('collaborator_id', $collaboratorId);
+        }
+
+        if ($search !== '') {
+            $query->where('concept', 'like', "%{$search}%");
+        }
+
+        if ($from) {
+            $query->where('date', '>=', $from);
+        }
+
+        if ($to) {
+            $query->where('date', '<=', $to);
+        }
+
+        $summaryQuery = clone $query;
+        $items = $query
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        $collaborators = Collaborator::query()
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return Inertia::render('CollaboratorExtra/Index', [
+            'items' => $items,
+            'collaborators' => $collaborators,
+            'filters' => [
+                'collaborator_id' => $collaboratorId,
+                'search' => $search,
+                'from' => $from,
+                'to' => $to,
+            ],
+            'summary' => [
+                'records' => (clone $summaryQuery)->count(),
+                'collaborators' => (clone $summaryQuery)->distinct()->count('collaborator_id'),
+                'amount' => round((float) ((clone $summaryQuery)->sum('amount') ?? 0), 2),
+            ],
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
-        //
+        $companyId = $request->user()->company_id ?? 1;
+
+        $validated = $request->validate([
+            'collaborator_id' => [
+                'required',
+                Rule::exists('collaborators', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
+            'date' => 'required|date',
+            'concept' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+        ], [
+            'collaborator_id.exists' => 'El colaborador seleccionado no pertenece a esta empresa.',
+        ]);
+
+        CollaboratorExtra::create([
+            'company_id' => $companyId,
+            'collaborator_id' => $validated['collaborator_id'],
+            'date' => $validated['date'],
+            'concept' => $validated['concept'],
+            'amount' => $validated['amount'],
+        ]);
+
+        $this->receiptSyncService->syncDraftReceiptsForDate(
+            $companyId,
+            (int) $validated['collaborator_id'],
+            $validated['date'],
+        );
+
+        return back()->with('success', 'Extra registrado.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(CollaboratorExtra $collaboratorExtra)
+    public function update(Request $request, CollaboratorExtra $collaboratorExtra): \Illuminate\Http\RedirectResponse
     {
-        //
+        $this->ensureCompanyOwned($collaboratorExtra, $request->user()->company_id ?? 1);
+        $originalDate = $collaboratorExtra->date->toDateString();
+        $collaboratorId = (int) $collaboratorExtra->collaborator_id;
+        $companyId = (int) $collaboratorExtra->company_id;
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'concept' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        $collaboratorExtra->update($validated);
+        $this->receiptSyncService->syncDraftReceiptsForDate($companyId, $collaboratorId, $originalDate);
+        if ($validated['date'] !== $originalDate) {
+            $this->receiptSyncService->syncDraftReceiptsForDate($companyId, $collaboratorId, $validated['date']);
+        }
+
+        return back()->with('success', 'Extra actualizado.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(CollaboratorExtra $collaboratorExtra)
+    public function destroy(CollaboratorExtra $collaboratorExtra): \Illuminate\Http\RedirectResponse
     {
-        //
+        $this->ensureCompanyOwned($collaboratorExtra, auth()->user()->company_id ?? 1);
+        $companyId = (int) $collaboratorExtra->company_id;
+        $collaboratorId = (int) $collaboratorExtra->collaborator_id;
+        $date = $collaboratorExtra->date->toDateString();
+
+        $collaboratorExtra->delete();
+        $this->receiptSyncService->syncDraftReceiptsForDate($companyId, $collaboratorId, $date);
+
+        return back()->with('success', 'Extra eliminado.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, CollaboratorExtra $collaboratorExtra)
+    private function ensureCompanyOwned(CollaboratorExtra $collaboratorExtra, int $companyId): void
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(CollaboratorExtra $collaboratorExtra)
-    {
-        //
+        abort_unless((int) $collaboratorExtra->company_id === $companyId, 404);
     }
 }

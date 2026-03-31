@@ -18,6 +18,11 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'browsershot' => [
+        'chrome_path' => env('CHROME_PATH', '/usr/bin/google-chrome'),
+        'node_binary' => env('NODE_BINARY', '/usr/bin/node'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
@@ -39,6 +44,29 @@ return [
         'access_token' => env('MP_ACCESS_TOKEN', ''),
         'ecommerce_url' => env('ECOMMERCE_URL', ''),
         'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET', ''),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', '/'),
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI', '/'),
+    ],
+
+    'chatbot' => [
+        'api_key' => env('CHATBOT_API_KEY'),
+        'provider' => env('CHATBOT_PROVIDER', 'gemini'),
+        'openai_key' => env('CHATBOT_OPENAI_API_KEY', env('OPENAI_API_KEY')),
+        'gemini_key' => env('CHATBOT_GEMINI_API_KEY'),
+        'openai_model' => env('CHATBOT_OPENAI_MODEL', 'gpt-5.4-nano'),
+        'openai_prompt_cache_key' => env('CHATBOT_OPENAI_PROMPT_CACHE_KEY', 'artdent:chatbot:erp:v1'),
+        'openai_prompt_cache_retention' => env('CHATBOT_OPENAI_PROMPT_CACHE_RETENTION', 'in-memory'),
+        'gemini_model' => env('CHATBOT_GEMINI_MODEL', 'gemini-1.5-flash-latest'),
     ],
 
 ];

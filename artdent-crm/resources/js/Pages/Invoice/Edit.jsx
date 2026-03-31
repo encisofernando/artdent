@@ -5,6 +5,7 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Receipt, Building2, Calculator } from 'lucide-react';
 import dayjs from 'dayjs';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Edit({ auth, item, invoiceTypes }) {
     const { isDark } = useTheme();
@@ -92,17 +93,13 @@ export default function Edit({ auth, item, invoiceTypes }) {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div className="md:col-span-1">
                                 <label className={labelClasses}>Tipo *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.invoice_type_id}
-                                    onChange={e => setData('invoice_type_id', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('invoice_type_id', v)}
+                                    options={invoiceTypes.map(type => ({ value: String(type.id), label: `${type.code} - ${type.name}` }))}
+                                    placeholder="Seleccione..."
                                     required
-                                >
-                                    <option value="">Seleccione...</option>
-                                    {invoiceTypes.map(type => (
-                                        <option key={type.id} value={type.id}>{type.code} - {type.name}</option>
-                                    ))}
-                                </select>
+                                />
                                 {errors.invoice_type_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.invoice_type_id}</div>}
                             </div>
 
@@ -182,17 +179,16 @@ export default function Edit({ auth, item, invoiceTypes }) {
                             
                             <div className="md:col-span-1">
                                 <label className={labelClasses}>Condición frente al IVA</label>
-                                <select
+                                <SearchableSelect
                                     value={data.recipient_iva}
-                                    onChange={e => setData('recipient_iva', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">Seleccione...</option>
-                                    <option value="Responsable Inscripto">Responsable Inscripto</option>
-                                    <option value="Monotributo">Monotributo</option>
-                                    <option value="Exento">Exento</option>
-                                    <option value="Consumidor Final">Consumidor Final</option>
-                                </select>
+                                    onChange={v => setData('recipient_iva', v)}
+                                    options={[
+                                        { value: 'Responsable Inscripto', label: 'Responsable Inscripto' },
+                                        { value: 'Monotributo', label: 'Monotributo' },
+                                        { value: 'Exento', label: 'Exento' },
+                                    ]}
+                                    placeholder="Seleccione..."
+                                />
                                 {errors.recipient_iva && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.recipient_iva}</div>}
                             </div>
 
@@ -288,17 +284,17 @@ export default function Edit({ auth, item, invoiceTypes }) {
 
                             <div className="md:col-span-2 mt-4">
                                 <label className={labelClasses}>Estado *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.status}
-                                    onChange={e => setData('status', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('status', v)}
+                                    options={[
+                                        { value: 'draft', label: 'Borrador' },
+                                        { value: 'issued', label: 'Emitida' },
+                                        { value: 'paid', label: 'Pagada' },
+                                        { value: 'cancelled', label: 'Anulada' },
+                                    ]}
                                     required
-                                >
-                                    <option value="draft">Borrador</option>
-                                    <option value="issued">Emitida</option>
-                                    <option value="paid">Pagada</option>
-                                    <option value="cancelled">Anulada</option>
-                                </select>
+                                />
                                 {errors.status && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.status}</div>}
                             </div>
 

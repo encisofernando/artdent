@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, RefreshCcw } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: "#397B9C", teal: "#49949C" };
 
@@ -103,20 +104,18 @@ export default function Index({ auth, items, filters }) {
                         />
                     </div>
 
-                    <select
+                    <SearchableSelect
                         value={responsibility}
-                        onChange={(e) => setResponsibility(e.target.value)}
-                        className={`px-3 py-2 rounded-xl border text-sm transition-colors outline-none
-                            ${isDark ? 'bg-slate-900 border-slate-700/60 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}
-                        `}
-                    >
-                        <option value="all">Todos los responsables</option>
-                        <option value="lab">Laboratorio</option>
-                        <option value="dentist">Odontólogo</option>
-                        <option value="patient">Paciente</option>
-                        <option value="material">Material</option>
-                        <option value="unknown">Desconocido</option>
-                    </select>
+                        onChange={v => setResponsibility(v)}
+                        options={[
+                            { value: 'all', label: 'Todos los responsables' },
+                            { value: 'lab', label: 'Laboratorio' },
+                            { value: 'dentist', label: 'Odontólogo' },
+                            { value: 'patient', label: 'Paciente' },
+                            { value: 'material', label: 'Material' },
+                            { value: 'unknown', label: 'Desconocido' },
+                        ]}
+                    />
                 </div>
 
                 {/* Table */}

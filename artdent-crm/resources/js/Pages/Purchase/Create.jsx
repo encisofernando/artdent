@@ -4,6 +4,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, FileText, Package, Plus, Trash2, ShoppingCart, TrendingUp } from 'lucide-react';
+import { DatePicker, useD } from '@/Components/_appkit';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const INVOICE_TYPES = ['FA', 'FB', 'FC', 'FE', 'FM', 'RA', 'RB', 'RC', 'X'];
 
@@ -25,6 +27,7 @@ function calcNewPrice(cost, marginPct) {
 
 export default function Create({ auth, vendors, warehouses, products }) {
     const { isDark } = useTheme();
+    const D = useD(isDark);
     const B = { blue: '#397B9C', teal: '#49949C' };
 
     const today = new Date().toISOString().split('T')[0];
@@ -188,26 +191,35 @@ export default function Create({ auth, vendors, warehouses, products }) {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div className="md:col-span-2">
                                 <label className={labelCls}>Proveedor *</label>
-                                <select value={form.vendor_id} onChange={e => set('vendor_id', e.target.value)} className={inputCls} required>
-                                    <option value="">Seleccionar proveedor...</option>
-                                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                                </select>
-                                {errors.vendor_id && <p className="text-red-500 text-xs mt-1">{errors.vendor_id}</p>}
+                                <SearchableSelect
+                                    options={vendors.map(v => ({ value: String(v.id), label: v.name }))}
+                                    value={String(form.vendor_id)}
+                                    onChange={v => set('vendor_id', v)}
+                                    placeholder="Seleccionar proveedor..."
+                                    required
+                                    error={errors.vendor_id}
+                                />
                             </div>
 
                             <div>
                                 <label className={labelCls}>Depósito *</label>
-                                <select value={form.warehouse_id} onChange={e => set('warehouse_id', e.target.value)} className={inputCls} required>
-                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    options={warehouses.map(w => ({ value: String(w.id), label: w.name }))}
+                                    value={String(form.warehouse_id)}
+                                    onChange={v => set('warehouse_id', v)}
+                                    placeholder="Seleccionar depósito..."
+                                    required
+                                />
                             </div>
 
                             <div>
                                 <label className={labelCls}>Tipo de Comprobante</label>
-                                <select value={form.invoice_type} onChange={e => set('invoice_type', e.target.value)} className={inputCls}>
-                                    <option value="">Seleccionar...</option>
-                                    {INVOICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    options={[{ value: '', label: 'Sin tipo' }, ...INVOICE_TYPES.map(t => ({ value: t, label: t }))]}
+                                    value={form.invoice_type}
+                                    onChange={v => set('invoice_type', v)}
+                                    placeholder="Seleccionar..."
+                                />
                             </div>
 
                             <div>
@@ -224,24 +236,29 @@ export default function Create({ auth, vendors, warehouses, products }) {
 
                             <div>
                                 <label className={labelCls}>Estado *</label>
-                                <select value={form.status} onChange={e => set('status', e.target.value)} className={inputCls} required>
-                                    <option value="pending">Pendiente</option>
-                                    <option value="received">Recibido (actualiza stock)</option>
-                                    <option value="partial">Parcial</option>
-                                    <option value="cancelled">Cancelado</option>
-                                </select>
+                                <SearchableSelect
+                                    options={[
+                                        { value: 'pending',   label: 'Pendiente' },
+                                        { value: 'received',  label: 'Recibido (actualiza stock)' },
+                                        { value: 'partial',   label: 'Parcial' },
+                                        { value: 'cancelled', label: 'Cancelado' },
+                                    ]}
+                                    value={form.status}
+                                    onChange={v => set('status', v)}
+                                    required
+                                />
                             </div>
 
                             <div>
                                 <label className={labelCls}>Fecha del Comprobante *</label>
-                                <input type="date" value={form.purchased_at} onChange={e => set('purchased_at', e.target.value)}
-                                    className={inputCls} required />
+                                <DatePicker value={form.purchased_at} onChange={v => set('purchased_at', v)}
+                                    className={inputCls} D={D} />
                             </div>
 
                             <div>
                                 <label className={labelCls}>Fecha de Vencimiento</label>
-                                <input type="date" value={form.due_date} onChange={e => set('due_date', e.target.value)}
-                                    className={inputCls} />
+                                <DatePicker value={form.due_date} onChange={v => set('due_date', v)}
+                                    className={inputCls} D={D} />
                             </div>
 
                             <div className="md:col-span-3">
@@ -290,29 +307,25 @@ export default function Create({ auth, vendors, warehouses, products }) {
                                                 {/* Producto */}
                                                 <div className="col-span-12 md:col-span-4">
                                                     <label className={labelCls}>Producto</label>
-                                                    <select
-                                                        value={item.product_id}
-                                                        onChange={e => updateItem(idx, 'product_id', e.target.value)}
-                                                        className={inputCls}
+                                                    <SearchableSelect
+                                                        options={products.map(p => ({ value: String(p.id), label: `${p.name}${p.sku ? ` (${p.sku})` : ''}` }))}
+                                                        value={String(item.product_id)}
+                                                        onChange={v => updateItem(idx, 'product_id', v)}
+                                                        placeholder="Seleccionar..."
                                                         required
-                                                    >
-                                                        <option value="">Seleccionar...</option>
-                                                        {products.map(p => <option key={p.id} value={p.id}>{p.name} {p.sku ? `(${p.sku})` : ''}</option>)}
-                                                    </select>
+                                                    />
                                                 </div>
 
                                                 {/* Variante */}
                                                 <div className="col-span-12 md:col-span-2">
                                                     <label className={labelCls}>Variante</label>
-                                                    <select
-                                                        value={item.variant_id}
-                                                        onChange={e => updateItem(idx, 'variant_id', e.target.value)}
-                                                        className={inputCls}
+                                                    <SearchableSelect
+                                                        options={[{ value: '', label: 'Sin variante' }, ...variants.map(v => ({ value: String(v.id), label: v.sku || v.barcode || `Var. #${v.id}` }))]}
+                                                        value={String(item.variant_id)}
+                                                        onChange={v => updateItem(idx, 'variant_id', v)}
+                                                        placeholder="Sin variante"
                                                         disabled={!variants.length}
-                                                    >
-                                                        <option value="">Sin variante</option>
-                                                        {variants.map(v => <option key={v.id} value={v.id}>{v.sku || v.barcode || `Var. #${v.id}`}</option>)}
-                                                    </select>
+                                                    />
                                                 </div>
 
                                                 {/* Cantidad */}

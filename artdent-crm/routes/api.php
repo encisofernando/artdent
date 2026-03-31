@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentOptionsController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShippingController;
+use App\Http\Controllers\Api\SocialAuthApiController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\CollaboratorAssignController;
 use App\Http\Controllers\HeroSlideController;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->name('api.auth.')->group(function (): void {
     Route::post('login', [AuthApiController::class, 'login'])->name('login');
     Route::post('register', [AuthApiController::class, 'register'])->name('register');
+    Route::post('social-login', [SocialAuthApiController::class, 'loginWithSocial'])->name('social.login');
     Route::post('password/forgot', [AuthApiController::class, 'forgotPassword'])->name('password.forgot');
     Route::post('password/reset', [AuthApiController::class, 'resetPassword'])->name('password.reset');
 

@@ -4,6 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Truck } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: "#397B9C", teal: "#49949C" };
 
@@ -71,18 +72,14 @@ export default function Edit({ auth, item, dentists }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <label className={labelClasses}>Odontólogo *</label>
-                                <select
+                                <SearchableSelect
                                     value={data.dentist_id}
-                                    onChange={e => setData('dentist_id', e.target.value)}
-                                    className={inputClasses}
+                                    onChange={v => setData('dentist_id', v)}
+                                    options={(dentists || []).map(d => ({ value: String(d.id), label: d.name }))}
+                                    placeholder="-- Seleccionar odontólogo --"
                                     required
-                                >
-                                    <option value="">-- Seleccionar odontólogo --</option>
-                                    {dentists?.map(d => (
-                                        <option key={d.id} value={d.id}>{d.name}</option>
-                                    ))}
-                                </select>
-                                {errors.dentist_id && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dentist_id}</div>}
+                                    error={errors.dentist_id}
+                                />
                             </div>
 
                             <div>
@@ -99,21 +96,21 @@ export default function Edit({ auth, item, dentists }) {
 
                             <div>
                                 <label className={labelClasses}>Día de Entrega</label>
-                                <select
+                                <SearchableSelect
                                     value={data.delivery_day}
-                                    onChange={e => setData('delivery_day', e.target.value)}
-                                    className={inputClasses}
-                                >
-                                    <option value="">Sin día asignado</option>
-                                    <option value="1">Lunes</option>
-                                    <option value="2">Martes</option>
-                                    <option value="3">Miércoles</option>
-                                    <option value="4">Jueves</option>
-                                    <option value="5">Viernes</option>
-                                    <option value="6">Sábado</option>
-                                    <option value="7">Domingo</option>
-                                </select>
-                                {errors.delivery_day && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.delivery_day}</div>}
+                                    onChange={v => setData('delivery_day', v)}
+                                    options={[
+                                        { value: '1', label: 'Lunes' },
+                                        { value: '2', label: 'Martes' },
+                                        { value: '3', label: 'Miércoles' },
+                                        { value: '4', label: 'Jueves' },
+                                        { value: '5', label: 'Viernes' },
+                                        { value: '6', label: 'Sábado' },
+                                        { value: '7', label: 'Domingo' },
+                                    ]}
+                                    placeholder="Sin día asignado"
+                                    error={errors.delivery_day}
+                                />
                             </div>
 
                             <div>

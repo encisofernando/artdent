@@ -59,6 +59,8 @@ class Invoice extends Model
         'total' => 'float',
         'issued_at' => 'datetime',
         'due_date' => 'datetime',
+        'afip_request' => 'array',
+        'afip_response' => 'array',
     ];
 
     protected $fillable = [
@@ -85,6 +87,11 @@ class Invoice extends Model
         'notes',
         'public_token',
         'quote_number',
+        'environment',
+        'afip_request',
+        'afip_response',
+        'afip_observations',
+        'afip_error_msg',
     ];
 
     public function company()

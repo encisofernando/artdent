@@ -140,6 +140,15 @@ export default function Topbar({ user, onSidebarToggle }) {
         return () => clearInterval(id);
     }, []);
 
+    // Reverb real-time: re-fetch immediately on push events
+    useEffect(() => {
+        if (!window.Echo || !user?.company_id) { return; }
+        const ch = window.Echo.channel(`company.${user.company_id}`);
+        ch.listen('.new-order', () => fetchNotifications());
+        ch.listen('.low-stock', () => fetchNotifications());
+        return () => { window.Echo.leaveChannel(`company.${user.company_id}`); };
+    }, [user?.company_id]);
+
     // Close dropdown on outside click
     useEffect(() => {
         const handler = (e) => {

@@ -170,8 +170,13 @@ export default function Index({ auth, users }) {
                                                 </Link>
                                                 <button
                                                     onClick={() => destroy(user)}
-                                                    className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10 text-red-400"
-                                                    title="Eliminar usuario"
+                                                    disabled={user.roles.some(r => r.name === 'Super Admin')}
+                                                    className={`p-1.5 rounded-lg transition-colors ${
+                                                        user.roles.some(r => r.name === 'Super Admin')
+                                                            ? 'opacity-20 cursor-not-allowed'
+                                                            : 'hover:bg-red-500/10 text-red-400'
+                                                    }`}
+                                                    title={user.roles.some(r => r.name === 'Super Admin') ? "Este usuario está protegido" : "Eliminar usuario"}
                                                 >
                                                     <Trash2 size={15} />
                                                 </button>

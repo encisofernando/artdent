@@ -8,6 +8,7 @@ import {
 } from "@/Components/ui/dialog";
 import { Button } from "@/Components/ui/button";
 import { Upload, Download, FileText, Database, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { router } from '@inertiajs/react';
 import Papa from 'papaparse';
@@ -287,18 +288,12 @@ export default function ImportExportModal({ isOpen, onClose }) {
                                                             {field.required && <span className="text-[10px] text-red-500 font-bold tracking-wider">REQUERIDO</span>}
                                                         </td>
                                                         <td className="px-4 py-2">
-                                                            <select
+                                                            <SearchableSelect
                                                                 value={columnMap[field.key] || ''}
-                                                                onChange={(e) => handleMapChange(field.key, e.target.value)}
-                                                                className={`w-full text-sm rounded-lg border focus:ring-2 focus:ring-emerald-500 outline-none p-2
-                                                                    ${isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'}
-                                                                `}
-                                                            >
-                                                                <option value="">-- Ignorar --</option>
-                                                                {csvHeaders.map(h => (
-                                                                    <option key={h} value={h}>{h}</option>
-                                                                ))}
-                                                            </select>
+                                                                onChange={v => handleMapChange(field.key, v)}
+                                                                placeholder="-- Ignorar --"
+                                                                options={csvHeaders.map(h => ({ value: h, label: h }))}
+                                                            />
                                                         </td>
                                                     </tr>
                                                 ))}

@@ -4,6 +4,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Search, Plus, Printer, Trash2, FileText, X, Check, CheckCircle } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
+import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -38,13 +39,17 @@ function Modal({ title, onClose, children }) {
     );
 }
 
-export default function Index({ auth, items, collaborators, filters }) {
+export default function Index({ auth, items, collaborators, filters, summary }) {
     const { isDark } = useTheme();
     const data = items?.data || [];
 
     const [collaboratorFilter, setCollaboratorFilter] = useState(filters?.collaborator_id || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || '');
     const [showCreate, setShowCreate] = useState(false);
+    const hasPermission = (permission) => auth.user?.is_super_admin || auth.user?.permissions?.includes(permission);
+    const canManage = hasPermission('staff.edit');
+    const canDelete = hasPermission('staff.delete');
+    const showActions = canManage || canDelete;
 
     const createForm = useForm({
         collaborator_id: '',
@@ -55,13 +60,18 @@ export default function Index({ auth, items, collaborators, filters }) {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            router.get(route('collaborator-receipts.index'), {
-                collaborator_id: collaboratorFilter,
-                status: statusFilter,
-            }, { preserveState: true, preserveScroll: true, replace: true });
+            if (
+                collaboratorFilter !== (filters?.collaborator_id || '') ||
+                statusFilter !== (filters?.status || '')
+            ) {
+                router.get(route('collaborator-receipts.index'), {
+                    collaborator_id: collaboratorFilter,
+                    status: statusFilter,
+                }, { preserveState: true, preserveScroll: true, replace: true });
+            }
         }, 400);
         return () => clearTimeout(timer);
-    }, [collaboratorFilter, statusFilter]);
+    }, [collaboratorFilter, statusFilter, filters?.collaborator_id, filters?.status]);
 
     const submitCreate = (e) => {
         e.preventDefault();
@@ -99,23 +109,48 @@ export default function Index({ auth, items, collaborators, filters }) {
                         <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Recibos</h1>
                         <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Recibos de sueldo de colaboradores</p>
                     </div>
-                    <Button
-                        onClick={() => setShowCreate(true)}
-                        className="text-white border-none shadow-md rounded-xl"
-                        style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
-                    >
-                        <Plus className="mr-2" size={16} />
-                        Generar Recibo
-                    </Button>
+                    {canManage && (
+                        <Button
+                            onClick={() => setShowCreate(true)}
+                            className="text-white border-none shadow-md rounded-xl"
+                            style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
+                        >
+                            <Plus className="mr-2" size={16} />
+                            Generar Recibo
+                        </Button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {[
+                        { label: 'Recibos', value: summary?.receipts ?? 0 },
+                        { label: 'Neto total', value: `$${fmt(summary?.net)}` },
+                        { label: 'Pagados', value: `$${fmt(summary?.paid)}` },
+                        { label: 'Pendientes', value: `$${fmt(summary?.draft)}` },
+                    ].map(({ label, value }) => (
+                        <div
+                            key={label}
+                            className={`rounded-2xl border p-4 shadow-sm ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/70'}`}
+                        >
+                            <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                {label}
+                            </p>
+                            <p className={`mt-2 text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                {value}
+                            </p>
+                        </div>
+                    ))}
                 </div>
 
                 <div className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div className="flex items-center gap-2">
                         <Search size={16} className="text-slate-400" />
-                        <select className={inputClass} value={collaboratorFilter} onChange={e => setCollaboratorFilter(e.target.value)}>
-                            <option value="">Todos los colaboradores</option>
-                            {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                        <SearchableSelect
+                            value={String(collaboratorFilter || '')}
+                            onChange={v => setCollaboratorFilter(v)}
+                            placeholder="Todos los colaboradores"
+                            options={collaborators.map(c => ({ value: String(c.id), label: c.name }))}
+                        />
                     </div>
                     <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-slate-50 border-slate-200'}`}>
                         {[
@@ -152,7 +187,7 @@ export default function Index({ auth, items, collaborators, filters }) {
                             <table className="w-full text-sm">
                                 <thead className={`border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                                     <tr>
-                                        {['Colaborador', 'Período', 'Días', 'Horas', 'Bruto', 'Extras', 'Descuentos', 'Neto', 'Estado', ''].map(h => (
+                                        {['Colaborador', 'Período', 'Días', 'Horas', 'Bruto', 'Extras', 'Descuentos', 'Neto', 'Estado', ...(showActions ? [''] : [])].map(h => (
                                             <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
                                         ))}
                                     </tr>
@@ -190,23 +225,29 @@ export default function Index({ auth, items, collaborators, filters }) {
                                                     {STATUS_LABELS[item.status] || item.status}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-2 justify-end">
-                                                    <Link href={route('collaborator-receipts.show', item.id)}>
-                                                        <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`} title="Ver / Imprimir">
-                                                            <Printer size={14} />
-                                                        </button>
-                                                    </Link>
-                                                    {item.status === 'draft' && (
-                                                        <button onClick={() => markPaid(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-green-900/20 text-green-400 hover:bg-green-900/40' : 'bg-green-50 text-green-600 hover:bg-green-100'}`} title="Marcar Pagado">
-                                                            <CheckCircle size={14} />
-                                                        </button>
-                                                    )}
-                                                    <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`} title="Eliminar">
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                            {showActions && (
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-2 justify-end">
+                                                        {canManage && (
+                                                            <Link href={route('collaborator-receipts.show', item.id)}>
+                                                                <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`} title="Ver / Imprimir">
+                                                                    <Printer size={14} />
+                                                                </button>
+                                                            </Link>
+                                                        )}
+                                                        {canManage && item.status === 'draft' && (
+                                                            <button onClick={() => markPaid(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-green-900/20 text-green-400 hover:bg-green-900/40' : 'bg-green-50 text-green-600 hover:bg-green-100'}`} title="Marcar Pagado">
+                                                                <CheckCircle size={14} />
+                                                            </button>
+                                                        )}
+                                                        {canDelete && (
+                                                            <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`} title="Eliminar">
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -232,16 +273,18 @@ export default function Index({ auth, items, collaborators, filters }) {
                 )}
             </div>
 
-            {showCreate && (
+            {showCreate && canManage && (
                 <Modal title="Generar Recibo" onClose={() => setShowCreate(false)}>
                     <form onSubmit={submitCreate}>
                         <div className="flex flex-col gap-4">
                             <div>
                                 <label className={labelClass}>Colaborador *</label>
-                                <select className={formInputClass} value={createForm.data.collaborator_id} onChange={e => createForm.setData('collaborator_id', e.target.value)}>
-                                    <option value="">Seleccionar...</option>
-                                    {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
+                                <SearchableSelect
+                                    value={String(createForm.data.collaborator_id || '')}
+                                    onChange={v => createForm.setData('collaborator_id', v)}
+                                    placeholder="Seleccionar..."
+                                    options={collaborators.map(c => ({ value: String(c.id), label: c.name }))}
+                                />
                                 {createForm.errors.collaborator_id && <p className="text-red-500 text-xs mt-1">{createForm.errors.collaborator_id}</p>}
                             </div>
                             <div className="grid grid-cols-2 gap-3">

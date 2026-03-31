@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Eye, Receipt, TrendingUp, TrendingDown, Store, ShoppingBag, ListFilter } from 'lucide-react';
+import { Search, Plus, Eye, Receipt, TrendingUp, TrendingDown, Store, ShoppingBag, ListFilter, Download } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 
@@ -75,7 +75,7 @@ export default function Index({ auth, items, filters }) {
             <Head title="Control de Ventas" />
 
             {/* ── Fixed viewport shell ─────────────────────────────────────── */}
-            <div className={`fixed inset-0 top-16 z-[5] overflow-hidden transition-all duration-300
+            <div className={`fixed top-16 right-0 left-0 bottom-14 lg:bottom-0 z-[5] overflow-hidden transition-all duration-300
                 ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'}
             `}>
 
@@ -143,6 +143,14 @@ export default function Index({ auth, items, filters }) {
                                         </button>
                                     ))}
                                 </div>
+
+                                {/* Export CSV */}
+                                <a href={route('export.sales')} className="hidden sm:block">
+                                    <Button variant="outline" className="rounded-xl gap-2">
+                                        <Download size={15} />
+                                        CSV
+                                    </Button>
+                                </a>
 
                                 {/* Nueva Venta — desktop */}
                                 <Link href={route('sales.create')} className="hidden sm:block w-full sm:w-auto">
@@ -256,7 +264,7 @@ export default function Index({ auth, items, filters }) {
                                                             C
                                                         </div>
                                                         <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
-                                                            Consumidor Final
+                                                            {item.customer?.name || item.notes?.match(/Cliente:\s*(.+)/)?.[1]?.trim() || 'Consumidor Final'}
                                                         </span>
                                                     </div>
                                                 </td>
@@ -326,25 +334,6 @@ export default function Index({ auth, items, filters }) {
                     </div>{/* /content padding */}
                 </div>{/* /scrollable */}
 
-                {/* ══ FAB — mobile only ══════════════════════════════════════ */}
-                <Link href={route('sales.create')} className="sm:hidden">
-                    <button
-                        style={{
-                            position: 'fixed', bottom: 22, right: 20, zIndex: 40,
-                            width: 56, height: 56, borderRadius: '50%', border: 'none',
-                            background: `linear-gradient(135deg, ${B.blue}, ${B.teal})`,
-                            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 8px 28px rgba(57,123,156,0.45)',
-                            cursor: 'pointer', transition: 'transform .15s',
-                        }}
-                        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.94)'}
-                        onMouseUp={e => e.currentTarget.style.transform = ''}
-                        onTouchStart={e => e.currentTarget.style.transform = 'scale(0.94)'}
-                        onTouchEnd={e => e.currentTarget.style.transform = ''}
-                    >
-                        <Plus size={26} />
-                    </button>
-                </Link>
 
             </div>{/* /shell */}
         </AuthenticatedLayout>
