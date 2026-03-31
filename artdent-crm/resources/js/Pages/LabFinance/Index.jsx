@@ -14,6 +14,14 @@ import {
     Trash2,
     WalletCards,
 } from 'lucide-react';
+import {
+    getStoredTicketFormat,
+    getThermalPrintZoom,
+    getThermalZoneWidth,
+    printElementWithElectron,
+    setStoredTicketFormat,
+} from '@/lib/print';
+import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 
 const AD = {
     blue: '#397B9C',
@@ -50,47 +58,56 @@ const fmtDate = (value) => {
     });
 };
 
-function ThermalReport({ items, summary, filters, mode = '80mm' }) {
-    const width = mode === '57mm' ? '52mm' : '74mm';
+function ThermalReport({ items, summary, filters, company, mode = '80mm' }) {
+    const width = getThermalZoneWidth(mode);
+    const companyDisplayName = getCompanyDisplayName(company);
 
     return (
         <div
             id="print-zone"
             style={{
                 width,
-                fontFamily: "'Courier New', Courier, monospace",
+                fontFamily: 'Arial, Helvetica, sans-serif',
                 fontSize: '9pt',
                 color: '#000',
                 background: '#fff',
-                lineHeight: 1.45,
+                lineHeight: 1.4,
                 boxSizing: 'border-box',
-                padding: 0,
+                padding: mode === '57mm' ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm',
             }}
         >
-            <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 4, marginBottom: 8 }} />
+            <div style={{ borderTop: '3px solid #000', marginBottom: 8 }} />
             <div style={{ textAlign: 'center', marginBottom: 6 }}>
-                <img src="/assets/logo-artdent-negro.png" alt="ArtDent" style={{ height: 28, objectFit: 'contain', display: 'inline-block' }} />
+                <CompanyLogo
+                    company={company}
+                    scope="lab"
+                    thermal
+                    height={28}
+                    maxWidth={150}
+                    style={{ margin: '0 auto' }}
+                />
             </div>
-            <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 11, marginBottom: 2 }}>REPORTE LABORATORIO</div>
-            <div style={{ textAlign: 'center', fontSize: 8, color: '#444', marginBottom: 6 }}>
+            <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 11, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Reporte laboratorio</div>
+            <div style={{ textAlign: 'center', fontSize: 7.4, color: '#000', marginBottom: 2 }}>{companyDisplayName}</div>
+            <div style={{ textAlign: 'center', fontSize: 8, color: '#000', marginBottom: 6 }}>
                 {fmtDate(filters.from)} al {fmtDate(filters.to)}
             </div>
-            <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '4px 0', marginBottom: 6 }}>
+            <div style={{ border: '2px solid #000', padding: '5px 6px', marginBottom: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8 }}>
-                    <span style={{ fontWeight: 700 }}>Ingresos</span>
+                    <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>Ingresos</span>
                     <span style={{ fontWeight: 900 }}>{fmtMoney(summary.income_total)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8 }}>
-                    <span style={{ fontWeight: 700 }}>Egresos</span>
+                    <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>Egresos</span>
                     <span style={{ fontWeight: 900 }}>{fmtMoney(summary.expense_total)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginTop: 3 }}>
-                    <span style={{ fontWeight: 900 }}>Balance</span>
+                    <span style={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.5 }}>Balance</span>
                     <span style={{ fontWeight: 900 }}>{fmtMoney(summary.net_total)}</span>
                 </div>
             </div>
 
-            <div style={{ fontSize: 8.3, fontWeight: 900, marginBottom: 4 }}>DETALLE</div>
+            <div style={{ fontSize: 8.1, fontWeight: 900, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.6 }}>Detalle</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 7.6 }}>
                 <tbody>
                     {items.map((item) => (
@@ -98,31 +115,38 @@ function ThermalReport({ items, summary, filters, mode = '80mm' }) {
                             <td style={{ padding: '2px 0', verticalAlign: 'top' }}>
                                 <div style={{ fontWeight: 900 }}>{fmtDate(item.date)} · {item.category}</div>
                                 <div>{item.description}</div>
-                                {item.party && <div style={{ color: '#444' }}>{item.party}</div>}
-                                {item.payment_method && <div style={{ color: '#444' }}>{item.payment_method}</div>}
+                                {item.party && <div style={{ color: '#000' }}>{item.party}</div>}
+                                {item.payment_method && <div style={{ color: '#000' }}>{item.payment_method}</div>}
                             </td>
-                            <td style={{ padding: '2px 0', textAlign: 'right', verticalAlign: 'top', fontWeight: 900, color: item.flow === 'income' ? '#006600' : '#B91C1C' }}>
+                            <td style={{ padding: '2px 0', textAlign: 'right', verticalAlign: 'top', fontWeight: 900, color: '#000' }}>
                                 {item.flow === 'income' ? '+' : '-'}{fmtMoney(item.amount)}
                             </td>
                         </tr>
                     ))}
+                    {items.length === 0 && (
+                        <tr>
+                            <td colSpan={2} style={{ padding: '6px 0', textAlign: 'center', fontWeight: 700 }}>
+                                Sin movimientos en el período seleccionado.
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
 
-            <div style={{ marginTop: 8, borderTop: '1px solid #000', paddingTop: 4, textAlign: 'center', fontSize: 6.5, color: '#666' }}>
-                ArtDent CRM · Balance de ingresos y egresos
+            <div style={{ marginTop: 8, borderTop: '1px solid #000', paddingTop: 4, textAlign: 'center', fontSize: 6.5, color: '#000' }}>
+                {companyDisplayName} · Balance de ingresos y egresos
             </div>
-            <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 4, marginTop: 6 }} />
+            <div style={{ borderTop: '3px solid #000', marginTop: 6 }} />
         </div>
     );
 }
 
-export default function Index({ auth, items = [], summary, filters, paymentMethods = [], expenseCategories = [] }) {
+export default function Index({ auth, items = [], summary, filters, paymentMethods = [], expenseCategories = [], company = null }) {
     const { isDark } = useTheme();
     const [search, setSearch] = useState(filters.search || '');
     const [from, setFrom] = useState(filters.from || '');
     const [to, setTo] = useState(filters.to || '');
-    const [printMode, setPrintMode] = useState(() => localStorage.getItem('artdent_ticket_format') || '80mm');
+    const [printMode, setPrintMode] = useState(() => getStoredTicketFormat('80mm'));
     const firstRun = useRef(true);
 
     const incomeForm = useForm({
@@ -150,7 +174,7 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
     });
 
     useEffect(() => {
-        localStorage.setItem('artdent_ticket_format', printMode);
+        setStoredTicketFormat(printMode);
     }, [printMode]);
 
     useEffect(() => {
@@ -193,40 +217,17 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
         const printElement = document.getElementById('print-zone');
         if (!printElement) return;
 
-        const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-            .map((style) => style.outerHTML)
-            .join('');
+        const result = await printElementWithElectron({
+            element: printElement,
+            mode: printMode,
+            zoneWidth: printElement.style.width || getThermalZoneWidth(printMode),
+            zoom: getThermalPrintZoom(printMode),
+            fallbackToBrowser: true,
+            browserDelay: 500,
+        });
 
-        const fullHTML = `
-            <html>
-                <head>
-                    <base href="${window.location.origin}">
-                    ${styles}
-                    <style>
-                        @page { margin: 0; size: ${printMode} auto; }
-                        body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        #print-zone { width: ${printElement.style.width || (printMode === '57mm' ? '52mm' : '74mm')} !important; box-shadow: none !important; margin: 0 !important; }
-                    </style>
-                </head>
-                <body>${printElement.outerHTML}</body>
-            </html>
-        `;
-
-        try {
-            const response = await fetch('http://localhost:1234/print', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html: fullHTML, mode: printMode }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Print server error');
-            }
-        } catch {
-            const win = window.open('', '_blank');
-            win.document.write(fullHTML);
-            win.document.close();
-            setTimeout(() => { win.print(); win.close(); }, 500);
+        if (!result.ok && !result.fallbackUsed) {
+            alert('No se pudo conectar con ArtDent Print.');
         }
     };
 
@@ -485,7 +486,7 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
                 </div>
 
                 <div className="hidden">
-                    <ThermalReport items={items} summary={summary} filters={{ from, to }} mode={printMode} />
+                    <ThermalReport items={items} summary={summary} filters={{ from, to }} company={company} mode={printMode} />
                 </div>
             </div>
         </AuthenticatedLayout>

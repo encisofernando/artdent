@@ -105,9 +105,12 @@ class ProductController extends Controller
             'meta_desc' => 'nullable|string',
             'tax_rate' => 'nullable|numeric',
             'stock_quantity' => 'nullable|numeric',
-            'images.*' => 'nullable|image|max:2048',
+            'images.*' => 'nullable|image|max:102400',
             'variants' => 'nullable|json',
             'video' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,video/x-msvideo|max:51200',
+        ], [
+            'images.*.max' => 'Cada imagen no puede superar los 100 MB.',
+            'images.*.image' => 'El archivo debe ser una imagen valida (jpg, png, gif, webp).',
         ]);
 
         if (empty($validated['company_id'])) {
@@ -277,7 +280,7 @@ class ProductController extends Controller
             'meta_desc' => 'nullable|string',
             'tax_rate' => 'nullable|numeric',
             'stock_quantity' => 'nullable|numeric',
-            'images.*' => 'nullable|image|max:2048',
+            'images.*' => 'nullable|image|max:102400',
             'variants' => 'nullable|json',
             'video' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,video/x-msvideo|max:51200',
             'image_sort' => 'nullable|array',
@@ -285,6 +288,9 @@ class ProductController extends Controller
             'deleted_image_ids' => 'nullable|array',
             'deleted_image_ids.*' => 'integer',
             'cover_image_id' => 'nullable|integer',
+        ], [
+            'images.*.max' => 'Cada imagen no puede superar los 100 MB.',
+            'images.*.image' => 'El archivo debe ser una imagen valida (jpg, png, gif, webp).',
         ]);
 
         $validated['min_stock'] = $validated['min_stock'] ?? 0;

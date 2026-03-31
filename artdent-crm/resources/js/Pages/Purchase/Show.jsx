@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, FileText, Package, CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Package, CheckCircle, Clock, AlertCircle, XCircle, SquarePen } from 'lucide-react';
 
 const STATUS_MAP = {
     pending: { label: 'Pendiente', icon: Clock, color: 'yellow' },
@@ -59,6 +59,11 @@ export default function Show({ auth, purchase }) {
                     </div>
                     <div className="flex items-center gap-3">
                         <StatusBadge status={purchase.status} isDark={isDark} />
+                        <Link href={route('proveedores.comprobantes.edit', purchase.id)}>
+                            <Button variant="outline" className={isDark ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                                <SquarePen className="mr-2" size={16} /> Editar
+                            </Button>
+                        </Link>
                         <Link href={route('proveedores.comprobantes.index')}>
                             <Button variant="outline" className={isDark ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
                                 <ArrowLeft className="mr-2" size={16} /> Volver
@@ -88,6 +93,14 @@ export default function Show({ auth, purchase }) {
                         <div>
                             <p className={labelCls}>Vencimiento</p>
                             <p className={valueCls}>{fmtDate(purchase.due_date)}</p>
+                        </div>
+                        <div>
+                            <p className={labelCls}>CAE</p>
+                            <p className={valueCls}>{purchase.cae ?? '—'}</p>
+                        </div>
+                        <div>
+                            <p className={labelCls}>Vto. CAE</p>
+                            <p className={valueCls}>{fmtDate(purchase.cae_due_date)}</p>
                         </div>
                         <div>
                             <p className={labelCls}>Depósito</p>

@@ -3,10 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Http\Middleware\Concerns\BootstrapsTenantFromSession;
+use App\Support\UserLanding;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 class RedirectIfAuthenticated extends \Illuminate\Auth\Middleware\RedirectIfAuthenticated
@@ -30,12 +30,6 @@ class RedirectIfAuthenticated extends \Illuminate\Auth\Middleware\RedirectIfAuth
 
     protected function defaultRedirectUri(): string
     {
-        foreach (['dashboard', 'home'] as $uri) {
-            if (Route::has($uri)) {
-                return route($uri);
-            }
-        }
-
-        return '/';
+        return UserLanding::uriFor(Auth::user());
     }
 }

@@ -136,10 +136,12 @@ strong { font-weight: 700; }
             : '';
     };
 
+    $storedLogoUrl = $company->documentLogoUrl('general');
+
     // Logo principal: primero lo que tenga la empresa en la DB, sino el asset estático
-    if (!empty($company->logo_url)) {
+    if (!empty($storedLogoUrl)) {
         // logo_url puede ser '/storage/logos/file.png' → public_path('storage/logos/file.png')
-        $dbLogoPath  = public_path(ltrim($company->logo_url, '/'));
+        $dbLogoPath  = public_path(ltrim($storedLogoUrl, '/'));
         $logoColorSrc = $encodeImg($dbLogoPath);
     }
     if (empty($logoColorSrc)) {
@@ -164,7 +166,7 @@ strong { font-weight: 700; }
     {{-- Izquierda: todos los datos del emisor --}}
     <div style="display: flex; flex-direction: column; gap: 2px;">
         @if($logoColorSrc)
-            <img src="{{ $logoColorSrc }}" alt="{{ $company->name }}" style="height: 44px; object-fit: contain; display: block; max-width: 180px; margin-bottom: 4px;">
+            <img src="{{ $logoColorSrc }}" alt="{{ $company->name }}" style="height: 22mm; object-fit: contain; display: block; max-width: 78mm; margin-bottom: 4px;">
         @endif
         {{-- Siempre se muestra la razón social (name), nunca el nombre de fantasía --}}
         <div style="font-weight: 800; font-size: {{ $logoColorSrc ? '9pt' : '16pt' }}; color: #111; line-height: 1.2;">
@@ -366,7 +368,7 @@ strong { font-weight: 700; }
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 @if($logoIconSrc)
-                    <img src="{{ $logoIconSrc }}" alt="ArtDent" style="height: 24px; object-fit: contain; display: block;">
+                    <img src="{{ $logoIconSrc }}" alt="ArtDent" style="height: 10mm; object-fit: contain; display: block; max-width: 20mm;">
                 @endif
                 <span style="font-size: 7.5pt; color: #49949C; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
                     {{ $company->name }} — Tu sonrisa, es nuestra prioridad.

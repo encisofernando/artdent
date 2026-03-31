@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Support\AccountingSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
@@ -22,6 +24,7 @@ class CompanyController extends Controller
 
         return \Inertia\Inertia::render('Admin/Settings', [
             'company' => $company,
+            'accountingSettings' => $company->normalizedAccountingSettings(),
         ]);
     }
 
@@ -62,24 +65,47 @@ class CompanyController extends Controller
             'chatbot_model' => 'nullable|string|max:120',
             'chatbot_openai_key' => 'nullable|string|max:255',
             'chatbot_gemini_key' => 'nullable|string|max:255',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // 2MB Max
+            'accounting_settings' => 'nullable|array',
+            'accounting_settings.tax_regime' => 'nullable|string|in:responsable_inscripto,monotributista,exento,consumidor_final',
+            'accounting_settings.vat_presentation' => 'nullable|string|in:iva_simple,libro_iva_digital,personalizado,no_aplica',
+            'accounting_settings.vat_sales_book' => 'nullable|boolean',
+            'accounting_settings.vat_purchases_book' => 'nullable|boolean',
+            'accounting_settings.gross_income_regime' => 'nullable|string|in:local,convenio_multilateral,simplificado,exento,no_aplica',
+            'accounting_settings.gross_income_jurisdiction' => 'nullable|string|max:120',
+            'accounting_settings.withholding_agent_role' => 'nullable|string|in:none,retention,perception,both',
+            'accounting_settings.employer_book_enabled' => 'nullable|boolean',
+            'accounting_settings.accountant_notes' => 'nullable|string|max:3000',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            'lab_logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
         ]);
 
         if ($request->hasFile('logo')) {
-            // Delete old logo if exists
             if ($company->logo_url) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $company->logo_url));
+                Storage::disk('public')->delete(str_replace('/storage/', '', $company->logo_url));
             }
 
             $path = $request->file('logo')->store('logos', 'public');
             $validated['logo_url'] = '/storage/'.$path;
         }
 
-        // Remove 'logo' from validated data as it's not a database column
+        if ($request->hasFile('lab_logo')) {
+            if ($company->lab_logo_url) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $company->lab_logo_url));
+            }
+
+            $path = $request->file('lab_logo')->store('logos', 'public');
+            $validated['lab_logo_url'] = '/storage/'.$path;
+        }
+
         unset($validated['logo']);
+        unset($validated['lab_logo']);
 
         $validated['chatbot_enabled'] = $request->boolean('chatbot_enabled');
         $validated['chatbot_model'] = trim((string) ($validated['chatbot_model'] ?? '')) ?: null;
+        $validated['accounting_settings'] = AccountingSettings::merge(
+            $validated['accounting_settings'] ?? $company->accounting_settings,
+            $company
+        );
 
         $company->update($validated);
 

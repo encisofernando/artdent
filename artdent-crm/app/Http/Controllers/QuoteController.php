@@ -161,7 +161,7 @@ class QuoteController extends Controller
     {
         abort_unless($quote->reference_type === 'quote', 404);
 
-        $quote->load('invoice_items');
+        $quote->load('invoice_items', 'company');
 
         $shareUrl = route('quotes.public', $quote->public_token);
 
@@ -220,7 +220,7 @@ class QuoteController extends Controller
     /** Public shareable view — no auth required */
     public function publicShow(string $token)
     {
-        $quote = Invoice::with('invoice_items')
+        $quote = Invoice::with('invoice_items', 'company')
             ->where('public_token', $token)
             ->where('reference_type', 'quote')
             ->firstOrFail();

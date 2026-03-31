@@ -10,10 +10,13 @@ const reverbHost = import.meta.env.VITE_REVERB_HOST;
 const reverbScheme = import.meta.env.VITE_REVERB_SCHEME ?? 'http';
 const reverbPort = import.meta.env.VITE_REVERB_PORT ?? (reverbScheme === 'https' ? 443 : 8080);
 const localHosts = new Set(['localhost', '127.0.0.1', '::1']);
+const normalizedReverbHost = String(reverbHost ?? '').trim().replace(/^['"]|['"]$/g, '');
+const forceLocalEcho = String(import.meta.env.VITE_REVERB_FORCE_LOCAL ?? '').toLowerCase() === 'true';
 
 window.Echo = null;
 
-const shouldBootEcho = Boolean(reverbKey && reverbHost) && (import.meta.env.DEV || !localHosts.has(reverbHost));
+const shouldBootEcho = Boolean(reverbKey && normalizedReverbHost)
+    && (forceLocalEcho || !localHosts.has(normalizedReverbHost));
 
 if (shouldBootEcho) {
     window.Pusher = Pusher;
@@ -21,7 +24,7 @@ if (shouldBootEcho) {
     window.Echo = new Echo({
         broadcaster: 'reverb',
         key: reverbKey,
-        wsHost: reverbHost,
+        wsHost: normalizedReverbHost,
         wsPort: reverbPort,
         wssPort: reverbPort,
         forceTLS: reverbScheme === 'https',

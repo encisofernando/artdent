@@ -12,6 +12,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
+import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 import {
     fmt, fmtDate,
     IVA_LABELS, parseReceiptType, buildAfipQrUrl,
@@ -37,6 +38,7 @@ function TicketBase({ sale, widthMM = 80 }) {
     const total  = Number(sale.total || 0);
     const receipt  = parseReceiptType(sale.receipt_type);
     const company  = sale.company || {};
+    const companyDisplayName = getCompanyDisplayName(company, { preferFantasy: false });
     const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
 
     // ── Número de comprobante ─────────────────────────────────────────────────
@@ -137,12 +139,16 @@ function TicketBase({ sale, widthMM = 80 }) {
 
             {/* ── Encabezado empresa ────────────────────────────────────────── */}
             <div style={{ textAlign: 'center', padding: '6px 6px 4px' }}>
-                {company.logo_url ? (
-                    <img src={company.logo_url} alt=""
-                        style={{ height: logoH, objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} />
-                ) : null}
+                <CompanyLogo
+                    company={company}
+                    scope="general"
+                    thermal
+                    height={logoH}
+                    maxWidth={is57 ? 112 : 156}
+                    style={{ margin: '0 auto 4px' }}
+                />
                 <div style={{ fontSize: F.lg, fontWeight: 800, letterSpacing: '-0.3px', lineHeight: 1.15 }}>
-                    {company.name}
+                    {companyDisplayName}
                 </div>
                 {company.address && (
                     <div style={{ fontSize: F.xs, color: C.muted, marginTop: 1 }}>

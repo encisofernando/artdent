@@ -3,6 +3,17 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { ArrowLeft, Printer, Download, Eye } from 'lucide-react';
+import {
+    buildPrintHtml,
+    getStoredTicketFormat,
+    getThermalPrintZoom,
+    getThermalZoneWidth,
+    MONTSERRAT_PRINT_HEAD,
+    openBrowserPrint,
+    printElementWithElectron,
+    setStoredTicketFormat,
+} from '@/lib/print';
+import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 
 // ─── Brand ───────────────────────────────────────────────────────────────────
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE', light: '#DAE6F0' };
@@ -15,112 +26,121 @@ function TicketBase({ job, widthMM = 80 }) {
     const is54 = widthMM === 54;
     const items = job.job_items || [];
     const total = Number(job.total || 0);
+    const company = job.company || {};
+    const companyDisplayName = getCompanyDisplayName(company);
     const dentist = job.dentist || {};
     const patient = job.patient || {};
-    const ticketNum = (job.job_number || '').replace(/[^0-9]/g, '') || job.job_number || '—';
+    const ticketNum = job.job_number || (job.id ? `OT-${job.id}` : '—');
+    const patientName = [patient?.name, patient?.last_name].filter(Boolean).join(' ') || patient?.name || '—';
+    const dentistName = dentist?.name || dentist?.contact_name || dentist?.email || '—';
+    const serviceLabel = job.jobType?.name || job.job_type?.name || 'Trabajo de laboratorio';
+    const notes = job.description || job.notes || job.observations || '';
 
     const F = {
-        logo: is54 ? 28 : 36,
-        label: is54 ? 8 : 10,   // Textos base
-        value: is54 ? 8 : 10,
-        th: is54 ? 7.5 : 9,     // Tabla head
-        td: is54 ? 7.5 : 9,     // Tabla base
-        total: is54 ? 12 : 16,  // Total
-        small: is54 ? 7 : 8,
-        ticketN: is54 ? 11 : 14 // "TICKET X"
+        logo: is54 ? 26 : 34,
+        caption: is54 ? 7.2 : 8.1,
+        label: is54 ? 7.6 : 8.4,
+        body: is54 ? 8.2 : 9.2,
+        total: is54 ? 11.2 : 13.8,
+        number: is54 ? 13 : 16,
+        small: is54 ? 6.8 : 7.6,
     };
-    const PAD = '0'; // Thermal printers have unprintable margins physically
 
-    const pxWidth = is54 ? 50 : 74; // Native true-printable widths in mm
+    const ticketWidth = getThermalZoneWidth(is54 ? '54mm' : '80mm');
 
-    const Row = ({ label, value, bold = false }) => (
-        <div style={{ fontSize: `${F.label}pt`, marginBottom: 3, wordWrap: 'break-word', lineHeight: 1.25 }}>
-            <span style={{ fontWeight: 700, color: '#000', marginRight: 4 }}>{label}:</span>
-            <span style={{ fontWeight: bold ? 900 : 500, color: '#000' }}>{value}</span>
+    const InfoRow = ({ label, value }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt`, lineHeight: 1.3, marginBottom: 3 }}>
+            <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</span>
+            <span style={{ fontWeight: 600, textAlign: 'right', flex: 1 }}>{value || '—'}</span>
         </div>
     );
 
     return (
-        <div id="print-zone" style={{ width: `${pxWidth}mm`, fontFamily: "'Courier New', Courier, monospace", fontSize: `${F.label}pt`, color: '#000', padding: PAD, background: '#fff', lineHeight: 1.45, boxSizing: 'border-box' }}>
-            {/* Top stripe */}
-            <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: is54 ? 3 : 4, margin: `0 -${is54 ? 3 : 4}mm ${is54 ? 5 : 7}px` }} />
+        <div id="print-zone" style={{ width: ticketWidth, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: `${F.body}pt`, color: '#000', padding: is54 ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm', background: '#fff', lineHeight: 1.35, boxSizing: 'border-box' }}>
+            <div style={{ borderTop: '3px solid #000', marginBottom: is54 ? 5 : 7 }} />
 
-            {/* Logo */}
-            <div style={{ textAlign: 'center', marginBottom: is54 ? 5 : 7, marginTop: 5 }}>
-                <img src="/assets/logo-artdent-negro.png" alt="ArtDent" style={{ height: F.logo, objectFit: 'contain', display: 'inline-block' }} />
+            <div style={{ textAlign: 'center', marginBottom: is54 ? 6 : 8 }}>
+                <CompanyLogo
+                    company={company}
+                    scope="lab"
+                    thermal
+                    height={F.logo}
+                    maxWidth={is54 ? 112 : 156}
+                    style={{ margin: '0 auto' }}
+                />
+                <div style={{ marginTop: 6, fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' }}>Orden de servicio</div>
+                <div style={{ fontSize: `${F.small}pt`, letterSpacing: 0.8, textTransform: 'uppercase' }}>Laboratorio odontológico</div>
+                <div style={{ fontSize: `${F.small}pt`, marginTop: 2 }}>Documento interno. No válido como factura.</div>
             </div>
 
-            <div style={{ textAlign: 'center', fontSize: F.small + 1, fontWeight: 700, color: '#000', letterSpacing: 0.3, marginBottom: is54 ? 5 : 7 }}>
-                DOCUMENTO NO VÁLIDO COMO FACTURA
+            <div style={{ border: '2px solid #000', padding: is54 ? '4px 6px' : '5px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
+                <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>Orden N°</div>
+                <div style={{ fontSize: `${F.number}pt`, fontWeight: 900, letterSpacing: 0.3 }}>{ticketNum}</div>
+                <div style={{ fontSize: `${F.small}pt`, marginTop: 2 }}>{serviceLabel}</div>
             </div>
 
-            <div style={{ borderTop: '2px solid #000', marginBottom: is54 ? 5 : 6 }} />
+            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
+                <InfoRow label="Ingreso" value={fmtDate(job.received_at || job.created_at)} />
+                <InfoRow label="Entrega" value={fmtDate(job.due_date)} />
+                <InfoRow label="Paciente" value={patientName} />
+                <InfoRow label="Profesional" value={dentistName} />
+                <InfoRow label="Tipo" value={serviceLabel} />
+                {job.shade && <InfoRow label="Tono" value={job.shade} />}
+            </div>
 
-            {/* Ticket # */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: is54 ? 6 : 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: F.label, fontWeight: 900, color: '#000' }}>Ticket:</span>
-                    <div style={{ border: '2px solid #000', padding: '2px 10px', fontWeight: 900, color: '#000', fontSize: F.ticketN, minWidth: is54 ? 44 : 56, textAlign: 'center' }}>{ticketNum}</div>
+            {notes && (
+                <div style={{ border: '1px solid #000', padding: is54 ? '4px 5px' : '5px 6px', marginBottom: is54 ? 6 : 8 }}>
+                    <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 }}>Indicaciones</div>
+                    <div style={{ fontSize: `${F.label}pt`, lineHeight: 1.35 }}>{notes}</div>
                 </div>
+            )}
+
+            <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 0', marginBottom: 4 }}>
+                Detalle del trabajo
             </div>
 
-            {/* Cliente */}
             <div style={{ marginBottom: is54 ? 6 : 8 }}>
-                <Row label="FECHA" value={fmtDate(job.created_at)} />
-                <Row label="PACIENTE" value={patient?.name || '—'} />
-                {dentist && (
-                    <Row label="DR(A)" value={dentist.name || dentist.email || '—'} />
+                {items.length > 0 ? items.map((it, index) => (
+                    <div key={index} style={{ borderBottom: '1px dotted #000', padding: '4px 0' }}>
+                        <div style={{ fontSize: `${F.body}pt`, fontWeight: 700, marginBottom: 2 }}>{it.description}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt` }}>
+                            <span>{Number(it.quantity || 1)} x ${fmt(it.unit_price)}</span>
+                            <span style={{ fontWeight: 800 }}>${fmt(it.total || Number(it.unit_price || 0) * Number(it.quantity || 1))}</span>
+                        </div>
+                    </div>
+                )) : (
+                    <div style={{ borderBottom: '1px dotted #000', padding: '4px 0' }}>
+                        <div style={{ fontSize: `${F.body}pt`, fontWeight: 700, marginBottom: 2 }}>{serviceLabel}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt` }}>
+                            <span>1 x ${fmt(total)}</span>
+                            <span style={{ fontWeight: 800 }}>${fmt(total)}</span>
+                        </div>
+                    </div>
                 )}
             </div>
 
-            <div style={{ borderTop: '2px solid #000', marginBottom: is54 ? 4 : 5 }} />
-
-            {/* Tabla */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: F.th, marginBottom: is54 ? 4 : 6 }}>
-                <thead>
-                    <tr style={{ borderBottom: `2px solid #000`, borderTop: `2px solid #000` }}>
-                        <th style={{ padding: '3px 2px', textAlign: 'left', fontWeight: 900, color: '#000', width: '50%' }}>Descripción</th>
-                        <th style={{ padding: '3px 2px', textAlign: 'center', fontWeight: 900, color: '#000', width: '16%' }}>Can</th>
-                        <th style={{ padding: '3px 2px', textAlign: 'center', fontWeight: 900, color: '#000', width: '16%' }}>Uni</th>
-                        <th style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 900, color: '#000', width: '18%' }}>Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.length > 0 ? items.map((it, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #000' }}>
-                            <td style={{ padding: '3px 2px', fontSize: F.td, fontWeight: 600, color: '#000' }}>{it.description}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 700, color: '#000' }}>{Number(it.quantity)}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 600, color: '#000' }}>{fmt(it.unit_price)}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 900, fontSize: F.td, color: '#000' }}>{fmt(it.total || it.unit_price * it.quantity)}</td>
-                        </tr>
-                    )) : (
-                        <tr style={{ borderBottom: '1px solid #000' }}>
-                            <td style={{ padding: '3px 2px', fontSize: F.td, fontWeight: 600, color: '#000' }}>{job.job_type?.name || job.description || 'Trabajo de laboratorio'}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 700, color: '#000' }}>1</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: F.td, fontWeight: 600, color: '#000' }}>{fmt(total)}</td>
-                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 900, fontSize: F.td, color: '#000' }}>{fmt(total)}</td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
-
-            <div style={{ borderTop: '2px solid #000', marginBottom: is54 ? 4 : 5 }} />
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: F.total, fontWeight: 900, color: '#000', marginBottom: is54 ? 4 : 6 }}>
-                <span>Total del Ticket:</span>
-                <span style={{ color: '#000' }}>{fmt(total)}</span>
+            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>Total orden</span>
+                    <span style={{ fontSize: `${F.total}pt`, fontWeight: 900 }}>${fmt(total)}</span>
+                </div>
             </div>
 
-            {job.shade && <div style={{ fontSize: F.small, color: '#000', marginBottom: 3 }}><span style={{ fontWeight: 900 }}>Tono/Color: </span><span style={{ fontWeight: 600 }}>{job.shade}</span></div>}
-            {job.due_date && <div style={{ fontSize: F.small, color: '#000', marginBottom: is54 ? 4 : 5 }}><span style={{ fontWeight: 900 }}>Entrega: </span><span style={{ fontWeight: 600 }}>{fmtDate(job.due_date)}</span></div>}
-
-            <div style={{ borderTop: '2px dashed #000', margin: `${is54 ? 5 : 7}px 0 ${is54 ? 4 : 5}px` }} />
-
-            <div style={{ textAlign: 'center', fontSize: F.small }}>
-                <div style={{ fontWeight: 900, color: '#000', fontFamily: "'Courier New', Courier, monospace", marginBottom: 2, fontSize: F.small + 1 }}>Tu sonrisa, es nuestra prioridad.</div>
-                <div style={{ color: '#000', marginTop: 2, fontWeight: 600 }}>ArtDent Laboratorio Odontológico</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: is54 ? 6 : 8 }}>
+                <div style={{ flex: 1, textAlign: 'center', fontSize: `${F.small}pt` }}>
+                    <div style={{ borderTop: '1px solid #000', marginTop: 18, paddingTop: 2 }}>Recibe</div>
+                </div>
+                <div style={{ flex: 1, textAlign: 'center', fontSize: `${F.small}pt` }}>
+                    <div style={{ borderTop: '1px solid #000', marginTop: 18, paddingTop: 2 }}>Entrega</div>
+                </div>
             </div>
 
+            <div style={{ textAlign: 'center', fontSize: `${F.small}pt`, borderTop: '1px solid #000', paddingTop: 5 }}>
+                <div style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.6 }}>{companyDisplayName}</div>
+                <div style={{ marginTop: 2 }}>Tu sonrisa, es nuestra prioridad.</div>
+            </div>
+
+            <div style={{ borderTop: '3px solid #000', marginTop: is54 ? 5 : 7 }} />
         </div>
     );
 }
@@ -131,6 +151,8 @@ function OrdenA4({ job }) {
     const subtotal = items.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0);
     const discount = Number(job.discount_amount || 0);
     const total = Number(job.total || 0);
+    const company = job.company || {};
+    const companyDisplayName = getCompanyDisplayName(company);
     const dentist = job.dentist || {};
     const patientName = job.patient?.name ? `${job.patient.name} ${job.patient.last_name || ''}`.trim() : '—';
     const clientName = dentist.type === 'clinic' ? (dentist.name || dentist.contact_name) : `${dentist.last_name || ''} ${dentist.name || ''}`.trim().toUpperCase();
@@ -141,7 +163,7 @@ function OrdenA4({ job }) {
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8mm 15mm 6mm', borderBottom: `1px solid ${AD.light}`, flexShrink: 0 }}>
-                <img src="/assets/logo-artdent-color.png" alt="ArtDent" style={{ height: 52, objectFit: 'contain' }} />
+                <CompanyLogo company={company} scope="lab" height="22mm" maxWidth="78mm" />
                 <div style={{ textAlign: 'center', border: '2.5px solid #222', padding: '6px 18px', minWidth: 108, alignSelf: 'center' }}>
                     <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: -1 }}>O</div>
                     <div style={{ borderTop: '1px solid #222', marginTop: 3, paddingTop: 3, fontSize: 7, fontWeight: 700, letterSpacing: 1 }}>TRABAJO</div>
@@ -160,7 +182,11 @@ function OrdenA4({ job }) {
             {/* Emisor */}
             <div style={{ padding: '5mm 15mm', borderBottom: `1px solid ${AD.light}`, flexShrink: 0 }}>
                 <div style={{ fontSize: 8.5, lineHeight: 1.8 }}>
-                    <div style={{ fontWeight: 800, fontSize: 10.5, color: '#111', marginBottom: 2 }}>ArtDent Laboratorio Odontológico</div>
+                    <div style={{ fontWeight: 800, fontSize: 10.5, color: '#111', marginBottom: 2 }}>{company.name || companyDisplayName}</div>
+                    {company.address && <div style={{ color: '#666' }}>{company.address}</div>}
+                    {(company.city || company.province) && (
+                        <div style={{ color: '#666' }}>{[company.city, company.province].filter(Boolean).join(' - ')}</div>
+                    )}
                     <div style={{ color: '#666' }}><strong>Documento No Válido Como Factura</strong></div>
                 </div>
             </div>
@@ -245,7 +271,7 @@ function OrdenA4({ job }) {
                 </div>
                 <div style={{ padding: '4mm 15mm', borderTop: `1px solid ${AD.light}`, background: '#fafcfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <img src="/assets/logo-artdent-icon.png" alt="ArtDent" style={{ height: 24, objectFit: 'contain' }} />
+                        <CompanyLogo company={company} scope="lab" height="10mm" maxWidth="20mm" />
                         <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tu sonrisa, es nuestra prioridad.</span>
                     </div>
                     <div style={{ fontSize: 7, color: '#bbb' }}>Generado por ArtDent CRM — {fmtDate(new Date())}</div>
@@ -266,7 +292,10 @@ const MODES = [
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function Ticket({ item }) {
     const { isDark } = useTheme();
-    const [mode, setMode] = useState('80mm');
+    const [mode, setMode] = useState(() => {
+        const saved = getStoredTicketFormat('80mm');
+        return ['57mm', '80mm'].includes(saved) ? saved : '80mm';
+    });
     const job = item;
 
     const D = isDark
@@ -278,63 +307,40 @@ export default function Ticket({ item }) {
         if (mode === 'a4') {
             const el = document.getElementById('print-zone');
             if (!el) return;
-            const win = window.open('', '_blank');
-            win.document.write(`<html><head><title>ArtDent — ${job.job_number}</title></head><body>${el.innerHTML}</body></html>`);
-            win.document.close();
-            setTimeout(() => { win.print(); win.close(); }, 500);
+            const html = buildPrintHtml({
+                title: `ArtDent — ${job.job_number}`,
+                bodyHtml: el.outerHTML,
+                pageSize: 'A4',
+                zoneWidth: '210mm',
+                extraHead: MONTSERRAT_PRINT_HEAD,
+            });
+            openBrowserPrint(html, { delay: 500 });
             return;
         }
 
-        // Capturamos el Ticket (80mm / 54mm)
         const printElement = document.getElementById('print-zone');
         if (!printElement) return;
 
-        const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-            .map(style => style.outerHTML)
-            .join('');
+        const result = await printElementWithElectron({
+            element: printElement,
+            title: `ArtDent — ${job.job_number}`,
+            mode,
+            zoneWidth: printElement.style.width || getThermalZoneWidth(mode),
+            zoom: getThermalPrintZoom(mode),
+            extraHead: MONTSERRAT_PRINT_HEAD,
+            fallbackToBrowser: true,
+            browserDelay: 500,
+        });
 
-        const scale = mode === '54mm' ? '0.90' : '1';
-
-        const fullHTML = `
-        <html>
-            <head>
-                <base href="${window.location.origin}">
-                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-                ${styles}
-                <style>
-                    @page { margin: 0; size: auto; }
-                    body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; }
-                    #print-zone { 
-                        width: ${printElement.style.width} !important; 
-                        max-width: ${printElement.style.width} !important; 
-                        box-shadow: none !important; margin: 0 !important; 
-                        box-sizing: border-box; 
-                        transform: scale(${scale}); 
-                        transform-origin: top left;
-                    }
-                </style>
-            </head>
-            <body>${printElement.outerHTML}</body>
-        </html>
-    `;
-
-        try {
-            const response = await fetch('http://localhost:1234/print', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    html: fullHTML,
-                    mode: mode === '54mm' ? '57mm' : mode // Mapeamos 54mm a 57mm para el servidor
-                })
-            });
-
-            if (!response.ok) {
-                const result = await response.json();
-                alert("Error de hardware: " + result.error);
-            }
-        } catch (err) {
-            alert("⚠️ No se detectó el servidor ArtDent Print. Verifique que el icono aparezca junto al reloj de Windows.");
+        if (!result.ok && !result.fallbackUsed) {
+            alert('⚠️ No se detectó el servidor ArtDent Print. Verifique que el icono aparezca junto al reloj de Windows.');
         }
+    };
+
+    const handleModeChange = (nextMode) => {
+        setMode(nextMode);
+        if (nextMode === '80mm') setStoredTicketFormat('80mm');
+        if (nextMode === '54mm') setStoredTicketFormat('57mm');
     };
 
     return (
@@ -370,7 +376,7 @@ export default function Ticket({ item }) {
                         {/* Selector de modo */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                             {MODES.map(m => (
-                                <button key={m.id} onClick={() => setMode(m.id)} style={{
+                                <button key={m.id} onClick={() => handleModeChange(m.id)} style={{
                                     textAlign: 'left', padding: '10px 12px', borderRadius: 12,
                                     border: `1.5px solid ${mode === m.id ? AD.teal : D.border}`,
                                     background: mode === m.id ? `rgba(73,148,156,0.1)` : D.card,

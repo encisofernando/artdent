@@ -16,11 +16,18 @@ import {
     Send, CheckCircle2, XCircle, Clock, FileText, Mail,
 } from 'lucide-react';
 import axios from 'axios';
+import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 
 // ── Brand ──────────────────────────────────────────────────────────────────────
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE', light: '#DAE6F0' };
 const fmt     = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+const IVA_LABELS = {
+    responsable_inscripto: 'Responsable Inscripto',
+    monotributista: 'Monotributista',
+    exento: 'Exento',
+    consumidor_final: 'Consumidor final',
+};
 
 // ── Status config ──────────────────────────────────────────────────────────────
 const STATUS = {
@@ -45,6 +52,8 @@ function StatusBadge({ status }) {
 // ── A4 Preview Component ───────────────────────────────────────────────────────
 function QuoteA4({ quote }) {
     const items   = quote.invoice_items || [];
+    const company = quote.company || {};
+    const companyDisplayName = getCompanyDisplayName(company);
     const subtotal = Number(quote.subtotal || 0);
     const discount = Number(quote.discount || 0);
     const taxAmt   = Number(quote.tax_amount || 0);
@@ -68,7 +77,7 @@ function QuoteA4({ quote }) {
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8mm 15mm 6mm', borderBottom: `1px solid ${AD.light}`, flexShrink: 0 }}>
-                <img src="/assets/logo-artdent-color.png" alt="ArtDent" style={{ height: 52, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />
+                <CompanyLogo company={company} scope="lab" height="22mm" maxWidth="78mm" />
                 <div style={{ textAlign: 'center', border: '2.5px solid #222', padding: '6px 18px', minWidth: 108, alignSelf: 'center' }}>
                     <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1 }}>P</div>
                     <div style={{ borderTop: '1px solid #222', marginTop: 3, paddingTop: 3, fontSize: 7, fontWeight: 700, letterSpacing: 1 }}>PRESUPUESTO</div>
@@ -88,11 +97,15 @@ function QuoteA4({ quote }) {
             <div style={{ padding: '5mm 15mm', borderBottom: `1px solid ${AD.light}`, flexShrink: 0 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm', fontSize: 8.5 }}>
                     <div>
-                        <div style={{ fontWeight: 800, fontSize: 10.5, color: '#111', marginBottom: 2 }}>ArtDent Laboratorio Odontológico</div>
-                        <div style={{ color: '#333', lineHeight: 1.8 }}>Laboratorio Odontológico<br />Argentina</div>
+                        <div style={{ fontWeight: 800, fontSize: 10.5, color: '#111', marginBottom: 2 }}>{company.name || companyDisplayName}</div>
+                        <div style={{ color: '#333', lineHeight: 1.8 }}>
+                            {company.address && <>{company.address}<br /></>}
+                            {([company.city, company.province, company.country].filter(Boolean).join(' - ')) || 'Argentina'}
+                        </div>
                     </div>
                     <div style={{ textAlign: 'right', color: '#333', lineHeight: 1.8 }}>
-                        <div><strong>Condición IVA:</strong> Monotributista</div>
+                        <div><strong>Condición IVA:</strong> {IVA_LABELS[company.iva_condition] || company.iva_condition || 'Monotributista'}</div>
+                        {company.cuit && <div><strong>CUIT:</strong> {company.cuit}</div>}
                     </div>
                 </div>
             </div>
@@ -187,7 +200,7 @@ function QuoteA4({ quote }) {
                 <div style={{ padding: '4mm 15mm', borderTop: `1px solid ${AD.light}`, background: '#fafcfe' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <img src="/assets/logo-artdent-icon.png" alt="ArtDent" style={{ height: 26, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />
+                            <CompanyLogo company={company} scope="lab" height="10mm" maxWidth="20mm" />
                             <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                 Tu sonrisa, es nuestra prioridad.
                             </span>

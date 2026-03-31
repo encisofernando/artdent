@@ -24,6 +24,7 @@ import {
     ShoppingCart,
     CreditCard,
     Bot,
+    Landmark,
 } from 'lucide-react';
 
 export default function Sidebar({ className = "" }) {
@@ -35,7 +36,12 @@ export default function Sidebar({ className = "" }) {
         {
             label: null,
             items: [
-                { title: "Panel General", icon: LayoutDashboard, path: "/dashboard" },
+                {
+                    title: "Panel General",
+                    icon: LayoutDashboard,
+                    path: "/dashboard",
+                    permission: ['products.view', 'customers.view', 'orders.view', 'ecommerce.view', 'reports.view', 'settings.edit', 'staff.view'],
+                },
             ],
         },
         {
@@ -134,6 +140,21 @@ export default function Sidebar({ className = "" }) {
         },
 
         {
+            label: "Contable",
+            items: [
+                {
+                    title: "Contable", icon: Landmark, key: "contable",
+                    permission: 'accounting.view',
+                    children: [
+                        { title: "Panel contable", path: "/contable" },
+                        { title: "Libro IVA Ventas", path: "/export/iva-ventas", external: true },
+                        { title: "Libro IVA Compras", path: "/export/iva-compras", external: true },
+                        { title: "Estado de Resultados", path: "/export/income-statement", external: true },
+                    ],
+                },
+            ],
+        },
+        {
             label: "CRM",
             items: [
                 { title: "Asistente Artie", icon: Bot, path: "/crm/chatbot", permission: 'customers.view' },
@@ -173,6 +194,9 @@ export default function Sidebar({ className = "" }) {
     const hasPermission = (permission) => {
         if (!permission) return true;
         if (auth.user.is_super_admin) return true;
+        if (Array.isArray(permission)) {
+            return permission.some(item => auth.user.permissions?.includes(item));
+        }
         return auth.user.permissions?.includes(permission);
     };
 

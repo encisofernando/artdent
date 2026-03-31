@@ -48,6 +48,7 @@ class Purchase extends Model
 		'tax_amount' => 'float',
 		'total' => 'float',
 		'purchased_at' => 'date',
+		'cae_due_date' => 'date',
 		'due_date' => 'date',
 	];
 
@@ -59,6 +60,8 @@ class Purchase extends Model
 		'reference_no',
 		'invoice_type',
 		'invoice_number',
+		'cae',
+		'cae_due_date',
 		'status',
 		'subtotal',
 		'tax_amount',

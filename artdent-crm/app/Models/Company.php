@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Support\AccountingSettings;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property string|null $fantasy_name
  * @property string|null $logo_url
+ * @property string|null $lab_logo_url
+ * @property array|null $accounting_settings
  * @property string|null $cuit
  * @property string|null $iva_condition
  * @property string|null $iibb
@@ -62,12 +65,15 @@ class Company extends Model
         'start_date' => 'datetime',
         'afip_point_sale' => 'int',
         'chatbot_enabled' => 'bool',
+        'accounting_settings' => 'array',
     ];
 
     protected $fillable = [
         'name',
         'fantasy_name',
         'logo_url',
+        'lab_logo_url',
+        'accounting_settings',
         'cuit',
         'iva_condition',
         'iibb',
@@ -110,6 +116,18 @@ class Company extends Model
         $env ??= $this->afip_environment ?? 'homo';
 
         return $env === 'homo' ? $this->afip_homo_cert_path : $this->afip_cert_path;
+    }
+
+    public function documentLogoUrl(string $scope = 'general'): ?string
+    {
+        return $scope === 'lab'
+            ? ($this->lab_logo_url ?: $this->logo_url)
+            : $this->logo_url;
+    }
+
+    public function normalizedAccountingSettings(): array
+    {
+        return AccountingSettings::merge($this->accounting_settings, $this);
     }
 
     public function branches()

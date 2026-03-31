@@ -8,6 +8,12 @@ import axios from 'axios';
 import SearchableSelect from '@/Components/SearchableSelect';
 import FacturaA4 from '@/Components/Sale/FacturaA4';
 import { Ticket80, Ticket57 } from '@/Components/Sale/TicketBase';
+import {
+    buildPrintHtml,
+    MONTSERRAT_PRINT_HEAD,
+    openBrowserPrint,
+    printElementWithElectron,
+} from '@/lib/print';
 
 // ─── Paleta ArtDent (Manual de Identidad) ───────────────────────────────────
 const AD = {
@@ -233,57 +239,30 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
         const isA4 = mode === 'a4';
         const is57 = mode === '57mm';
 
-        const pageSize = isA4 ? 'A4' : 'auto';
-        const zoneWidth = isA4 ? '210mm' : is57 ? '180px' : '260px';
-
-        const fullHTML = `
-        <html>
-            <head>
-                <title>ArtDent — ${sale.sale_number}</title>
-                <base href="${window.location.origin}">
-                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-                <style>
-                    @page { margin: 0; size: ${pageSize}; }
-                    * { box-sizing: border-box; }
-                    body {
-                        margin: 0; padding: 0;
-                        background: white;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    #print-zone {
-                        ${zoneWidth ? `width: ${zoneWidth} !important; max-width: ${zoneWidth} !important;` : ''}
-                        box-shadow: none !important;
-                        margin: 0 !important;
-                        /* El Electron captura a 388px en térmicos de 57mm. El HTML es de 180px base */
-                        ${!isA4 ? `zoom: ${mode === '57mm' ? 388/180 : 576/260}; transform-origin: top left; background: #fff !important;` : ''}
-                    }
-                    img { display: block; }
-                </style>
-            </head>
-            <body>${printElement.outerHTML}</body>
-        </html>`;
-
         if (isA4) {
-            const win = window.open('', '_blank');
-            win.document.write(fullHTML);
-            win.document.close();
-            setTimeout(() => { win.print(); win.close(); }, 700);
+            const html = buildPrintHtml({
+                title: `ArtDent — ${sale.sale_number}`,
+                bodyHtml: printElement.outerHTML,
+                pageSize: 'A4',
+                zoneWidth: '210mm',
+                extraHead: MONTSERRAT_PRINT_HEAD,
+            });
+            openBrowserPrint(html, { delay: 700 });
             return;
         }
 
-        // Tickets → servidor de impresión Electron
-        try {
-            const response = await fetch('http://localhost:1234/print', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html: fullHTML, mode }),
-            });
-            if (!response.ok) {
-                const result = await response.json();
-                alert('Error en el servidor de impresión: ' + result.error);
-            }
-        } catch {
+        const result = await printElementWithElectron({
+            element: printElement,
+            title: `ArtDent — ${sale.sale_number}`,
+            mode,
+            zoneWidth: is57 ? '180px' : '260px',
+            zoom: is57 ? 388 / 180 : 576 / 260,
+            extraHead: MONTSERRAT_PRINT_HEAD,
+            fallbackToBrowser: true,
+            browserDelay: 700,
+        });
+
+        if (!result.ok && !result.fallbackUsed) {
             alert('⚠️ El gestor de impresión ArtDent no está activo. Por favor, inicie la aplicación.');
         }
     };

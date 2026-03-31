@@ -29,6 +29,7 @@ class RolePermissionSeeder extends Seeder
             'reports' => 'Reportes y Estadísticas',
             'branches' => 'Sucursales',
             'staff' => 'Personal y RRHH',
+            'accounting' => 'Contable y Fiscal',
         ];
 
         $actions = [
@@ -100,6 +101,14 @@ class RolePermissionSeeder extends Seeder
                 'permissions' => [
                     'customers.view', 'customers.create', 'customers.edit',
                     'orders.view', 'orders.create',
+                ],
+            ],
+            [
+                'name' => 'Contador',
+                'display_name' => 'Contador / Estudio Contable',
+                'description' => 'Acceso al módulo contable, libros fiscales, facturación consolidada y reportes impositivos.',
+                'permissions' => [
+                    'accounting.view',
                 ],
             ],
         ];

@@ -193,7 +193,7 @@ class JobController extends Controller
 
     public function show(Job $job)
     {
-        $job->load(['dentist', 'patient', 'job_type', 'job_items', 'job_teeths', 'collaborators']);
+        $job->load(['company', 'dentist', 'patient', 'job_type', 'job_items', 'job_teeths', 'collaborators']);
 
         return Inertia::render('Job/Show', [
             'item' => $job,

@@ -12,6 +12,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
+import { CompanyLogo, getCompanyDisplayName, getCompanyLogoUrl } from '@/lib/companyBranding';
 
 // ─── Paleta ArtDent ───────────────────────────────────────────────────────────
 export const AD = {
@@ -88,31 +89,6 @@ export function buildAfipQrUrl(invoice, company) {
     return 'https://www.arca.gob.ar/fe/qr/?p=' + btoa(JSON.stringify(data));
 }
 
-// ─── Logo de empresa ──────────────────────────────────────────────────────────
-export function CompanyLogo({ company, height = 50, variant = 'color' }) {
-    if (company?.logo_url) {
-        return (
-            <img
-                src={company.logo_url}
-                alt={company.name || 'ArtDent'}
-                style={{ height, objectFit: 'contain', display: 'block', maxWidth: 180 }}
-            />
-        );
-    }
-    const src = variant === 'icon'
-        ? '/assets/logo-artdent-icon.png'
-        : variant === 'blanco'
-        ? '/assets/logo-artdent-blanco.png'
-        : '/assets/logo-artdent-color.png';
-    return (
-        <img
-            src={src}
-            alt="ArtDent"
-            style={{ height, objectFit: 'contain', display: 'block' }}
-        />
-    );
-}
-
 // ─── QR asíncrono ─────────────────────────────────────────────────────────────
 function QrCodeImg({ text, size = 76 }) {
     const [src, setSrc] = useState('');
@@ -137,6 +113,8 @@ export default function FacturaA4({ sale }) {
     const ivaContenido = totalIVA > 0 ? totalIVA : Math.round(total / 1.21 * 0.21 * 100) / 100;
 
     const company  = sale.company || {};
+    const configuredLogo = getCompanyLogoUrl(company, 'general');
+    const companyDisplayName = company.name || getCompanyDisplayName(company, { preferFantasy: false });
     const receipt  = parseReceiptType(sale.receipt_type);
     const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
 
@@ -190,12 +168,16 @@ export default function FacturaA4({ sale }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 1fr', gap: 0, alignItems: 'start', padding: '6mm 15mm 5mm', borderBottom: '2px solid #222', flexShrink: 0 }}>
                 {/* Izquierda: datos del emisor */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {company.logo_url && (
-                        <CompanyLogo company={company} height={44} variant="color" />
-                    )}
+                    <CompanyLogo
+                        company={company}
+                        scope="general"
+                        height="22mm"
+                        maxWidth="78mm"
+                        style={{ marginBottom: 2 }}
+                    />
                     {/* Siempre razón social, nunca nombre de fantasía */}
-                    <div style={{ fontWeight: 800, fontSize: company.logo_url ? 9 : 16, color: '#111', lineHeight: 1.2, marginTop: company.logo_url ? 4 : 0 }}>
-                        {company.name || 'ArtDent'}
+                    <div style={{ fontWeight: 800, fontSize: configuredLogo ? 9 : 16, color: '#111', lineHeight: 1.2, marginTop: configuredLogo ? 4 : 0 }}>
+                        {companyDisplayName}
                     </div>
                     <div style={{ fontSize: 7.5, color: '#444', lineHeight: 1.75, marginTop: 2 }}>
                         {company.address && <div>{company.address}</div>}
@@ -382,9 +364,9 @@ export default function FacturaA4({ sale }) {
                 <div style={{ padding: '3mm 15mm', borderTop: `1px solid ${AD.light}`, background: '#fafcfe' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <CompanyLogo company={company} height={24} variant="icon" />
+                            <CompanyLogo company={company} scope="general" height="10mm" maxWidth="20mm" />
                             <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                {company.name || 'ArtDent'} — Tu sonrisa, es nuestra prioridad.
+                                {companyDisplayName} — Tu sonrisa, es nuestra prioridad.
                             </span>
                         </div>
                         <div style={{ textAlign: 'right', fontSize: 7, color: '#bbb', lineHeight: 1.7 }}>

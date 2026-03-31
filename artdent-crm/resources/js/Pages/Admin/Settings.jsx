@@ -6,7 +6,7 @@ import {
     Building2, Receipt, MapPin, Globe, MessageSquare,
     Save, UploadCloud, X, Camera, CheckCircle2,
     ShieldCheck, KeyRound, FileCheck2, Loader2, Wifi, CircleCheck, CircleX, FileCog,
-    Mail, Printer, Bot,
+    Mail, Printer, Bot, Landmark, BookOpen,
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -35,7 +35,7 @@ const DEFAULT_CHATBOT_MODELS = {
     gemini: 'gemini-2.5-flash',
 };
 
-export default function Settings({ company }) {
+export default function Settings({ company, accountingSettings }) {
     const { isDark } = useTheme();
     const { flash } = usePage().props;
     const [activeTab, setActiveTab] = useState('perfil');
@@ -48,13 +48,16 @@ export default function Settings({ company }) {
         localStorage.setItem('artdent_ticket_format', fmt);
     };
     const [logoPreview, setLogoPreview] = useState(company.logo_url || null);
+    const [labLogoPreview, setLabLogoPreview] = useState(company.lab_logo_url || null);
     const fileInputRef = useRef(null);
+    const labFileInputRef = useRef(null);
 
     const { data, setData, post, processing, errors, progress } = useForm({
         _method: 'put', // Using POST with _method=put to handle file uploads in Laravel
         name: company.name || '',
         fantasy_name: company.fantasy_name || '',
         logo: null,
+        lab_logo: null,
         cuit: company.cuit || '',
         iva_condition: company.iva_condition || '',
         iibb: company.iibb || '',
@@ -84,11 +87,13 @@ export default function Settings({ company }) {
         chatbot_model: company.chatbot_model || DEFAULT_CHATBOT_MODELS[company.chatbot_provider || 'gemini'],
         chatbot_openai_key: company.chatbot_openai_key || '',
         chatbot_gemini_key: company.chatbot_gemini_key || '',
+        accounting_settings: accountingSettings || {},
     });
 
     const TABS = [
         { id: 'perfil', label: 'Perfil de Empresa', icon: Building2 },
         { id: 'fiscal', label: 'Datos Fiscales', icon: Receipt },
+        { id: 'contable', label: 'Contable', icon: Landmark },
         { id: 'ubicacion', label: 'Ubicación', icon: MapPin },
         { id: 'preferencias', label: 'Preferencias', icon: Globe },
         { id: 'integraciones', label: 'Integraciones', icon: MessageSquare },
@@ -204,23 +209,55 @@ export default function Settings({ company }) {
         }
     };
 
-    const handleLogoChange = (e) => {
+    const handleLogoChange = (field, setPreview) => (e) => {
         const file = e.target.files[0];
-        if (file) {
-            setData('logo', file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setLogoPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+
+        if (!file) {
+            return;
+        }
+
+        setData(field, file);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const removeLogo = (field, setPreview, fallbackPreview, inputRef) => () => {
+        setData(field, null);
+        setPreview(fallbackPreview || null);
+
+        if (inputRef.current) {
+            inputRef.current.value = '';
         }
     };
 
-    const removeLogo = () => {
-        setData('logo', null);
-        setLogoPreview(company.logo_url || null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-    };
+    const logoUploadFields = [
+        {
+            field: 'logo',
+            preview: logoPreview,
+            setPreview: setLogoPreview,
+            fallbackPreview: company.logo_url || null,
+            inputRef: fileInputRef,
+            title: 'Logo general',
+            hint: 'Usado en insumos, ecommerce y comprobantes A4 comerciales.',
+            description: 'Recomendamos PNG o WebP transparente de al menos 600 px. También se reutiliza en PDFs, emails y tickets si no hay uno específico.',
+            badge: 'Insumos + Ecommerce',
+        },
+        {
+            field: 'lab_logo',
+            preview: labLogoPreview,
+            setPreview: setLabLogoPreview,
+            fallbackPreview: company.lab_logo_url || null,
+            inputRef: labFileInputRef,
+            title: 'Logo laboratorio',
+            hint: 'Usado en órdenes, recibos, finanzas y presupuestos del laboratorio.',
+            description: 'Si no lo cargás, el sistema usa automáticamente el logo general como respaldo.',
+            badge: 'Laboratorio',
+        },
+    ];
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -243,6 +280,14 @@ export default function Settings({ company }) {
         }
     };
 
+    const accounting = data.accounting_settings || {};
+    const setAccountingSetting = (key, value) => {
+        setData('accounting_settings', {
+            ...accounting,
+            [key]: value,
+        });
+    };
+
     const renderInput = (id, label, type = 'text', placeholder = '', className = '') => (
         <div className={className}>
             <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -261,6 +306,36 @@ export default function Settings({ company }) {
             {errors[id] && <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors[id]}</div>}
         </div>
     );
+
+    const renderAccountingToggle = (key, label, description) => {
+        const enabled = Boolean(accounting[key]);
+
+        return (
+            <button
+                type="button"
+                onClick={() => setAccountingSetting(key, !enabled)}
+                className={`rounded-2xl border p-4 text-left transition-colors ${
+                    enabled
+                        ? (isDark ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50')
+                        : (isDark ? 'border-slate-700 bg-slate-800/40 hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300')
+                }`}
+            >
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <div className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{label}</div>
+                        <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{description}</p>
+                    </div>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] ${
+                        enabled
+                            ? 'bg-emerald-500 text-white'
+                            : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500')
+                    }`}>
+                        {enabled ? 'Activo' : 'Inactivo'}
+                    </span>
+                </div>
+            </button>
+        );
+    };
 
     return (
         <AuthenticatedLayout>
@@ -319,64 +394,103 @@ export default function Settings({ company }) {
                                 <div>
                                     <h3 className={`text-lg font-black tracking-tight mb-6 ${isDark ? 'text-white' : 'text-slate-800'}`}>Identidad Visual y Pública</h3>
 
-                                    {/* Logo Upload Area */}
-                                    <div className="mb-8 flex items-start gap-6">
-                                        <div className="relative group">
-                                            <div className={`w-32 h-32 rounded-3xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-300 bg-slate-50'
-                                                } ${logoPreview ? 'border-transparent' : ''}`}>
-                                                {logoPreview ? (
-                                                    <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain p-2" />
-                                                ) : (
-                                                    <Camera size={32} className={isDark ? 'text-slate-600' : 'text-slate-400'} />
-                                                )}
-                                            </div>
-
-                                            {/* Hover Upload Button */}
-                                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 cursor-pointer rounded-3xl transition-opacity">
-                                                <div className="flex flex-col items-center">
-                                                    <UploadCloud size={24} className="mb-1" />
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Cambiar</span>
-                                                </div>
-                                                <input
-                                                    type="file"
-                                                    ref={fileInputRef}
-                                                    onChange={handleLogoChange}
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                />
-                                            </label>
-
-                                            {data.logo && (
-                                                <button
-                                                    type="button"
-                                                    onClick={removeLogo}
-                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 active:scale-95 transition-all"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 mt-2">
-                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logo de la Empresa</label>
-                                            <p className={`text-sm mb-3 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                                                Recomendamos una imagen PNG transparente de al menos 400x400 para verse bien en reportes y tickets. Tamaño máximo 2MB.
-                                            </p>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className={`rounded-xl text-xs font-bold gap-2 ${isDark ? 'border-slate-700 hover:bg-slate-800' : ''}`}
+                                    <div className="mb-8 grid grid-cols-1 xl:grid-cols-2 gap-5">
+                                        {logoUploadFields.map((logoField) => (
+                                            <div
+                                                key={logoField.field}
+                                                className={`rounded-3xl border p-5 flex flex-col gap-4 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-slate-50/70'}`}
                                             >
-                                                <UploadCloud size={14} /> Subir Imagen
-                                            </Button>
-                                            {errors.logo && <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-2">{errors.logo}</div>}
-                                            {progress && (
-                                                <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 dark:bg-slate-700">
-                                                    <div className="bg-blue-600 h-1.5 rounded-full transition-all" style={{ width: `${progress.percentage}%` }}></div>
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] ${isDark ? 'bg-blue-500/10 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+                                                                {logoField.badge}
+                                                            </span>
+                                                        </div>
+                                                        <h4 className={`text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                                            {logoField.title}
+                                                        </h4>
+                                                        <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                            {logoField.hint}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            )}
-                                        </div>
+
+                                                <div className="flex flex-col sm:flex-row items-start gap-5">
+                                                    <div className="relative group shrink-0">
+                                                        <div className={`w-32 h-32 rounded-3xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-300 bg-slate-50'} ${logoField.preview ? 'border-transparent' : ''}`}>
+                                                            {logoField.preview ? (
+                                                                <img
+                                                                    src={logoField.preview}
+                                                                    alt={`Vista previa ${logoField.title}`}
+                                                                    className="w-full h-full object-contain p-2"
+                                                                />
+                                                            ) : (
+                                                                <Camera size={32} className={isDark ? 'text-slate-600' : 'text-slate-400'} />
+                                                            )}
+                                                        </div>
+
+                                                        <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 cursor-pointer rounded-3xl transition-opacity">
+                                                            <div className="flex flex-col items-center">
+                                                                <UploadCloud size={24} className="mb-1" />
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider">Cambiar</span>
+                                                            </div>
+                                                            <input
+                                                                type="file"
+                                                                ref={logoField.inputRef}
+                                                                onChange={handleLogoChange(logoField.field, logoField.setPreview)}
+                                                                className="hidden"
+                                                                accept="image/*"
+                                                            />
+                                                        </label>
+
+                                                        {data[logoField.field] && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={removeLogo(
+                                                                    logoField.field,
+                                                                    logoField.setPreview,
+                                                                    logoField.fallbackPreview,
+                                                                    logoField.inputRef,
+                                                                )}
+                                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 active:scale-95 transition-all"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex-1">
+                                                        <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                            Aplicación
+                                                        </label>
+                                                        <p className={`text-sm mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                            {logoField.description}
+                                                        </p>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => logoField.inputRef.current?.click()}
+                                                            className={`rounded-xl text-xs font-bold gap-2 ${isDark ? 'border-slate-700 hover:bg-slate-800' : ''}`}
+                                                        >
+                                                            <UploadCloud size={14} /> Subir imagen
+                                                        </Button>
+                                                        {errors[logoField.field] && (
+                                                            <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-2">
+                                                                {errors[logoField.field]}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
+
+                                    {progress && (
+                                        <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 dark:bg-slate-700">
+                                            <div className="bg-blue-600 h-1.5 rounded-full transition-all" style={{ width: `${progress.percentage}%` }}></div>
+                                        </div>
+                                    )}
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {renderInput('name', 'Razón Social (Legal)', 'text', 'Ej: ArtDent S.A.')}
@@ -415,6 +529,164 @@ export default function Settings({ company }) {
                                         {renderInput('iibb', 'Ingresos Brutos (IIBB)', 'text', 'Ej: 901-123456-1')}
                                         {renderInput('afip_point_sale', 'Punto de Venta Predeterminado', 'number', 'Ej: 1 o 5')}
                                         {renderInput('start_date', 'Fecha Inicio Actividades', 'date')}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'contable' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div>
+                                    <div className="flex items-start gap-3 mb-4">
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDark ? 'bg-blue-500/10 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+                                            <BookOpen size={18} />
+                                        </div>
+                                        <div>
+                                            <h3 className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Perfil contable y presentaciones</h3>
+                                            <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Dejá preparado qué libros y presentaciones querés controlar desde el módulo contable. La carga exacta puede variar según tu contador, régimen y jurisdicción.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Régimen fiscal principal
+                                            </label>
+                                            <SearchableSelect
+                                                value={accounting.tax_regime || ''}
+                                                onChange={v => setAccountingSetting('tax_regime', v)}
+                                                placeholder="Seleccionar régimen"
+                                                options={[
+                                                    { value: 'responsable_inscripto', label: 'Responsable Inscripto' },
+                                                    { value: 'monotributista', label: 'Monotributista' },
+                                                    { value: 'exento', label: 'Exento' },
+                                                    { value: 'consumidor_final', label: 'No aplica / uso interno' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Esquema de presentación IVA
+                                            </label>
+                                            <SearchableSelect
+                                                value={accounting.vat_presentation || ''}
+                                                onChange={v => setAccountingSetting('vat_presentation', v)}
+                                                placeholder="Seleccionar esquema"
+                                                options={[
+                                                    { value: 'iva_simple', label: 'IVA Simple / Portal IVA' },
+                                                    { value: 'libro_iva_digital', label: 'Libro IVA Digital / control documental' },
+                                                    { value: 'personalizado', label: 'Circuito personalizado con estudio contable' },
+                                                    { value: 'no_aplica', label: 'No aplica' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Régimen de Ingresos Brutos
+                                            </label>
+                                            <SearchableSelect
+                                                value={accounting.gross_income_regime || ''}
+                                                onChange={v => setAccountingSetting('gross_income_regime', v)}
+                                                placeholder="Seleccionar régimen"
+                                                options={[
+                                                    { value: 'local', label: 'Local / provincial' },
+                                                    { value: 'convenio_multilateral', label: 'Convenio Multilateral' },
+                                                    { value: 'simplificado', label: 'Simplificado / unificado' },
+                                                    { value: 'exento', label: 'Exento' },
+                                                    { value: 'no_aplica', label: 'No aplica' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Jurisdicción / organismo recaudador
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={accounting.gross_income_jurisdiction || ''}
+                                                onChange={e => setAccountingSetting('gross_income_jurisdiction', e.target.value)}
+                                                placeholder="Ej: ARBA, AGIP, API Santa Fe, SIFERE"
+                                                className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                    ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                                }`}
+                                            />
+                                            {errors['accounting_settings.gross_income_jurisdiction'] && (
+                                                <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">
+                                                    {errors['accounting_settings.gross_income_jurisdiction']}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+                                        {renderAccountingToggle(
+                                            'vat_sales_book',
+                                            'Libro IVA Ventas',
+                                            'Consolidar comprobantes emitidos, neto, IVA, total y destinatario.',
+                                        )}
+                                        {renderAccountingToggle(
+                                            'vat_purchases_book',
+                                            'Libro IVA Compras',
+                                            'Consolidar compras a proveedores y crédito fiscal por período.',
+                                        )}
+                                        {renderAccountingToggle(
+                                            'employer_book_enabled',
+                                            'Libro sueldo y cargas sociales',
+                                            'Preparar el módulo para recibos, obligaciones laborales y soporte al estudio contable.',
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                        <div>
+                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Rol frente a retenciones / percepciones
+                                            </label>
+                                            <SearchableSelect
+                                                value={accounting.withholding_agent_role || ''}
+                                                onChange={v => setAccountingSetting('withholding_agent_role', v)}
+                                                placeholder="Seleccionar rol"
+                                                options={[
+                                                    { value: 'none', label: 'No aplica' },
+                                                    { value: 'retention', label: 'Agente de retención' },
+                                                    { value: 'perception', label: 'Agente de percepción' },
+                                                    { value: 'both', label: 'Retención y percepción' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div className={`rounded-2xl border p-4 ${isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-slate-50/70'}`}>
+                                            <div className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Cómo se usará</div>
+                                            <p className={`text-xs mt-2 leading-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                El módulo contable va a tomar esta configuración para mostrar libros de IVA, facturación general, compras, ingresos, egresos y una lista de obligaciones activas. No reemplaza el criterio profesional del estudio contable, pero sí deja el circuito preparado y ordenado.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            Observaciones para el contador
+                                        </label>
+                                        <textarea
+                                            value={accounting.accountant_notes || ''}
+                                            onChange={e => setAccountingSetting('accountant_notes', e.target.value)}
+                                            rows={5}
+                                            placeholder="Ej: Jurisdicción principal, vencimientos, circuitos especiales, ajustes que se hacen fuera del sistema, etc."
+                                            className={`w-full rounded-2xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                            }`}
+                                        />
+                                        {errors['accounting_settings.accountant_notes'] && (
+                                            <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">
+                                                {errors['accounting_settings.accountant_notes']}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

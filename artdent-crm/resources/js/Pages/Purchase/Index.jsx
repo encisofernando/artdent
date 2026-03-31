@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Eye, Trash2, FileText, CheckCircle, Clock, AlertCircle, XCircle, ChevronRight } from 'lucide-react';
+import { Search, Plus, Eye, Trash2, FileText, CheckCircle, Clock, AlertCircle, XCircle, ChevronRight, SquarePen } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import SearchableSelect from '@/Components/SearchableSelect';
 
@@ -164,6 +164,9 @@ export default function Index({ auth, items, vendors, filters }) {
                                                     {item.vendor?.name ?? '—'}
                                                 </p>
                                                 <p className={`text-xs font-mono mt-0.5 ${textSub}`}>{num}</p>
+                                                {item.cae && (
+                                                    <p className={`text-[11px] mt-1 ${textSub}`}>CAE: {item.cae}</p>
+                                                )}
                                             </div>
                                             <StatusBadge status={item.status} isDark={isDark} />
                                         </div>
@@ -176,6 +179,11 @@ export default function Index({ auth, items, vendors, filters }) {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                <Link href={route('proveedores.comprobantes.edit', item.id)}>
+                                                    <button className={`h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-colors ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                                        <SquarePen size={14} /> Editar
+                                                    </button>
+                                                </Link>
                                                 <Link href={route('proveedores.comprobantes.show', item.id)}>
                                                     <button className={`h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-colors ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
                                                         <Eye size={14} /> Ver
@@ -219,6 +227,9 @@ export default function Index({ auth, items, vendors, filters }) {
                                                     {item.invoice_type && item.invoice_number
                                                         ? `${item.invoice_type} ${item.invoice_number}`
                                                         : item.reference_no || `#${item.id}`}
+                                                    {item.cae && (
+                                                        <div className={`text-[11px] mt-1 ${textSub}`}>CAE: {item.cae}</div>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <StatusBadge status={item.status} isDark={isDark} />
@@ -228,6 +239,11 @@ export default function Index({ auth, items, vendors, filters }) {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center justify-center gap-2">
+                                                        <Link href={route('proveedores.comprobantes.edit', item.id)}>
+                                                            <button className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-800'}`}>
+                                                                <SquarePen size={13} />
+                                                            </button>
+                                                        </Link>
                                                         <Link href={route('proveedores.comprobantes.show', item.id)}>
                                                             <button className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-800'}`}>
                                                                 <Eye size={13} />

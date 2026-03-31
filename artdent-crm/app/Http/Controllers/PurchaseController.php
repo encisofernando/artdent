@@ -32,6 +32,7 @@ class PurchaseController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('reference_no', 'like', "%{$search}%")
                     ->orWhere('invoice_number', 'like', "%{$search}%")
+                    ->orWhere('cae', 'like', "%{$search}%")
                     ->orWhereHas('vendor', fn ($v) => $v->where('name', 'like', "%{$search}%"));
             });
         }
@@ -98,6 +99,8 @@ class PurchaseController extends Controller
             'warehouse_id' => 'required|exists:warehouses,id',
             'invoice_type' => 'nullable|string|max:10',
             'invoice_number' => 'nullable|string|max:50',
+            'cae' => 'nullable|string|max:20',
+            'cae_due_date' => 'nullable|date',
             'reference_no' => 'nullable|string|max:100',
             'status' => 'required|in:pending,received,partial,cancelled',
             'purchased_at' => 'required|date',
@@ -125,6 +128,8 @@ class PurchaseController extends Controller
                 'warehouse_id' => $validated['warehouse_id'],
                 'invoice_type' => $validated['invoice_type'] ?? null,
                 'invoice_number' => $validated['invoice_number'] ?? null,
+                'cae' => $validated['cae'] ?? null,
+                'cae_due_date' => $validated['cae_due_date'] ?? null,
                 'reference_no' => $validated['reference_no'] ?? null,
                 'status' => $validated['status'],
                 'purchased_at' => $validated['purchased_at'],
@@ -216,6 +221,8 @@ class PurchaseController extends Controller
             'warehouse_id' => 'required|exists:warehouses,id',
             'invoice_type' => 'nullable|string|max:10',
             'invoice_number' => 'nullable|string|max:50',
+            'cae' => 'nullable|string|max:20',
+            'cae_due_date' => 'nullable|date',
             'reference_no' => 'nullable|string|max:100',
             'status' => 'required|in:pending,received,partial,cancelled',
             'purchased_at' => 'required|date',
@@ -241,6 +248,8 @@ class PurchaseController extends Controller
                 'warehouse_id' => $validated['warehouse_id'],
                 'invoice_type' => $validated['invoice_type'] ?? null,
                 'invoice_number' => $validated['invoice_number'] ?? null,
+                'cae' => $validated['cae'] ?? null,
+                'cae_due_date' => $validated['cae_due_date'] ?? null,
                 'reference_no' => $validated['reference_no'] ?? null,
                 'status' => $validated['status'],
                 'purchased_at' => $validated['purchased_at'],

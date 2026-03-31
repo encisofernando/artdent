@@ -8,6 +8,8 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Job;
 use App\Models\JobItem;
+use App\Models\Purchase;
+use App\Models\Sale;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -206,6 +208,40 @@ class ReportExportController extends Controller
         ]);
 
         return $this->streamCsv("libro_iva_ventas_{$from}_{$to}.csv", $headers, $rows);
+    }
+
+    /** GET /export/iva-compras — Libro IVA Compras */
+    public function ivaCompras(Request $request): StreamedResponse
+    {
+        $companyId = auth()->user()->company_id ?? 1;
+        $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
+        $to = $request->input('to', Carbon::now()->toDateString());
+
+        $purchases = Purchase::with('vendor')
+            ->where('company_id', $companyId)
+            ->whereBetween('purchased_at', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()])
+            ->orderBy('purchased_at')
+            ->orderBy('id')
+            ->get();
+
+        $headers = ['Fecha', 'Tipo Comp.', 'N° Comprobante', 'CAE', 'Vto. CAE', 'CUIT Proveedor', 'Razón Social', 'Condición IVA', 'Neto Gravado', 'IVA', 'Total', 'Estado'];
+
+        $rows = $purchases->map(fn ($purchase) => [
+            $purchase->purchased_at ? Carbon::parse($purchase->purchased_at)->format('d/m/Y') : '',
+            $purchase->invoice_type ?? '',
+            $purchase->invoice_number ?? $purchase->reference_no ?? '',
+            $purchase->cae ?? '',
+            $purchase->cae_due_date ? Carbon::parse($purchase->cae_due_date)->format('d/m/Y') : '',
+            $purchase->vendor?->cuit ?? '',
+            $purchase->vendor?->name ?? '',
+            $purchase->vendor?->iva_condition ?? '',
+            number_format((float) $purchase->subtotal, 2, ',', '.'),
+            number_format((float) $purchase->tax_amount, 2, ',', '.'),
+            number_format((float) $purchase->total, 2, ',', '.'),
+            $purchase->status ?? '',
+        ]);
+
+        return $this->streamCsv("libro_iva_compras_{$from}_{$to}.csv", $headers, $rows);
     }
 
     /** GET /export/income-statement — Estado de resultados */

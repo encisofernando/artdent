@@ -23,7 +23,7 @@ Route::middleware([
     });
 
     // ── Storage fallback ──────────────────────────────────────────────────────
-    Route::get('/storage/{path}', function (string $path) {
+    Route::middleware('tenant.session')->get('/storage/{path}', function (string $path) {
         $realPath = storage_path('app/public/'.ltrim($path, '/'));
 
         if (! file_exists($realPath) || is_dir($realPath)) {
@@ -64,6 +64,7 @@ Route::middleware([
 
         require __DIR__.'/modules/sales.php';
         require __DIR__.'/modules/finance.php';
+        require __DIR__.'/modules/accounting.php';
 
         require __DIR__.'/modules/hr.php';
         require __DIR__.'/modules/ecommerce.php';

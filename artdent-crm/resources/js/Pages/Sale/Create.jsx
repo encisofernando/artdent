@@ -22,6 +22,14 @@ import {
     Badge,
 } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
+import {
+    buildPrintHtml,
+    getStoredTicketFormat,
+    MONTSERRAT_PRINT_HEAD,
+    openBrowserPrint,
+    printElementWithElectron,
+    setStoredTicketFormat,
+} from '@/lib/print';
 
 const ALL_TIPOS = [
     { id: 'X',   label: 'Ticket X',          desc: 'Sin factura',    accentColor: '#64748b', condition: null },
@@ -122,7 +130,7 @@ export default function Create({ auth, products, customers = [], company = null 
     // Post-sale modal
     const [postSale, setPostSale]         = useState(null);  // sale object returned from server
     const [postSaleOpen, setPostSaleOpen] = useState(false);
-    const [printMode, setPrintMode]       = useState(() => localStorage.getItem('artdent_ticket_format') || '80mm');
+    const [printMode, setPrintMode]       = useState(() => getStoredTicketFormat('80mm'));
     const [printView, setPrintView]       = useState('actions'); // 'actions' | 'print' (kept for WhatsApp flow compat)
     const [waPhone, setWaPhone]           = useState('');
     const [waStep, setWaStep]             = useState('actions'); // 'actions' | 'phone'
@@ -282,18 +290,14 @@ export default function Create({ auth, products, customers = [], company = null 
         if (!postSale) return;
         const el = document.getElementById('print-zone');
         if (!el) return;
-        const win = window.open('', '_blank');
-        win.document.write(`<!DOCTYPE html><html><head>
-            <title>ArtDent — ${postSale.sale_number || 'Comprobante'}</title>
-            <base href="${window.location.origin}">
-            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-            <style>
-                @page { size: A4; margin: 0; }
-                body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            </style>
-            </head><body>${el.outerHTML}</body></html>`);
-        win.document.close();
-        setTimeout(() => { win.focus(); win.print(); }, 600);
+        const html = buildPrintHtml({
+            title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+            bodyHtml: el.outerHTML,
+            pageSize: 'A4',
+            zoneWidth: '210mm',
+            extraHead: MONTSERRAT_PRINT_HEAD,
+        });
+        openBrowserPrint(html, { delay: 600 });
     };
 
     const handleShare = async () => {
@@ -303,15 +307,13 @@ export default function Create({ auth, products, customers = [], company = null 
 
         setWaLoading(true);
         try {
-            const html = `<!DOCTYPE html><html><head>
-                <title>ArtDent — ${postSale.sale_number || 'Comprobante'}</title>
-                <base href="${window.location.origin}">
-                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-                <style>
-                    @page { size: A4; margin: 0; }
-                    body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                </style>
-                </head><body>${el.outerHTML}</body></html>`;
+            const html = buildPrintHtml({
+                title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+                bodyHtml: el.outerHTML,
+                pageSize: 'A4',
+                zoneWidth: '210mm',
+                extraHead: MONTSERRAT_PRINT_HEAD,
+            });
 
             const res = await axios.post(`/sales/${postSale.id}/generate-pdf`, { html });
             setPdfUrl(res.data.url);
@@ -357,46 +359,30 @@ export default function Create({ auth, products, customers = [], company = null 
         const isA4 = printMode === 'a4';
         const is57 = printMode === '57mm';
 
-        const pageSize = isA4 ? 'A4' : 'auto';
-        const zoneWidth = isA4 ? '210mm' : is57 ? '180px' : '260px';
-
-        const html = `
-        <!DOCTYPE html>
-        <html>
-            <head>
-                <title>ArtDent — ${postSale.sale_number || 'Comprobante'}</title>
-                <base href="${window.location.origin}">
-                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-                <style>
-                    @page { margin: 0; size: ${pageSize}; }
-                    * { box-sizing: border-box; }
-                    body {
-                        margin: 0; padding: 0;
-                        background: white;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    #print-zone {
-                        ${zoneWidth ? `width: ${zoneWidth} !important; max-width: ${zoneWidth} !important;` : ''}
-                        box-shadow: none !important;
-                        margin: 0 !important;
-                        /* El Electron captura a 388px en térmicos de 57mm. El HTML es de 180px base */
-                        ${!isA4 ? `zoom: ${is57 ? 388/180 : 576/260}; transform-origin: top left; background: #fff !important;` : ''}
-                    }
-                    img { display: block; }
-                </style>
-            </head>
-            <body>${el.outerHTML}</body>
-        </html>`;
-
-        try {
-            const res = await fetch('http://localhost:1234/print', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html, mode: printMode }),
+        if (isA4) {
+            const html = buildPrintHtml({
+                title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+                bodyHtml: el.outerHTML,
+                pageSize: 'A4',
+                zoneWidth: '210mm',
+                extraHead: MONTSERRAT_PRINT_HEAD,
             });
-            if (!res.ok) alert('Error en el servidor de impresión.');
-        } catch {
+            openBrowserPrint(html, { delay: 600 });
+            return;
+        }
+
+        const result = await printElementWithElectron({
+            element: el,
+            title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+            mode: printMode,
+            zoneWidth: is57 ? '180px' : '260px',
+            zoom: is57 ? 388 / 180 : 576 / 260,
+            extraHead: MONTSERRAT_PRINT_HEAD,
+            fallbackToBrowser: true,
+            browserDelay: 600,
+        });
+
+        if (!result.ok && !result.fallbackUsed) {
             alert('⚠️ El gestor de impresión ArtDent no está activo.');
         }
     };
@@ -484,7 +470,9 @@ export default function Create({ auth, products, customers = [], company = null 
     // Persiste el formato de ticket en localStorage
     const savePrintMode = (mode) => {
         setPrintMode(mode);
-        localStorage.setItem('artdent_ticket_format', mode);
+        if (mode !== 'a4') {
+            setStoredTicketFormat(mode);
+        }
     };
 
     // ── Input styles (inline, compatibles con light/dark) ────

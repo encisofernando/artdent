@@ -10,7 +10,7 @@ Route::get('/', function () {
 // Si el symlink public/storage existe y el servidor sirve el archivo estático,
 // esta ruta nunca se ejecuta. Sólo actúa cuando el archivo no se resuelve
 // estáticamente (symlink roto o inexistente en producción).
-Route::get('/storage/{path}', function (string $path) {
+Route::middleware('tenant.session')->get('/storage/{path}', function (string $path) {
     $realPath = storage_path('app/public/'.ltrim($path, '/'));
 
     if (! file_exists($realPath) || is_dir($realPath)) {
@@ -49,6 +49,7 @@ Route::middleware(['tenant.session', 'auth'])->group(function () {
 
     require __DIR__.'/modules/sales.php';
     require __DIR__.'/modules/finance.php';
+    require __DIR__.'/modules/accounting.php';
 
     require __DIR__.'/modules/hr.php';
     require __DIR__.'/modules/ecommerce.php';

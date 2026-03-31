@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\CollaboratorReceipt;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
@@ -163,6 +164,7 @@ class LabFinanceController extends Controller
         return Inertia::render('LabFinance/Index', [
             'items' => $items,
             'summary' => $summary,
+            'company' => Company::query()->find($companyId),
             'filters' => [
                 'search' => $search,
                 'from' => $start->toDateString(),

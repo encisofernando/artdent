@@ -3,6 +3,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { ArrowLeft, Printer, Eye } from 'lucide-react';
+import {
+    getStoredTicketFormat,
+    getThermalPrintZoom,
+    getThermalZoneWidth,
+    printElementWithElectron,
+    setStoredTicketFormat,
+} from '@/lib/print';
+import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE', light: '#DAE6F0' };
 
@@ -15,129 +23,128 @@ const fmtDate = (d) => {
 
 function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
     const collab = receipt.collaborator || {};
+    const companyDisplayName = getCompanyDisplayName(company);
     const is57mm = mode === '57mm';
-    const ticketWidth = is57mm ? '54mm' : '74mm';
-    const baseFontSize = is57mm ? '8pt' : '9pt';
+    const ticketWidth = getThermalZoneWidth(mode);
+    const baseFontSize = is57mm ? '8.2pt' : '9.2pt';
     const logoHeight = is57mm ? 26 : 32;
 
     return (
-        <div id="print-zone" style={{ width: ticketWidth, fontFamily: "'Courier New', Courier, monospace", fontSize: baseFontSize, color: '#000', background: '#fff', lineHeight: 1.5, boxSizing: 'border-box' }}>
-            {/* Top stripe */}
-            <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 4, marginBottom: 7 }} />
+        <div id="print-zone" style={{ width: ticketWidth, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: baseFontSize, color: '#000', background: '#fff', lineHeight: 1.4, boxSizing: 'border-box', padding: is57mm ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm' }}>
+            <div style={{ borderTop: '3px solid #000', marginBottom: 7 }} />
 
-            {/* Logo */}
-            <div style={{ textAlign: 'center', marginBottom: 6 }}>
-                <img src="/assets/logo-artdent-negro.png" alt="ArtDent" style={{ height: logoHeight, objectFit: 'contain', display: 'inline-block' }} />
+            <div style={{ textAlign: 'center', marginBottom: 7 }}>
+                <CompanyLogo
+                    company={company}
+                    scope="lab"
+                    thermal
+                    height={logoHeight}
+                    maxWidth={is57mm ? 112 : 156}
+                    style={{ margin: '0 auto' }}
+                />
+                <div style={{ marginTop: 6, fontSize: is57mm ? 7 : 8, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' }}>Recibo de haberes</div>
+                <div style={{ fontSize: is57mm ? 6.5 : 7.2, letterSpacing: 0.6 }}>Documento interno. No válido como factura.</div>
             </div>
 
             {company?.name && (
-                <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: '#000', marginBottom: 2 }}>{company.name}</div>
+                <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 800, color: '#000', marginBottom: 2 }}>{companyDisplayName}</div>
             )}
             {company?.cuit && (
-                <div style={{ textAlign: 'center', fontSize: 7.5, color: '#444', marginBottom: 2 }}>CUIT: {company.cuit}</div>
+                <div style={{ textAlign: 'center', fontSize: 7.2, color: '#000', marginBottom: 2 }}>CUIT: {company.cuit}</div>
             )}
             {company?.address && (
-                <div style={{ textAlign: 'center', fontSize: 7.5, color: '#444', marginBottom: 4 }}>{company.address}{company.city ? `, ${company.city}` : ''}</div>
+                <div style={{ textAlign: 'center', fontSize: 7.2, color: '#000', marginBottom: 6 }}>{company.address}{company.city ? `, ${company.city}` : ''}</div>
             )}
 
-            <div style={{ textAlign: 'center', fontSize: 7.5, fontWeight: 700, color: '#000', letterSpacing: 0.5, marginBottom: 6 }}>
-                RECIBO DE HABERES — NO VÁLIDO COMO FACTURA
+            <div style={{ border: '2px solid #000', padding: is57mm ? '5px 6px' : '6px 8px', marginBottom: 8 }}>
+                <div style={{ fontSize: is57mm ? 7 : 8, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>Colaborador</div>
+                <div style={{ fontSize: is57mm ? 10.5 : 12, fontWeight: 900 }}>{collab.name || '—'}</div>
+                {collab.document && <div style={{ fontSize: 7.2, marginTop: 2 }}>Documento: {collab.document}</div>}
             </div>
 
-            <div style={{ borderTop: '2px solid #000', marginBottom: 6 }} />
-
-            {/* Colaborador */}
-            <div style={{ marginBottom: 6 }}>
-                <div style={{ fontSize: 8, fontWeight: 700, marginBottom: 2 }}>COLABORADOR:</div>
-                <div style={{ fontSize: 10, fontWeight: 900 }}>{collab.name || '—'}</div>
-                {collab.document && <div style={{ fontSize: 7.5, color: '#444' }}>Doc: {collab.document}</div>}
-            </div>
-
-            <div style={{ borderTop: '1px solid #000', marginBottom: 6 }} />
-
-            {/* Período */}
-            <div style={{ marginBottom: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, marginBottom: 2 }}>
-                    <span style={{ fontWeight: 700 }}>PERÍODO:</span>
+            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, marginBottom: 3, gap: 10 }}>
+                    <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>Período</span>
                     <span>{fmtDate(receipt.period_from)} al {fmtDate(receipt.period_to)}</span>
                 </div>
                 {receipt.days_worked != null && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8 }}>
-                        <span style={{ fontWeight: 700 }}>Días trabajados:</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, marginBottom: 3, gap: 10 }}>
+                        <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>Días</span>
                         <span>{receipt.days_worked}</span>
+                    </div>
+                )}
+                {receipt.hours != null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, gap: 10 }}>
+                        <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>Horas</span>
+                        <span>{receipt.hours}h</span>
                     </div>
                 )}
             </div>
 
-            <div style={{ borderTop: '1px solid #000', marginBottom: 4 }} />
-
-            {/* Resumen */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 8.5, marginBottom: 4 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 8.2, marginBottom: 6 }}>
                 <thead>
                     <tr style={{ borderBottom: '2px solid #000', borderTop: '2px solid #000' }}>
-                        <th style={{ padding: '2px 2px', textAlign: 'left', fontWeight: 900 }}>Concepto</th>
-                        <th style={{ padding: '2px 2px', textAlign: 'right', fontWeight: 900 }}>Importe</th>
+                        <th style={{ padding: '3px 2px', textAlign: 'left', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.5 }}>Concepto</th>
+                        <th style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.5 }}>Importe</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr style={{ borderBottom: '1px solid #ccc' }}>
-                        <td style={{ padding: '2px 2px', fontSize: 8 }}>Horas trabajadas ({receipt.hours}h)</td>
-                        <td style={{ padding: '2px 2px', textAlign: 'right', fontWeight: 700 }}>${fmt(receipt.gross)}</td>
+                    <tr style={{ borderBottom: '1px solid #000' }}>
+                        <td style={{ padding: '3px 2px', fontSize: 8 }}>Horas trabajadas ({receipt.hours}h)</td>
+                        <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 700 }}>${fmt(receipt.gross)}</td>
                     </tr>
                     {receipt.extras_total > 0 && (
-                        <tr style={{ borderBottom: '1px solid #ccc' }}>
-                            <td style={{ padding: '2px 2px', fontSize: 8 }}>Extras / Adicionales</td>
-                            <td style={{ padding: '2px 2px', textAlign: 'right', color: '#006600', fontWeight: 700 }}>+${fmt(receipt.extras_total)}</td>
+                        <tr style={{ borderBottom: '1px solid #000' }}>
+                            <td style={{ padding: '3px 2px', fontSize: 8 }}>Extras / adicionales</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 700 }}>+${fmt(receipt.extras_total)}</td>
                         </tr>
                     )}
                     {receipt.discounts_total > 0 && (
-                        <tr style={{ borderBottom: '1px solid #ccc' }}>
-                            <td style={{ padding: '2px 2px', fontSize: 8 }}>Descuentos</td>
-                            <td style={{ padding: '2px 2px', textAlign: 'right', color: '#cc0000', fontWeight: 700 }}>-${fmt(receipt.discounts_total)}</td>
+                        <tr style={{ borderBottom: '1px solid #000' }}>
+                            <td style={{ padding: '3px 2px', fontSize: 8 }}>Descuentos</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 700 }}>-${fmt(receipt.discounts_total)}</td>
                         </tr>
                     )}
                 </tbody>
             </table>
 
-            {/* NETO */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '5px 6px', background: AD.blue, color: '#fff', borderRadius: 4, marginBottom: 8, gap: 6 }}>
-                <span style={{ fontWeight: 900, fontSize: is57mm ? '8.5pt' : '9.5pt' }}>NETO A COBRAR: $</span>
-                <span style={{ fontWeight: 900, fontSize: is57mm ? '11pt' : '14pt' }}>{fmt(receipt.net)}</span>
+            <div style={{ border: '2px solid #000', padding: is57mm ? '5px 6px' : '6px 8px', marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ fontWeight: 900, fontSize: is57mm ? '8.3pt' : '9.4pt', textTransform: 'uppercase', letterSpacing: 0.6 }}>Neto a cobrar</span>
+                    <span style={{ fontWeight: 900, fontSize: is57mm ? '11pt' : '14pt' }}>${fmt(receipt.net)}</span>
+                </div>
             </div>
 
-            {/* Extras detail */}
             {extras.length > 0 && (
                 <>
-                    <div style={{ fontSize: 7.5, fontWeight: 700, marginBottom: 2 }}>DETALLE EXTRAS:</div>
+                    <div style={{ fontSize: 7.2, fontWeight: 800, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Detalle extras</div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 7.5, marginBottom: 6 }}>
                         {extras.map((e, i) => (
-                            <tr key={i} style={{ borderBottom: '1px dotted #aaa' }}>
+                            <tr key={i} style={{ borderBottom: '1px dotted #000' }}>
                                 <td style={{ padding: '1px 2px' }}>{fmtDate(e.date)} {e.concept}</td>
-                                <td style={{ padding: '1px 2px', textAlign: 'right', color: '#006600', fontWeight: 700 }}>${fmt(e.amount)}</td>
+                                <td style={{ padding: '1px 2px', textAlign: 'right', fontWeight: 700 }}>+${fmt(e.amount)}</td>
                             </tr>
                         ))}
                     </table>
                 </>
             )}
 
-            {/* Discounts detail */}
             {discounts.length > 0 && (
                 <>
-                    <div style={{ fontSize: 7.5, fontWeight: 700, marginBottom: 2 }}>DETALLE DESCUENTOS:</div>
+                    <div style={{ fontSize: 7.2, fontWeight: 800, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Detalle descuentos</div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 7.5, marginBottom: 6 }}>
                         {discounts.map((d, i) => (
-                            <tr key={i} style={{ borderBottom: '1px dotted #aaa' }}>
+                            <tr key={i} style={{ borderBottom: '1px dotted #000' }}>
                                 <td style={{ padding: '1px 2px' }}>{fmtDate(d.date)} {d.concept}</td>
-                                <td style={{ padding: '1px 2px', textAlign: 'right', color: '#cc0000', fontWeight: 700 }}>-${fmt(d.amount)}</td>
+                                <td style={{ padding: '1px 2px', textAlign: 'right', fontWeight: 700 }}>-${fmt(d.amount)}</td>
                             </tr>
                         ))}
                     </table>
                 </>
             )}
 
-            {/* Firma */}
             <div style={{ marginTop: 10, borderTop: '1px solid #000', paddingTop: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7.5, gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7.2, gap: 12 }}>
                     <div style={{ textAlign: 'center', flex: 1 }}>
                         <div style={{ borderTop: '1px solid #000', marginTop: 20, paddingTop: 2 }}>Firma Empleador</div>
                     </div>
@@ -147,16 +154,15 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
                 </div>
             </div>
 
-            {/* Footer */}
-            <div style={{ marginTop: 8, borderTop: '1px solid #ccc', paddingTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginTop: 8, borderTop: '1px solid #000', paddingTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <img src="/assets/logo-artdent-icon.png" alt="AD" style={{ height: 18, objectFit: 'contain' }} />
-                    <span style={{ fontSize: 6.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Tu sonrisa, es nuestra prioridad.</span>
+                    <CompanyLogo company={company} scope="lab" height={18} maxWidth={48} />
+                    <span style={{ fontSize: 6.4, color: '#000', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>Tu sonrisa, es nuestra prioridad.</span>
                 </div>
-                <div style={{ fontSize: 6, color: '#bbb' }}>ArtDent CRM</div>
+                <div style={{ fontSize: 6, color: '#000' }}>ArtDent CRM</div>
             </div>
 
-            <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 4, marginTop: 6 }} />
+            <div style={{ borderTop: '3px solid #000', marginTop: 6 }} />
         </div>
     );
 }
@@ -164,7 +170,10 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function Show({ auth, receipt, extras, discounts, company }) {
     const { isDark } = useTheme();
-    const [mode, setMode] = useState('80mm');
+    const [mode, setMode] = useState(() => {
+        const saved = getStoredTicketFormat('80mm');
+        return ['57mm', '80mm'].includes(saved) ? saved : '80mm';
+    });
 
     const D = isDark
         ? { bg: '#0f1623', card: '#161f2e', border: 'rgba(255,255,255,0.07)', text: '#e2e8f0', sub: '#94a3b8' }
@@ -174,42 +183,23 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
         const printElement = document.getElementById('print-zone');
         if (!printElement) { return; }
 
-        const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-            .map(s => s.outerHTML)
-            .join('');
+        const result = await printElementWithElectron({
+            element: printElement,
+            mode,
+            zoneWidth: printElement.style.width || getThermalZoneWidth(mode),
+            zoom: getThermalPrintZoom(mode),
+            fallbackToBrowser: true,
+            browserDelay: 400,
+        });
 
-        const fullHTML = `
-            <html>
-                <head>
-                    <base href="${window.location.origin}">
-                    ${styles}
-                    <style>
-                        @page { margin: 0; size: auto; }
-                        body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; }
-                        #print-zone { width: ${printElement.style.width || '74mm'} !important; box-shadow: none !important; margin: 0 !important; }
-                    </style>
-                </head>
-                <body>${printElement.outerHTML}</body>
-            </html>
-        `;
-
-        try {
-            const response = await fetch('http://localhost:1234/print', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html: fullHTML, mode }),
-            });
-            if (!response.ok) {
-                const result = await response.json();
-                alert('Error de hardware: ' + result.error);
-            }
-        } catch {
-            // Fallback: browser print
-            const win = window.open('', '_blank');
-            win.document.write(fullHTML);
-            win.document.close();
-            setTimeout(() => { win.print(); win.close(); }, 400);
+        if (!result.ok && !result.fallbackUsed) {
+            alert('Error de hardware: ' + result.error);
         }
+    };
+
+    const handleModeChange = (nextMode) => {
+        setMode(nextMode);
+        setStoredTicketFormat(nextMode);
     };
 
     const collab = receipt.collaborator || {};
@@ -239,7 +229,7 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
                                 <button
                                     key={ticketMode}
                                     type="button"
-                                    onClick={() => setMode(ticketMode)}
+                                    onClick={() => handleModeChange(ticketMode)}
                                     style={{
                                         padding: '7px 12px',
                                         borderRadius: 9,

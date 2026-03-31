@@ -74,7 +74,7 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice)
     {
-        $invoice->load('invoice_items', 'invoice_type');
+        $invoice->load('invoice_items', 'invoice_type', 'company');
         return Inertia::render('Invoice/Show', [
             'item' => $invoice
         ]);

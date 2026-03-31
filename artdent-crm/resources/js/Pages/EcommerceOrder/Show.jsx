@@ -5,6 +5,7 @@ import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircl
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -79,6 +80,7 @@ const PAYMENT_LABEL = {
 // ─── REMITO E-COMMERCE ────────────────────────────────────────────────────────
 function RemitoEcommerce({ order }) {
     const company = order.company || {};
+    const companyDisplayName = getCompanyDisplayName(company);
     const items   = order.ecommerce_order_items || [];
     const shipment = order.shipments?.[0] ?? null;
 
@@ -129,19 +131,14 @@ function RemitoEcommerce({ order }) {
 
                 {/* Logo ArtDent */}
                 <div style={{ textAlign: 'right' }}>
-                    {company.logo_url ? (
-                        <img
-                            src={company.logo_url}
-                            alt={company.fantasy_name || company.name || 'ArtDent'}
-                            style={{ height: 44, objectFit: 'contain', display: 'block', marginLeft: 'auto' }}
-                        />
-                    ) : (
-                        <img
-                            src="/assets/logo-artdent-color.png"
-                            alt="ArtDent"
-                            style={{ height: 44, objectFit: 'contain', display: 'block', marginLeft: 'auto' }}
-                        />
-                    )}
+                    <CompanyLogo
+                        company={company}
+                        scope="general"
+                        height="22mm"
+                        maxWidth="78mm"
+                        alt={companyDisplayName}
+                        style={{ marginLeft: 'auto' }}
+                    />
                     {(company.city || company.province) && (
                         <div style={{ fontSize: 8, color: '#777', marginTop: 3, fontWeight: 600 }}>
                             {[company.city, company.province].filter(Boolean).join(', ')}
