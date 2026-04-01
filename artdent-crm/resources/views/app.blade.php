@@ -7,6 +7,9 @@
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="theme-color" content="#0f172a">
+        <link rel="icon" type="image/png" href="{{ asset('assets/logo-artdent-icon.png') }}">
+        <link rel="shortcut icon" href="{{ asset('assets/logo-artdent-icon.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('assets/logo-artdent-icon.png') }}">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
