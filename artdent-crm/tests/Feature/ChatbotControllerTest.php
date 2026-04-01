@@ -130,11 +130,15 @@ class ChatbotControllerTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('message', 'La conversación fue reiniciada.')
+            ->assertJsonPath('message', 'Nueva conversación iniciada.')
             ->assertJsonCount(0, 'messages');
 
-        $this->assertDatabaseMissing('chatbot_conversations', [
+        $this->assertDatabaseHas('chatbot_conversations', [
             'id' => $conversation->id,
+        ]);
+
+        $this->assertDatabaseMissing('chatbot_messages', [
+            'conversation_id' => $conversation->id,
         ]);
     }
 
@@ -216,8 +220,8 @@ class ChatbotControllerTest extends TestCase
         $company = Company::create(array_merge([
             'name' => 'ArtDent Test',
             'chatbot_enabled' => true,
-            'chatbot_provider' => 'gemini',
-            'chatbot_model' => 'gemini-1.5-flash-latest',
+            'chatbot_provider' => 'openai',
+            'chatbot_model' => 'gpt-4o-mini',
         ], $companyOverrides));
 
         return User::create([
@@ -259,6 +263,7 @@ class ChatbotControllerTest extends TestCase
                 $table->id();
                 $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+                $table->string('title')->nullable();
                 $table->timestamp('last_message_at')->nullable();
                 $table->timestamps();
             });

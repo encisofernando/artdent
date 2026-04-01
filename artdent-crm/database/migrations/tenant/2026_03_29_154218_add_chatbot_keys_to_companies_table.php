@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::table('companies', function (Blueprint $table) {
             $table->string('chatbot_openai_key')->nullable()->after('chatbot_model');
-            $table->string('chatbot_gemini_key')->nullable()->after('chatbot_openai_key');
         });
     }
 
@@ -23,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('companies', function (Blueprint $table) {
-            $table->dropColumn(['chatbot_openai_key', 'chatbot_gemini_key']);
+            $table->dropColumn(['chatbot_openai_key']);
         });
     }
 };

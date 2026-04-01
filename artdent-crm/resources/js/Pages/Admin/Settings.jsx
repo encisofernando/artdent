@@ -19,20 +19,10 @@ const CHATBOT_MODEL_OPTIONS = {
         { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini · razonamiento ligero' },
         { value: 'gpt-4.1', label: 'gpt-4.1 · mayor calidad' },
     ],
-    gemini: [
-        { value: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro · máximo razonamiento' },
-        { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
-        { value: 'gemini-3.0-flash', label: 'Gemini 3 Flash' },
-        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-        { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-        { value: 'gemini-2.0-flash', label: 'Gemini 2 Flash' },
-        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash · clásico estable' },
-    ],
 };
 
 const DEFAULT_CHATBOT_MODELS = {
     openai: 'gpt-5.4-nano',
-    gemini: 'gemini-2.5-flash',
 };
 
 export default function Settings({ company, accountingSettings }) {
@@ -83,10 +73,9 @@ export default function Settings({ company, accountingSettings }) {
         email_payment_subject: company.email_payment_subject || '',
         email_payment_body: company.email_payment_body || '',
         chatbot_enabled: company.chatbot_enabled ?? true,
-        chatbot_provider: company.chatbot_provider || 'gemini',
-        chatbot_model: company.chatbot_model || DEFAULT_CHATBOT_MODELS[company.chatbot_provider || 'gemini'],
+        chatbot_provider: 'openai',
+        chatbot_model: company.chatbot_model || DEFAULT_CHATBOT_MODELS.openai,
         chatbot_openai_key: company.chatbot_openai_key || '',
-        chatbot_gemini_key: company.chatbot_gemini_key || '',
         accounting_settings: accountingSettings || {},
     });
 
@@ -268,16 +257,8 @@ export default function Settings({ company, accountingSettings }) {
         });
     };
 
-    const setChatbotProvider = (provider) => {
-        const safeProvider = provider || 'gemini';
-        const options = CHATBOT_MODEL_OPTIONS[safeProvider] || [];
-        const hasCurrentModel = options.some(option => option.value === data.chatbot_model);
-
-        setData('chatbot_provider', safeProvider);
-
-        if (!hasCurrentModel) {
-            setData('chatbot_model', DEFAULT_CHATBOT_MODELS[safeProvider]);
-        }
+    const setChatbotProvider = () => {
+        setData('chatbot_provider', 'openai');
     };
 
     const accounting = data.accounting_settings || {};
@@ -1268,14 +1249,13 @@ export default function Settings({ company, accountingSettings }) {
                                                     value={data.chatbot_provider}
                                                     onChange={setChatbotProvider}
                                                     options={[
-                                                        { value: 'gemini', label: 'Google Gemini' },
                                                         { value: 'openai', label: 'OpenAI' },
                                                     ]}
-                                                    placeholder="Seleccionar proveedor"
+                                                    placeholder="OpenAI"
                                                     error={errors.chatbot_provider}
                                                 />
                                                 <p className={`text-[11px] mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                    El proveedor usa la API key configurada en el servidor para ese servicio.
+                                                    El chatbot quedo unificado en OpenAI para local y produccion.
                                                 </p>
                                             </div>
 
@@ -1319,58 +1299,32 @@ export default function Settings({ company, accountingSettings }) {
                                                 ))}
                                             </div>
                                             <div className={`mt-3 text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                OpenAI usa <code>chatbot_openai_key</code>. Gemini usa <code>chatbot_gemini_key</code>.
-                                                Si no las especificas, el sistema intenta usar las claves configuradas globalmente por el administrador.
+                                                OpenAI usa <code>chatbot_openai_key</code>. Si no la cargas a nivel empresa, el sistema usa la clave global del servidor.
                                             </div>
                                         </div>
 
-                                        {/* API Keys (Dynamic based on selected provider) */}
                                         <div className="pt-4 border-t border-blue-500/10">
                                             <h4 className={`text-sm font-black tracking-tight mb-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                                                 Credenciales de API (Opcional)
                                             </h4>
-                                            
-                                            {data.chatbot_provider === 'openai' && (
-                                                <div className="mb-4">
-                                                    <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                        OpenAI API Key
-                                                    </label>
-                                                    <input
-                                                        type="password"
-                                                        value={data.chatbot_openai_key}
-                                                        onChange={e => setData('chatbot_openai_key', e.target.value)}
-                                                        placeholder="sk-proj-..."
-                                                        className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
-                                                            ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
-                                                            : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
-                                                        }`}
-                                                    />
-                                                    {errors.chatbot_openai_key && (
-                                                        <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_openai_key}</div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {data.chatbot_provider === 'gemini' && (
-                                                <div className="mb-4">
-                                                    <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                        Google Gemini API Key
-                                                    </label>
-                                                    <input
-                                                        type="password"
-                                                        value={data.chatbot_gemini_key}
-                                                        onChange={e => setData('chatbot_gemini_key', e.target.value)}
-                                                        placeholder="AIzaSy..."
-                                                        className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
-                                                            ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
-                                                            : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
-                                                        }`}
-                                                    />
-                                                    {errors.chatbot_gemini_key && (
-                                                        <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_gemini_key}</div>
-                                                    )}
-                                                </div>
-                                            )}
+                                            <div className="mb-4">
+                                                <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    OpenAI API Key
+                                                </label>
+                                                <input
+                                                    type="password"
+                                                    value={data.chatbot_openai_key}
+                                                    onChange={e => setData('chatbot_openai_key', e.target.value)}
+                                                    placeholder="sk-proj-..."
+                                                    className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                        : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                                    }`}
+                                                />
+                                                {errors.chatbot_openai_key && (
+                                                    <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_openai_key}</div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

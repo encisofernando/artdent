@@ -29,8 +29,7 @@ class ChatbotService
     protected const MAX_MESSAGE_LENGTH = 2000;
     protected const REQUEST_TIMEOUT_SECONDS = 20;
     protected const OPENAI_MODEL = 'gpt-5.4-nano';
-    protected const GEMINI_MODEL = 'gemini-1.5-flash';
-    protected const DEFAULT_PROVIDER = 'gemini';
+    protected const DEFAULT_PROVIDER = 'openai';
     protected ?OpenAITenantAnalyticsService $openAITenantAnalyticsService = null;
 
     public function __construct(OpenAITenantAnalyticsService $openAITenantAnalyticsService)
@@ -47,7 +46,7 @@ class ChatbotService
         }
 
         if (blank($settings['api_key'])) {
-            return 'No puedo responder todavía porque falta configurar la API Key del chatbot.';
+            return 'No puedo responder todavía porque falta configurar la API Key de OpenAI para el chatbot.';
         }
 
         $normalizedMessages = $this->normalizeMessages($messages);
@@ -68,11 +67,7 @@ class ChatbotService
 
         $systemPrompt = $this->getSystemPrompt($latestUserMessage);
 
-        return match ($settings['provider']) {
-            'openai' => $this->generateOpenAIResponse($normalizedMessages, $systemPrompt, $settings),
-            'gemini' => $this->generateGeminiResponse($normalizedMessages, $systemPrompt, $settings),
-            default => $this->generateFallbackProviderResponse($normalizedMessages, $systemPrompt, $settings),
-        };
+        return $this->generateOpenAIResponse($normalizedMessages, $systemPrompt, $settings);
     }
 
     public function isEnabled(): bool
@@ -100,26 +95,17 @@ class ChatbotService
     protected function resolveChatbotSettings(): array
     {
         $company = $this->resolveCompany();
-        $provider = Str::lower((string) ($company?->chatbot_provider ?: config('services.chatbot.provider', static::DEFAULT_PROVIDER)));
-
-        if (! in_array($provider, ['openai', 'gemini'], true)) {
-            $provider = static::DEFAULT_PROVIDER;
-        }
-
         $model = trim((string) ($company?->chatbot_model ?? ''));
 
-        if ($model === '') {
-            $model = (string) config(
-                "services.chatbot.{$provider}_model",
-                $provider === 'openai' ? static::OPENAI_MODEL : static::GEMINI_MODEL
-            );
+        if ($model === '' || ! Str::startsWith(Str::lower($model), 'gpt-')) {
+            $model = (string) config('services.chatbot.openai_model', static::OPENAI_MODEL);
         }
 
         return [
             'enabled' => $company?->chatbot_enabled ?? true,
-            'provider' => $provider,
+            'provider' => 'openai',
             'model' => $model,
-            'api_key' => $this->resolveApiKey($provider),
+            'api_key' => $this->resolveApiKey($company),
         ];
     }
 
@@ -136,162 +122,11 @@ class ChatbotService
             : $user->company()->first();
     }
 
-    protected function resolveApiKey(string $provider): ?string
+    protected function resolveApiKey(?Company $company = null): ?string
     {
-        $company = $this->resolveCompany();
+        $company ??= $this->resolveCompany();
 
-        return match ($provider) {
-            'openai' => $company?->chatbot_openai_key ?: config('services.chatbot.openai_key') ?: config('services.chatbot.api_key'),
-            'gemini' => $company?->chatbot_gemini_key ?: config('services.chatbot.gemini_key') ?: config('services.chatbot.api_key'),
-            default => config('services.chatbot.api_key'),
-        };
-    }
-
-    protected function generateFallbackProviderResponse(array $messages, string $systemPrompt, array $settings): string
-    {
-        Log::warning('Proveedor de chatbot no soportado, usando Gemini por defecto.', [
-            'provider' => $settings['provider'],
-        ]);
-
-        $fallbackSettings = $settings;
-        $fallbackSettings['provider'] = 'gemini';
-        $fallbackSettings['model'] = (string) config('services.chatbot.gemini_model', static::GEMINI_MODEL);
-        $fallbackSettings['api_key'] = $this->resolveApiKey('gemini');
-
-        return $this->generateGeminiResponse($messages, $systemPrompt, $fallbackSettings);
-    }
-
-    protected function generateGeminiResponse(array $messages, string $systemPrompt, array $settings): string
-    {
-        $url = sprintf(
-            'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
-            $settings['model'],
-            $settings['api_key']
-        );
-
-        $formattedMessages = $this->formatGeminiMessages($messages);
-        
-        if (class_exists(\App\Services\DbSchema::class)) {
-            $systemPrompt .= "\n\nESQUEMA DE BASE DE DATOS (Tenant):\n" . \App\Services\DbSchema::SCHEMA;
-        }
-
-        $tools = [
-            [
-                'functionDeclarations' => [
-                    [
-                        'name' => 'ejecutar_consulta_sql',
-                        'description' => 'Ejecuta query SQL SELECT real en la DB del CRM para averiguar clientes, ventas, compras, etc. Devuelve un array JSON de resultados. No puedes hacer INSERT/UPDATE/DELETE. Usa LIKE y comodines % cuando busques nombres.',
-                        'parameters' => [
-                            'type' => 'OBJECT',
-                            'properties' => [
-                                'query' => [
-                                    'type' => 'STRING',
-                                    'description' => 'Consulta SQL a ejecutar. Ej: SELECT * FROM patients WHERE name LIKE "%carlos%" LIMIT 5'
-                                ]
-                            ],
-                            'required' => ['query']
-                        ]
-                    ]
-                ]
-            ]
-        ];
-
-        $round = 0;
-        $maxRounds = 4;
-
-        while ($round < $maxRounds) {
-            try {
-                $response = Http::acceptJson()
-                    ->timeout(static::REQUEST_TIMEOUT_SECONDS)
-                    ->retry(2, 400, throw: false)
-                    ->post($url, [
-                        'system_instruction' => [
-                            'parts' => [['text' => $systemPrompt]],
-                        ],
-                        'contents' => $formattedMessages,
-                        'tools' => $tools,
-                        'generationConfig' => [
-                            'temperature' => 0.3,
-                            'maxOutputTokens' => 1024,
-                        ],
-                    ]);
-
-                if (! $response->successful()) {
-                    $this->logProviderFailure('Gemini', $settings, $response->status(), $response->body());
-                    return 'No pude conectarme con Gemini en este momento. Probá nuevamente en unos segundos.';
-                }
-
-                $responseData = $response->json();
-                $firstPart = data_get($responseData, 'candidates.0.content.parts.0');
-
-                // Si fue una llamada a herramienta
-                if (isset($firstPart['functionCall'])) {
-                    $functionName = $firstPart['functionCall']['name'];
-                    $functionArgs = $firstPart['functionCall']['args'] ?? [];
-                    
-                    $formattedMessages[] = [
-                        'role' => 'model',
-                        'parts' => [$firstPart]
-                    ];
-
-                    $functionResult = [];
-                    if ($functionName === 'ejecutar_consulta_sql') {
-                        $query = $functionArgs['query'] ?? '';
-                        if (preg_match('/^\s*(insert|update|delete|drop|alter|truncate|create|replace|grant|revoke)\s/i', $query)) {
-                            $functionResult = ['error' => 'Only SELECT queries are allowed.'];
-                        } else {
-                            try {
-                                $results = \Illuminate\Support\Facades\DB::select($query);
-                                $functionResult = ['result' => array_slice($results, 0, 50)];
-                            } catch (\Throwable $e) {
-                                $functionResult = ['error' => $e->getMessage()];
-                            }
-                        }
-                    } else {
-                        $functionResult = ['error' => 'Unknown function call'];
-                    }
-
-                    $formattedMessages[] = [
-                        'role' => 'function',
-                        'parts' => [
-                            [
-                                'functionResponse' => [
-                                    'name' => $functionName,
-                                    'response' => $functionResult
-                                ]
-                            ]
-                        ]
-                    ];
-                    
-                    $round++;
-                    continue;
-                }
-
-                $content = data_get($responseData, 'candidates.0.content.parts.0.text');
-
-                if (! is_string($content) || blank($content)) {
-                    Log::warning('Gemini devolvió una respuesta vacía.', [
-                        'provider' => $settings['provider'],
-                        'model' => $settings['model'],
-                        'payload' => $responseData,
-                    ]);
-
-                    return 'Recibí una respuesta vacía del proveedor. Probá reformular la consulta.';
-                }
-
-                return trim($content);
-            } catch (Throwable $e) {
-                Log::error('Excepción al consultar Gemini.', [
-                    'provider' => $settings['provider'],
-                    'model' => $settings['model'],
-                    'message' => $e->getMessage(),
-                ]);
-
-                return 'Ocurrió un error inesperado al consultar Gemini.';
-            }
-        }
-        
-        return 'Alcancé mi límite máximo de búsquedas internas. Por favor, intenta ser más específico con tu requerida información.';
+        return $company?->chatbot_openai_key ?: config('services.chatbot.openai_key');
     }
 
     protected function generateOpenAIResponse(array $messages, string $systemPrompt, array $settings): string
@@ -436,6 +271,17 @@ MÓDULOS QUE CONOCES:
 - Inventario: stock, productos, variantes, compras y depósitos.
 - Ecommerce: pedidos, pagos y cupones.
 
+NAVEGACIÓN REAL DEL CRM:
+- Gestión > Ventas: Lista de Ventas (/sales), Nueva Venta (/sales/create), Presupuesto (/quotes), Artículos (/products).
+- Gestión > Clientes: Lista de Clientes (/customers), Cuentas Corrientes (/customers-accounts).
+- Gestión > Proveedores: Directorio (/vendors), Comprobantes (/proveedores/comprobantes), Pagos (/proveedores/pagos), Cta. Cte. (/proveedores/ctacte).
+- E-commerce > E-commerce: Pedidos (/ecommerce-orders), Reportes MP (/ecommerce-reports).
+- Laboratorio > Órdenes: Consultar (/jobs), Nueva Orden (/jobs/create), Rehacimientos (/job-remakes).
+- Laboratorio > Clientes / Odont.: Lista de Odontólogos (/dentists), Pacientes (/patients), Cuentas Corrientes y Pagos (/lab-account-moves), Ingresos y Egresos (/lab-finance).
+- Contable > Contable: Panel contable (/contable), Libro IVA Ventas (/export/iva-ventas), Libro IVA Compras (/export/iva-compras), Estado de Resultados (/export/income-statement).
+- CRM > Interacciones (/crm-interactions).
+- Análisis > Reportes (/reportes).
+
 RESUMEN ACTUAL:
 - Pacientes registrados: {$stats['patients']}
 - Usuarios activos: {$stats['users']}
@@ -443,21 +289,12 @@ RESUMEN ACTUAL:
 - Jobs activos: {$stats['pending_jobs']}{$contextText}
 
 REGLAS:
-1. Eres un asistente OMNISCIENTE. Tienes acceso a buscar nombres de pacientes, odontólogos, saldos de clientes, ventas, últimas compras, deudas y pedidos de ecommerce usando tu herramienta SQL.
-2. IMPORTANTE PARA SQL: Cuando uses la herramienta Text-to-SQL, NUNCA reportes IDs crudos al usuario final (ej. `dentist_id: 12` o `patient_id: 3`). Obligatoriamente utiliza sentencias `LEFT JOIN` hacia las tablas relacionadas (ej. `LEFT JOIN dentists ON jobs.dentist_id = dentists.id`) para extraer y mostrar los nombres humanos reales (ej. Carlos, Juan).
-3. BÚSQUEDA DE NOMBRES EN SQL: Si el usuario te pide buscar a "Carlos Consiglio", recuerda que en la Base de Datos a menudo se guarda invertido ("CONSIGLIO CARLOS"). Por eso, usa siempre búsquedas fragmentadas: `WHERE name LIKE '%Carlos%' AND name LIKE '%Consiglio%'`. NUNCA uses la frase completa en un solo `LIKE` porque no generará coincidencias.
-4. Responde usando solo la información inyectada debajo del resumen y resoluciones SQL.
-5. Si falta un dato puntual, dilo con honestidad y sugiere buscarlo en el sidebar.
-4. Para orientar navegación usa estas rutas exactas del sidebar:
-   - Gestión > Ventas > Lista de Ventas / Nueva Venta / Facturación / Artículos
-   - Gestión > Clientes > Lista de Clientes / Cta. Cte. / Pagos
-   - Laboratorio > Órdenes > Consultar / Nueva Orden / Rehacimientos
-   - Inventario > Compras / Proveedores / Pagos / Stock
-   - Laboratorio > Clientes / Odont. > Pacientes / Lista de Odontólogos / Rutas / Cuentas Corrientes y Pagos
-   - Análisis > Reportes / Estadísticas / Operaciones
-   - Sistema > Administración > Empresa / Usuarios
-4. No inventes cifras, estados ni acciones del sistema.
-5. Usa Markdown simple: párrafos cortos, listas y negritas cuando ayuden.
+1. Nunca inventes cifras, estados, clientes, trabajos ni acciones del sistema.
+2. Responde usando solo la información inyectada debajo del resumen, el contexto estructurado disponible y los datos reales del tenant.
+3. Si el usuario pregunta por una persona puntual, prioriza coincidencias por fragmentos del nombre y responde con nombres humanos, nunca con IDs crudos.
+4. Si falta un dato puntual o no tienes evidencia suficiente, dilo con honestidad y deriva al módulo real correspondiente del sidebar usando la navegación listada arriba.
+5. Cuando orientes navegación, nombra la sección exacta del menú y, si ayuda, incluye la ruta entre paréntesis.
+6. Usa Markdown simple: párrafos cortos, listas y negritas cuando ayuden.
 PROMPT;
     }
 
@@ -556,24 +393,6 @@ PROMPT;
         }
 
         return '';
-    }
-
-    protected function formatGeminiMessages(array $messages): array
-    {
-        $formattedMessages = [];
-
-        foreach ($messages as $message) {
-            if (($message['role'] ?? null) === 'assistant' && empty($formattedMessages)) {
-                continue;
-            }
-
-            $formattedMessages[] = [
-                'role' => $message['role'] === 'assistant' ? 'model' : 'user',
-                'parts' => [['text' => $message['content']]],
-            ];
-        }
-
-        return $formattedMessages;
     }
 
     protected function shouldIncludeJobsContext(string $normalizedMessage, string $userMessage): bool

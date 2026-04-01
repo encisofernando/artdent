@@ -107,7 +107,6 @@ class Company extends Model
         'chatbot_provider',
         'chatbot_model',
         'chatbot_openai_key',
-        'chatbot_gemini_key',
     ];
 
     /** Devuelve el path del certificado según el entorno activo (o el solicitado). */

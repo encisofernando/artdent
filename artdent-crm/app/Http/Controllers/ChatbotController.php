@@ -175,12 +175,19 @@ class ChatbotController extends Controller
             return response()->json(['message' => 'Storage not ready'], 500);
         }
 
-        $conversation = ChatbotConversation::create([
+        $conversation = ChatbotConversation::query()->firstOrCreate([
             'company_id' => $request->user()->company_id,
             'user_id' => $request->user()->id,
+        ], [
             'title' => 'Nueva Conversación',
             'last_message_at' => now(),
         ]);
+
+        $conversation->messages()->delete();
+        $conversation->forceFill([
+            'title' => 'Nueva Conversación',
+            'last_message_at' => now(),
+        ])->save();
 
         return response()->json([
             'message' => 'Nueva conversación iniciada.',
@@ -215,6 +222,7 @@ class ChatbotController extends Controller
             'company_id' => $user->company_id,
             'user_id' => $user->id,
         ], [
+            'title' => 'Nueva Conversación',
             'last_message_at' => now(),
         ]);
     }

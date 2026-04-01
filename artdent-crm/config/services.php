@@ -59,14 +59,11 @@ return [
     ],
 
     'chatbot' => [
-        'api_key' => env('CHATBOT_API_KEY'),
-        'provider' => env('CHATBOT_PROVIDER', 'gemini'),
+        'provider' => env('CHATBOT_PROVIDER', 'openai'),
         'openai_key' => env('CHATBOT_OPENAI_API_KEY', env('OPENAI_API_KEY')),
-        'gemini_key' => env('CHATBOT_GEMINI_API_KEY'),
         'openai_model' => env('CHATBOT_OPENAI_MODEL', 'gpt-5.4-nano'),
         'openai_prompt_cache_key' => env('CHATBOT_OPENAI_PROMPT_CACHE_KEY', 'artdent:chatbot:erp:v1'),
-        'openai_prompt_cache_retention' => env('CHATBOT_OPENAI_PROMPT_CACHE_RETENTION', 'in-memory'),
-        'gemini_model' => env('CHATBOT_GEMINI_MODEL', 'gemini-1.5-flash-latest'),
+        'openai_prompt_cache_retention' => env('CHATBOT_OPENAI_PROMPT_CACHE_RETENTION', 'in_memory'),
     ],
 
 ];

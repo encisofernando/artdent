@@ -11,7 +11,7 @@ class ChatbotServiceTest extends TestCase
 {
     public function test_it_returns_a_clear_message_when_api_key_is_missing(): void
     {
-        config()->set('services.chatbot.api_key', null);
+        config()->set('services.chatbot.openai_key', null);
         config()->set('services.chatbot.provider', 'openai');
 
         $service = new FakeChatbotService();
@@ -21,14 +21,14 @@ class ChatbotServiceTest extends TestCase
         ]);
 
         $this->assertSame(
-            'No puedo responder todavía porque falta configurar la API Key del chatbot.',
+            'No puedo responder todavía porque falta configurar la API Key de OpenAI para el chatbot.',
             $response
         );
     }
 
     public function test_it_sends_normalized_messages_to_openai(): void
     {
-        config()->set('services.chatbot.api_key', 'test-openai-key');
+        config()->set('services.chatbot.openai_key', 'test-openai-key');
         config()->set('services.chatbot.provider', 'openai');
 
         Http::fake([
@@ -66,7 +66,7 @@ class ChatbotServiceTest extends TestCase
 
     public function test_it_only_includes_relevant_context_blocks_in_the_prompt(): void
     {
-        config()->set('services.chatbot.api_key', 'test-key');
+        config()->set('services.chatbot.openai_key', 'test-key');
         config()->set('services.chatbot.provider', 'openai');
 
         $service = new FakeChatbotService();
@@ -79,48 +79,6 @@ class ChatbotServiceTest extends TestCase
 
         $this->assertStringContainsString("LABORATORIO:\nJOBS_CTX", $jobsPrompt);
         $this->assertStringNotContainsString("INVENTARIO:\nINVENTORY_CTX", $jobsPrompt);
-    }
-
-    public function test_it_formats_gemini_messages_without_a_leading_assistant_message(): void
-    {
-        config()->set('services.chatbot.api_key', 'test-gemini-key');
-        config()->set('services.chatbot.provider', 'gemini');
-
-        Http::fake([
-            'https://generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [
-                    [
-                        'content' => [
-                            'parts' => [
-                                ['text' => 'Respuesta Gemini'],
-                            ],
-                        ],
-                    ],
-                ],
-            ], 200),
-        ]);
-
-        $service = new FakeChatbotService();
-
-        $response = $service->generateResponse([
-            ['role' => 'assistant', 'content' => 'Bienvenido'],
-            ['role' => 'user', 'content' => 'Mostrame stock'],
-            ['role' => 'assistant', 'content' => 'Claro'],
-            ['role' => 'user', 'content' => 'y caja'],
-        ]);
-
-        $this->assertSame('Respuesta Gemini', $response);
-
-        Http::assertSent(function (Request $request): bool {
-            $contents = $request['contents'];
-
-            $this->assertSame('user', $contents[0]['role']);
-            $this->assertSame('Mostrame stock', $contents[0]['parts'][0]['text']);
-            $this->assertSame('model', $contents[1]['role']);
-            $this->assertSame('user', $contents[2]['role']);
-
-            return true;
-        });
     }
 
     public function test_frontend_config_can_reflect_company_level_overrides(): void
@@ -157,9 +115,9 @@ class FakeChatbotService extends ChatbotService
     {
         return array_merge([
             'enabled' => true,
-            'provider' => config('services.chatbot.provider', 'gemini'),
-            'model' => config('services.chatbot.gemini_model', 'gemini-1.5-flash-latest'),
-            'api_key' => config('services.chatbot.api_key'),
+            'provider' => config('services.chatbot.provider', 'openai'),
+            'model' => config('services.chatbot.openai_model', 'gpt-5.4-nano'),
+            'api_key' => config('services.chatbot.openai_key'),
         ], $this->fakeSettings);
     }
 

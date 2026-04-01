@@ -4,7 +4,7 @@ import Sidebar from '@/Components/Sidebar';
 import Topbar from '@/Components/Topbar';
 import BottomNav from '@/Components/BottomNav';
 import { useTheme } from '@/Contexts/ThemeContext';
-import Chatbot from '@/Components/Chatbot/Chatbot';
+import ArtieWidget from '@/Components/Artie/ArtieWidget';
 
 export default function AuthenticatedLayout({ user, header, children }) {
   const { auth } = usePage().props;
@@ -79,8 +79,8 @@ export default function AuthenticatedLayout({ user, header, children }) {
       {/* Bottom navigation — mobile only */}
       <BottomNav onMenuOpen={() => setSidebarOpenMobile(true)} />
 
-      {/* Chatbot Automatizado */}
-      <Chatbot />
+      {/* Artie Asistente Premium */}
+      <ArtieWidget />
     </div>
   );
 }

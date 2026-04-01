@@ -70,7 +70,7 @@ class OpenAITenantAnalyticsService extends ChatbotService
             );
         }
 
-        $apiKey = $this->resolveApiKey('openai');
+        $apiKey = (string) config('services.chatbot.openai_key', '');
 
         if (blank($apiKey)) {
             return $this->buildErrorResult(

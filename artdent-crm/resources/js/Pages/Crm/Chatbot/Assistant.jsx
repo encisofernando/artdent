@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { 
     MessageSquare, Plus, Send, Bot, User, 
-    Clock, History, Sparkles, MoreVertical, 
-    Trash2, Search
+    History, Sparkles
 } from 'lucide-react';
-import axios from 'axios';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { artieService } from '@/Services/artieService';
 import './Assistant.css';
 
-export default function Assistant({ auth }) {
+export default function Assistant() {
+    const { chatbot } = usePage().props;
     const { isDark } = useTheme();
     const [conversations, setConversations] = useState([]);
     const [activeId, setActiveId] = useState(null);
@@ -29,11 +29,9 @@ export default function Assistant({ auth }) {
         if (activeId) {
             loadHistory(activeId);
         } else {
-            setMessages([
-                { role: 'assistant', content: '¡Hola! Soy **Artie**, tu asistente de Artdent. ¿Cómo puedo ayudarte hoy con el CRM?' }
-            ]);
+            setMessages(artieService.buildWelcomeMessages(chatbot?.welcome_message));
         }
-    }, [activeId]);
+    }, [activeId, chatbot?.welcome_message]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,45 +42,27 @@ export default function Assistant({ auth }) {
     }, [messages, isLoading]);
 
     const loadConversations = async () => {
-        try {
-            const response = await axios.get(route('api.chatbot.index'));
-            setConversations(response.data.conversations || []);
-            setIsHistoryLoading(false);
-        } catch (error) {
-            console.error('Error loading conversations:', error);
-            setIsHistoryLoading(false);
-        }
+        setIsHistoryLoading(true);
+        const nextConversations = await artieService.loadConversations();
+        setConversations(nextConversations);
+        setIsHistoryLoading(false);
     };
 
     const loadHistory = async (id) => {
         setIsLoading(true);
-        try {
-            const response = await axios.get(route('api.chatbot.history', { id }));
-            setMessages(response.data.messages || []);
-        } catch (error) {
-            console.error('Error loading history:', error);
-        } finally {
-            setIsLoading(false);
-        }
+        const response = await artieService.loadHistory(chatbot?.enabled !== false, chatbot?.welcome_message, id);
+        setMessages(response.messages);
+        setActiveId(response.conversationId ?? id);
+        setIsLoading(false);
     };
 
     const handleNewChat = async () => {
         setIsLoading(true);
-        try {
-            const response = await axios.delete(route('api.chatbot.reset'));
-            const newConv = {
-                id: response.data.conversation_id,
-                title: 'Nueva Conversación',
-                last_message_at: new Date().toISOString()
-            };
-            setConversations([newConv, ...conversations]);
-            setActiveId(newConv.id);
-            setMessages([]);
-        } catch (error) {
-            console.error('Error creating new chat:', error);
-        } finally {
-            setIsLoading(false);
-        }
+        const response = await artieService.resetConversation(chatbot?.welcome_message);
+        setActiveId(response.conversationId);
+        setMessages(response.messages);
+        await loadConversations();
+        setIsLoading(false);
     };
 
     const handleSend = async () => {
@@ -93,33 +73,24 @@ export default function Assistant({ auth }) {
         setInput('');
         setIsLoading(true);
 
-        try {
-            const response = await axios.post(route('api.chatbot'), {
-                message: userMessage.content,
-                conversation_id: activeId
-            });
+        const response = await artieService.sendMessage({
+            messageText: userMessage.content,
+            conversationId: activeId,
+        });
 
-            if (!activeId && response.data.conversation_id) {
-                setActiveId(response.data.conversation_id);
-                loadConversations();
+        if (response.success) {
+            setMessages(response.messages);
+
+            if (response.conversationId && response.conversationId !== activeId) {
+                setActiveId(response.conversationId);
             }
 
-            setMessages(response.data.messages);
-            
-            // Si el titulo de la conversacion activa cambio (ej. de 'Nueva Conversacion' a algo real)
-            if (activeId) {
-                const currentConv = conversations.find(c => c.id === activeId);
-                if (currentConv && currentConv.title === 'Nueva Conversación') {
-                    loadConversations();
-                }
-            }
-
-        } catch (error) {
-            console.error('Error sending message:', error);
+            await loadConversations();
+        } else {
             setMessages(prev => [...prev, { role: 'assistant', content: 'Error al procesar mensaje.' }]);
-        } finally {
-            setIsLoading(false);
         }
+
+        setIsLoading(false);
     };
 
     const formatMessage = (text) => {
