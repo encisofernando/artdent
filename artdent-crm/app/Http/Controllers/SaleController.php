@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
@@ -20,10 +21,19 @@ use App\Services\StockAlertService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class SaleController extends Controller
 {
+    private const POS_PAYMENT_METHOD_LABELS = [
+        'cash' => 'Efectivo',
+        'debit' => 'Débito',
+        'credit' => 'Crédito',
+        'transfer' => 'Transferencia',
+        'cuenta_corriente' => 'Cuenta Corriente',
+    ];
+
     public function index(Request $request, CustomerAccountSaleAllocator $allocator)
     {
         $search = $request->input('search');
@@ -157,6 +167,10 @@ class SaleController extends Controller
             'notes' => 'nullable|string',
             'customer_name' => 'nullable|string',
             'customer_id' => 'nullable|integer|exists:customers,id',
+            'issue_date' => 'nullable|date|before_or_equal:today',
+            'payments' => 'nullable|array|min:1',
+            'payments.*.method' => 'required_with:payments|string',
+            'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
         ]);
 
         $companyId = auth()->user()->company_id ?? 1;
@@ -182,10 +196,24 @@ class SaleController extends Controller
         $saleNumber = $pointSale.'-'.str_pad($sequence, 8, '0', STR_PAD_LEFT);
         // ─────────────────────────────────────────────────────────────────────
 
-        $isCuentaCorriente = $request->payment_method === 'cuenta_corriente';
         $total = (float) $request->total;
-        $paidAmount = $isCuentaCorriente ? 0.0 : (float) ($request->paid_amount ?? $total);
-        $change = $isCuentaCorriente ? 0.0 : max(0, $paidAmount - $total);
+        $soldAt = $request->filled('issue_date')
+            ? Carbon::parse($request->issue_date)->setTimeFromTimeString(now()->format('H:i:s'))
+            : now();
+        $payments = $this->normalizeSalePayments($request, $total);
+        $accountAmount = round(collect($payments)
+            ->where('method', 'cuenta_corriente')
+            ->sum('amount'), 2);
+        $settledAmount = round(collect($payments)
+            ->reject(fn (array $payment) => $payment['method'] === 'cuenta_corriente')
+            ->sum('amount'), 2);
+        $isSingleCashPayment = count($payments) === 1 && $payments[0]['method'] === 'cash';
+        $tenderedAmount = $isSingleCashPayment
+            ? max((float) ($request->paid_amount ?? $settledAmount), $settledAmount)
+            : $settledAmount;
+        $paidAmount = $settledAmount;
+        $change = $isSingleCashPayment ? max(0, $tenderedAmount - $total) : 0.0;
+        $status = $paidAmount + 0.00001 >= $total ? 'completed' : 'pending';
 
         $notes = $request->notes ?? '';
         if (! empty($request->customer_name) && $request->customer_name !== 'Consumidor Final') {
@@ -200,7 +228,7 @@ class SaleController extends Controller
                 'customer_id' => $request->customer_id ?: null,
                 'sale_number' => $saleNumber,
                 'receipt_type' => $receiptType,
-                'status' => $isCuentaCorriente ? 'pending' : 'completed',
+                'status' => $status,
                 'subtotal' => $request->subtotal ?? 0,
                 'discount_amount' => $request->discount_amount ?? 0,
                 'tax_amount' => $request->tax_amount ?? 0,
@@ -208,38 +236,42 @@ class SaleController extends Controller
                 'paid_amount' => $paidAmount,
                 'change_amount' => $change,
                 'notes' => $notes,
-                'sold_at' => now(),
+                'sold_at' => $soldAt,
             ]);
 
-            if ($isCuentaCorriente && $request->customer_id) {
-                // Cargar a cuenta corriente del cliente
+            if ($accountAmount > 0.0) {
                 $account = CustomerAccount::firstOrCreate(
                     ['customer_id' => $request->customer_id],
                     ['balance' => 0]
                 );
-                $newBalance = $account->balance + $total;
+                $newBalance = $account->balance + $accountAmount;
                 $move = CustomerAccountMove::create([
                     'customer_account_id' => $account->id,
                     'user_id' => $userId,
                     'type' => CustomerAccountMove::TYPE_CHARGE,
-                    'amount' => $total,
+                    'amount' => $accountAmount,
                     'balance_after' => $newBalance,
-                    'description' => "Venta POS {$saleNumber}",
+                    'description' => $accountAmount + 0.00001 >= $total
+                        ? "Venta POS {$saleNumber}"
+                        : "Saldo cuenta corriente venta POS {$saleNumber}",
                     'reference_type' => 'sale',
                     'reference_id' => $sale->id,
-                    'move_date' => now()->toDateString(),
+                    'move_date' => $soldAt->toDateString(),
                 ]);
                 $account->applyMove($move);
-            } else {
-                // Registrar método de pago normal
-                $pm = PaymentMethod::where('name', $request->payment_method)
-                    ->orWhere('type', $request->payment_method)
-                    ->first();
+            }
+
+            foreach ($payments as $payment) {
+                if ($payment['method'] === 'cuenta_corriente') {
+                    continue;
+                }
+
+                $pm = $this->resolveSalePaymentMethod($payment['method']);
                 SalePayment::create([
                     'sale_id' => $sale->id,
                     'payment_method_id' => $pm?->id ?? null,
-                    'amount' => $paidAmount,
-                    'paid_at' => now(),
+                    'amount' => $payment['amount'],
+                    'paid_at' => $soldAt,
                 ]);
             }
 
@@ -390,6 +422,7 @@ class SaleController extends Controller
                             ? ['name' => $p->paymentMethod->name, 'type' => $p->paymentMethod->type]
                             : null,
                     ]),
+                    'payment_breakdown' => $this->buildPaymentBreakdown($sale),
                     // Alias para el TicketBase del frontend
                     'customer_name' => $request->customer_name ?? 'Consumidor Final',
                     'items' => $sale->sale_items->toArray(),
@@ -452,6 +485,7 @@ class SaleController extends Controller
                         ? ['name' => $p->paymentMethod->name, 'type' => $p->paymentMethod->type]
                         : null,
                 ]),
+                'payment_breakdown' => $this->buildPaymentBreakdown($sale),
                 'customer' => $sale->customer
                     ? $sale->customer->only('id', 'name', 'phone', 'dni')
                     : null,
@@ -603,6 +637,115 @@ class SaleController extends Controller
         }
     }
 
+    private function normalizeSalePayments(Request $request, float $total): array
+    {
+        $payments = collect($request->input('payments', []))
+            ->map(function (array $payment) {
+                return [
+                    'method' => strtolower(trim((string) ($payment['method'] ?? ''))),
+                    'amount' => round((float) ($payment['amount'] ?? 0), 2),
+                ];
+            })
+            ->filter(fn (array $payment) => $payment['method'] !== '' && $payment['amount'] > 0)
+            ->values();
+
+        if ($payments->isEmpty()) {
+            $legacyMethod = strtolower(trim((string) ($request->input('payment_method') ?: 'cash')));
+            $payments = collect([[
+                'method' => $legacyMethod,
+                'amount' => round($total, 2),
+            ]]);
+        }
+
+        $allowedMethods = array_keys(self::POS_PAYMENT_METHOD_LABELS);
+        $invalidMethod = $payments->first(fn (array $payment) => ! in_array($payment['method'], $allowedMethods, true));
+        if ($invalidMethod) {
+            throw ValidationException::withMessages([
+                'payments' => 'Uno de los medios de pago seleccionados no es válido.',
+            ]);
+        }
+
+        $duplicateMethod = $payments
+            ->groupBy('method')
+            ->first(fn ($group) => $group->count() > 1);
+        if ($duplicateMethod) {
+            throw ValidationException::withMessages([
+                'payments' => 'No repitas el mismo medio de pago. Ajustá el monto en un único renglón.',
+            ]);
+        }
+
+        $distributedTotal = round((float) $payments->sum('amount'), 2);
+        if (abs($distributedTotal - $total) > 0.01) {
+            throw ValidationException::withMessages([
+                'payments' => 'La suma de los medios de pago debe coincidir exactamente con el total del comprobante.',
+            ]);
+        }
+
+        if ($payments->contains(fn (array $payment) => $payment['method'] === 'cuenta_corriente') && ! $request->filled('customer_id')) {
+            throw ValidationException::withMessages([
+                'customer_id' => 'Seleccioná un cliente para poder usar cuenta corriente.',
+            ]);
+        }
+
+        return $payments->all();
+    }
+
+    private function resolveSalePaymentMethod(string $method): ?PaymentMethod
+    {
+        $method = strtolower($method);
+        $aliases = match ($method) {
+            'cash' => ['cash', 'efectivo'],
+            'debit' => ['debit', 'debito', 'débito'],
+            'credit' => ['credit', 'credito', 'crédito'],
+            'transfer' => ['transfer', 'transferencia'],
+            default => [$method],
+        };
+
+        return PaymentMethod::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($aliases) {
+                foreach ($aliases as $alias) {
+                    $query->orWhereRaw('LOWER(name) = ?', [$alias])
+                        ->orWhereRaw('LOWER(type) = ?', [$alias]);
+                }
+            })
+            ->first();
+    }
+
+    private function buildPaymentBreakdown(Sale $sale): array
+    {
+        $breakdown = $sale->sale_payments->map(function (SalePayment $payment) {
+            $methodType = strtolower((string) ($payment->paymentMethod?->type ?? ''));
+            $methodName = $payment->paymentMethod?->name
+                ?? self::POS_PAYMENT_METHOD_LABELS[$methodType]
+                ?? 'Pago';
+
+            return [
+                'method_key' => $methodType !== '' ? $methodType : strtolower($methodName),
+                'method_name' => $methodName,
+                'amount' => (float) $payment->amount,
+                'is_account' => false,
+            ];
+        })->values();
+
+        $accountAmount = round((float) CustomerAccountMove::query()
+            ->where('reference_type', 'sale')
+            ->where('reference_id', $sale->id)
+            ->where('type', CustomerAccountMove::TYPE_CHARGE)
+            ->sum('amount'), 2);
+
+        if ($accountAmount > 0.0) {
+            $breakdown->push([
+                'method_key' => 'cuenta_corriente',
+                'method_name' => self::POS_PAYMENT_METHOD_LABELS['cuenta_corriente'],
+                'amount' => $accountAmount,
+                'is_account' => true,
+            ]);
+        }
+
+        return $breakdown->all();
+    }
+
     /**
      * Genera un PDF del comprobante a partir del HTML renderizado en el frontend
      * y devuelve la URL pública para compartir (ej. por WhatsApp).
@@ -625,7 +768,7 @@ class SaleController extends Controller
             'numero' => $sale->sale_number ?? $sale->id,
             'cliente' => $customer?->name ?? 'Cliente',
             'total' => '$'.number_format((float) $sale->total, 2, ',', '.'),
-            'fecha' => now()->format('d/m/Y'),
+            'fecha' => ($sale->sold_at ?? $sale->created_at ?? now())->format('d/m/Y'),
             'link' => $saleUrl,
         ];
 

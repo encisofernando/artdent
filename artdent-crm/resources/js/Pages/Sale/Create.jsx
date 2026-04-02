@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import {
     B, G, useD, fmt,
-    FAB, BottomSheet, Modal, Btn, ProductCard, TabStrip,
+    FAB, BottomSheet, Modal, Btn, ProductCard, TabStrip, DatePicker,
     Badge,
 } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -80,11 +80,19 @@ const PAYMENT_METHODS = [
     { id: 'cuenta_corriente',  name: 'Cta. Corriente',  requiresCustomer: true  },
 ];
 
+const PAYMENT_METHOD_BY_ID = Object.fromEntries(PAYMENT_METHODS.map((method) => [method.id, method]));
+const createPaymentSplit = (method = 'cash', amount = '') => ({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    method,
+    amount,
+});
+
 // ─── Brand / layout ──────────────────────────────────────────
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE' };
 const G_bar     = `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`;
 const G_primary = `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`;
 const fmtDate   = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+const todayIso  = () => new Date().toISOString().slice(0, 10);
 // ─── Ticket80 / Ticket57 — importados desde @/Components/Sale/TicketBase ─────
 
 export default function Create({ auth, products, customers = [], company = null }) {
@@ -109,8 +117,9 @@ export default function Create({ auth, products, customers = [], company = null 
     const [altaOpen, setAltaOpen]         = useState(false);
 
     // Pago
-    const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [paymentSplits, setPaymentSplits] = useState(() => [createPaymentSplit('cash', '')]);
     const [receivedAmount, setReceivedAmount] = useState('');
+    const [issueDate, setIssueDate] = useState(() => todayIso());
 
     // Alta rápida producto
     const [newProd, setNewProd]           = useState({ name: '', sku: '', price: '', tax_rate: '21' });
@@ -166,11 +175,24 @@ export default function Create({ auth, products, customers = [], company = null 
         return { total, neto, iva };
     }, [cart, receiptType]);
 
-    const itemCount   = cart.reduce((s, i) => s + i.quantity, 0);
-    const isCash             = paymentMethod === 'cash';
-    const isCuentaCorriente  = paymentMethod === 'cuenta_corriente';
-    const changeAmt          = isCash && Number(receivedAmount) > totals.total
-        ? Number(receivedAmount) - totals.total : 0;
+    const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
+    const splitTotal = paymentSplits.reduce((sum, split) => sum + Number(split.amount || 0), 0);
+    const splitDifference = Math.round((totals.total - splitTotal) * 100) / 100;
+    const hasCuentaCorrienteSplit = paymentSplits.some((split) => split.method === 'cuenta_corriente');
+    const singleCashOnly = paymentSplits.length === 1 && paymentSplits[0]?.method === 'cash';
+    const effectivePaidAmount = paymentSplits
+        .filter((split) => split.method !== 'cuenta_corriente')
+        .reduce((sum, split) => sum + Number(split.amount || 0), 0);
+    const changeAmt = singleCashOnly && Number(receivedAmount) > totals.total
+        ? Number(receivedAmount) - totals.total
+        : 0;
+    const availableAdditionalMethods = PAYMENT_METHODS.filter((method) => {
+        if (method.requiresCustomer && !customerId) return false;
+        return !paymentSplits.some((split) => split.method === method.id);
+    });
+    const canConfirmPayment = paymentSplits.every((split) => Number(split.amount || 0) > 0)
+        && Math.abs(splitDifference) < 0.01
+        && (!singleCashOnly || Number(receivedAmount) >= totals.total);
 
     // ── Cart actions ─────────────────────────────────────────
     const addToCart = (product) => {
@@ -233,31 +255,67 @@ export default function Create({ auth, products, customers = [], company = null 
         setCustomerId('');
     };
 
+    const updatePaymentSplit = (splitId, patch) => {
+        setPaymentSplits((current) => current.map((split) => (
+            split.id === splitId ? { ...split, ...patch } : split
+        )));
+    };
+
+    const removePaymentSplit = (splitId) => {
+        setPaymentSplits((current) => (
+            current.length <= 1 ? current : current.filter((split) => split.id !== splitId)
+        ));
+    };
+
+    const addPaymentSplit = () => {
+        const usedMethods = new Set(paymentSplits.map((split) => split.method));
+        const nextMethod = PAYMENT_METHODS.find((method) => {
+            if (method.requiresCustomer && !customerId) return false;
+            return !usedMethods.has(method.id);
+        })?.id ?? (customerId ? 'cuenta_corriente' : 'cash');
+
+        setPaymentSplits((current) => [
+            ...current,
+            createPaymentSplit(
+                nextMethod,
+                splitDifference > 0 ? String(splitDifference.toFixed(2)) : ''
+            ),
+        ]);
+    };
+
     // ── Submit ───────────────────────────────────────────────
     const handleCobrar = () => {
         if (cart.length === 0) return;
+        setPaymentSplits([createPaymentSplit('cash', String(totals.total.toFixed(2)))]);
         setReceivedAmount(String(totals.total));
-        // Reset CC if no customer selected
-        if (paymentMethod === 'cuenta_corriente' && !customerId) {
-            setPaymentMethod('cash');
-        }
         setPagoOpen(true);
     };
 
     const handleConfirmPayment = () => {
-        const paid = Number(receivedAmount);
+        if (hasCuentaCorrienteSplit && !customerId) {
+            alert('Seleccioná un cliente para usar Cuenta Corriente.');
+            return;
+        }
+
+        const normalizedPayments = paymentSplits.map((split) => ({
+            method: split.method,
+            amount: Number(split.amount || 0),
+        }));
+
         const payload = {
             customer_id: customerId,
             customer_name: customerName,
             notes,
+            issue_date: issueDate,
+            payments: normalizedPayments,
             items: cart,
             subtotal: totals.neto,
             discount_amount: 0,
             tax_amount: totals.iva,
             total: totals.total,
-            paid_amount: paid,
-            change_amount: Math.max(0, paid - totals.total),
-            payment_method: paymentMethod,
+            paid_amount: singleCashOnly ? Number(receivedAmount) : effectivePaidAmount,
+            change_amount: singleCashOnly ? Math.max(0, Number(receivedAmount) - totals.total) : 0,
+            payment_method: normalizedPayments.length === 1 ? normalizedPayments[0].method : null,
             receipt_type: receiptType,
         };
         setProcessing(true);
@@ -271,7 +329,13 @@ export default function Create({ auth, products, customers = [], company = null 
                     ...payload,
                     id: page?.props?.saleId || Date.now(),
                     sale_number: page?.props?.saleNumber || `VNT-${Date.now()}`,
-                    sold_at: new Date().toISOString(),
+                    sold_at: issueDate ? `${issueDate}T12:00:00` : new Date().toISOString(),
+                    payment_breakdown: normalizedPayments.map((split) => ({
+                        method_key: split.method,
+                        method_name: PAYMENT_METHOD_BY_ID[split.method]?.name || split.method,
+                        amount: split.amount,
+                        is_account: split.method === 'cuenta_corriente',
+                    })),
                 };
                 setPostSale(sale);
                 setPrintView('actions');
@@ -336,7 +400,7 @@ export default function Create({ auth, products, customers = [], company = null 
             '{numero}':  postSale.sale_number || '',
             '{cliente}': postSale.customer_name || 'Consumidor Final',
             '{total}':   `$${Number(postSale.total).toLocaleString('es-AR')}`,
-            '{fecha}':   new Date().toLocaleDateString('es-AR'),
+            '{fecha}':   new Date(postSale.sold_at || postSale.created_at || new Date().toISOString()).toLocaleDateString('es-AR'),
             '{link}':    pdfUrl || '',
         };
 
@@ -526,12 +590,31 @@ export default function Create({ auth, products, customers = [], company = null 
                     {!customerId && <Plus size={13} className="opacity-50" />}
                 </button>
 
-                {/* Tipo comprobante */}
-                <SearchableSelect
-                    value={receiptType}
-                    onChange={v => setReceiptType(v)}
-                    options={TIPOS.map(t => ({ value: t.id, label: `${t.id} — ${t.label} (${t.desc})` }))}
-                />
+                {/* Tipo comprobante + fecha de emisión */}
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_152px] gap-2">
+                    <SearchableSelect
+                        value={receiptType}
+                        onChange={v => setReceiptType(v)}
+                        options={TIPOS.map(t => ({ value: t.id, label: `${t.id} — ${t.label} (${t.desc})` }))}
+                    />
+
+                    <DatePicker
+                        value={issueDate}
+                        onChange={setIssueDate}
+                        D={D}
+                        placeholder="Fecha emisión"
+                        style={{
+                            width: '100%',
+                            borderRadius: 10,
+                            background: D.input,
+                            border: `1.5px solid ${D.inputBorder}`,
+                            color: D.text,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            padding: '10px 12px',
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Items */}
@@ -1053,42 +1136,141 @@ export default function Create({ auth, products, customers = [], company = null 
                         )}
                     </div>
 
-                    {/* Método de pago */}
-                    <div>
-                        <div className="text-[10.5px] font-semibold tracking-[0.06em] mb-2" style={{ color: D.muted }}>MÉTODO DE PAGO</div>
-                        <div className="grid grid-cols-2 gap-2">
-                            {PAYMENT_METHODS.map(pm => {
-                                const isDisabled = pm.requiresCustomer && !customerId;
-                                const isSelected = paymentMethod === pm.id;
+                    {/* Distribución de pago */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <div className="text-[10.5px] font-semibold tracking-[0.06em]" style={{ color: D.muted }}>
+                                    DISTRIBUCIÓN DEL COBRO
+                                </div>
+                                <p className="text-[11px] mt-1" style={{ color: D.muted }}>
+                                    Podés combinar efectivo, transferencia, tarjetas y cuenta corriente.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={addPaymentSplit}
+                                disabled={availableAdditionalMethods.length === 0}
+                                className="px-3 py-2 rounded-[10px] text-[12px] font-semibold border-[1.5px] transition-colors"
+                                style={{
+                                    borderColor: availableAdditionalMethods.length === 0 ? D.border : `${B.teal}66`,
+                                    color: availableAdditionalMethods.length === 0 ? D.muted : B.teal,
+                                    opacity: availableAdditionalMethods.length === 0 ? 0.55 : 1,
+                                }}
+                            >
+                                + Agregar medio
+                            </button>
+                        </div>
+
+                        <div className="space-y-2">
+                            {paymentSplits.map((split, index) => {
+                                const methodOptions = PAYMENT_METHODS
+                                    .filter((method) => {
+                                        if (method.requiresCustomer && !customerId && method.id !== split.method) {
+                                            return false;
+                                        }
+
+                                        return method.id === split.method
+                                            || !paymentSplits.some((other) => other.id !== split.id && other.method === method.id);
+                                    })
+                                    .map((method) => ({
+                                        value: method.id,
+                                        label: method.name,
+                                    }));
+
+                                const isAccountSplit = split.method === 'cuenta_corriente';
+
                                 return (
-                                    <button key={pm.id}
-                                        onClick={() => !isDisabled && setPaymentMethod(pm.id)}
-                                        disabled={isDisabled}
-                                        title={isDisabled ? 'Requiere cliente seleccionado' : undefined}
-                                        className="p-[10px_12px] rounded-[10px] text-[12.5px] font-medium transition-colors border-[1.5px]"
+                                    <div
+                                        key={split.id}
+                                        className="rounded-[12px] p-3"
                                         style={{
-                                            borderColor: isSelected ? B.teal : D.border,
-                                            color: isDisabled ? D.muted : (isSelected ? B.teal : D.text),
-                                            background: isSelected
-                                                ? `linear-gradient(135deg, ${B.teal}38, ${B.blue}26)`
-                                                : 'transparent',
-                                            opacity: isDisabled ? 0.45 : 1,
-                                            cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                        }}>
-                                        {pm.name}
-                                    </button>
+                                            border: `1px solid ${isAccountSplit ? `${B.teal}55` : D.border}`,
+                                            background: isAccountSplit ? `${B.teal}12` : 'rgba(255,255,255,0.02)',
+                                        }}
+                                    >
+                                        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_130px_auto] gap-2 items-center">
+                                            <SearchableSelect
+                                                value={split.method}
+                                                onChange={(value) => updatePaymentSplit(split.id, { method: value })}
+                                                options={methodOptions}
+                                            />
+
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold" style={{ color: D.muted }}>$</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={split.amount}
+                                                    onChange={(e) => updatePaymentSplit(split.id, { amount: e.target.value })}
+                                                    className="w-full outline-none"
+                                                    style={{
+                                                        padding: '10px 12px 10px 24px',
+                                                        borderRadius: 10,
+                                                        background: D.input,
+                                                        border: `1.5px solid ${D.inputBorder}`,
+                                                        color: D.text,
+                                                        fontSize: 13.5,
+                                                        fontWeight: 700,
+                                                        fontFamily: 'inherit',
+                                                    }}
+                                                    placeholder="0,00"
+                                                />
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => removePaymentSplit(split.id)}
+                                                disabled={paymentSplits.length === 1}
+                                                className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors"
+                                                style={{
+                                                    border: `1px solid ${paymentSplits.length === 1 ? D.border : `${B.red}44`}`,
+                                                    color: paymentSplits.length === 1 ? D.muted : B.red,
+                                                    opacity: paymentSplits.length === 1 ? 0.45 : 1,
+                                                }}
+                                                title="Quitar medio"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-3 mt-2 text-[11px]">
+                                            <span style={{ color: D.muted }}>
+                                                {index === paymentSplits.length - 1 && splitDifference > 0.009
+                                                    ? `Saldo sugerido: $${fmt(splitDifference)}`
+                                                    : 'Monto imputado al comprobante'}
+                                            </span>
+                                            {isAccountSplit && (
+                                                <span style={{ color: B.teal, fontWeight: 700 }}>
+                                                    Se enviará a la cuenta corriente de {customerName}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 );
                             })}
                         </div>
-                        {isCuentaCorriente && (
-                            <p className="text-[11px] mt-2" style={{ color: B.teal }}>
-                                Se cargará ${ fmt(totals.total) } a la cuenta corriente de {customerName}.
-                            </p>
-                        )}
+
+                        <div
+                            className="rounded-[10px] px-3 py-2 text-[12px] font-semibold"
+                            style={{
+                                background: Math.abs(splitDifference) < 0.01 ? `${B.green}18` : `${B.red}16`,
+                                border: `1px solid ${Math.abs(splitDifference) < 0.01 ? `${B.green}44` : `${B.red}33`}`,
+                                color: Math.abs(splitDifference) < 0.01 ? B.green : B.red,
+                            }}
+                        >
+                            {Math.abs(splitDifference) < 0.01
+                                ? 'Distribución completa. El total del comprobante quedó cubierto.'
+                                : splitDifference > 0
+                                    ? `Faltan $${fmt(splitDifference)} por asignar.`
+                                    : `La distribución excede el total en $${fmt(Math.abs(splitDifference))}.`}
+                        </div>
                     </div>
 
                     {/* Efectivo: monto recibido + vuelto */}
-                    {isCash && (
+                    {singleCashOnly && (
                         <div className="space-y-3">
                             <div className="relative">
                                 <div className="absolute top-2 left-3 text-[10px] font-bold" style={{ color: B.blue }}>Recibe</div>
@@ -1122,11 +1304,11 @@ export default function Create({ auth, products, customers = [], company = null 
                         <Btn
                             variant="success"
                             size="md"
-                            disabled={processing || (isCash && Number(receivedAmount) < totals.total)}
+                            disabled={processing || !canConfirmPayment}
                             onClick={handleConfirmPayment}
-                            style={isCuentaCorriente ? { background: B.teal } : {}}
+                            style={hasCuentaCorrienteSplit ? { background: B.teal } : {}}
                         >
-                            {processing ? '...' : isCuentaCorriente ? 'Cargar a cuenta' : 'Confirmar cobro'}
+                            {processing ? '...' : hasCuentaCorrienteSplit ? 'Registrar pago mixto' : 'Confirmar cobro'}
                         </Btn>
                     </div>
                 </div>

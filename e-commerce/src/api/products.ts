@@ -67,11 +67,27 @@ export type StockSummary = {
   quantity: number
 }
 
+function normalizeVariantAttributeName(value?: string | null): string {
+  return (value ?? '').trim().replace(/\s+/g, ' ')
+}
+
+function normalizeVariantAttributeValue(value?: string | null): string {
+  return normalizeVariantAttributeName(value).toLocaleUpperCase('es-AR')
+}
+
 function normalizeProductUrls(p: CatalogProduct): CatalogProduct {
   return {
     ...p,
     primary_image_url: storageUrl(p.primary_image_url) ?? p.primary_image_url,
     images: p.images?.map(img => ({ ...img, url: storageUrl(img.url) ?? img.url })),
+    variants: p.variants?.map((variant) => ({
+      ...variant,
+      attributes: variant.attributes.map((attribute) => ({
+        ...attribute,
+        attribute: normalizeVariantAttributeName(attribute.attribute),
+        value: normalizeVariantAttributeValue(attribute.value),
+      })),
+    })),
   }
 }
 

@@ -22,6 +22,18 @@ use Illuminate\Support\Str;
 
 class CatalogController extends Controller
 {
+    private function normalizeVariantAttributeName(?string $name): string
+    {
+        return preg_replace('/\s+/u', ' ', trim((string) $name)) ?: '';
+    }
+
+    private function normalizeVariantAttributeValue(mixed $value): string
+    {
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value)) ?: '';
+
+        return mb_strtoupper($normalized, 'UTF-8');
+    }
+
     private function defaultCompanyId(): int
     {
         return (int) env('ECOMMERCE_COMPANY_ID', 1);
@@ -215,9 +227,9 @@ class CatalogController extends Controller
                     'attributes' => $variant->variant_attribute_values->map(function ($vav): array {
                         return [
                             'attribute_id' => $vav->product_attribute_value->attribute_id,
-                            'attribute' => $vav->product_attribute_value->product_attribute->name,
+                            'attribute' => $this->normalizeVariantAttributeName($vav->product_attribute_value->product_attribute->name),
                             'value_id' => $vav->attribute_value_id,
-                            'value' => $vav->product_attribute_value->value,
+                            'value' => $this->normalizeVariantAttributeValue($vav->product_attribute_value->value),
                         ];
                     })->values()->all(),
                 ];

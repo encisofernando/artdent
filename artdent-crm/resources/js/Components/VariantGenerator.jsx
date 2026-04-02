@@ -5,6 +5,16 @@ import { useTheme } from '@/Contexts/ThemeContext';
 
 export default function VariantGenerator({ variantsData = [], onVariantsChange, hidePrices = false, trackStock = false }) {
     const { isDark } = useTheme();
+
+    const normalizeOptionName = (value) => value.trim().replace(/\s+/g, ' ');
+    const normalizeOptionValue = (value) => value.trim().replace(/\s+/g, ' ').toLocaleUpperCase('es-AR');
+    const normalizeAttributes = (attributes = {}) =>
+        Object.fromEntries(
+            Object.entries(attributes).map(([key, value]) => [
+                normalizeOptionName(key),
+                normalizeOptionValue(String(value ?? '')),
+            ]),
+        );
     
     // options structure: [{ id: 1, name: 'Color', values: ['Red', 'Blue'] }]
     const [options, setOptions] = useState([]);
@@ -18,7 +28,7 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
             
             variantsData.forEach(v => {
                 if (v.attributes) {
-                    Object.entries(v.attributes).forEach(([key, val]) => {
+                    Object.entries(normalizeAttributes(v.attributes)).forEach(([key, val]) => {
                         if (!reconstructedOptions[key]) {
                             reconstructedOptions[key] = new Set();
                         }
@@ -34,7 +44,10 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
             }));
             
             setOptions(newOptions);
-            setVariants(variantsData);
+            setVariants(variantsData.map((variant) => ({
+                ...variant,
+                attributes: normalizeAttributes(variant.attributes),
+            })));
         }
     }, [variantsData]);
 
@@ -51,14 +64,25 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
     };
 
     const handleValuesChange = (id, valuesString) => {
-        // Split by comma, trim whitespace, remove empty
-        const values = valuesString.split(',').map(v => v.trim()).filter(v => v);
+        // Split by comma, normalize spacing/case, remove empty and duplicates
+        const values = Array.from(new Set(
+            valuesString
+                .split(',')
+                .map(normalizeOptionValue)
+                .filter(v => v),
+        ));
         setOptions(options.map(opt => opt.id === id ? { ...opt, values } : opt));
     };
 
     const generateVariants = () => {
         // Only consider options that have both a name and at least one value
-        const validOptions = options.filter(opt => opt.name.trim() !== '' && opt.values.length > 0);
+        const validOptions = options
+            .map((opt) => ({
+                ...opt,
+                name: normalizeOptionName(opt.name),
+                values: Array.from(new Set(opt.values.map(normalizeOptionValue).filter(v => v))),
+            }))
+            .filter(opt => opt.name !== '' && opt.values.length > 0);
         
         if (validOptions.length === 0) {
             setVariants([]);
@@ -83,22 +107,28 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
 
         // Map to variant objects, trying to preserve existing data if attributes match
         const newVariants = combinations.map(combo => {
+            const normalizedCombo = normalizeAttributes(combo);
+
             // Find if this exact combination already exists to preserve its price/sku/id
             const existing = variants.find(v => {
                 if (!v.attributes) return false;
-                const vKeys = Object.keys(v.attributes);
-                const cKeys = Object.keys(combo);
+                const normalizedAttributes = normalizeAttributes(v.attributes);
+                const vKeys = Object.keys(normalizedAttributes);
+                const cKeys = Object.keys(normalizedCombo);
                 if (vKeys.length !== cKeys.length) return false;
-                return vKeys.every(k => v.attributes[k] === combo[k]);
+                return vKeys.every(k => normalizedAttributes[k] === normalizedCombo[k]);
             });
 
             if (existing) {
-                return existing;
+                return {
+                    ...existing,
+                    attributes: normalizedCombo,
+                };
             }
 
             return {
                 id: null,
-                attributes: combo,
+                attributes: normalizedCombo,
                 sku: '',
                 price: '',
                 cost_price: '',
@@ -151,7 +181,7 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                                         placeholder="Nombre (ej. Color)" 
                                         className={inputClasses}
                                         value={opt.name}
-                                        onChange={(e) => updateOptionName(opt.id, e.target.value)}
+                                        onChange={(e) => updateOptionName(opt.id, normalizeOptionName(e.target.value))}
                                     />
                                 </div>
                                 <div className="w-full sm:w-flex-1 flex gap-2 items-center">

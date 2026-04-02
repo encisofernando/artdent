@@ -13,6 +13,18 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
+    private function normalizeVariantAttributeName(?string $name): string
+    {
+        return preg_replace('/\s+/u', ' ', trim((string) $name)) ?: '';
+    }
+
+    private function normalizeVariantAttributeValue(mixed $value): string
+    {
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value)) ?: '';
+
+        return mb_strtoupper($normalized, 'UTF-8');
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -186,10 +198,17 @@ class ProductController extends Controller
 
                     if (isset($variantItem['attributes']) && is_array($variantItem['attributes'])) {
                         foreach ($variantItem['attributes'] as $attrName => $attrValueStr) {
-                            $attribute = \App\Models\ProductAttribute::firstOrCreate(['name' => $attrName]);
+                            $normalizedAttrName = $this->normalizeVariantAttributeName($attrName);
+                            $normalizedAttrValue = $this->normalizeVariantAttributeValue($attrValueStr);
+
+                            if ($normalizedAttrName === '' || $normalizedAttrValue === '') {
+                                continue;
+                            }
+
+                            $attribute = \App\Models\ProductAttribute::firstOrCreate(['name' => $normalizedAttrName]);
                             $attrValue = \App\Models\ProductAttributeValue::firstOrCreate([
                                 'attribute_id' => $attribute->id,
-                                'value' => $attrValueStr,
+                                'value' => $normalizedAttrValue,
                             ]);
                             \App\Models\VariantAttributeValue::create([
                                 'variant_id' => $variant->id,
@@ -324,8 +343,15 @@ class ProductController extends Controller
             $attrValuePairs = [];
             foreach ($variantsData as $variantItem) {
                 foreach ($variantItem['attributes'] ?? [] as $attrName => $attrValue) {
-                    $attrNames[] = $attrName;
-                    $attrValuePairs[] = ['name' => $attrName, 'value' => $attrValue];
+                    $normalizedAttrName = $this->normalizeVariantAttributeName($attrName);
+                    $normalizedAttrValue = $this->normalizeVariantAttributeValue($attrValue);
+
+                    if ($normalizedAttrName === '' || $normalizedAttrValue === '') {
+                        continue;
+                    }
+
+                    $attrNames[] = $normalizedAttrName;
+                    $attrValuePairs[] = ['name' => $normalizedAttrName, 'value' => $normalizedAttrValue];
                 }
             }
 
@@ -482,8 +508,15 @@ class ProductController extends Controller
 
                         $newAttrValues = [];
                         foreach ($variantItem['attributes'] as $attrName => $attrValueStr) {
-                            $attr = $attributeCache[$attrName];
-                            $attrValue = $attrValueCache["{$attr->id}:{$attrValueStr}"];
+                            $normalizedAttrName = $this->normalizeVariantAttributeName($attrName);
+                            $normalizedAttrValue = $this->normalizeVariantAttributeValue($attrValueStr);
+
+                            if ($normalizedAttrName === '' || $normalizedAttrValue === '') {
+                                continue;
+                            }
+
+                            $attr = $attributeCache[$normalizedAttrName];
+                            $attrValue = $attrValueCache["{$attr->id}:{$normalizedAttrValue}"];
                             $newAttrValues[] = [
                                 'variant_id' => $variant->id,
                                 'attribute_value_id' => $attrValue->id,

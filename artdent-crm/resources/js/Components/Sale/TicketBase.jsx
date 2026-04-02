@@ -63,10 +63,22 @@ function TicketBase({ sale, widthMM = 80 }) {
     const subTotal = total - totalIVA;
 
     // ── Pagos / cliente / fechas ──────────────────────────────────────────────
-    const primerPago = sale.sale_payments?.[0];
-    const medioPago  = primerPago?.payment_method?.name || sale.payment_method || 'Efectivo';
+    const paymentBreakdown = Array.isArray(sale.payment_breakdown) && sale.payment_breakdown.length
+        ? sale.payment_breakdown
+        : (sale.sale_payments || []).map((payment) => ({
+            method_name: payment.payment_method?.name || sale.payment_method || 'Efectivo',
+            amount: Number(payment.amount || 0),
+            is_account: false,
+        }));
+    const medioPago  = paymentBreakdown.length
+        ? paymentBreakdown.map((payment) => payment.method_name).join(' + ')
+        : (sale.payment_method || 'Efectivo');
+    const paymentDetail = paymentBreakdown.length
+        ? paymentBreakdown.map((payment) => `${payment.method_name}: $${fmt(payment.amount)}`).join(' | ')
+        : medioPago;
+    const accountPayment = paymentBreakdown.find((payment) => payment.is_account);
     const cajero     = sale.user?.name || sale.user?.email || 'Sistema';
-    const pagado     = Number(sale.amount_paid  || 0);
+    const pagado     = Number(sale.paid_amount || sale.amount_paid || 0);
     const vuelto     = Number(sale.change_amount || 0);
     const clientName = sale.customer?.name
         || sale.customer_name
@@ -232,7 +244,7 @@ function TicketBase({ sale, widthMM = 80 }) {
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: F.xs, color: C.muted, marginTop: 1 }}>
                     <span>{medioPago}</span>
-                    <span>Venta contado</span>
+                    <span>{accountPayment ? 'Pago mixto' : 'Venta contado'}</span>
                 </div>
             </div>
 
@@ -323,10 +335,21 @@ function TicketBase({ sale, widthMM = 80 }) {
                     <span>Medio de pago:</span>
                     <span style={{ fontWeight: 600, color: '#111' }}>{medioPago}</span>
                 </div>
+                {paymentBreakdown.length > 0 && (
+                    <div style={{ marginTop: 2, lineHeight: 1.45 }}>
+                        {paymentDetail}
+                    </div>
+                )}
                 {pagado > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Efectivo entregado:</span>
+                        <span>Cobrado:</span>
                         <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#111' }}>$ {fmt(pagado)}</span>
+                    </div>
+                )}
+                {accountPayment && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Saldo Cta. Cte.:</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#111' }}>$ {fmt(accountPayment.amount)}</span>
                     </div>
                 )}
                 {vuelto > 0 && (

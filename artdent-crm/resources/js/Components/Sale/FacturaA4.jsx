@@ -144,9 +144,22 @@ export default function FacturaA4({ sale }) {
     const recipientIvaLabel = IVA_LABELS[inv?.recipient_iva || sale.customer?.iva_condition] || 'Consumidor Final';
     const extraNotes = sale.notes?.replace(/^Cliente:[^\n]+\n?/, '') || '';
 
-    // Medio de pago
-    const primerPago = sale.sale_payments?.[0];
-    const medioPago  = primerPago?.payment_method?.name || sale.payment_method || 'Contado';
+    const paymentBreakdown = Array.isArray(sale.payment_breakdown) && sale.payment_breakdown.length
+        ? sale.payment_breakdown
+        : (sale.sale_payments || []).map((payment) => ({
+            method_name: payment.payment_method?.name || sale.payment_method || 'Contado',
+            amount: Number(payment.amount || 0),
+            is_account: false,
+        }));
+    const medioPago = paymentBreakdown.length
+        ? paymentBreakdown.map((payment) => payment.method_name).join(' + ')
+        : (sale.payment_method || 'Contado');
+    const paymentDetail = paymentBreakdown.length
+        ? paymentBreakdown
+            .map((payment) => `${payment.method_name}: $${fmt(payment.amount)}`)
+            .join(' · ')
+        : medioPago;
+    const accountPayment = paymentBreakdown.find((payment) => payment.is_account);
 
     // Datos del emisor
     const inicioAct = company.start_date
@@ -337,8 +350,12 @@ export default function FacturaA4({ sale }) {
                         <span style={{ fontWeight: 700 }}>Son: </span>
                         <span style={{ fontStyle: 'italic' }}>{fmt(total)} pesos argentinos</span>
                         {'   '}
-                        <span style={{ marginLeft: 12, fontWeight: 700 }}>Recibido: </span>${fmt(sale.paid_amount)}
+                        <span style={{ marginLeft: 12, fontWeight: 700 }}>Cobrado: </span>${fmt(sale.paid_amount)}
                         {Number(sale.change_amount) > 0 && <span style={{ marginLeft: 12 }}><strong>Vuelto: </strong>${fmt(sale.change_amount)}</span>}
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 8, color: '#555' }}>
+                        <span style={{ fontWeight: 700 }}>Pagos: </span>{paymentDetail}
+                        {accountPayment && <span style={{ marginLeft: 12 }}><strong>Saldo a Cta. Cte.:</strong> ${fmt(accountPayment.amount)}</span>}
                     </div>
                 </div>
 
