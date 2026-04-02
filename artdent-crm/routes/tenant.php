@@ -22,6 +22,9 @@ Route::middleware([
         return redirect()->route('login');
     });
 
+    Route::get('/print-manager/download/{platform?}', [\App\Http\Controllers\PrintManagerDownloadController::class, 'download'])
+        ->name('print-manager.download');
+
     // ── Storage fallback ──────────────────────────────────────────────────────
     Route::middleware('tenant.session')->get('/storage/{path}', function (string $path) {
         $realPath = storage_path('app/public/'.ltrim($path, '/'));

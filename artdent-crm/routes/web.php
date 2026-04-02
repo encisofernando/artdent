@@ -6,6 +6,9 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+Route::get('/print-manager/download/{platform?}', [\App\Http\Controllers\PrintManagerDownloadController::class, 'download'])
+    ->name('print-manager.download');
+
 // ── Fallback para archivos de storage cuando el symlink no existe ─────────────
 // Si el symlink public/storage existe y el servidor sirve el archivo estático,
 // esta ruta nunca se ejecuta. Sólo actúa cuando el archivo no se resuelve

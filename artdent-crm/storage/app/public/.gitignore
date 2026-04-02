@@ -1,2 +1,8 @@
 *
 !.gitignore
+!downloads/
+!downloads/print-manager/
+!downloads/print-manager/windows/
+!downloads/print-manager/windows/.gitkeep
+!downloads/print-manager/linux/
+!downloads/print-manager/linux/.gitkeep

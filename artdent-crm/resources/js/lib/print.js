@@ -8,13 +8,26 @@ const THERMAL_ZONE_WIDTHS = {
     '57mm': '180px',
     '80mm': '260px',
 };
+const THERMAL_TARGET_WIDTHS = {
+    '57mm': 388,
+    '80mm': 576,
+};
 
 export const isThermalMode = (mode) => THERMAL_MODES.has(mode);
 export const normalizePrintMode = (mode) => (mode === '54mm' ? '57mm' : mode);
 export const getThermalZoneWidth = (mode) => THERMAL_ZONE_WIDTHS[normalizePrintMode(mode)] || THERMAL_ZONE_WIDTHS['80mm'];
-// Keep the original 57mm scaling that we know prints correctly.
-// 80mm stays at 1x until we isolate the Windows direct-print mismatch there.
-export const getThermalPrintZoom = (mode) => (normalizePrintMode(mode) === '57mm' ? 388 / 180 : 1);
+export const getThermalTargetWidthPx = (mode) => THERMAL_TARGET_WIDTHS[normalizePrintMode(mode)] || THERMAL_TARGET_WIDTHS['80mm'];
+export const getThermalPrintZoom = (mode) => {
+    const normalized = normalizePrintMode(mode);
+    const zoneWidth = Number.parseFloat(getThermalZoneWidth(normalized));
+    const targetWidth = getThermalTargetWidthPx(normalized);
+
+    if (!zoneWidth || !targetWidth) {
+        return 1;
+    }
+
+    return targetWidth / zoneWidth;
+};
 
 export function getStoredTicketFormat(fallback = '80mm') {
     if (typeof window === 'undefined') return fallback;
@@ -44,6 +57,61 @@ export function collectPrintAssets() {
     return Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
         .map((node) => node.outerHTML)
         .join('\n');
+}
+
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('No se pudo leer la imagen.'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function inlineElementImages(element) {
+    if (typeof window === 'undefined' || !element?.querySelectorAll) {
+        return element;
+    }
+
+    const images = Array.from(element.querySelectorAll('img'));
+
+    await Promise.all(images.map(async (image) => {
+        const src = image.getAttribute('src');
+
+        if (!src || src.startsWith('data:') || src.startsWith('blob:')) {
+            return;
+        }
+
+        let absoluteUrl;
+        try {
+            absoluteUrl = new URL(src, window.location.href).href;
+        } catch {
+            return;
+        }
+
+        try {
+            const response = await fetch(absoluteUrl, {
+                credentials: 'include',
+                cache: 'force-cache',
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const blob = await response.blob();
+            const dataUrl = await blobToDataUrl(blob);
+
+            if (typeof dataUrl === 'string' && dataUrl.length > 0) {
+                image.setAttribute('src', dataUrl);
+                image.removeAttribute('srcset');
+            }
+        } catch {
+            // If an image can't be inlined, keep its original src as fallback.
+        }
+    }));
+
+    return element;
 }
 
 export function buildPrintHtml({
@@ -185,9 +253,12 @@ export async function printElementWithElectron({
         };
     }
 
+    const printableElement = target.cloneNode(true);
+    await inlineElementImages(printableElement);
+
     const html = buildPrintHtml({
         title,
-        bodyHtml: target.outerHTML,
+        bodyHtml: printableElement.outerHTML,
         pageSize,
         zoneWidth,
         zoom,

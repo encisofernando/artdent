@@ -68,40 +68,78 @@ function normalizePrintMode(mode) {
     return mode === '54mm' ? '57mm' : mode;
 }
 
-function normalizeHtmlForDirectPrint(html, mode) {
-    if (normalizePrintMode(mode) === '57mm') {
-        return html;
-    }
-
+function normalizeHtmlForPrint(html) {
     return injectHeadStyle(html, `
-        #print-zone {
-            zoom: 1 !important;
-            transform: none !important;
-            transform-origin: top left !important;
-        }
-    `);
-}
-
-function normalizeHtmlForEscPosCapture(html, mode) {
-    const baseCss = `
         html, body {
             margin: 0 !important;
             background: #fff !important;
         }
-    `;
-
-    if (normalizePrintMode(mode) === '57mm') {
-        return injectHeadStyle(html, baseCss);
-    }
-
-    return injectHeadStyle(html, `
-        ${baseCss}
-        #print-zone {
-            zoom: 1 !important;
-            transform: none !important;
-            transform-origin: top left !important;
-        }
     `);
+}
+
+async function waitForWorkerAssets(timeoutMs = 4000) {
+    try {
+        const summary = await workerWindow.webContents.executeJavaScript(`
+            (async function () {
+                const timeout = ${timeoutMs};
+                const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+                const images = Array.from(document.images || []);
+
+                const waitForImage = (img) => {
+                    if (img.complete && img.naturalWidth !== 0) {
+                        if (typeof img.decode === 'function') {
+                            return img.decode().catch(() => {});
+                        }
+
+                        return Promise.resolve();
+                    }
+
+                    return new Promise((resolve) => {
+                        let settled = false;
+
+                        const finish = async () => {
+                            if (settled) return;
+                            settled = true;
+
+                            if (typeof img.decode === 'function') {
+                                try {
+                                    await img.decode();
+                                } catch {}
+                            }
+
+                            resolve();
+                        };
+
+                        img.addEventListener('load', finish, { once: true });
+                        img.addEventListener('error', finish, { once: true });
+                        setTimeout(finish, 1200);
+                    });
+                };
+
+                if (document.fonts?.ready) {
+                    try {
+                        await Promise.race([document.fonts.ready, wait(timeout)]);
+                    } catch {}
+                }
+
+                await Promise.race([
+                    Promise.all(images.map(waitForImage)),
+                    wait(timeout),
+                ]);
+
+                await wait(120);
+
+                return {
+                    imageCount: images.length,
+                    unresolved: images.filter((img) => !img.complete || img.naturalWidth === 0).length,
+                };
+            })();
+        `, true);
+
+        addLog(`Recursos listos: ${summary.imageCount} imagen(es), ${summary.unresolved} sin resolver.`);
+    } catch (error) {
+        addLog(`Aviso al esperar recursos: ${error.message}`, 'error');
+    }
 }
 
 /* ---------------- IMPRESION ---------------- */
@@ -116,11 +154,12 @@ function executePrint(html, mode, res = null, done = null) {
         return;
     }
 
-    const printableHtml = normalizeHtmlForDirectPrint(html, mode);
+    const printableHtml = normalizeHtmlForPrint(html);
     workerWindow.webContents.setZoomFactor(1);
     workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(printableHtml)}`);
 
-    workerWindow.webContents.once('did-finish-load', () => {
+    workerWindow.webContents.once('did-finish-load', async () => {
+        await waitForWorkerAssets();
         workerWindow.webContents.print({
             silent: true,
             printBackground: true,
@@ -149,7 +188,7 @@ function executePrint(html, mode, res = null, done = null) {
 async function executePrintLinuxESCPOS(html, mode, devicePath, res, done) {
     // 388px = ~48.5mm @ 203dpi (-1.5mm respecto al anterior 400px)
     const printWidthPx = (mode === '57mm' || mode === '54mm') ? 388 : 576;
-    const rasterHtml = normalizeHtmlForEscPosCapture(html, mode);
+    const rasterHtml = normalizeHtmlForPrint(html);
     try {
         // 1. Cargar con alto amplio para medir contenido real
         workerWindow.webContents.setZoomFactor(1);
@@ -159,7 +198,7 @@ async function executePrintLinuxESCPOS(html, mode, devicePath, res, done) {
         await new Promise(resolve =>
             workerWindow.webContents.once('did-finish-load', resolve)
         );
-        await new Promise(r => setTimeout(r, 300));
+        await waitForWorkerAssets();
 
         // 2. Escalar el ticket al ancho raster final y medir el alto real antes de capturar.
         const metrics = await workerWindow.webContents.executeJavaScript(`
