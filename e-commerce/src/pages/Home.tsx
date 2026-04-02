@@ -113,8 +113,244 @@ function TabEmptyState({ tab }: { tab: number }) {
 
 /* ─── Slide type ────────────────────────────────────────────────────── */
 type Slide = {
+  id: number
   imageSrc: string
   clickUrl: string | null
+  slideType: 'image' | 'editorial'
+  eyebrow: string
+  title: string
+  subtitle: string
+  description: string
+  buttonLabel: string
+  buttonUrl: string | null
+  contentAlign: 'left' | 'center' | 'right'
+  contentWidth: 'sm' | 'md' | 'lg'
+  heightMode: 'compact' | 'regular' | 'immersive'
+  fontStyle: 'brand' | 'editorial' | 'impact'
+  titleSize: 'sm' | 'md' | 'lg' | 'xl'
+  bodySize: 'sm' | 'md' | 'lg'
+  overlayStrength: 'none' | 'soft' | 'medium' | 'strong'
+  surfaceStyle: 'none' | 'glass' | 'solid'
+  eyebrowColor: string
+  titleColor: string
+  subtitleColor: string
+  descriptionColor: string
+  buttonBgColor: string
+  buttonTextColor: string
+  buttonBorderColor: string
+}
+
+const SLIDE_DEFAULT_COLORS = {
+  eyebrow: '#ACD6CE',
+  title: '#FFFFFF',
+  subtitle: '#E2E8F0',
+  description: '#D8E2F0',
+  buttonBg: '#FFFFFF',
+  buttonText: '#0F172A',
+  buttonBorder: '#FFFFFF33',
+} as const
+
+const CONTENT_PADDING_CLASSES = {
+  compact: 'p-3 sm:p-4 md:p-5',
+  regular: 'p-4 sm:p-5 md:p-6',
+  immersive: 'p-5 sm:p-6 md:p-7',
+} as const
+
+const WIDTH_CLASSES = {
+  sm: 'max-w-md',
+  md: 'max-w-xl',
+  lg: 'max-w-2xl',
+} as const
+
+const ALIGN_CLASSES = {
+  left: 'items-start text-left',
+  center: 'items-center text-center',
+  right: 'items-end text-right',
+} as const
+
+const SURFACE_CLASSES = {
+  none: '',
+  glass: '',
+  solid: 'bg-slate-950/18',
+} as const
+
+const TITLE_CLASS_MAP = {
+  brand: {
+    sm: 'text-[clamp(1.8rem,4.4vw,2.8rem)] font-extrabold tracking-[-0.05em] leading-[0.92]',
+    md: 'text-[clamp(2.1rem,5vw,3.5rem)] font-extrabold tracking-[-0.05em] leading-[0.92]',
+    lg: 'text-[clamp(2.4rem,5.7vw,4.2rem)] font-black tracking-[-0.055em] leading-[0.9]',
+    xl: 'text-[clamp(2.8rem,6.5vw,5rem)] font-black tracking-[-0.06em] leading-[0.88]',
+  },
+  editorial: {
+    sm: 'text-[clamp(1.7rem,4vw,2.6rem)] font-semibold tracking-[-0.04em] leading-[0.98]',
+    md: 'text-[clamp(2rem,4.7vw,3.2rem)] font-semibold tracking-[-0.045em] leading-[0.96]',
+    lg: 'text-[clamp(2.3rem,5.5vw,3.9rem)] font-bold tracking-[-0.05em] leading-[0.94]',
+    xl: 'text-[clamp(2.7rem,6.2vw,4.6rem)] font-bold tracking-[-0.055em] leading-[0.92]',
+  },
+  impact: {
+    sm: 'text-[clamp(1.8rem,4.3vw,2.8rem)] font-black uppercase tracking-[-0.06em] leading-[0.88]',
+    md: 'text-[clamp(2.2rem,5.2vw,3.6rem)] font-black uppercase tracking-[-0.07em] leading-[0.86]',
+    lg: 'text-[clamp(2.6rem,6vw,4.4rem)] font-black uppercase tracking-[-0.075em] leading-[0.84]',
+    xl: 'text-[clamp(3rem,6.8vw,5.2rem)] font-black uppercase tracking-[-0.08em] leading-[0.82]',
+  },
+} as const
+
+const BODY_CLASS_MAP = {
+  sm: 'text-[clamp(0.92rem,1.8vw,1rem)] leading-relaxed',
+  md: 'text-[clamp(1rem,2vw,1.12rem)] leading-relaxed',
+  lg: 'text-[clamp(1.05rem,2.2vw,1.22rem)] leading-relaxed',
+} as const
+
+function buildOverlayBackground(strength: Slide['overlayStrength'], align: Slide['contentAlign']) {
+  if (strength === 'none') return 'transparent'
+
+  const gradients = {
+    left: {
+      soft: 'linear-gradient(90deg, rgba(15,23,42,0.48) 0%, rgba(15,23,42,0.22) 34%, rgba(15,23,42,0.08) 62%, rgba(15,23,42,0) 100%)',
+      medium: 'linear-gradient(90deg, rgba(15,23,42,0.68) 0%, rgba(15,23,42,0.34) 38%, rgba(15,23,42,0.14) 68%, rgba(15,23,42,0.02) 100%)',
+      strong: 'linear-gradient(90deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.48) 40%, rgba(15,23,42,0.22) 72%, rgba(15,23,42,0.06) 100%)',
+    },
+    center: {
+      soft: 'radial-gradient(circle at center, rgba(15,23,42,0.10) 0%, rgba(15,23,42,0.32) 54%, rgba(15,23,42,0.56) 100%)',
+      medium: 'radial-gradient(circle at center, rgba(15,23,42,0.18) 0%, rgba(15,23,42,0.42) 54%, rgba(15,23,42,0.68) 100%)',
+      strong: 'radial-gradient(circle at center, rgba(15,23,42,0.24) 0%, rgba(15,23,42,0.52) 54%, rgba(15,23,42,0.78) 100%)',
+    },
+    right: {
+      soft: 'linear-gradient(270deg, rgba(15,23,42,0.48) 0%, rgba(15,23,42,0.22) 34%, rgba(15,23,42,0.08) 62%, rgba(15,23,42,0) 100%)',
+      medium: 'linear-gradient(270deg, rgba(15,23,42,0.68) 0%, rgba(15,23,42,0.34) 38%, rgba(15,23,42,0.14) 68%, rgba(15,23,42,0.02) 100%)',
+      strong: 'linear-gradient(270deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.48) 40%, rgba(15,23,42,0.22) 72%, rgba(15,23,42,0.06) 100%)',
+    },
+  } as const
+
+  return gradients[align]?.[strength] ?? gradients.left.medium
+}
+
+function isEditorialSlide(slide: Slide) {
+  return slide.slideType === 'editorial' && Boolean(
+    slide.eyebrow ||
+    slide.title ||
+    slide.subtitle ||
+    slide.description ||
+    slide.buttonLabel ||
+    slide.buttonUrl
+  )
+}
+
+function HeroSlideFrame({ slide, interactive = true }: { slide: Slide; interactive?: boolean }) {
+  const editorial = isEditorialSlide(slide)
+
+  if (!editorial) {
+    const media = (
+      <img
+        src={slide.imageSrc}
+        alt={slide.title || slide.subtitle || 'Hero slide'}
+        className="w-full h-auto block select-none"
+        draggable={false}
+        loading="eager"
+      />
+    )
+
+    if (interactive && slide.clickUrl) {
+      return (
+        <Link to={slide.clickUrl} className="block w-full" tabIndex={0}>
+          {media}
+        </Link>
+      )
+    }
+
+    return media
+  }
+
+  const overlayBackground = buildOverlayBackground(slide.overlayStrength, slide.contentAlign)
+  const titleClass = TITLE_CLASS_MAP[slide.fontStyle]?.[slide.titleSize] ?? TITLE_CLASS_MAP.brand.lg
+  const bodyClass = BODY_CLASS_MAP[slide.bodySize] ?? BODY_CLASS_MAP.md
+  const alignmentClass = ALIGN_CLASSES[slide.contentAlign] ?? ALIGN_CLASSES.left
+  const widthClass = WIDTH_CLASSES[slide.contentWidth] ?? WIDTH_CLASSES.md
+  const contentPaddingClass = CONTENT_PADDING_CLASSES[slide.heightMode] ?? CONTENT_PADDING_CLASSES.regular
+  const surfaceClass = SURFACE_CLASSES[slide.surfaceStyle] ?? SURFACE_CLASSES.glass
+  const ctaUrl = slide.buttonUrl || slide.clickUrl
+  const ctaLabel = slide.buttonLabel || (ctaUrl ? 'Explorar' : '')
+
+  return (
+    <div className="relative overflow-hidden bg-slate-950 aspect-[16/5]">
+      {slide.imageSrc ? (
+        <img
+          src={slide.imageSrc}
+          alt={slide.title || slide.subtitle || 'Hero slide'}
+          className="absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+          loading="eager"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(32,201,151,0.45),rgba(15,23,42,0.94))]" />
+      )}
+
+      <div className="absolute inset-0" style={{ background: overlayBackground }} />
+
+      <div className={`relative z-10 flex h-full px-3 py-3 sm:px-5 sm:py-5 md:px-6 md:py-6 ${alignmentClass}`}>
+        <div className={`w-full ${widthClass}`}>
+          <div className={`${surfaceClass} ${surfaceClass ? 'rounded-[28px]' : ''} ${contentPaddingClass}`}>
+            {slide.eyebrow && (
+              <p
+                className="mb-2 text-[11px] font-bold uppercase tracking-[0.24em]"
+                style={{ color: slide.eyebrowColor }}
+              >
+                {slide.eyebrow}
+              </p>
+            )}
+
+            {slide.title && (
+              <h2 className={`${titleClass} mb-2`} style={{ color: slide.titleColor }}>
+                {slide.title}
+              </h2>
+            )}
+
+            {slide.subtitle && (
+              <p
+                className="mb-2 text-base font-semibold sm:text-lg"
+                style={{ color: slide.subtitleColor }}
+              >
+                {slide.subtitle}
+              </p>
+            )}
+
+            {slide.description && (
+              <p className={`${bodyClass} max-w-[58ch]`} style={{ color: slide.descriptionColor }}>
+                {slide.description}
+              </p>
+            )}
+
+            {ctaUrl && ctaLabel && (
+              interactive ? (
+                <Link
+                  to={ctaUrl}
+                  className="mt-5 inline-flex items-center rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em] transition-transform duration-300 hover:-translate-y-0.5"
+                  style={{
+                    backgroundColor: slide.buttonBgColor,
+                    color: slide.buttonTextColor,
+                    borderColor: slide.buttonBorderColor,
+                  }}
+                >
+                  {ctaLabel}
+                </Link>
+              ) : (
+                <span
+                  className="mt-5 inline-flex items-center rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em]"
+                  style={{
+                    backgroundColor: slide.buttonBgColor,
+                    color: slide.buttonTextColor,
+                    borderColor: slide.buttonBorderColor,
+                  }}
+                >
+                  {ctaLabel}
+                </span>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /* ─── Component ─────────────────────────────────────────────────────── */
@@ -161,8 +397,31 @@ export default function Home() {
 
   const slides: Slide[] = useMemo(() =>
     apiSlides.map((s: ApiHeroSlide) => ({
+      id: s.id,
       imageSrc: storageUrl(s.image_url) ?? '',
       clickUrl: s.click_url,
+      slideType: s.slide_type ?? 'image',
+      eyebrow: s.eyebrow ?? '',
+      title: s.title ?? '',
+      subtitle: s.subtitle ?? '',
+      description: s.description ?? '',
+      buttonLabel: s.button_label ?? '',
+      buttonUrl: s.button_url,
+      contentAlign: s.content_align ?? 'left',
+      contentWidth: s.content_width ?? 'md',
+      heightMode: s.height_mode ?? 'regular',
+      fontStyle: s.font_style ?? 'brand',
+      titleSize: s.title_size ?? 'lg',
+      bodySize: s.body_size ?? 'md',
+      overlayStrength: s.overlay_strength ?? 'medium',
+      surfaceStyle: s.surface_style ?? 'glass',
+      eyebrowColor: s.eyebrow_color ?? SLIDE_DEFAULT_COLORS.eyebrow,
+      titleColor: s.title_color ?? SLIDE_DEFAULT_COLORS.title,
+      subtitleColor: s.subtitle_color ?? SLIDE_DEFAULT_COLORS.subtitle,
+      descriptionColor: s.description_color ?? SLIDE_DEFAULT_COLORS.description,
+      buttonBgColor: s.button_bg_color ?? SLIDE_DEFAULT_COLORS.buttonBg,
+      buttonTextColor: s.button_text_color ?? SLIDE_DEFAULT_COLORS.buttonText,
+      buttonBorderColor: s.button_border_color ?? SLIDE_DEFAULT_COLORS.buttonBorder,
     }))
   , [apiSlides])
 
@@ -174,40 +433,52 @@ export default function Home() {
   const [touchEnd, setTouchEnd] = useState(0)
 
   const handleNext = useCallback(() => {
-    if (isTransitioning) return
+    if (isTransitioning || slides.length <= 1) return
     setIsTransitioning(true)
     setActive((p) => (p + 1) % slides.length)
     setTimeout(() => setIsTransitioning(false), 500)
   }, [isTransitioning, slides.length])
 
   const handlePrev = useCallback(() => {
-    if (isTransitioning) return
+    if (isTransitioning || slides.length <= 1) return
     setIsTransitioning(true)
     setActive((p) => (p - 1 + slides.length) % slides.length)
     setTimeout(() => setIsTransitioning(false), 500)
   }, [isTransitioning, slides.length])
 
   const goToSlide = useCallback((index: number) => {
-    if (isTransitioning || index === active) return
+    if (isTransitioning || index === active || slides.length <= 1) return
     setIsTransitioning(true)
     setActive(index)
     setTimeout(() => setIsTransitioning(false), 500)
-  }, [isTransitioning, active])
+  }, [isTransitioning, active, slides.length])
 
   useEffect(() => {
-    if (paused || isTransitioning) return
+    if (paused || isTransitioning || slides.length <= 1) return
     const id = window.setInterval(handleNext, 6500)
     return () => window.clearInterval(id)
-  }, [paused, isTransitioning, active, handleNext])
+  }, [paused, isTransitioning, active, handleNext, slides.length])
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      if (slides.length <= 1) return
       if (e.key === 'ArrowLeft') handlePrev()
       if (e.key === 'ArrowRight') handleNext()
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [handleNext, handlePrev])
+  }, [handleNext, handlePrev, slides.length])
+
+  useEffect(() => {
+    if (slides.length === 0 && active !== 0) {
+      setActive(0)
+      return
+    }
+
+    if (active >= slides.length && slides.length > 0) {
+      setActive(0)
+    }
+  }, [active, slides.length])
 
   /* ── Tabs ── */
   const TABS = ['NUEVOS', 'DESTACADOS', 'OFERTAS']
@@ -223,79 +494,96 @@ export default function Home() {
         onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
         onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
         onTouchEnd={() => {
-          if (!touchStart || !touchEnd) return
+          if (!touchStart || !touchEnd || slides.length <= 1) return
           const d = touchStart - touchEnd
           if (d > 50) handleNext()
           if (d < -50) handlePrev()
           setTouchStart(0); setTouchEnd(0)
         }}
       >
-        {/* Track de imágenes — grid superpuesto, altura natural de la imagen */}
-        <div className="w-full overflow-hidden group" style={{ display: 'grid' }}>
-          {slides.map((slide, idx) => {
-            const isActive = idx === active
-            const img = (
-              <img
-                src={slide.imageSrc}
-                alt=""
-                className="w-full h-auto block select-none transition-transform duration-700 ease-in-out group-hover:scale-105"
-                draggable={false}
-                loading={idx === 0 ? 'eager' : 'lazy'}
-              />
-            )
-            return (
-              <div
-                key={idx}
-                style={{ gridArea: '1 / 1' }}
-                className={`transition-opacity duration-500 ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
-              >
-                {slide.clickUrl ? (
-                  <Link to={slide.clickUrl} className="block w-full" tabIndex={isActive ? 0 : -1}>
-                    {img}
-                  </Link>
-                ) : img}
+        {slides.length > 0 ? (
+          <div className="relative w-full overflow-hidden group">
+            <div className="invisible pointer-events-none" aria-hidden="true">
+              <HeroSlideFrame slide={slides[active]} interactive={false} />
+            </div>
+
+            <div className="absolute inset-0">
+              {slides.map((slide, idx) => {
+                const isActive = idx === active
+                return (
+                  <div
+                    key={slide.id}
+                    className={`absolute inset-0 transition-opacity duration-500 ${
+                      isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                    }`}
+                  >
+                    <div className="h-full w-full transition-transform duration-700 ease-in-out group-hover:scale-[1.01]">
+                      <HeroSlideFrame slide={slide} interactive={isActive} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {slides.length > 1 && (
+              <>
+                <button
+                  onClick={handlePrev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/80 shadow hover:bg-white transition"
+                  aria-label="Anterior"
+                >
+                  <ChevronLeft size={18} className="text-gray-700" />
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/80 shadow hover:bg-white transition"
+                  aria-label="Siguiente"
+                >
+                  <ChevronRight size={18} className="text-gray-700" />
+                </button>
+              </>
+            )}
+
+            {slides.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+                {slides.map((slide, idx) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => goToSlide(idx)}
+                    className={`rounded-full transition-all duration-300 ${idx === active ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/75'}`}
+                    aria-label={`Ir al slide ${idx + 1}`}
+                  />
+                ))}
               </div>
-            )
-          })}
-        </div>
+            )}
 
-        {/* Flechas */}
-        {slides.length > 1 && (
-          <>
-            <button
-              onClick={handlePrev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/80 shadow hover:bg-white transition"
-              aria-label="Anterior"
-            >
-              <ChevronLeft size={18} className="text-gray-700" />
-            </button>
-            <button
-              onClick={handleNext}
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/80 shadow hover:bg-white transition"
-              aria-label="Siguiente"
-            >
-              <ChevronRight size={18} className="text-gray-700" />
-            </button>
-          </>
-        )}
-
-        {/* Dots */}
-        {slides.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-            {slides.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => goToSlide(idx)}
-                className={`rounded-full transition-all duration-300 ${idx === active ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/75'}`}
-              />
-            ))}
+            {!paused && slides.length > 1 && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/10 z-20">
+                <div className="h-full bg-white/70 transition-all duration-[6500ms] ease-linear" style={{ width: isTransitioning ? '0%' : '100%' }} key={active} />
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Barra de progreso */}
-        {!paused && slides.length > 1 && (
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/10 z-20">
-            <div className="h-full bg-white/70 transition-all duration-[6500ms] ease-linear" style={{ width: isTransitioning ? '0%' : '100%' }} key={active} />
+        ) : (
+          <div className="relative overflow-hidden bg-[linear-gradient(120deg,var(--brand-primary),var(--brand-secondary))]">
+            <div className="mx-auto flex min-h-[260px] max-w-7xl items-center px-4 py-10 sm:min-h-[320px] sm:px-6 md:min-h-[380px] md:px-10">
+              <div className="max-w-2xl text-white">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.28em] text-white/70">
+                  ArtDent e-commerce
+                </p>
+                <h2 className="text-[clamp(2rem,5vw,4.2rem)] font-black tracking-[-0.06em] leading-[0.9]">
+                  Insumos odontológicos con una experiencia más clara y profesional.
+                </h2>
+                <p className="mt-4 max-w-[56ch] text-sm leading-relaxed text-white/84 sm:text-base">
+                  Cargá slides desde el CRM para destacar lanzamientos, campañas o accesos directos al catálogo.
+                </p>
+                <Link
+                  to="/productos"
+                  className="mt-6 inline-flex items-center rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-[var(--brand-primary)] transition-transform duration-300 hover:-translate-y-0.5"
+                >
+                  Ver catálogo
+                </Link>
+              </div>
+            </div>
           </div>
         )}
       </section>

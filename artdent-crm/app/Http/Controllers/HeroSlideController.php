@@ -72,7 +72,33 @@ class HeroSlideController extends Controller
         $slides = HeroSlide::where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get(['id', 'image_url', 'click_url']);
+            ->get([
+                'id',
+                'image_url',
+                'click_url',
+                'slide_type',
+                'eyebrow',
+                'title',
+                'subtitle',
+                'description',
+                'button_label',
+                'button_url',
+                'content_align',
+                'content_width',
+                'height_mode',
+                'font_style',
+                'title_size',
+                'body_size',
+                'overlay_strength',
+                'surface_style',
+                'eyebrow_color',
+                'title_color',
+                'subtitle_color',
+                'description_color',
+                'button_bg_color',
+                'button_text_color',
+                'button_border_color',
+            ]);
 
         return response()->json($slides);
     }
