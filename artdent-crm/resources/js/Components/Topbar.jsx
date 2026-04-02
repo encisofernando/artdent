@@ -7,6 +7,7 @@ import {
     Moon,
     Sun,
     Bell,
+    Download,
     LogOut,
     ShoppingCart,
     CreditCard,
@@ -88,6 +89,25 @@ function ToastItem({ toast, onDismiss, isDark }) {
 export default function Topbar({ user, onSidebarToggle }) {
     const { isDark, toggleTheme } = useTheme();
     const userInitial = user?.name ? user.name[0].toUpperCase() : 'A';
+    const printManagerDownloadUrl = (() => {
+        const baseUrl = route('print-manager.download');
+
+        if (typeof window === 'undefined') {
+            return baseUrl;
+        }
+
+        const url = new URL(baseUrl, window.location.origin);
+        const userAgent = window.navigator.userAgent || '';
+        const normalized = userAgent.toLowerCase();
+
+        if (normalized.includes('windows')) {
+            url.searchParams.set('platform', 'windows');
+        } else if (normalized.includes('linux') && !normalized.includes('android')) {
+            url.searchParams.set('platform', 'linux');
+        }
+
+        return url.toString();
+    })();
 
     const [notifications, setNotifications] = useState([]);
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -312,6 +332,18 @@ export default function Topbar({ user, onSidebarToggle }) {
                             </div>
                         )}
                     </div>
+
+                    <a
+                        href={printManagerDownloadUrl}
+                        className={`inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
+                            ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                        title="Descargar gestor de impresión"
+                    >
+                        <Download className="h-4 w-4" />
+                        <span className="hidden lg:inline text-sm font-semibold">Impresión</span>
+                    </a>
 
                     {/* Logout */}
                     <Link
