@@ -103,7 +103,7 @@ class StoreHeroSlideRequest extends FormRequest
             'title_size' => $this->input('title_size') ?: 'lg',
             'body_size' => $this->input('body_size') ?: 'md',
             'overlay_strength' => $this->input('overlay_strength') ?: 'medium',
-            'surface_style' => $this->input('surface_style') ?: 'glass',
+            'surface_style' => $this->input('surface_style') ?: 'none',
             'is_active' => filter_var($this->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
         ];
 

@@ -112,8 +112,8 @@ const ALIGN_WRAPPER_CLASSES = {
 
 const SURFACE_CLASSES = {
     none: '',
-    glass: '',
-    solid: 'bg-slate-950/18',
+    glass: 'backdrop-blur-md bg-slate-950/14 border border-white/8 shadow-[0_30px_80px_-45px_rgba(15,23,42,0.95)]',
+    solid: 'bg-slate-950/30 border border-white/10 shadow-[0_30px_80px_-45px_rgba(15,23,42,0.95)]',
 };
 
 const TITLE_CLASS_MAP = {
@@ -189,7 +189,7 @@ function HeroSlidePreview({ slide, compact = false }) {
     const titleClass = TITLE_CLASS_MAP[slide.font_style]?.[slide.title_size] ?? TITLE_CLASS_MAP.brand.lg;
     const bodyClass = BODY_CLASS_MAP[slide.body_size] ?? BODY_CLASS_MAP.md;
     const overlayBackground = buildOverlayBackground(slide.overlay_strength, slide.content_align);
-    const surfaceClass = SURFACE_CLASSES[slide.surface_style] ?? SURFACE_CLASSES.glass;
+    const surfaceClass = SURFACE_CLASSES[slide.surface_style] ?? SURFACE_CLASSES.none;
     const contentPaddingClass = CONTENT_PADDING_CLASSES[slide.height_mode] ?? CONTENT_PADDING_CLASSES.regular;
 
     if (!isEditorial) {
@@ -320,7 +320,7 @@ function SlideForm({ slide = null, onClose }) {
         title_size: slide?.title_size ?? 'lg',
         body_size: slide?.body_size ?? 'md',
         overlay_strength: slide?.overlay_strength ?? 'medium',
-        surface_style: slide?.surface_style ?? 'glass',
+        surface_style: slide?.surface_style ?? 'none',
         eyebrow_color: slide?.eyebrow_color ?? DEFAULT_COLORS.eyebrow_color,
         title_color: slide?.title_color ?? DEFAULT_COLORS.title_color,
         subtitle_color: slide?.subtitle_color ?? DEFAULT_COLORS.subtitle_color,

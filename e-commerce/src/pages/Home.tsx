@@ -170,8 +170,8 @@ const ALIGN_CLASSES = {
 
 const SURFACE_CLASSES = {
   none: '',
-  glass: '',
-  solid: 'bg-slate-950/18',
+  glass: 'backdrop-blur-md bg-slate-950/14 border border-white/8 shadow-[0_30px_80px_-45px_rgba(15,23,42,0.95)]',
+  solid: 'bg-slate-950/30 border border-white/10 shadow-[0_30px_80px_-45px_rgba(15,23,42,0.95)]',
 } as const
 
 const TITLE_CLASS_MAP = {
@@ -267,7 +267,7 @@ function HeroSlideFrame({ slide, interactive = true }: { slide: Slide; interacti
   const alignmentClass = ALIGN_CLASSES[slide.contentAlign] ?? ALIGN_CLASSES.left
   const widthClass = WIDTH_CLASSES[slide.contentWidth] ?? WIDTH_CLASSES.md
   const contentPaddingClass = CONTENT_PADDING_CLASSES[slide.heightMode] ?? CONTENT_PADDING_CLASSES.regular
-  const surfaceClass = SURFACE_CLASSES[slide.surfaceStyle] ?? SURFACE_CLASSES.glass
+  const surfaceClass = SURFACE_CLASSES[slide.surfaceStyle] ?? SURFACE_CLASSES.none
   const ctaUrl = slide.buttonUrl || slide.clickUrl
   const ctaLabel = slide.buttonLabel || (ctaUrl ? 'Explorar' : '')
 
@@ -414,7 +414,7 @@ export default function Home() {
       titleSize: s.title_size ?? 'lg',
       bodySize: s.body_size ?? 'md',
       overlayStrength: s.overlay_strength ?? 'medium',
-      surfaceStyle: s.surface_style ?? 'glass',
+      surfaceStyle: s.surface_style ?? 'none',
       eyebrowColor: s.eyebrow_color ?? SLIDE_DEFAULT_COLORS.eyebrow,
       titleColor: s.title_color ?? SLIDE_DEFAULT_COLORS.title,
       subtitleColor: s.subtitle_color ?? SLIDE_DEFAULT_COLORS.subtitle,
