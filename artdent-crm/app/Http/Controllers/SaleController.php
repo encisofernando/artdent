@@ -14,6 +14,7 @@ use App\Models\SalePayment;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\CustomerAccountSaleAllocator;
 use App\Services\EmailTemplateService;
 use App\Services\StockAlertService;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ use Inertia\Inertia;
 
 class SaleController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, CustomerAccountSaleAllocator $allocator)
     {
         $search = $request->input('search');
         $status = $request->input('status', 'all');
@@ -35,11 +36,38 @@ class SaleController extends Controller
             $query->where('sale_number', 'like', "%{$search}%");
         }
 
-        if ($status !== 'all') {
+        if ($status === 'paid') {
+            $query->whereIn('status', ['paid', 'completed']);
+        } elseif ($status !== 'all') {
             $query->where('status', $status);
         }
 
         $items = $query->orderByDesc('id')->paginate(20)->withQueryString();
+
+        $customerIds = $items->getCollection()
+            ->pluck('customer_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($customerIds->isNotEmpty()) {
+            DB::transaction(function () use ($allocator, $customerIds) {
+                $companyId = auth()->user()->company_id ?? 1;
+
+                foreach ($customerIds as $customerId) {
+                    $allocator->reconcileUnlinkedPaymentsForCustomer((int) $customerId, $companyId);
+                }
+            });
+
+            $items->setCollection(
+                $items->getCollection()->map(function (Sale $sale) {
+                    $sale->refresh();
+                    $sale->load(['sale_items', 'customer:id,name']);
+
+                    return $sale;
+                })
+            );
+        }
 
         if ($request->wantsJson()) {
             return response()->json(['items' => $items]);
@@ -380,8 +408,19 @@ class SaleController extends Controller
     /**
      * Detalle de venta (Show Inertia)
      */
-    public function show(Sale $sale)
+    public function show(Sale $sale, CustomerAccountSaleAllocator $allocator)
     {
+        if ($sale->customer_id) {
+            DB::transaction(function () use ($allocator, $sale) {
+                $allocator->reconcileUnlinkedPaymentsForCustomer(
+                    $sale->customer_id,
+                    $sale->company_id
+                );
+            });
+
+            $sale->refresh();
+        }
+
         $sale->load([
             'sale_items',
             'sale_payments.paymentMethod',
@@ -427,7 +466,7 @@ class SaleController extends Controller
      * Registra un cobro parcial o total sobre la venta, actualiza paid_amount/status
      * y acredita la cuenta corriente del cliente si corresponde.
      */
-    public function pay(Request $request, Sale $sale)
+    public function pay(Request $request, Sale $sale, CustomerAccountSaleAllocator $allocator)
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -436,26 +475,22 @@ class SaleController extends Controller
         ]);
 
         $amount = (float) $validated['amount'];
+        $remainingAmount = $allocator->outstandingAmount($sale);
+
+        if ($remainingAmount <= 0.0) {
+            return response()->json(['message' => 'La venta ya no tiene saldo pendiente.'], 422);
+        }
+
+        if ($amount > $remainingAmount + 0.009) {
+            return response()->json([
+                'message' => 'El monto supera el saldo pendiente del comprobante.',
+            ], 422);
+        }
 
         DB::beginTransaction();
         try {
-            $newPaid = (float) $sale->paid_amount + $amount;
-            $newStatus = $newPaid >= (float) $sale->total ? 'completed' : 'partial';
+            $paymentReference = null;
 
-            $sale->update([
-                'paid_amount' => $newPaid,
-                'status' => $newStatus,
-            ]);
-
-            // Registrar el pago en la tabla de pagos de la venta
-            SalePayment::create([
-                'sale_id' => $sale->id,
-                'payment_method_id' => $validated['payment_method_id'] ?? null,
-                'amount' => $amount,
-                'paid_at' => now(),
-            ]);
-
-            // Si el cliente tiene cuenta corriente, acreditar el movimiento
             if ($sale->customer_id) {
                 $account = CustomerAccount::firstOrCreate(
                     ['customer_id' => $sale->customer_id],
@@ -479,7 +514,19 @@ class SaleController extends Controller
                     'move_date' => now()->toDateString(),
                 ]);
                 $account->applyMove($move);
+
+                $paymentReference = $allocator->salePaymentReference($move, $sale);
             }
+
+            SalePayment::create([
+                'sale_id' => $sale->id,
+                'payment_method_id' => $validated['payment_method_id'] ?? null,
+                'amount' => $amount,
+                'reference' => $paymentReference,
+                'paid_at' => now(),
+            ]);
+
+            $allocator->syncSale($sale, round((float) $sale->paid_amount + $amount, 2));
 
             DB::commit();
         } catch (\Throwable $e) {

@@ -23,7 +23,7 @@ const FILTER_TABS = [
     { key: 'adjustment', label: 'Ajustes' },
 ];
 
-export default function Account({ auth, customer, account, moves, paymentMethods }) {
+export default function Account({ auth, customer, account, moves, openSales = [], paymentMethods }) {
     const { isDark } = useTheme();
     const card = isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/60';
     const muted = isDark ? 'text-slate-400' : 'text-slate-500';
@@ -39,6 +39,7 @@ export default function Account({ auth, customer, account, moves, paymentMethods
 
     const [balance, setBalance]   = useState(account.balance);
     const [moveList, setMoveList] = useState(moves);
+    const [openSaleOptions, setOpenSaleOptions] = useState(openSales);
     const [typeFilter, setTypeFilter] = useState('all');
 
     // Payment form
@@ -47,7 +48,7 @@ export default function Account({ auth, customer, account, moves, paymentMethods
     const [payError, setPayError] = useState('');
     const [paySuccess, setPaySuccess] = useState('');
     const [payForm, setPayForm]   = useState({
-        amount: '', payment_method_id: '', description: '',
+        amount: '', payment_method_id: '', sale_id: '', description: '',
         move_date: new Date().toISOString().slice(0, 10), send_email: false,
     });
 
@@ -97,8 +98,9 @@ export default function Account({ auth, customer, account, moves, paymentMethods
             );
             setBalance(res.data.balance);
             setMoveList(prev => [res.data.move, ...prev]);
+            setOpenSaleOptions(res.data.open_sales || []);
             setPaySuccess('Pago registrado.' + (payForm.send_email && customer.email ? ' Email enviado.' : ''));
-            setPayForm({ amount: '', payment_method_id: '', description: '', move_date: new Date().toISOString().slice(0, 10), send_email: false });
+            setPayForm({ amount: '', payment_method_id: '', sale_id: '', description: '', move_date: new Date().toISOString().slice(0, 10), send_email: false });
             setPayOpen(false);
         } catch (e) {
             setPayError(e.response?.data?.message || 'Error al registrar pago.');
@@ -292,6 +294,19 @@ export default function Account({ auth, customer, account, moves, paymentMethods
                                     placeholder="— Seleccionar —"
                                     options={paymentMethods.map(pm => ({ value: String(pm.id), label: pm.name }))}
                                 />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <label className={`block text-[10.5px] font-bold tracking-widest mb-1 ${muted}`}>COMPROBANTE CON DEUDA</label>
+                                <SearchableSelect
+                                    value={String(payForm.sale_id || '')}
+                                    onChange={v => setPayForm(p => ({ ...p, sale_id: v }))}
+                                    placeholder={openSaleOptions.length ? 'Seleccionar comprobante (opcional)' : 'No hay comprobantes con deuda'}
+                                    disabled={openSaleOptions.length === 0}
+                                    options={openSaleOptions.map(sale => ({ value: String(sale.id), label: sale.label }))}
+                                />
+                                <p className={`mt-1 text-[11px] ${muted}`}>
+                                    Si no seleccionás ninguno, el pago se imputa automáticamente a las deudas más antiguas.
+                                </p>
                             </div>
                             <div>
                                 <label className={`block text-[10.5px] font-bold tracking-widest mb-1 ${muted}`}>FECHA</label>

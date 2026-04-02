@@ -55,6 +55,55 @@ function addLog(message, type = 'info') {
     }
 }
 
+function injectHeadStyle(html, css) {
+    if (!html || !css) return html;
+
+    const styleTag = `<style id="artdent-print-normalize">${css}</style>`;
+    return html.includes('</head>')
+        ? html.replace('</head>', `${styleTag}</head>`)
+        : `${styleTag}${html}`;
+}
+
+function normalizePrintMode(mode) {
+    return mode === '54mm' ? '57mm' : mode;
+}
+
+function normalizeHtmlForDirectPrint(html, mode) {
+    if (normalizePrintMode(mode) === '57mm') {
+        return html;
+    }
+
+    return injectHeadStyle(html, `
+        #print-zone {
+            zoom: 1 !important;
+            transform: none !important;
+            transform-origin: top left !important;
+        }
+    `);
+}
+
+function normalizeHtmlForEscPosCapture(html, mode) {
+    const baseCss = `
+        html, body {
+            margin: 0 !important;
+            background: #fff !important;
+        }
+    `;
+
+    if (normalizePrintMode(mode) === '57mm') {
+        return injectHeadStyle(html, baseCss);
+    }
+
+    return injectHeadStyle(html, `
+        ${baseCss}
+        #print-zone {
+            zoom: 1 !important;
+            transform: none !important;
+            transform-origin: top left !important;
+        }
+    `);
+}
+
 /* ---------------- IMPRESION ---------------- */
 
 function executePrint(html, mode, res = null, done = null) {
@@ -67,7 +116,9 @@ function executePrint(html, mode, res = null, done = null) {
         return;
     }
 
-    workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const printableHtml = normalizeHtmlForDirectPrint(html, mode);
+    workerWindow.webContents.setZoomFactor(1);
+    workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(printableHtml)}`);
 
     workerWindow.webContents.once('did-finish-load', () => {
         workerWindow.webContents.print({
@@ -98,21 +149,20 @@ function executePrint(html, mode, res = null, done = null) {
 async function executePrintLinuxESCPOS(html, mode, devicePath, res, done) {
     // 388px = ~48.5mm @ 203dpi (-1.5mm respecto al anterior 400px)
     const printWidthPx = (mode === '57mm' || mode === '54mm') ? 388 : 576;
-    const screenWidthPx = 216; // ~57mm a 96dpi — el HTML tiene width:50mm y se renderiza aquí naturalmente
-
+    const rasterHtml = normalizeHtmlForEscPosCapture(html, mode);
     try {
         // 1. Cargar con alto amplio para medir contenido real
-        workerWindow.setContentSize(screenWidthPx, 2000);
-        workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+        workerWindow.webContents.setZoomFactor(1);
+        workerWindow.setContentSize(printWidthPx, 2000);
+        workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(rasterHtml)}`);
 
         await new Promise(resolve =>
             workerWindow.webContents.once('did-finish-load', resolve)
         );
         await new Promise(r => setTimeout(r, 300));
 
-        // 2. Medir el alto real del contenido ampliado antes de capturar.
-        // El zoom ahora lo provee nativamente Show.jsx / Create.jsx.
-        const contentHeight = await workerWindow.webContents.executeJavaScript(`
+        // 2. Escalar el ticket al ancho raster final y medir el alto real antes de capturar.
+        const metrics = await workerWindow.webContents.executeJavaScript(`
             (function() {
                 var style = document.createElement('style');
                 style.textContent = \`
@@ -123,12 +173,33 @@ async function executePrintLinuxESCPOS(html, mode, devicePath, res, done) {
                 \`;
                 document.head.appendChild(style);
                 
-                // Mide el alto, incluyendo el efecto de cualquier zoom nativo del HTML
-                return document.documentElement.getBoundingClientRect().height;
+                // Ajusta el ancho del ticket al raster objetivo antes de medir el alto final.
+                var root = document.getElementById('print-zone') || document.body || document.documentElement;
+                var measuredWidth = Math.ceil(root.getBoundingClientRect().width || ${printWidthPx});
+                var scale = measuredWidth > 0 ? (${printWidthPx} / measuredWidth) : 1;
+
+                if (Math.abs(scale - 1) > 0.01) {
+                    root.style.zoom = String(scale);
+                    root.style.transformOrigin = 'top left';
+                }
+
+                var contentHeight = Math.ceil(Math.max(
+                    document.body ? document.body.scrollHeight : 0,
+                    document.documentElement ? document.documentElement.scrollHeight : 0,
+                    document.body ? document.body.getBoundingClientRect().height : 0,
+                    document.documentElement ? document.documentElement.getBoundingClientRect().height : 0
+                ));
+
+                return {
+                    measuredWidth: measuredWidth,
+                    scale: scale,
+                    contentHeight: contentHeight
+                };
             })();
         `);
-        // Dimensionamos la ventana al tamaño FINAL impreso (440px / 576px)
-        workerWindow.setContentSize(printWidthPx, Math.ceil(contentHeight) + 4);
+        // Dimensionamos la ventana al tamaño final impreso.
+        addLog(`ESC/POS ${mode}: ancho base ${metrics.measuredWidth}px, escala ${Number(metrics.scale || 1).toFixed(3)}, destino ${printWidthPx}px`);
+        workerWindow.setContentSize(printWidthPx, Math.ceil(metrics.contentHeight) + 4);
         await new Promise(r => setTimeout(r, 150));
 
         // 3. Capturar solo el contenido medido

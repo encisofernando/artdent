@@ -12,7 +12,9 @@ const THERMAL_ZONE_WIDTHS = {
 export const isThermalMode = (mode) => THERMAL_MODES.has(mode);
 export const normalizePrintMode = (mode) => (mode === '54mm' ? '57mm' : mode);
 export const getThermalZoneWidth = (mode) => THERMAL_ZONE_WIDTHS[normalizePrintMode(mode)] || THERMAL_ZONE_WIDTHS['80mm'];
-export const getThermalPrintZoom = (mode) => (normalizePrintMode(mode) === '57mm' ? 388 / 180 : 576 / 260);
+// Keep the original 57mm scaling that we know prints correctly.
+// 80mm stays at 1x until we isolate the Windows direct-print mismatch there.
+export const getThermalPrintZoom = (mode) => (normalizePrintMode(mode) === '57mm' ? 388 / 180 : 1);
 
 export function getStoredTicketFormat(fallback = '80mm') {
     if (typeof window === 'undefined') return fallback;

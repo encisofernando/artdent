@@ -3,10 +3,10 @@ directories:
   buildResources: build
 appId: com.artdent.print
 productName: ArtDentPrint
+icon: icon.png
 win:
   target:
     - msi
-  icon: icon.png
   signAndEditExecutable: false
 msi:
   oneClick: false
@@ -15,5 +15,16 @@ msi:
   createStartMenuShortcut: true
   runAfterFinish: true
   shortcutName: ArtDent Print Service
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+  maintainer: ArtDent
+  synopsis: Servidor de Impresion ArtDent
+deb:
+  packageCategory: utils
+  depends:
+    - libcups2
 files: []
 electronVersion: 40.8.0

@@ -41,6 +41,8 @@ export default function Index({ auth, items, filters }) {
             'cancelled':  { label: 'Anulada',     bg: 'bg-red-500/10 text-red-600 border-red-500/20' },
             'invoiced':   { label: 'Facturada',   bg: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
             'confirmed':  { label: 'Confirmada',  bg: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+            'pending':    { label: 'Pendiente',   bg: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+            'partial':    { label: 'Parcial',     bg: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
             'draft':      { label: 'Borrador',    bg: 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-400' },
             'paid':       { label: 'Pagada',      bg: 'bg-teal-500/10 text-teal-600 border-teal-500/20' },
             'completed':  { label: 'Completada',  bg: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },

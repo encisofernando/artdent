@@ -10,6 +10,8 @@ import FacturaA4 from '@/Components/Sale/FacturaA4';
 import { Ticket80, Ticket57 } from '@/Components/Sale/TicketBase';
 import {
     buildPrintHtml,
+    getThermalPrintZoom,
+    getThermalZoneWidth,
     MONTSERRAT_PRINT_HEAD,
     openBrowserPrint,
     printElementWithElectron,
@@ -130,6 +132,7 @@ const MODES = [
 export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const { isDark } = useTheme();
     const [mode, setMode] = useState('a4');
+    const saleBalance = Math.max(0, Number(sale.total || 0) - Number(sale.paid_amount || 0));
 
     // ── Cuenta Corriente ─────────────────────────────────────
     const [ccBalance, setCcBalance]       = useState(account?.balance ?? null);
@@ -137,7 +140,7 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const [savingCC, setSavingCC]         = useState(false);
     const [ccError, setCcError]           = useState('');
     const [ccSuccess, setCcSuccess]       = useState(false);
-    const hasCuentaCorriente = sale.status === 'pending' && sale.customer_id;
+    const hasCuentaCorriente = Boolean(sale.customer_id) && saleBalance > 0;
 
     // ── Estado AFIP ───────────────────────────────────────────────────────────
     const company = sale.company || {};
@@ -208,6 +211,10 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
             setCcError('Ingresá un monto válido.');
             return;
         }
+        if (Number(pagoCC.amount) > saleBalance) {
+            setCcError('El monto no puede superar el saldo pendiente del comprobante.');
+            return;
+        }
         setSavingCC(true);
         setCcError('');
         try {
@@ -255,8 +262,8 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
             element: printElement,
             title: `ArtDent — ${sale.sale_number}`,
             mode,
-            zoneWidth: is57 ? '180px' : '260px',
-            zoom: is57 ? 388 / 180 : 576 / 260,
+            zoneWidth: getThermalZoneWidth(mode),
+            zoom: getThermalPrintZoom(mode),
             extraHead: MONTSERRAT_PRINT_HEAD,
             fallbackToBrowser: true,
             browserDelay: 700,
@@ -377,6 +384,7 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                                 ['Estado', sale.status === 'pending' ? '⏳ Pendiente' : sale.status],
                                 ['Total', `$${fmt(sale.total)}`],
                                 ['Cobrado', `$${fmt(sale.paid_amount)}`],
+                                ['Saldo', `$${fmt(saleBalance)}`],
                                 ['Ítems', (sale.sale_items?.length || 0) + ' producto(s)'],
                             ].map(([label, value]) => (
                                 <div key={label} className="flex justify-between text-xs py-0.5">

@@ -24,6 +24,8 @@ import {
 import SearchableSelect from '@/Components/SearchableSelect';
 import {
     buildPrintHtml,
+    getThermalPrintZoom,
+    getThermalZoneWidth,
     getStoredTicketFormat,
     MONTSERRAT_PRINT_HEAD,
     openBrowserPrint,
@@ -375,8 +377,8 @@ export default function Create({ auth, products, customers = [], company = null 
             element: el,
             title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
             mode: printMode,
-            zoneWidth: is57 ? '180px' : '260px',
-            zoom: is57 ? 388 / 180 : 576 / 260,
+            zoneWidth: getThermalZoneWidth(printMode),
+            zoom: getThermalPrintZoom(printMode),
             extraHead: MONTSERRAT_PRINT_HEAD,
             fallbackToBrowser: true,
             browserDelay: 600,
