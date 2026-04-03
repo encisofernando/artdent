@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, ArrowRight, Check } from 'lucide-react'
 import { listProducts, type CatalogProduct } from '../api/products'
@@ -156,10 +156,16 @@ const CONTENT_PADDING_CLASSES = {
   immersive: 'p-5 sm:p-6 md:p-7',
 } as const
 
-const WIDTH_CLASSES = {
-  sm: 'max-w-md',
-  md: 'max-w-xl',
-  lg: 'max-w-2xl',
+const MOBILE_WIDTH_CLASSES = {
+  sm: 'max-w-[72%]',
+  md: 'max-w-[82%]',
+  lg: 'max-w-[90%]',
+} as const
+
+const DESKTOP_WIDTH_CLASSES = {
+  sm: 'max-w-[46%]',
+  md: 'max-w-[58%]',
+  lg: 'max-w-[70%]',
 } as const
 
 const ALIGN_CLASSES = {
@@ -201,6 +207,33 @@ const BODY_CLASS_MAP = {
   lg: 'text-[clamp(1.05rem,2.2vw,1.22rem)] leading-relaxed',
 } as const
 
+const DESKTOP_TITLE_CLASS_MAP = {
+  brand: {
+    sm: 'text-[44.8px] font-extrabold tracking-[-0.05em] leading-[0.92]',
+    md: 'text-[56px] font-extrabold tracking-[-0.05em] leading-[0.92]',
+    lg: 'text-[67.2px] font-black tracking-[-0.055em] leading-[0.9]',
+    xl: 'text-[80px] font-black tracking-[-0.06em] leading-[0.88]',
+  },
+  editorial: {
+    sm: 'text-[41.6px] font-semibold tracking-[-0.04em] leading-[0.98]',
+    md: 'text-[51.2px] font-semibold tracking-[-0.045em] leading-[0.96]',
+    lg: 'text-[62.4px] font-bold tracking-[-0.05em] leading-[0.94]',
+    xl: 'text-[73.6px] font-bold tracking-[-0.055em] leading-[0.92]',
+  },
+  impact: {
+    sm: 'text-[44.8px] font-black uppercase tracking-[-0.06em] leading-[0.88]',
+    md: 'text-[57.6px] font-black uppercase tracking-[-0.07em] leading-[0.86]',
+    lg: 'text-[70.4px] font-black uppercase tracking-[-0.075em] leading-[0.84]',
+    xl: 'text-[83.2px] font-black uppercase tracking-[-0.08em] leading-[0.82]',
+  },
+} as const
+
+const DESKTOP_BODY_CLASS_MAP = {
+  sm: 'text-[16px] leading-relaxed',
+  md: 'text-[18px] leading-relaxed',
+  lg: 'text-[20px] leading-relaxed',
+} as const
+
 function buildOverlayBackground(strength: Slide['overlayStrength'], align: Slide['contentAlign']) {
   if (strength === 'none') return 'transparent'
 
@@ -238,6 +271,44 @@ function isEditorialSlide(slide: Slide) {
 
 function HeroSlideFrame({ slide, interactive = true }: { slide: Slide; interactive?: boolean }) {
   const editorial = isEditorialSlide(slide)
+  const frameRef = useRef<HTMLDivElement | null>(null)
+  const [desktopScale, setDesktopScale] = useState(1)
+
+  useLayoutEffect(() => {
+    if (!editorial || typeof window === 'undefined') return undefined
+
+    const element = frameRef.current
+
+    if (!element) return undefined
+
+    const updateScale = () => {
+      const measuredWidth = element.getBoundingClientRect().width
+      if (!measuredWidth) return
+      const nextScale = measuredWidth / 1440
+      setDesktopScale(nextScale > 0 ? nextScale : 1)
+    }
+
+    const rafA = window.requestAnimationFrame(updateScale)
+    const rafB = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(updateScale)
+    })
+    const timers = [80, 180, 320, 520].map((delay) => window.setTimeout(updateScale, delay))
+
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateScale)
+      : null
+
+    observer?.observe(element)
+    window.addEventListener('resize', updateScale)
+
+    return () => {
+      window.cancelAnimationFrame(rafA)
+      window.cancelAnimationFrame(rafB)
+      timers.forEach((timer) => window.clearTimeout(timer))
+      window.removeEventListener('resize', updateScale)
+      observer?.disconnect()
+    }
+  }, [editorial, slide.id, slide.imageSrc, slide.slideType])
 
   if (!editorial) {
     const media = (
@@ -262,90 +333,188 @@ function HeroSlideFrame({ slide, interactive = true }: { slide: Slide; interacti
   }
 
   const overlayBackground = buildOverlayBackground(slide.overlayStrength, slide.contentAlign)
-  const titleClass = TITLE_CLASS_MAP[slide.fontStyle]?.[slide.titleSize] ?? TITLE_CLASS_MAP.brand.lg
-  const bodyClass = BODY_CLASS_MAP[slide.bodySize] ?? BODY_CLASS_MAP.md
   const alignmentClass = ALIGN_CLASSES[slide.contentAlign] ?? ALIGN_CLASSES.left
-  const widthClass = WIDTH_CLASSES[slide.contentWidth] ?? WIDTH_CLASSES.md
+  const mobileWidthClass = MOBILE_WIDTH_CLASSES[slide.contentWidth] ?? MOBILE_WIDTH_CLASSES.md
+  const desktopWidthClass = DESKTOP_WIDTH_CLASSES[slide.contentWidth] ?? DESKTOP_WIDTH_CLASSES.md
   const contentPaddingClass = CONTENT_PADDING_CLASSES[slide.heightMode] ?? CONTENT_PADDING_CLASSES.regular
   const surfaceClass = SURFACE_CLASSES[slide.surfaceStyle] ?? SURFACE_CLASSES.none
   const ctaUrl = slide.buttonUrl || slide.clickUrl
   const ctaLabel = slide.buttonLabel || (ctaUrl ? 'Explorar' : '')
+  const mobileTitleClass = TITLE_CLASS_MAP[slide.fontStyle]?.[slide.titleSize] ?? TITLE_CLASS_MAP.brand.lg
+  const mobileBodyClass = BODY_CLASS_MAP[slide.bodySize] ?? BODY_CLASS_MAP.md
+  const desktopTitleClass = DESKTOP_TITLE_CLASS_MAP[slide.fontStyle]?.[slide.titleSize] ?? DESKTOP_TITLE_CLASS_MAP.brand.lg
+  const desktopBodyClass = DESKTOP_BODY_CLASS_MAP[slide.bodySize] ?? DESKTOP_BODY_CLASS_MAP.md
 
   return (
-    <div className="relative overflow-hidden bg-slate-950 aspect-[16/5]">
-      {slide.imageSrc ? (
-        <img
-          src={slide.imageSrc}
-          alt={slide.title || slide.subtitle || 'Hero slide'}
-          className="absolute inset-0 h-full w-full object-cover"
-          draggable={false}
-          loading="eager"
-        />
-      ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(32,201,151,0.45),rgba(15,23,42,0.94))]" />
-      )}
+    <div className="relative w-full overflow-hidden bg-slate-950">
+      <div className="relative overflow-hidden aspect-[16/5] md:hidden">
+        {slide.imageSrc ? (
+          <img
+            src={slide.imageSrc}
+            alt={slide.title || slide.subtitle || 'Hero slide'}
+            className="absolute inset-0 h-full w-full object-cover"
+            draggable={false}
+            loading="eager"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(32,201,151,0.45),rgba(15,23,42,0.94))]" />
+        )}
 
-      <div className="absolute inset-0" style={{ background: overlayBackground }} />
+        <div className="absolute inset-0" style={{ background: overlayBackground }} />
 
-      <div className={`relative z-10 flex h-full px-3 py-3 sm:px-5 sm:py-5 md:px-6 md:py-6 ${alignmentClass}`}>
-        <div className={`w-full ${widthClass}`}>
-          <div className={`${surfaceClass} ${surfaceClass ? 'rounded-[28px]' : ''} ${contentPaddingClass}`}>
-            {slide.eyebrow && (
-              <p
-                className="mb-2 text-[11px] font-bold uppercase tracking-[0.24em]"
-                style={{ color: slide.eyebrowColor }}
-              >
-                {slide.eyebrow}
-              </p>
-            )}
-
-            {slide.title && (
-              <h2 className={`${titleClass} mb-2`} style={{ color: slide.titleColor }}>
-                {slide.title}
-              </h2>
-            )}
-
-            {slide.subtitle && (
-              <p
-                className="mb-2 text-base font-semibold sm:text-lg"
-                style={{ color: slide.subtitleColor }}
-              >
-                {slide.subtitle}
-              </p>
-            )}
-
-            {slide.description && (
-              <p className={`${bodyClass} max-w-[58ch]`} style={{ color: slide.descriptionColor }}>
-                {slide.description}
-              </p>
-            )}
-
-            {ctaUrl && ctaLabel && (
-              interactive ? (
-                <Link
-                  to={ctaUrl}
-                  className="mt-5 inline-flex items-center rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em] transition-transform duration-300 hover:-translate-y-0.5"
-                  style={{
-                    backgroundColor: slide.buttonBgColor,
-                    color: slide.buttonTextColor,
-                    borderColor: slide.buttonBorderColor,
-                  }}
+        <div className={`relative z-10 flex h-full px-3 py-3 sm:px-4 sm:py-4 ${alignmentClass}`}>
+          <div className={`w-full ${mobileWidthClass}`}>
+            <div className={`${surfaceClass} ${surfaceClass ? 'rounded-[22px]' : ''} p-3`}>
+              {slide.eyebrow && (
+                <p
+                  className="mb-1.5 text-[8px] font-bold uppercase tracking-[0.18em]"
+                  style={{ color: slide.eyebrowColor }}
                 >
-                  {ctaLabel}
-                </Link>
-              ) : (
-                <span
-                  className="mt-5 inline-flex items-center rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em]"
-                  style={{
-                    backgroundColor: slide.buttonBgColor,
-                    color: slide.buttonTextColor,
-                    borderColor: slide.buttonBorderColor,
-                  }}
+                  {slide.eyebrow}
+                </p>
+              )}
+
+              {slide.title && (
+                <h2 className={`${mobileTitleClass} mb-1.5 line-clamp-2`} style={{ color: slide.titleColor }}>
+                  {slide.title}
+                </h2>
+              )}
+
+              {slide.subtitle && (
+                <p
+                  className="mb-1.5 text-[10px] font-semibold line-clamp-2"
+                  style={{ color: slide.subtitleColor }}
                 >
-                  {ctaLabel}
-                </span>
-              )
-            )}
+                  {slide.subtitle}
+                </p>
+              )}
+
+              {slide.description && (
+                <p className={`${mobileBodyClass} line-clamp-2`} style={{ color: slide.descriptionColor }}>
+                  {slide.description}
+                </p>
+              )}
+
+              {ctaUrl && ctaLabel && (
+                interactive ? (
+                  <Link
+                    to={ctaUrl}
+                    className="mt-2 inline-flex items-center rounded-full border px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.14em] transition-transform duration-300 hover:-translate-y-0.5"
+                    style={{
+                      backgroundColor: slide.buttonBgColor,
+                      color: slide.buttonTextColor,
+                      borderColor: slide.buttonBorderColor,
+                    }}
+                  >
+                    {ctaLabel}
+                  </Link>
+                ) : (
+                  <span
+                    className="mt-2 inline-flex items-center rounded-full border px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.14em]"
+                    style={{
+                      backgroundColor: slide.buttonBgColor,
+                      color: slide.buttonTextColor,
+                      borderColor: slide.buttonBorderColor,
+                    }}
+                  >
+                    {ctaLabel}
+                  </span>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        ref={frameRef}
+        className="relative hidden w-full overflow-hidden md:block"
+        style={{ height: `${450 * desktopScale}px` }}
+      >
+        <div
+          className="absolute left-0 top-0"
+          style={{
+            width: '1440px',
+            height: '450px',
+            transform: `scale(${desktopScale})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          {slide.imageSrc ? (
+            <img
+              src={slide.imageSrc}
+              alt={slide.title || slide.subtitle || 'Hero slide'}
+              className="absolute inset-0 h-full w-full object-cover"
+              draggable={false}
+              loading="eager"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(32,201,151,0.45),rgba(15,23,42,0.94))]" />
+          )}
+
+          <div className="absolute inset-0" style={{ background: overlayBackground }} />
+
+          <div className={`relative z-10 flex h-full w-full px-12 py-12 ${alignmentClass}`}>
+            <div className={`w-full ${desktopWidthClass}`}>
+              <div className={`${surfaceClass} ${surfaceClass ? 'rounded-[28px]' : ''} ${contentPaddingClass}`}>
+                {slide.eyebrow && (
+                  <p
+                    className="mb-2 text-[11px] font-bold uppercase tracking-[0.24em]"
+                    style={{ color: slide.eyebrowColor }}
+                  >
+                    {slide.eyebrow}
+                  </p>
+                )}
+
+                {slide.title && (
+                  <h2 className={`${desktopTitleClass} mb-2 line-clamp-2`} style={{ color: slide.titleColor }}>
+                    {slide.title}
+                  </h2>
+                )}
+
+                {slide.subtitle && (
+                  <p
+                    className="mb-2 text-lg font-semibold line-clamp-2"
+                    style={{ color: slide.subtitleColor }}
+                  >
+                    {slide.subtitle}
+                  </p>
+                )}
+
+                {slide.description && (
+                  <p className={`${desktopBodyClass} line-clamp-3`} style={{ color: slide.descriptionColor }}>
+                    {slide.description}
+                  </p>
+                )}
+
+                {ctaUrl && ctaLabel && (
+                  interactive ? (
+                    <Link
+                      to={ctaUrl}
+                      className="mt-5 inline-flex items-center rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em] transition-transform duration-300 hover:-translate-y-0.5"
+                      style={{
+                        backgroundColor: slide.buttonBgColor,
+                        color: slide.buttonTextColor,
+                        borderColor: slide.buttonBorderColor,
+                      }}
+                    >
+                      {ctaLabel}
+                    </Link>
+                  ) : (
+                    <span
+                      className="mt-5 inline-flex items-center rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em]"
+                      style={{
+                        backgroundColor: slide.buttonBgColor,
+                        color: slide.buttonTextColor,
+                        borderColor: slide.buttonBorderColor,
+                      }}
+                    >
+                      {ctaLabel}
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
