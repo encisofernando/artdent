@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
@@ -11,7 +11,6 @@ import {
     ToggleLeft,
     ToggleRight,
     GripVertical,
-    Info,
     ChevronDown,
     ChevronUp,
     Type,
@@ -99,9 +98,9 @@ const CONTENT_PADDING_CLASSES = {
 };
 
 const WIDTH_CLASSES = {
-    sm: 'max-w-md',
-    md: 'max-w-xl',
-    lg: 'max-w-2xl',
+    sm: 'max-w-[46%]',
+    md: 'max-w-[58%]',
+    lg: 'max-w-[70%]',
 };
 
 const ALIGN_WRAPPER_CLASSES = {
@@ -141,6 +140,64 @@ const BODY_CLASS_MAP = {
     sm: 'text-[clamp(0.92rem,1.8vw,1rem)] leading-relaxed',
     md: 'text-[clamp(1rem,2vw,1.12rem)] leading-relaxed',
     lg: 'text-[clamp(1.05rem,2.2vw,1.22rem)] leading-relaxed',
+};
+
+const PREVIEW_TITLE_CLASS_MAP = {
+    brand: {
+        panel: {
+            sm: 'text-[44.8px] font-extrabold tracking-[-0.05em] leading-[0.92]',
+            md: 'text-[56px] font-extrabold tracking-[-0.05em] leading-[0.92]',
+            lg: 'text-[67.2px] font-black tracking-[-0.055em] leading-[0.9]',
+            xl: 'text-[80px] font-black tracking-[-0.06em] leading-[0.88]',
+        },
+        compact: {
+            sm: 'text-[11px] font-bold tracking-[-0.03em] leading-[1.02]',
+            md: 'text-xs font-bold tracking-[-0.035em] leading-[1]',
+            lg: 'text-[13px] font-extrabold tracking-[-0.04em] leading-[0.98]',
+            xl: 'text-sm font-extrabold tracking-[-0.045em] leading-[0.96]',
+        },
+    },
+    editorial: {
+        panel: {
+            sm: 'text-[41.6px] font-semibold tracking-[-0.04em] leading-[0.98]',
+            md: 'text-[51.2px] font-semibold tracking-[-0.045em] leading-[0.96]',
+            lg: 'text-[62.4px] font-bold tracking-[-0.05em] leading-[0.94]',
+            xl: 'text-[73.6px] font-bold tracking-[-0.055em] leading-[0.92]',
+        },
+        compact: {
+            sm: 'text-[11px] font-semibold tracking-[-0.03em] leading-[1.02]',
+            md: 'text-xs font-semibold tracking-[-0.035em] leading-[1]',
+            lg: 'text-[13px] font-bold tracking-[-0.04em] leading-[0.98]',
+            xl: 'text-sm font-bold tracking-[-0.045em] leading-[0.96]',
+        },
+    },
+    impact: {
+        panel: {
+            sm: 'text-[44.8px] font-black uppercase tracking-[-0.06em] leading-[0.88]',
+            md: 'text-[57.6px] font-black uppercase tracking-[-0.07em] leading-[0.86]',
+            lg: 'text-[70.4px] font-black uppercase tracking-[-0.075em] leading-[0.84]',
+            xl: 'text-[83.2px] font-black uppercase tracking-[-0.08em] leading-[0.82]',
+        },
+        compact: {
+            sm: 'text-[11px] font-black uppercase tracking-[-0.045em] leading-[1]',
+            md: 'text-xs font-black uppercase tracking-[-0.05em] leading-[0.98]',
+            lg: 'text-[13px] font-black uppercase tracking-[-0.055em] leading-[0.96]',
+            xl: 'text-sm font-black uppercase tracking-[-0.06em] leading-[0.94]',
+        },
+    },
+};
+
+const PREVIEW_BODY_CLASS_MAP = {
+    panel: {
+        sm: 'text-[16px] leading-relaxed',
+        md: 'text-[18px] leading-relaxed',
+        lg: 'text-[20px] leading-relaxed',
+    },
+    compact: {
+        sm: 'text-[9px] leading-snug',
+        md: 'text-[10px] leading-snug',
+        lg: 'text-[11px] leading-snug',
+    },
 };
 
 const inputBase = (isDark) => `w-full rounded-xl border px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:outline-none placeholder-slate-400 ${
@@ -186,11 +243,59 @@ function HeroSlidePreview({ slide, compact = false }) {
     const imageUrl = slide.image_url || null;
     const alignmentClass = ALIGN_WRAPPER_CLASSES[slide.content_align] ?? ALIGN_WRAPPER_CLASSES.left;
     const widthClass = WIDTH_CLASSES[slide.content_width] ?? WIDTH_CLASSES.md;
-    const titleClass = TITLE_CLASS_MAP[slide.font_style]?.[slide.title_size] ?? TITLE_CLASS_MAP.brand.lg;
-    const bodyClass = BODY_CLASS_MAP[slide.body_size] ?? BODY_CLASS_MAP.md;
+    const previewVariant = compact ? 'compact' : 'panel';
+    const titleClass = PREVIEW_TITLE_CLASS_MAP[slide.font_style]?.[previewVariant]?.[slide.title_size]
+        ?? PREVIEW_TITLE_CLASS_MAP.brand[previewVariant].lg;
+    const bodyClass = PREVIEW_BODY_CLASS_MAP[previewVariant]?.[slide.body_size] ?? PREVIEW_BODY_CLASS_MAP.panel.md;
     const overlayBackground = buildOverlayBackground(slide.overlay_strength, slide.content_align);
     const surfaceClass = SURFACE_CLASSES[slide.surface_style] ?? SURFACE_CLASSES.none;
     const contentPaddingClass = CONTENT_PADDING_CLASSES[slide.height_mode] ?? CONTENT_PADDING_CLASSES.regular;
+    const previewRef = useRef(null);
+    const [panelScale, setPanelScale] = useState(1);
+
+    useLayoutEffect(() => {
+        if (compact || typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const element = previewRef.current;
+
+        if (!element) {
+            return undefined;
+        }
+
+        const updateScale = () => {
+            const measuredWidth = element.parentElement?.getBoundingClientRect().width || element.getBoundingClientRect().width;
+
+            if (!measuredWidth) {
+                return;
+            }
+
+            const nextScale = Math.min(1, measuredWidth / 1440);
+            setPanelScale(nextScale > 0 ? nextScale : 1);
+        };
+
+        const rafA = window.requestAnimationFrame(updateScale);
+        const rafB = window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(updateScale);
+        });
+        const timers = [80, 180, 320, 520].map((delay) => window.setTimeout(updateScale, delay));
+
+        const observer = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(updateScale)
+            : null;
+
+        observer?.observe(element);
+        window.addEventListener('resize', updateScale);
+
+        return () => {
+            window.cancelAnimationFrame(rafA);
+            window.cancelAnimationFrame(rafB);
+            timers.forEach((timer) => window.clearTimeout(timer));
+            window.removeEventListener('resize', updateScale);
+            observer?.disconnect();
+        };
+    }, [compact, imageUrl, slide.slide_type]);
 
     if (!isEditorial) {
         return (
@@ -209,17 +314,95 @@ function HeroSlidePreview({ slide, compact = false }) {
         );
     }
 
+    if (compact) {
+        return (
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950 aspect-[16/5]">
+                {imageUrl ? (
+                    <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(32,201,151,0.45),rgba(15,23,42,0.94))]" />
+                )}
+                <div className="absolute inset-0" style={{ background: overlayBackground }} />
+                <div className={`relative z-10 flex h-full w-full px-3 py-3 ${alignmentClass}`}>
+                    <div className={`w-full ${widthClass}`}>
+                        <div className={`${surfaceClass} ${surfaceClass ? 'rounded-[18px]' : ''} p-2.5`}>
+                            {slide.eyebrow && (
+                                <p
+                                    className="mb-1.5 text-[8px] font-bold uppercase tracking-[0.18em]"
+                                    style={{ color: slide.eyebrow_color || DEFAULT_COLORS.eyebrow_color }}
+                                >
+                                    {slide.eyebrow}
+                                </p>
+                            )}
+                            {slide.title && (
+                                <h3
+                                    className={`${titleClass} mb-1.5 line-clamp-2`}
+                                    style={{ color: slide.title_color || DEFAULT_COLORS.title_color }}
+                                >
+                                    {slide.title}
+                                </h3>
+                            )}
+                            {slide.subtitle && (
+                                <p
+                                    className="mb-1.5 text-[10px] font-semibold line-clamp-2"
+                                    style={{ color: slide.subtitle_color || DEFAULT_COLORS.subtitle_color }}
+                                >
+                                    {slide.subtitle}
+                                </p>
+                            )}
+                            {slide.description && (
+                                <p
+                                    className={`${bodyClass} line-clamp-2`}
+                                    style={{ color: slide.description_color || DEFAULT_COLORS.description_color }}
+                                >
+                                    {slide.description}
+                                </p>
+                            )}
+                            {(slide.button_label || slide.button_url || slide.click_url) && (
+                                <div className="mt-2">
+                                    <span
+                                        className="inline-flex items-center rounded-full border px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.14em]"
+                                        style={{
+                                            backgroundColor: slide.button_bg_color || DEFAULT_COLORS.button_bg_color,
+                                            color: slide.button_text_color || DEFAULT_COLORS.button_text_color,
+                                            borderColor: slide.button_border_color || DEFAULT_COLORS.button_border_color,
+                                        }}
+                                    >
+                                        {slide.button_label || 'Explorar'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950 aspect-[16/5]">
-            {imageUrl ? (
-                <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            ) : (
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(32,201,151,0.45),rgba(15,23,42,0.94))]" />
-            )}
-            <div className="absolute inset-0" style={{ background: overlayBackground }} />
-            <div className={`relative z-10 flex h-full w-full px-3 py-3 sm:px-5 sm:py-5 md:px-6 md:py-6 ${alignmentClass}`}>
-                <div className={`w-full ${widthClass}`}>
-                    <div className={`${surfaceClass} ${surfaceClass ? 'rounded-[24px]' : ''} ${contentPaddingClass}`}>
+        <div ref={previewRef} className="w-full">
+            <div
+                className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950"
+                style={{ height: `${450 * panelScale}px` }}
+            >
+                <div
+                    className="absolute left-0 top-0"
+                    style={{
+                        width: '1440px',
+                        height: '450px',
+                        transform: `scale(${panelScale})`,
+                        transformOrigin: 'top left',
+                    }}
+                >
+                    {imageUrl ? (
+                        <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : (
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(32,201,151,0.45),rgba(15,23,42,0.94))]" />
+                    )}
+                    <div className="absolute inset-0" style={{ background: overlayBackground }} />
+                    <div className={`relative z-10 flex h-full w-full px-12 py-12 ${alignmentClass}`}>
+                        <div className={`w-full ${widthClass}`}>
+                            <div className={`${surfaceClass} ${surfaceClass ? 'rounded-[28px]' : ''} ${contentPaddingClass}`}>
                         {slide.eyebrow && (
                             <p
                                 className="mb-2 text-[11px] font-bold uppercase tracking-[0.24em]"
@@ -230,7 +413,7 @@ function HeroSlidePreview({ slide, compact = false }) {
                         )}
                         {slide.title && (
                             <h3
-                                className={`${titleClass} mb-2`}
+                                className={`${titleClass} mb-2 line-clamp-2`}
                                 style={{ color: slide.title_color || DEFAULT_COLORS.title_color }}
                             >
                                 {slide.title}
@@ -238,7 +421,7 @@ function HeroSlidePreview({ slide, compact = false }) {
                         )}
                         {slide.subtitle && (
                             <p
-                                className={`mb-2 ${compact ? 'text-sm' : 'text-base sm:text-lg'} font-semibold`}
+                                className="mb-2 text-lg font-semibold line-clamp-2"
                                 style={{ color: slide.subtitle_color || DEFAULT_COLORS.subtitle_color }}
                             >
                                 {slide.subtitle}
@@ -246,16 +429,16 @@ function HeroSlidePreview({ slide, compact = false }) {
                         )}
                         {slide.description && (
                             <p
-                                className={`${bodyClass} ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}
+                                className={`${bodyClass} line-clamp-3`}
                                 style={{ color: slide.description_color || DEFAULT_COLORS.description_color }}
                             >
                                 {slide.description}
                             </p>
                         )}
                         {(slide.button_label || slide.button_url || slide.click_url) && (
-                            <div className="mt-4">
+                            <div className="mt-5">
                                 <span
-                                    className="inline-flex items-center rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.18em]"
+                                    className="inline-flex items-center rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em]"
                                     style={{
                                         backgroundColor: slide.button_bg_color || DEFAULT_COLORS.button_bg_color,
                                         color: slide.button_text_color || DEFAULT_COLORS.button_text_color,
@@ -268,6 +451,8 @@ function HeroSlidePreview({ slide, compact = false }) {
                         )}
                     </div>
                 </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -277,19 +462,21 @@ function ColorInput({ label, field, value, setData, isDark }) {
     const inputClasses = inputBase(isDark);
 
     return (
-        <div>
-            <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className="min-w-0">
+            <label className={`block min-h-[34px] text-xs font-bold uppercase tracking-wider mb-1.5 leading-tight ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {label}
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-stretch gap-3">
                 <input
                     type="color"
-                    className="h-11 w-12 rounded-xl border border-slate-200 bg-transparent p-1"
+                    className={`h-11 w-14 shrink-0 rounded-xl border bg-transparent p-1 ${
+                        isDark ? 'border-slate-700' : 'border-slate-200'
+                    }`}
                     value={value || '#ffffff'}
                     onChange={(e) => setData(field, e.target.value.toUpperCase())}
                 />
                 <input
-                    className={inputClasses}
+                    className={`${inputClasses} h-11 min-w-0 flex-1`}
                     value={value}
                     onChange={(e) => setData(field, e.target.value.toUpperCase())}
                     placeholder="#FFFFFF"
@@ -367,12 +554,37 @@ function SlideForm({ slide = null, onClose }) {
     const lbl = `block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
     const err = 'text-red-500 text-xs mt-1 font-medium';
     const isEditorial = data.slide_type === 'editorial';
+    const sectionClass = `rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/40' : 'border-slate-200 bg-slate-50/70'}`;
+    const previewCardClass = `rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-white/95'}`;
 
     return (
-        <form onSubmit={submit} className="flex flex-col gap-6">
-            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-                <div className="space-y-6">
-                    <section className={`rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/40' : 'border-slate-200 bg-slate-50/70'}`}>
+        <form onSubmit={submit} className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(500px,620px)] xl:items-start">
+            <section className={`order-1 xl:order-2 xl:sticky xl:top-24 ${previewCardClass}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                    <div>
+                        <p className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Preview</p>
+                        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {isEditorial
+                                ? 'Vista del hero editorial publicada en el shop.'
+                                : 'Vista del banner clásico publicado en el shop.'}
+                        </p>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                        isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                        {isEditorial ? 'Editorial' : 'Imagen'}
+                    </span>
+                </div>
+
+                <HeroSlidePreview
+                    key={`${isEdit ? slide?.id ?? 'edit' : 'create'}-${data.slide_type}-${preview ? 'with-image' : 'without-image'}`}
+                    slide={previewSlide}
+                />
+            </section>
+
+            <div className="order-2 xl:order-1 min-w-0 flex flex-col gap-6">
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+            <section className={`min-w-0 self-start ${sectionClass}`}>
                         <div className="flex items-center gap-2 mb-4">
                             <LayoutTemplate size={16} className="text-teal-500" />
                             <h3 className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Tipo de slide</h3>
@@ -385,7 +597,7 @@ function SlideForm({ slide = null, onClose }) {
                                         key={option.value}
                                         type="button"
                                         onClick={() => setData('slide_type', option.value)}
-                                        className={`rounded-2xl border px-4 py-4 text-left transition-all ${
+                                        className={`h-full rounded-2xl border px-4 py-4 text-left transition-all ${
                                             active
                                                 ? 'border-teal-500 bg-teal-500/10 shadow-[0_0_0_1px_rgba(20,184,166,0.2)]'
                                                 : (isDark ? 'border-slate-700 bg-slate-800/60 hover:border-slate-500' : 'border-slate-200 bg-white hover:border-slate-300')
@@ -401,9 +613,9 @@ function SlideForm({ slide = null, onClose }) {
                                 );
                             })}
                         </div>
-                    </section>
+            </section>
 
-                    <section className={`rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/40' : 'border-slate-200 bg-slate-50/70'}`}>
+            <section className={`min-w-0 self-start ${sectionClass}`}>
                         <div className="flex items-center gap-2 mb-4">
                             <Image size={16} className="text-teal-500" />
                             <h3 className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Imagen y navegación</h3>
@@ -415,7 +627,7 @@ function SlideForm({ slide = null, onClose }) {
                                 onClick={() => fileRef.current?.click()}
                                 className={`relative cursor-pointer rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
                                     isDark ? 'border-slate-700 hover:border-teal-500 bg-slate-800/40' : 'border-slate-200 hover:border-teal-400 bg-slate-50'
-                                } ${preview ? 'aspect-[16/5]' : 'h-36'}`}
+                                } ${preview ? 'mx-auto w-full max-w-[430px] aspect-[16/5]' : 'h-36'}`}
                             >
                                 {preview ? (
                                     <img src={preview} alt="Preview" className="w-full h-full object-cover" />
@@ -498,17 +710,19 @@ function SlideForm({ slide = null, onClose }) {
                             </div>
                             <span className="font-medium text-sm">Slide activo</span>
                         </label>
-                    </section>
+            </section>
+            </div>
 
-                    {isEditorial && (
-                        <>
-                            <section className={`rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/40' : 'border-slate-200 bg-slate-50/70'}`}>
+            {isEditorial && (
+                <>
+                    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+                    <section className={`min-w-0 self-start ${sectionClass}`}>
                                 <div className="flex items-center gap-2 mb-4">
                                     <Type size={16} className="text-teal-500" />
                                     <h3 className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Contenido</h3>
                                 </div>
 
-                                <div className="grid gap-3">
+                                <div className="flex h-full flex-col gap-3">
                                     <div>
                                         <label className={lbl}>Eyebrow / etiqueta breve</label>
                                         <input
@@ -542,22 +756,6 @@ function SlideForm({ slide = null, onClose }) {
                                         {errors.subtitle && <p className={err}>{errors.subtitle}</p>}
                                     </div>
 
-                                    <div>
-                                        <label className={lbl}>Descripción breve</label>
-                                        <textarea
-                                            className={`${inp} min-h-[96px] resize-y`}
-                                            value={data.description}
-                                            onChange={e => setData('description', e.target.value.slice(0, 210))}
-                                            maxLength={210}
-                                            placeholder="Texto corto, claro y orientado a conversión. En mobile se adapta sin romper la composición."
-                                        />
-                                        <div className={`mt-1 flex items-center justify-between text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            <span>Máximo 210 caracteres.</span>
-                                            <span>{data.description.length}/210</span>
-                                        </div>
-                                        {errors.description && <p className={err}>{errors.description}</p>}
-                                    </div>
-
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <div>
                                             <label className={lbl}>Texto del botón</label>
@@ -580,67 +778,83 @@ function SlideForm({ slide = null, onClose }) {
                                             {errors.button_url && <p className={err}>{errors.button_url}</p>}
                                         </div>
                                     </div>
-                                </div>
-                            </section>
 
-                            <section className={`rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/40' : 'border-slate-200 bg-slate-50/70'}`}>
+                                    <div className="flex flex-1 flex-col">
+                                        <label className={lbl}>Descripción breve</label>
+                                        <textarea
+                                            className={`${inp} min-h-[168px] flex-1 resize-y`}
+                                            value={data.description}
+                                            onChange={e => setData('description', e.target.value.slice(0, 210))}
+                                            maxLength={210}
+                                            placeholder="Texto corto, claro y orientado a conversión. En mobile se adapta sin romper la composición."
+                                        />
+                                        <div className={`mt-1 flex items-center justify-between text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            <span>Máximo 210 caracteres.</span>
+                                            <span>{data.description.length}/210</span>
+                                        </div>
+                                        {errors.description && <p className={err}>{errors.description}</p>}
+                                    </div>
+                                </div>
+                    </section>
+
+                    <section className={`min-w-0 self-start ${sectionClass}`}>
                                 <div className="flex items-center gap-2 mb-4">
                                     <Palette size={16} className="text-teal-500" />
                                     <h3 className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Composición y estilo</h3>
                                 </div>
 
-                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                    <div>
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="min-w-0">
                                         <label className={lbl}>Alineación</label>
-                                        <select className={inp} value={data.content_align} onChange={e => setData('content_align', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.content_align} onChange={e => setData('content_align', e.target.value)}>
                                             {ALIGN_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <label className={lbl}>Ancho del contenido</label>
-                                        <select className={inp} value={data.content_width} onChange={e => setData('content_width', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.content_width} onChange={e => setData('content_width', e.target.value)}>
                                             {WIDTH_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <label className={lbl}>Altura</label>
-                                        <select className={inp} value={data.height_mode} onChange={e => setData('height_mode', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.height_mode} onChange={e => setData('height_mode', e.target.value)}>
                                             {HEIGHT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <label className={lbl}>Tipografía</label>
-                                        <select className={inp} value={data.font_style} onChange={e => setData('font_style', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.font_style} onChange={e => setData('font_style', e.target.value)}>
                                             {FONT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <label className={lbl}>Tamaño del título</label>
-                                        <select className={inp} value={data.title_size} onChange={e => setData('title_size', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.title_size} onChange={e => setData('title_size', e.target.value)}>
                                             {TITLE_SIZE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <label className={lbl}>Tamaño del texto</label>
-                                        <select className={inp} value={data.body_size} onChange={e => setData('body_size', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.body_size} onChange={e => setData('body_size', e.target.value)}>
                                             {BODY_SIZE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <label className={lbl}>Overlay</label>
-                                        <select className={inp} value={data.overlay_strength} onChange={e => setData('overlay_strength', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.overlay_strength} onChange={e => setData('overlay_strength', e.target.value)}>
                                             {OVERLAY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <label className={lbl}>Superficie del texto</label>
-                                        <select className={inp} value={data.surface_style} onChange={e => setData('surface_style', e.target.value)}>
+                                        <select className={`${inp} h-11`} value={data.surface_style} onChange={e => setData('surface_style', e.target.value)}>
                                             {SURFACE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </div>
                                 </div>
 
-                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 mt-4">
+                                <div className="mt-4 grid gap-4 md:grid-cols-2">
                                     <ColorInput label="Color eyebrow" field="eyebrow_color" value={data.eyebrow_color} setData={setData} isDark={isDark} />
                                     <ColorInput label="Color título" field="title_color" value={data.title_color} setData={setData} isDark={isDark} />
                                     <ColorInput label="Color subtítulo" field="subtitle_color" value={data.subtitle_color} setData={setData} isDark={isDark} />
@@ -649,41 +863,10 @@ function SlideForm({ slide = null, onClose }) {
                                     <ColorInput label="Texto botón" field="button_text_color" value={data.button_text_color} setData={setData} isDark={isDark} />
                                     <ColorInput label="Borde botón" field="button_border_color" value={data.button_border_color} setData={setData} isDark={isDark} />
                                 </div>
-                            </section>
-                        </>
-                    )}
-                </div>
-
-                <div className="space-y-4">
-                    <section className={`rounded-2xl border p-4 sticky top-6 ${isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-white'}`}>
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div>
-                                <p className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Preview</p>
-                                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                    {isEditorial
-                                        ? 'Vista editorial adaptable del hero.'
-                                        : 'Vista clásica full-banner.'}
-                                </p>
-                            </div>
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-                                isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
-                            }`}>
-                                {isEditorial ? 'Editorial' : 'Imagen'}
-                            </span>
-                        </div>
-
-                        <HeroSlidePreview slide={previewSlide} />
-
-                        <div className={`mt-4 rounded-2xl px-3 py-3 text-xs leading-relaxed ${isDark ? 'bg-slate-800/70 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
-                            <p className="font-semibold mb-1">Tip profesional:</p>
-                            <p>
-                                Para slides editoriales, usá fondos con áreas de respiro y textos de no más de 2 líneas de título + 2 líneas de apoyo.
-                                Así se mantiene elegante en desktop y también legible en mobile.
-                            </p>
-                        </div>
                     </section>
-                </div>
-            </div>
+                    </div>
+                </>
+            )}
 
             <div className="flex justify-end gap-2 pt-1">
                 {onClose && (
@@ -700,6 +883,7 @@ function SlideForm({ slide = null, onClose }) {
                     <Save size={14} /> {processing ? 'Guardando...' : (isEdit ? 'Actualizar' : 'Crear slide')}
                 </Button>
             </div>
+            </div>
         </form>
     );
 }
@@ -708,6 +892,7 @@ export default function Index({ auth, slides }) {
     const { isDark } = useTheme();
     const [showCreate, setShowCreate] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const hasExpandedEditor = editingId !== null;
 
     const handleDelete = (id) => {
         if (!confirm('Eliminar este slide? La imagen tambien se borrara.')) {
@@ -723,14 +908,14 @@ export default function Index({ auth, slides }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="Carrusel Hero" />
 
-            <div className="flex flex-col gap-6 font-sans max-w-5xl">
+            <div className="flex w-full flex-col gap-6 font-sans max-w-none">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div>
                         <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                             Carrusel Hero
                         </h1>
                         <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Mezclá slides visuales y editoriales en el orden exacto que quieras mostrar en el e-commerce.
+                            Organizá el hero del shop y definí el orden real de cada slide desde un solo lugar.
                         </p>
                     </div>
                     <Button
@@ -744,14 +929,6 @@ export default function Index({ auth, slides }) {
                     </Button>
                 </div>
 
-                <div className={`rounded-xl border px-4 py-3 flex gap-3 text-sm ${isDark ? 'bg-slate-800/40 border-slate-700 text-slate-300' : 'bg-blue-50 border-blue-100 text-blue-800'}`}>
-                    <Info size={16} className="shrink-0 mt-0.5 opacity-70" />
-                    <span>
-                        <strong>Compatibilidad total:</strong> los slides actuales de solo imagen siguen funcionando. El nuevo modo editorial suma
-                        texto, CTA y estilo responsive sin romper el carrusel ni el orden existente.
-                    </span>
-                </div>
-
                 {showCreate && (
                     <div className={`${card} p-6`}>
                         <h2 className={`text-base font-bold mb-5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Nuevo slide</h2>
@@ -759,7 +936,7 @@ export default function Index({ auth, slides }) {
                     </div>
                 )}
 
-                <div className={`${card} overflow-hidden`}>
+                <div className={`${card} ${hasExpandedEditor ? 'overflow-visible' : 'overflow-hidden'}`}>
                     {slides.length === 0 ? (
                         <div className="p-12 text-center">
                             <Image size={40} className={`mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
