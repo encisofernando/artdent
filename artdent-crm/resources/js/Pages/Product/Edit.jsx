@@ -417,6 +417,18 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
     const currentStock = parseInt(data.stock_quantity) || 0;
     const isLowStock = data.track_stock && minStock > 0 && currentStock <= minStock;
 
+    const normalizeVariantOptionalField = (value) => {
+        if (value === undefined) return undefined;
+        if (value === null) return null;
+
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return trimmed === '' ? null : trimmed;
+        }
+
+        return value;
+    };
+
     // ── submit ────────────────────────────────────────────────────────────────
     const submit = (e) => {
         e.preventDefault();
@@ -425,9 +437,10 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
             variants: f.has_variants
                 ? JSON.stringify(f.variants.map(v => ({
                     ...v,
-                    price: f.same_price_for_variants ? f.price : v.price,
-                    cost_price: f.same_price_for_variants ? f.cost_price : v.cost_price,
-                    stock_quantity: f.track_stock ? v.stock_quantity : undefined,
+                    sku: normalizeVariantOptionalField(v.sku),
+                    price: normalizeVariantOptionalField(f.same_price_for_variants ? f.price : v.price),
+                    cost_price: normalizeVariantOptionalField(f.same_price_for_variants ? f.cost_price : v.cost_price),
+                    stock_quantity: f.track_stock ? normalizeVariantOptionalField(v.stock_quantity) : undefined,
                 })))
                 : null,
             image_sort: existingImages.map(img => img.id),

@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -135,113 +136,114 @@ class ProductController extends Controller
 
         $validated['min_stock'] = $validated['min_stock'] ?? 0;
 
-        $product = \App\Models\Product::create($validated);
+        $warehouseId = ! empty($validated['track_stock'])
+            ? $this->resolveWarehouseId((int) $validated['company_id'])
+            : null;
 
-        // ── Imágenes ──────────────────────────────────────────────────────────
-        // El orden en que llegan los archivos es el orden que el usuario definió
-        // con drag & drop en el frontend. La primera (índice 0) es la portada.
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $i => $file) {
-                $path = $file->store('products', 'public');
-                $product->product_images()->create([
-                    'url' => '/storage/'.$path,
-                    'is_cover' => $i === 0 ? 1 : 0,
-                    'sort_order' => $i,
+        $variantsData = [];
+        if (! empty($validated['has_variants']) && ! empty($validated['variants'])) {
+            $variantsData = $this->sanitizeVariantsPayload(
+                $this->decodeVariantsPayload($validated['variants']),
+                $validated['price']
+            );
+        }
+
+        $product = DB::transaction(function () use ($request, $validated, $warehouseId, $variantsData) {
+            $product = \App\Models\Product::create($validated);
+
+            // ── Imágenes ──────────────────────────────────────────────────────────
+            // El orden en que llegan los archivos es el orden que el usuario definió
+            // con drag & drop en el frontend. La primera (índice 0) es la portada.
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $i => $file) {
+                    $path = $file->store('products', 'public');
+                    $product->product_images()->create([
+                        'url' => '/storage/'.$path,
+                        'is_cover' => $i === 0 ? 1 : 0,
+                        'sort_order' => $i,
+                    ]);
+                }
+            }
+
+            // ── Video ─────────────────────────────────────────────────────────────
+            if ($request->hasFile('video')) {
+                $videoPath = $request->file('video')->store('products/videos', 'public');
+                $product->update(['video_url' => '/storage/'.$videoPath]);
+            }
+
+            // ── Stock inicial ─────────────────────────────────────────────────────
+            if ($warehouseId !== null && isset($validated['stock_quantity'])) {
+                \App\Models\Stock::create([
+                    'product_id' => $product->id,
+                    'warehouse_id' => $warehouseId,
+                    'quantity' => $validated['stock_quantity'],
+                ]);
+
+                \App\Models\StockMovement::create([
+                    'product_id' => $product->id,
+                    'warehouse_id' => $warehouseId,
+                    'user_id' => auth()->id(),
+                    'type' => 'adjustment',
+                    'quantity' => $validated['stock_quantity'],
+                    'stock_before' => 0,
+                    'stock_after' => $validated['stock_quantity'],
+                    'note' => 'Stock inicial al crear el producto',
                 ]);
             }
-        }
 
-        // ── Video ─────────────────────────────────────────────────────────────
-        if ($request->hasFile('video')) {
-            $videoPath = $request->file('video')->store('products/videos', 'public');
-            $product->update(['video_url' => '/storage/'.$videoPath]);
-        }
+            // ── Variantes ─────────────────────────────────────────────────────────
+            foreach ($variantsData as $variantItem) {
+                $variant = \App\Models\ProductVariant::create([
+                    'product_id' => $product->id,
+                    'sku' => $variantItem['sku'] ?? null,
+                    'price' => $variantItem['price'] ?? $product->price,
+                    'cost_price' => $variantItem['cost_price'] ?? null,
+                    'is_active' => $variantItem['is_active'] ?? 1,
+                ]);
 
-        // ── Stock inicial ─────────────────────────────────────────────────────
-        if (! empty($validated['track_stock']) && isset($validated['stock_quantity'])) {
-            $warehouseId = \App\Models\Warehouse::where('company_id', $validated['company_id'])->value('id') ?? 1;
-
-            \App\Models\Stock::create([
-                'product_id' => $product->id,
-                'warehouse_id' => $warehouseId,
-                'quantity' => $validated['stock_quantity'],
-            ]);
-
-            \App\Models\StockMovement::create([
-                'product_id' => $product->id,
-                'warehouse_id' => $warehouseId,
-                'user_id' => auth()->id(),
-                'type' => 'adjustment',
-                'quantity' => $validated['stock_quantity'],
-                'stock_before' => 0,
-                'stock_after' => $validated['stock_quantity'],
-                'note' => 'Stock inicial al crear el producto',
-            ]);
-        }
-
-        if ($request->wantsJson()) {
-            return response()->json(['product' => $product, 'success' => 'Product created successfully.']);
-        }
-
-        // ── Variantes ─────────────────────────────────────────────────────────
-        if (! empty($validated['has_variants']) && ! empty($validated['variants'])) {
-            $variantsData = json_decode($validated['variants'], true);
-            if (is_array($variantsData)) {
-                foreach ($variantsData as $variantItem) {
-                    $variant = \App\Models\ProductVariant::create([
-                        'product_id' => $product->id,
-                        'sku' => $variantItem['sku'] ?? null,
-                        'price' => $variantItem['price'] ?? $product->price,
-                        'cost_price' => $variantItem['cost_price'] ?? null,
-                        'is_active' => $variantItem['is_active'] ?? 1,
-                    ]);
-
-                    if (isset($variantItem['attributes']) && is_array($variantItem['attributes'])) {
-                        foreach ($variantItem['attributes'] as $attrName => $attrValueStr) {
-                            $normalizedAttrName = $this->normalizeVariantAttributeName($attrName);
-                            $normalizedAttrValue = $this->normalizeVariantAttributeValue($attrValueStr);
-
-                            if ($normalizedAttrName === '' || $normalizedAttrValue === '') {
-                                continue;
-                            }
-
-                            $attribute = \App\Models\ProductAttribute::firstOrCreate(['name' => $normalizedAttrName]);
-                            $attrValue = \App\Models\ProductAttributeValue::firstOrCreate([
-                                'attribute_id' => $attribute->id,
-                                'value' => $normalizedAttrValue,
-                            ]);
-                            \App\Models\VariantAttributeValue::create([
-                                'variant_id' => $variant->id,
-                                'attribute_value_id' => $attrValue->id,
-                            ]);
-                        }
-                    }
-
-                    if (! empty($validated['track_stock']) && isset($variantItem['stock_quantity']) && $variantItem['stock_quantity'] !== '') {
-                        $variantWarehouseId = \App\Models\Warehouse::where('company_id', $validated['company_id'])->value('id') ?? 1;
-                        $variantStockQty = (float) $variantItem['stock_quantity'];
-
-                        \App\Models\Stock::create([
-                            'product_id' => $product->id,
-                            'variant_id' => $variant->id,
-                            'warehouse_id' => $variantWarehouseId,
-                            'quantity' => $variantStockQty,
+                if (isset($variantItem['attributes']) && is_array($variantItem['attributes'])) {
+                    foreach ($this->sanitizeVariantAttributes($variantItem['attributes']) as $attrName => $attrValueStr) {
+                        $attribute = \App\Models\ProductAttribute::firstOrCreate(['name' => $attrName]);
+                        $attrValue = \App\Models\ProductAttributeValue::firstOrCreate([
+                            'attribute_id' => $attribute->id,
+                            'value' => $attrValueStr,
                         ]);
-
-                        \App\Models\StockMovement::create([
-                            'product_id' => $product->id,
+                        \App\Models\VariantAttributeValue::create([
                             'variant_id' => $variant->id,
-                            'warehouse_id' => $variantWarehouseId,
-                            'user_id' => auth()->id(),
-                            'type' => 'adjustment',
-                            'quantity' => $variantStockQty,
-                            'stock_before' => 0,
-                            'stock_after' => $variantStockQty,
-                            'note' => 'Stock inicial al crear variante',
+                            'attribute_value_id' => $attrValue->id,
                         ]);
                     }
                 }
+
+                if ($warehouseId !== null && isset($variantItem['stock_quantity']) && $variantItem['stock_quantity'] !== '') {
+                    $variantStockQty = (float) $variantItem['stock_quantity'];
+
+                    \App\Models\Stock::create([
+                        'product_id' => $product->id,
+                        'variant_id' => $variant->id,
+                        'warehouse_id' => $warehouseId,
+                        'quantity' => $variantStockQty,
+                    ]);
+
+                    \App\Models\StockMovement::create([
+                        'product_id' => $product->id,
+                        'variant_id' => $variant->id,
+                        'warehouse_id' => $warehouseId,
+                        'user_id' => auth()->id(),
+                        'type' => 'adjustment',
+                        'quantity' => $variantStockQty,
+                        'stock_before' => 0,
+                        'stock_after' => $variantStockQty,
+                        'note' => 'Stock inicial al crear variante',
+                    ]);
+                }
             }
+
+            return $product;
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json(['product' => $product, 'success' => 'Product created successfully.']);
         }
 
         $lowStockWarning = $this->checkLowStock($product, $validated['stock_quantity'] ?? null);
@@ -314,69 +316,48 @@ class ProductController extends Controller
 
         $validated['min_stock'] = $validated['min_stock'] ?? 0;
 
-        // Subir archivos ANTES de la transacción (puede tardar y no necesita rollback de BD)
-        $uploadedImages = [];
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $file) {
-                $uploadedImages[] = $file->store('products', 'public');
-            }
-        }
+        $warehouseId = ! empty($validated['track_stock'])
+            ? $this->resolveWarehouseId((int) $product->company_id)
+            : null;
 
-        $uploadedVideo = null;
-        if ($request->hasFile('video')) {
-            $uploadedVideo = $request->file('video')->store('products/videos', 'public');
-        }
-
-        // Resolver warehouse ID una sola vez, fuera de cualquier loop
-        $warehouseId = \App\Models\Warehouse::where('company_id', $product->company_id)->value('id') ?? 1;
-
-        // Pre-cargar atributos existentes para evitar N queries firstOrCreate dentro del loop
         $variantsData = [];
-        $attributeCache = [];   // 'name' => ProductAttribute
-        $attrValueCache = [];   // 'attributeId:value' => ProductAttributeValue
+        $attributeCache = [];
+        $attrValueCache = [];
 
         if (! empty($validated['has_variants']) && ! empty($validated['variants'])) {
-            $variantsData = json_decode($validated['variants'], true) ?? [];
+            $variantsData = $this->sanitizeVariantsPayload(
+                $this->decodeVariantsPayload($validated['variants']),
+                $validated['price']
+            );
 
-            // Recolectar todos los nombres de atributo y valores únicos
             $attrNames = [];
             $attrValuePairs = [];
+
             foreach ($variantsData as $variantItem) {
-                foreach ($variantItem['attributes'] ?? [] as $attrName => $attrValue) {
-                    $normalizedAttrName = $this->normalizeVariantAttributeName($attrName);
-                    $normalizedAttrValue = $this->normalizeVariantAttributeValue($attrValue);
-
-                    if ($normalizedAttrName === '' || $normalizedAttrValue === '') {
-                        continue;
-                    }
-
-                    $attrNames[] = $normalizedAttrName;
-                    $attrValuePairs[] = ['name' => $normalizedAttrName, 'value' => $normalizedAttrValue];
+                foreach ($this->sanitizeVariantAttributes($variantItem['attributes'] ?? []) as $attrName => $attrValue) {
+                    $attrNames[] = $attrName;
+                    $attrValuePairs[] = ['name' => $attrName, 'value' => $attrValue];
                 }
             }
 
-            // Cargar atributos existentes en una sola query
             if ($attrNames) {
                 $existingAttrs = \App\Models\ProductAttribute::whereIn('name', array_unique($attrNames))->get()->keyBy('name');
                 foreach ($existingAttrs as $name => $attr) {
                     $attributeCache[$name] = $attr;
                 }
 
-                // Crear los que faltan de a uno (raro en práctica)
                 foreach (array_unique($attrNames) as $name) {
                     if (! isset($attributeCache[$name])) {
                         $attributeCache[$name] = \App\Models\ProductAttribute::firstOrCreate(['name' => $name]);
                     }
                 }
 
-                // Cargar valores de atributo existentes en una sola query por attribute_id
                 $attrIds = collect($attributeCache)->pluck('id')->all();
                 $existingValues = \App\Models\ProductAttributeValue::whereIn('attribute_id', $attrIds)->get();
                 foreach ($existingValues as $val) {
                     $attrValueCache["{$val->attribute_id}:{$val->value}"] = $val;
                 }
 
-                // Crear los valores que faltan
                 foreach ($attrValuePairs as $pair) {
                     $attr = $attributeCache[$pair['name']];
                     $cacheKey = "{$attr->id}:{$pair['value']}";
@@ -388,6 +369,19 @@ class ProductController extends Controller
                     }
                 }
             }
+        }
+
+        // Subir archivos ANTES de la transacción (puede tardar y no necesita rollback de BD)
+        $uploadedImages = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $file) {
+                $uploadedImages[] = $file->store('products', 'public');
+            }
+        }
+
+        $uploadedVideo = null;
+        if ($request->hasFile('video')) {
+            $uploadedVideo = $request->file('video')->store('products/videos', 'public');
         }
 
         $userId = auth()->id();
@@ -461,7 +455,7 @@ class ProductController extends Controller
             }
 
             // ── Stock base (sin variante) ──────────────────────────────────────
-            if (! empty($validated['track_stock']) && $request->has('stock_quantity')) {
+            if ($warehouseId !== null && $request->has('stock_quantity')) {
                 $stock = \App\Models\Stock::firstOrCreate(
                     ['product_id' => $product->id, 'warehouse_id' => $warehouseId, 'variant_id' => null],
                     ['quantity' => 0]
@@ -507,16 +501,9 @@ class ProductController extends Controller
                         $variant->variant_attribute_values()->delete();
 
                         $newAttrValues = [];
-                        foreach ($variantItem['attributes'] as $attrName => $attrValueStr) {
-                            $normalizedAttrName = $this->normalizeVariantAttributeName($attrName);
-                            $normalizedAttrValue = $this->normalizeVariantAttributeValue($attrValueStr);
-
-                            if ($normalizedAttrName === '' || $normalizedAttrValue === '') {
-                                continue;
-                            }
-
-                            $attr = $attributeCache[$normalizedAttrName];
-                            $attrValue = $attrValueCache["{$attr->id}:{$normalizedAttrValue}"];
+                        foreach ($this->sanitizeVariantAttributes($variantItem['attributes']) as $attrName => $attrValueStr) {
+                            $attr = $attributeCache[$attrName];
+                            $attrValue = $attrValueCache["{$attr->id}:{$attrValueStr}"];
                             $newAttrValues[] = [
                                 'variant_id' => $variant->id,
                                 'attribute_value_id' => $attrValue->id,
@@ -527,7 +514,7 @@ class ProductController extends Controller
                         }
                     }
 
-                    if (! empty($validated['track_stock']) && isset($variantItem['stock_quantity']) && $variantItem['stock_quantity'] !== '') {
+                    if ($warehouseId !== null && isset($variantItem['stock_quantity']) && $variantItem['stock_quantity'] !== '') {
                         $newVariantQty = (float) $variantItem['stock_quantity'];
 
                         $variantStock = \App\Models\Stock::firstOrCreate(
@@ -617,6 +604,140 @@ class ProductController extends Controller
         if (Storage::disk('public')->exists($relativePath)) {
             Storage::disk('public')->delete($relativePath);
         }
+    }
+
+    /**
+     * Limpia atributos de variantes para evitar claves/valores vacíos y normalizar formato.
+     */
+    private function sanitizeVariantAttributes(array $attributes): array
+    {
+        $sanitized = [];
+
+        foreach ($attributes as $attrName => $attrValue) {
+            $name = $this->normalizeVariantAttributeName($attrName);
+            $value = $this->normalizeVariantAttributeValue($attrValue);
+
+            if ($name === '' || $value === '') {
+                continue;
+            }
+
+            $sanitized[$name] = $value;
+        }
+
+        return $sanitized;
+    }
+
+    /**
+     * Normaliza el payload de variantes para evitar strings vacíos en columnas numéricas.
+     */
+    private function sanitizeVariantsPayload(array $variants, mixed $defaultPrice): array
+    {
+        $sanitized = [];
+        $normalizedDefaultPrice = $this->normalizeNullableNumber($defaultPrice) ?? 0;
+
+        foreach ($variants as $variantItem) {
+            if (! is_array($variantItem)) {
+                continue;
+            }
+
+            $normalizedPrice = $this->normalizeNullableNumber($variantItem['price'] ?? null);
+
+            $sanitized[] = [
+                'id' => $this->normalizeNullableInteger($variantItem['id'] ?? null),
+                'sku' => $this->normalizeNullableString($variantItem['sku'] ?? null),
+                'price' => $normalizedPrice ?? $normalizedDefaultPrice,
+                'cost_price' => $this->normalizeNullableNumber($variantItem['cost_price'] ?? null),
+                'stock_quantity' => $this->normalizeNullableNumber($variantItem['stock_quantity'] ?? null),
+                'is_active' => $this->normalizeBooleanFlag($variantItem['is_active'] ?? 1, 1),
+                'attributes' => $this->sanitizeVariantAttributes($variantItem['attributes'] ?? []),
+            ];
+        }
+
+        return $sanitized;
+    }
+
+    private function normalizeNullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized === '' ? null : $normalized;
+    }
+
+    private function normalizeNullableNumber(mixed $value): int|float|null
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '' || ! is_numeric($normalized)) {
+            return null;
+        }
+
+        return str_contains($normalized, '.') ? (float) $normalized : (int) $normalized;
+    }
+
+    private function normalizeNullableInteger(mixed $value): ?int
+    {
+        $normalized = $this->normalizeNullableNumber($value);
+
+        return $normalized === null ? null : (int) $normalized;
+    }
+
+    private function normalizeBooleanFlag(mixed $value, int $default = 1): int
+    {
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        if (in_array($value, [false, 0, '0', 'false', 'off'], true)) {
+            return 0;
+        }
+
+        return 1;
+    }
+
+    /**
+     * Decodifica el payload de variantes y falla con 422 si no es válido.
+     */
+    private function decodeVariantsPayload(mixed $variantsRaw): array
+    {
+        if (is_array($variantsRaw)) {
+            return $variantsRaw;
+        }
+
+        if (is_string($variantsRaw)) {
+            $decoded = json_decode($variantsRaw, true);
+
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'variants' => 'El formato de variantes es inválido.',
+        ]);
+    }
+
+    /**
+     * Resuelve un depósito para stock y evita errores por FK inválida.
+     */
+    private function resolveWarehouseId(int $companyId): int
+    {
+        $warehouseId = \App\Models\Warehouse::where('company_id', $companyId)->value('id');
+
+        if (! $warehouseId) {
+            throw ValidationException::withMessages([
+                'stock_quantity' => 'No hay depósitos configurados para esta empresa.',
+            ]);
+        }
+
+        return (int) $warehouseId;
     }
 
     // ── import / export (sin cambios) ─────────────────────────────────────────
