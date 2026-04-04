@@ -55,8 +55,8 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
             {p.category.name}
           </span>
         )}
-        <Link to={productPath(p.id, p.name)}>
-          <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-[var(--brand-primary)] transition-colors min-h-[2.5rem]">
+        <Link to={productPath(p.id, p.name)} title={p.name}>
+          <h3 className="min-h-[3.8rem] text-[13px] font-semibold leading-[1.35] text-gray-800 transition-colors [overflow-wrap:anywhere] line-clamp-3 hover:text-[var(--brand-primary)] sm:text-sm">
             {p.name}
           </h3>
         </Link>

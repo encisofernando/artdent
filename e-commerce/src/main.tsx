@@ -20,7 +20,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_relativeSplatPath: true,
+            v7_startTransition: true,
+          }}
+        >
           <App />
         </BrowserRouter>
       </HelmetProvider>

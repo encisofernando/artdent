@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { Share2, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Share2, ShoppingCart, ChevronLeft, ChevronRight, X, Search } from 'lucide-react'
 import { getProduct, type ProductVariant } from '../api/products'
 import { productPath, idFromSlug } from '../utils/slug'
 import { useCart } from '../store/cart'
@@ -28,6 +28,9 @@ export default function ProductDetail() {
   const [showShareToast, setShowShareToast] = useState(false)
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false)
+  const [isImageHovered, setIsImageHovered] = useState(false)
+  const [zoomPosition, setZoomPosition] = useState({ x: 50, y: 50 })
   const thumbnailsRef = useRef<HTMLDivElement>(null)
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
 
@@ -177,6 +180,17 @@ export default function ProductDetail() {
     setTouchEnd(0)
   }
 
+  const handleImageMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = ((event.clientX - bounds.left) / bounds.width) * 100
+    const y = ((event.clientY - bounds.top) / bounds.height) * 100
+
+    setZoomPosition({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    })
+  }
+
   // Auto-scroll de thumbnails
   useEffect(() => {
     if (thumbnailsRef.current) {
@@ -190,6 +204,10 @@ export default function ProductDetail() {
   // Navegación con teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isImageViewerOpen && e.key === 'Escape') {
+        setIsImageViewerOpen(false)
+      }
+
       if (e.key === 'ArrowLeft' && activeImageIndex > 0) {
         setActiveImageIndex(prev => prev - 1)
       }
@@ -200,7 +218,18 @@ export default function ProductDetail() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeImageIndex, images.length])
+  }, [activeImageIndex, images.length, isImageViewerOpen])
+
+  useEffect(() => {
+    if (!isImageViewerOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isImageViewerOpen])
 
   if (isLoading) {
     return (
@@ -323,13 +352,30 @@ export default function ProductDetail() {
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
+                onMouseEnter={() => setIsImageHovered(true)}
+                onMouseLeave={() => {
+                  setIsImageHovered(false)
+                  setZoomPosition({ x: 50, y: 50 })
+                }}
+                onMouseMove={handleImageMouseMove}
+                onClick={() => setIsImageViewerOpen(true)}
                 style={{ maxHeight: '500px' }}
               >
                 <img
                   src={currentImage}
                   alt={product.name}
-                  className="max-h-full max-w-full object-contain"
+                  className={`max-h-full max-w-full object-contain transition-transform duration-200 ease-out ${
+                    isImageHovered ? 'md:scale-[1.6]' : 'md:scale-100'
+                  }`}
+                  style={{ transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%` }}
                 />
+
+                <div className="pointer-events-none absolute inset-x-4 bottom-4 flex justify-end opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/92 px-3 py-2 text-xs font-semibold text-gray-700 shadow-md">
+                    <Search size={14} />
+                    Ampliar imagen
+                  </span>
+                </div>
 
                 {/* Flechas de navegación (desktop/tablet) + indicador de swipe */}
                 {images.length > 1 && (
@@ -338,21 +384,27 @@ export default function ProductDetail() {
                     <div className="hidden md:flex absolute inset-0 pointer-events-none items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity">
                       {activeImageIndex > 0 && (
                         <button
-                          onClick={() => setActiveImageIndex(prev => prev - 1)}
-                          className="pointer-events-auto w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setActiveImageIndex(prev => prev - 1)
+                          }}
+                          className="pointer-events-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 bg-white/95 text-slate-800 shadow-xl transition hover:bg-white"
                           aria-label="Imagen anterior"
                         >
-                          <ChevronLeft size={20} className="text-gray-700" />
+                          <ChevronLeft size={22} className="text-slate-800" />
                         </button>
                       )}
                       <div className="flex-1" />
                       {activeImageIndex < images.length - 1 && (
                         <button
-                          onClick={() => setActiveImageIndex(prev => prev + 1)}
-                          className="pointer-events-auto w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setActiveImageIndex(prev => prev + 1)
+                          }}
+                          className="pointer-events-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 bg-white/95 text-slate-800 shadow-xl transition hover:bg-white"
                           aria-label="Siguiente imagen"
                         >
-                          <ChevronRight size={20} className="text-gray-700" />
+                          <ChevronRight size={22} className="text-slate-800" />
                         </button>
                       )}
                     </div>
@@ -586,6 +638,99 @@ export default function ProductDetail() {
         {showShareToast && (
           <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in-up safe-bottom">
             Enlace copiado al portapapeles
+          </div>
+        )}
+
+        {isImageViewerOpen && (
+          <div
+            className="fixed inset-0 z-[60] bg-slate-950/92 backdrop-blur-sm"
+            onClick={() => setIsImageViewerOpen(false)}
+          >
+            <button
+              type="button"
+              onClick={() => setIsImageViewerOpen(false)}
+              className="absolute right-4 top-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+              aria-label="Cerrar visor de imagen"
+            >
+              <X size={22} />
+            </button>
+
+            <div
+              className="absolute inset-0 px-4 py-6 sm:px-8"
+            >
+              <div
+                className="mx-auto flex h-full w-full max-w-6xl flex-col"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="mb-4 flex w-full items-center justify-between gap-4 text-white">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white/75">{product.name}</p>
+                    {images.length > 1 && (
+                      <p className="mt-1 text-xs text-white/55">
+                        Imagen {activeImageIndex + 1} de {images.length}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative flex w-full flex-1 min-h-0 items-center justify-center">
+                  {images.length > 1 && activeImageIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveImageIndex(prev => prev - 1)}
+                      className="absolute left-0 z-10 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-slate-950/55 text-white shadow-2xl backdrop-blur transition hover:bg-slate-950/75"
+                      aria-label="Imagen anterior"
+                    >
+                      <ChevronLeft size={28} />
+                    </button>
+                  )}
+
+                  <div className="flex h-full w-full items-center justify-center px-10 md:px-16">
+                    <div className="flex max-h-full w-full items-center justify-center overflow-hidden rounded-3xl bg-white/5 p-3 sm:p-4">
+                      <img
+                        src={currentImage}
+                        alt={product.name}
+                        className="max-h-[calc(100vh-12rem)] max-w-full object-contain"
+                      />
+                    </div>
+                  </div>
+
+                  {images.length > 1 && activeImageIndex < images.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveImageIndex(prev => prev + 1)}
+                      className="absolute right-0 z-10 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-slate-950/55 text-white shadow-2xl backdrop-blur transition hover:bg-slate-950/75"
+                      aria-label="Siguiente imagen"
+                    >
+                      <ChevronRight size={28} />
+                    </button>
+                  )}
+                </div>
+
+                {images.length > 1 && (
+                  <div className="mt-6 flex w-full max-w-5xl gap-3 overflow-x-auto pb-2">
+                    {images.map((img, idx) => (
+                      <button
+                        key={`viewer-${img.id}`}
+                        type="button"
+                        onClick={() => setActiveImageIndex(idx)}
+                        className={`h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 transition ${
+                          idx === activeImageIndex
+                            ? 'border-white shadow-[0_0_0_3px_rgba(255,255,255,0.15)]'
+                            : 'border-white/15 hover:border-white/35'
+                        }`}
+                      >
+                        <img
+                          src={img.url}
+                          alt={`${product.name} ampliada ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
