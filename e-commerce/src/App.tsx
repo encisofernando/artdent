@@ -1,7 +1,8 @@
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { Routes, Route, useNavigate, useLocation, matchPath } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 import { AuthProvider } from './store/auth'
 import { CartProvider } from './store/cart'
+import { Helmet } from 'react-helmet-async'
 import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LiveChat from './components/LiveChat'
@@ -35,6 +36,60 @@ function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
   return null
+}
+
+type RouteTitleRule = {
+  path: string
+  title: string
+  end?: boolean
+}
+
+const ROUTE_TITLE_RULES: RouteTitleRule[] = [
+  { path: '/', title: 'ArtDent Insumos Odontológicos', end: true },
+  { path: '/productos', title: 'Productos', end: true },
+  { path: '/productos/:slug', title: 'Producto' },
+  { path: '/nosotros', title: 'Nosotros' },
+  { path: '/contacto', title: 'Contacto' },
+  { path: '/defensa-consumidor', title: 'Defensa del Consumidor' },
+  { path: '/privacidad', title: 'Política de Privacidad' },
+  { path: '/terminos', title: 'Términos y Condiciones' },
+  { path: '/cookies', title: 'Política de Cookies' },
+  { path: '/devoluciones', title: 'Cambios y Devoluciones' },
+  { path: '/preguntas-frecuentes', title: 'Preguntas Frecuentes' },
+  { path: '/ayuda', title: 'Ayuda' },
+  { path: '/politicas', title: 'Políticas' },
+  { path: '/comparar', title: 'Comparar Productos' },
+  { path: '/carrito', title: 'Carrito' },
+  { path: '/checkout', title: 'Checkout' },
+  { path: '/pedido/:code', title: 'Detalle del Pedido' },
+  { path: '/iniciar-sesion', title: 'Iniciar Sesión' },
+  { path: '/registrarme', title: 'Crear Cuenta' },
+  { path: '/recuperar', title: 'Recuperar Contraseña' },
+  { path: '/resetear-contrasena', title: 'Resetear Contraseña' },
+  { path: '/favoritos', title: 'Favoritos' },
+  { path: '/mi-cuenta', title: 'Mi Cuenta' },
+]
+
+function resolveRouteTitle(pathname: string) {
+  const match = ROUTE_TITLE_RULES.find((rule) =>
+    matchPath({ path: rule.path, end: rule.end ?? true }, pathname)
+  )
+
+  if (!match) return 'Página no encontrada | ArtDent'
+  if (match.title === 'ArtDent Insumos Odontológicos') return match.title
+
+  return `${match.title} | ArtDent`
+}
+
+function RouteMeta() {
+  const { pathname } = useLocation()
+  const pageTitle = useMemo(() => resolveRouteTitle(pathname), [pathname])
+
+  return (
+    <Helmet>
+      <title>{pageTitle}</title>
+    </Helmet>
+  )
 }
 
 function NotFound() {
@@ -89,6 +144,7 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <AppLayout>
+          <RouteMeta />
           <ScrollToTop />
           <Routes>
             <Route path="/" element={<Home />} />
