@@ -19,6 +19,7 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
     // options structure: [{ id: 1, name: 'Color', values: ['Red', 'Blue'] }]
     const [options, setOptions] = useState([]);
     const [variants, setVariants] = useState([]);
+    const [optionsError, setOptionsError] = useState('');
     
     // Initialize from existing data (used in Edit mode)
     useEffect(() => {
@@ -75,6 +76,8 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
     };
 
     const generateVariants = () => {
+        setOptionsError('');
+
         // Only consider options that have both a name and at least one value
         const validOptions = options
             .map((opt) => ({
@@ -83,6 +86,16 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                 values: Array.from(new Set(opt.values.map(normalizeOptionValue).filter(v => v))),
             }))
             .filter(opt => opt.name !== '' && opt.values.length > 0);
+
+        const normalizedNames = validOptions.map(opt => opt.name.toLocaleLowerCase('es-AR'));
+        const hasDuplicateNames = new Set(normalizedNames).size !== normalizedNames.length;
+
+        if (hasDuplicateNames) {
+            setVariants([]);
+            onVariantsChange([]);
+            setOptionsError('Cada opción debe tener un nombre único (ej. Color, Talle, Material).');
+            return;
+        }
         
         if (validOptions.length === 0) {
             setVariants([]);
@@ -210,6 +223,10 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                             </Button>
                         </div>
                     </div>
+                )}
+
+                {optionsError && (
+                    <p className="text-xs mt-3 text-red-500 font-medium">{optionsError}</p>
                 )}
             </div>
 
