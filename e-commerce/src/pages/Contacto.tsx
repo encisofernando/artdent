@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, AlertCircle } from 'lucide-react'
+import SEOHead from '../components/SEOHead'
 
 type FormData = {
   name: string
@@ -37,6 +38,36 @@ export default function Contacto() {
     lat: -26.197791696237534,
     lng: -58.23693887447022,
     embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3579.9605928160313!2d-58.239524523803354!3d-26.197960163721365!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x945caf0000251e81%3A0xab3ee68d381c52c8!2sArtDent%20FORMOSA!5e0!3m2!1ses-419!2sar!4v1771263678879!5m2!1ses-419!2sar',
+  }
+
+  const contactStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    name: 'Contacto ArtDent',
+    description:
+      'Canales de contacto comercial y soporte de ArtDent para compras, stock, envíos, devoluciones y atención al cliente.',
+    url: 'https://shop.artdent.com.ar/contacto',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'ArtDent',
+      email: contactInfo.email,
+      telephone: contactInfo.phone,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: 'B° Sagrado Corazon Mz 40 Casa 2',
+        addressLocality: 'Formosa Capital',
+        addressRegion: 'Formosa',
+        addressCountry: 'AR',
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: contactInfo.email,
+        telephone: contactInfo.phone,
+        areaServed: 'AR',
+        availableLanguage: 'es',
+      },
+    },
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -118,7 +149,26 @@ export default function Contacto() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <>
+      <SEOHead
+        title="Contacto comercial y soporte"
+        description="Contactate con ArtDent para recibir asesoramiento comercial, soporte de pedidos, consultas de stock y atención postventa en insumos odontológicos."
+        keywords={[
+          'contacto artdent',
+          'soporte artdent',
+          'insumos odontológicos formosa',
+          'whatsapp artdent',
+          'atención al cliente odontología',
+        ]}
+        url="/contacto"
+        breadcrumbs={[
+          { name: 'Inicio', url: '/' },
+          { name: 'Contacto', url: '/contacto' },
+        ]}
+        structuredData={contactStructuredData}
+      />
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       {/* Hero section */}
       <section className="bg-[var(--brand-primary)] text-white">
         <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
@@ -452,6 +502,7 @@ export default function Contacto() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   )
 }

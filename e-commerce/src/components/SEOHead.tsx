@@ -8,6 +8,7 @@ interface SEOHeadProps {
   url?: string
   robots?: string
   type?: 'website' | 'product' | 'article'
+  structuredData?: Record<string, any> | Array<Record<string, any>>
   productData?: {
     name: string
     price: number
@@ -30,6 +31,7 @@ export default function SEOHead({
   url,
   robots = 'index, follow',
   type = 'website',
+  structuredData: customStructuredData,
   productData,
   breadcrumbs,
 }: SEOHeadProps) {
@@ -46,7 +48,7 @@ export default function SEOHead({
   const fullDescription = description || defaultDescription
 
   // Generate JSON-LD structured data
-  const structuredData: any = {
+  const baseStructuredData: Record<string, any> = {
     '@context': 'https://schema.org',
     '@type': type === 'product' ? 'Product' : 'WebSite',
     name: fullTitle,
@@ -57,13 +59,13 @@ export default function SEOHead({
 
   // Product specific data
   if (type === 'product' && productData) {
-    structuredData['@type'] = 'Product'
-    structuredData.name = productData.name
-    structuredData.brand = {
+    baseStructuredData['@type'] = 'Product'
+    baseStructuredData.name = productData.name
+    baseStructuredData.brand = {
       '@type': 'Brand',
       name: productData.brand,
     }
-    structuredData.offers = {
+    baseStructuredData.offers = {
       '@type': 'Offer',
       price: productData.price,
       priceCurrency: productData.currency,
@@ -72,15 +74,15 @@ export default function SEOHead({
     }
     
     if (productData.sku) {
-      structuredData.sku = productData.sku
+      baseStructuredData.sku = productData.sku
     }
     
     if (productData.image) {
-      structuredData.image = productData.image
+      baseStructuredData.image = productData.image
     }
 
     if (productData.rating && productData.reviewCount) {
-      structuredData.aggregateRating = {
+      baseStructuredData.aggregateRating = {
         '@type': 'AggregateRating',
         ratingValue: productData.rating,
         reviewCount: productData.reviewCount,
@@ -101,6 +103,12 @@ export default function SEOHead({
         })),
       }
     : null
+
+  const extraStructuredData = customStructuredData
+    ? Array.isArray(customStructuredData)
+      ? customStructuredData
+      : [customStructuredData]
+    : []
 
   // Organization data
   const organizationData = {
@@ -165,7 +173,7 @@ export default function SEOHead({
 
       {/* Structured Data - JSON-LD */}
       <script type="application/ld+json">
-        {JSON.stringify(structuredData)}
+        {JSON.stringify(baseStructuredData)}
       </script>
 
       {breadcrumbData && (
@@ -173,6 +181,12 @@ export default function SEOHead({
           {JSON.stringify(breadcrumbData)}
         </script>
       )}
+
+      {extraStructuredData.map((item, index) => (
+        <script key={`structured-data-${index}`} type="application/ld+json">
+          {JSON.stringify(item)}
+        </script>
+      ))}
 
       {/* Organization data on homepage only */}
       {!url && (

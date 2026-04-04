@@ -32,9 +32,43 @@ import Ayuda from './pages/Ayuda'
 import Politicas from './pages/Politicas'
 import QuienesSomos from './pages/QuienesSomos'
 
+declare global {
+  interface Window {
+    dataLayer: any[]
+  }
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
+function RouteAnalytics() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const payload = {
+        page_title: document.title,
+        page_path: `${location.pathname}${location.search}`,
+        page_location: window.location.href,
+      }
+
+      window.dataLayer = window.dataLayer || []
+      window.dataLayer.push({
+        event: 'spa_page_view',
+        ...payload,
+      })
+
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'page_view', payload)
+      }
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [location.pathname, location.search])
+
   return null
 }
 
@@ -273,6 +307,7 @@ export default function App() {
         <AppLayout>
           <RouteMeta />
           <ScrollToTop />
+          <RouteAnalytics />
           <Routes>
             <Route path="/" element={<Home />} />
 

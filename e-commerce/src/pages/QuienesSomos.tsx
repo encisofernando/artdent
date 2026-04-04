@@ -4,6 +4,7 @@ import logoAzul from '../assets/logo-azul.png'
 import logoColor from '../assets/logo-artdent-color.png'
 import logoBlanco from '../assets/logo-artdent-blanco.png'
 import logoInsumos from '../assets/logo-blanco.png'
+import SEOHead from '../components/SEOHead'
 
 // ── Valores de la empresa ────────────────────────────────────────────────────
 const valores = [
@@ -55,8 +56,43 @@ const roadmap = [
 ]
 
 export default function QuienesSomos() {
+  const aboutStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: 'Quiénes somos | ArtDent',
+    description:
+      'Conocé la historia, visión y compromiso de ArtDent con odontólogos, clínicas y profesionales de la salud bucal.',
+    url: 'https://shop.artdent.com.ar/nosotros',
+    about: {
+      '@type': 'Organization',
+      name: 'ArtDent',
+      description:
+        'Laboratorio odontológico e insumos dentales con foco en tecnología digital, precisión técnica y atención personalizada.',
+      areaServed: 'Argentina',
+    },
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <>
+      <SEOHead
+        title="Quiénes somos y nuestra visión"
+        description="Descubrí la historia de ArtDent, su visión de crecimiento, el trabajo con odontólogos y su propuesta profesional en laboratorio e insumos dentales."
+        keywords={[
+          'artdent',
+          'laboratorio odontológico',
+          'insumos dentales argentina',
+          'quienes somos artdent',
+          'odontología formosa',
+        ]}
+        url="/nosotros"
+        breadcrumbs={[
+          { name: 'Inicio', url: '/' },
+          { name: 'Nosotros', url: '/nosotros' },
+        ]}
+        structuredData={aboutStructuredData}
+      />
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section
@@ -390,6 +426,7 @@ export default function QuienesSomos() {
         </div>
       </section>
 
-    </div>
+      </div>
+    </>
   )
 }

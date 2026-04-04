@@ -3,6 +3,7 @@ class AnalyticsService {
   private gaInitialized = false
   private pixelInitialized = false
   private hotjarInitialized = false
+  private readonly defaultGa4MeasurementId = 'G-QR3V5J5W50'
 
   // Configuration
   private config = {
@@ -27,8 +28,16 @@ class AnalyticsService {
   private initGoogleAnalytics() {
     if (this.gaInitialized || typeof window === 'undefined') return
 
-    const id = this.config.ga4MeasurementId
-    if (!id || id === 'G-XXXXXXXXXX') return
+    const id =
+      this.config.ga4MeasurementId && this.config.ga4MeasurementId !== 'G-XXXXXXXXXX'
+        ? this.config.ga4MeasurementId
+        : this.defaultGa4MeasurementId
+
+    if (typeof window.gtag === 'function') {
+      this.gaInitialized = true
+      console.log('[Analytics] Google Analytics initialized from existing gtag')
+      return
+    }
 
     // Load gtag script
     const script = document.createElement('script')

@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Star,
 } from 'lucide-react'
+import SEOHead from '../components/SEOHead'
 
 // ── Acciones rápidas ──────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
@@ -209,7 +210,25 @@ function HeroSearch() {
 // ── Página ────────────────────────────────────────────────────────────────────
 export default function Ayuda() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <SEOHead
+        title="Centro de ayuda y soporte"
+        description="Accedé al centro de ayuda de ArtDent para resolver dudas sobre pedidos, envíos, pagos, devoluciones y uso del shop odontológico."
+        keywords={[
+          'ayuda artdent',
+          'soporte e-commerce odontológico',
+          'seguimiento de pedidos artdent',
+          'devoluciones artdent',
+          'centro de ayuda odontología',
+        ]}
+        url="/ayuda"
+        breadcrumbs={[
+          { name: 'Inicio', url: '/' },
+          { name: 'Ayuda', url: '/ayuda' },
+        ]}
+      />
+
+      <div className="min-h-screen bg-gray-50">
 
       {/* Hero */}
       <section className="bg-[var(--brand-primary)] text-white">
@@ -561,6 +580,7 @@ export default function Ayuda() {
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

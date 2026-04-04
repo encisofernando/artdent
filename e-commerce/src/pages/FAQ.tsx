@@ -17,6 +17,7 @@ import {
   MessageCircle,
   X,
 } from 'lucide-react'
+import SEOHead from '../components/SEOHead'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type FAQItem = {
@@ -269,6 +270,23 @@ const CATEGORIES: FAQCategory[] = [
   },
 ]
 
+const FAQ_STRUCTURED_DATA = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: CATEGORIES.flatMap((category) =>
+    category.items
+      .filter((item) => typeof item.a === 'string')
+      .map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a as string,
+        },
+      }))
+  ),
+}
+
 // ── Componente Accordion Item ─────────────────────────────────────────────────
 function AccordionItem({
   item,
@@ -335,7 +353,26 @@ export default function FAQ() {
   const totalResults = filtered.reduce((n, c) => n + c.items.length, 0)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <>
+      <SEOHead
+        title="Preguntas frecuentes sobre compras, pagos y envíos"
+        description="Resolvé dudas sobre compras, pagos, envíos, devoluciones, garantía y cuenta de usuario en el e-commerce de ArtDent."
+        keywords={[
+          'faq artdent',
+          'preguntas frecuentes odontología',
+          'envíos artdent',
+          'garantía productos dentales',
+          'devoluciones artdent',
+        ]}
+        url="/preguntas-frecuentes"
+        breadcrumbs={[
+          { name: 'Inicio', url: '/' },
+          { name: 'Preguntas frecuentes', url: '/preguntas-frecuentes' },
+        ]}
+        structuredData={FAQ_STRUCTURED_DATA}
+      />
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
 
       {/* Hero */}
       <section className="bg-[var(--brand-primary)] text-white">
@@ -588,6 +625,7 @@ export default function FAQ() {
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

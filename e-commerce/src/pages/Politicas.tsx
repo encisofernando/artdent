@@ -14,6 +14,7 @@ import {
   Eye,
   AlertCircle,
 } from 'lucide-react'
+import SEOHead from '../components/SEOHead'
 
 // ── Políticas principales ─────────────────────────────────────────────────────
 const POLICIES = [
@@ -152,7 +153,25 @@ const COMMITMENTS = [
 
 export default function Politicas() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <>
+      <SEOHead
+        title="Políticas legales, privacidad y devoluciones"
+        description="Consultá en un solo lugar las políticas de ArtDent sobre términos, privacidad, cookies, defensa del consumidor y devoluciones para comprar con más confianza."
+        keywords={[
+          'políticas artdent',
+          'devoluciones artdent',
+          'privacidad artdent',
+          'defensa del consumidor',
+          'términos tienda odontológica',
+        ]}
+        url="/politicas"
+        breadcrumbs={[
+          { name: 'Inicio', url: '/' },
+          { name: 'Políticas', url: '/politicas' },
+        ]}
+      />
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
 
       {/* Hero */}
       <section className="bg-[var(--brand-primary)] text-white">
@@ -360,6 +379,7 @@ export default function Politicas() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
