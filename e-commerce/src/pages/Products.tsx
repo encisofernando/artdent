@@ -7,6 +7,7 @@ import { productPath } from '../utils/slug'
 import { listCategories } from '../api/categories'
 import { useCart } from '../store/cart'
 import WishlistButton from '../components/WishlistButton'
+import SEOHead from '../components/SEOHead'
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduct) => void }) {
@@ -190,9 +191,33 @@ export default function Products() {
 
   const title = q ? `Resultados para "${q}"` : 'Productos'
   const selectedCategory = categories.find((c) => c.id === category_id)
+  const seoTitle = selectedCategory
+    ? `${selectedCategory.name} - Productos`
+    : q
+      ? `Resultados para "${q}"`
+      : 'Productos'
+  const seoDescription = selectedCategory
+    ? `Explorá ${selectedCategory.name} en el shop de ArtDent. Encontrá insumos odontológicos con stock, precios y opciones de compra online.`
+    : q
+      ? `Resultados de búsqueda para "${q}" en el e-commerce de ArtDent.`
+      : 'Catálogo de productos de ArtDent. Encontrá insumos odontológicos, novedades y opciones de compra online.'
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <>
+      <SEOHead
+        title={seoTitle}
+        description={seoDescription}
+        keywords={[
+          'artdent',
+          'productos dentales',
+          'insumos odontológicos',
+          ...(selectedCategory ? [selectedCategory.name] : []),
+          ...(q ? [q] : []),
+        ]}
+        url={q || selectedCategory ? `/productos${window.location.search}` : '/productos'}
+      />
+
+      <div className="mx-auto max-w-7xl px-4 py-8">
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-5 flex-wrap">
@@ -373,6 +398,7 @@ export default function Products() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

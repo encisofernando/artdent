@@ -8,6 +8,7 @@ import { listSidebarBanners, type SidebarBanner } from '../api/banners'
 import { listHeroSlides, type HeroSlide as ApiHeroSlide } from '../api/slides'
 import { storageUrl } from '../api/http'
 import { subscribeNewsletter } from '../api/newsletter'
+import SEOHead from '../components/SEOHead'
 
 /* ─── Mini product card ─────────────────────────────────────────────── */
 function MiniCard({ p }: { p: CatalogProduct }) {
@@ -653,7 +654,20 @@ export default function Home() {
   const TABS = ['NUEVOS', 'DESTACADOS', 'OFERTAS']
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+    <>
+      <SEOHead
+        title="Insumos Odontológicos"
+        description="ArtDent Insumos Odontológicos para profesionales. Explorá productos, novedades, destacados y ofertas del shop."
+        keywords={[
+          'artdent',
+          'insumos odontológicos',
+          'productos dentales',
+          'laboratorio dental',
+          'e-commerce odontológico',
+        ]}
+      />
+
+      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
 
       {/* ══════════════ HERO CAROUSEL ══════════════ */}
       <section
@@ -943,6 +957,7 @@ export default function Home() {
           to { opacity: 1; }
         }
       `}</style>
-    </div>
+      </div>
+    </>
   )
 }
