@@ -12,8 +12,10 @@ import {
   ChevronRight,
   X,
   Tag,
+  Download,
 } from 'lucide-react'
 import { useCart } from '../store/cart'
+import { usePwaInstall } from '../hooks/usePwaInstall'
 
 function useIsActive() {
   const location = useLocation()
@@ -23,6 +25,7 @@ function useIsActive() {
 
 export default function BottomNav() {
   const isActive = useIsActive()
+  const { canInstall, promptInstall } = usePwaInstall()
   const cart = useCart()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
@@ -150,6 +153,23 @@ export default function BottomNav() {
                   </button>
                 </li>
               ))}
+              {canInstall && (
+                <li>
+                  <button
+                    onClick={async () => {
+                      setMoreOpen(false)
+                      await promptInstall()
+                    }}
+                    className="w-full flex items-center gap-3 px-1 py-3.5 border-t border-gray-100"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[var(--brand-soft)] flex items-center justify-center shrink-0">
+                      <Download size={18} className="text-[var(--brand-primary)]" />
+                    </div>
+                    <span className="flex-1 text-sm font-medium text-gray-800 text-left">Instalar app</span>
+                    <ChevronRight size={16} className="text-gray-300" />
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
         </>

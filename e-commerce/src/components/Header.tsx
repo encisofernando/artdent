@@ -1,12 +1,13 @@
 import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { ShoppingCart, ChevronDown, MapPin, X, LogOut, User, Heart, Bell, Package, ShoppingBag, CreditCard } from 'lucide-react'
+import { ShoppingCart, ChevronDown, MapPin, X, LogOut, User, Heart, Bell, Package, ShoppingBag, CreditCard, Download } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../store/auth'
 import { useCart } from '../store/cart'
 import { getWishlist, type WishlistItem } from '../api/wishlist'
 import { useNotifications, type AppNotification } from '../hooks/useNotifications'
+import { usePwaInstall } from '../hooks/usePwaInstall'
 import logoBlanco from '../assets/logo-blanco.png'
 import AdvancedSearch from '../components/AdvancedSearch'
 import MobileMenu from '../components/MobileMenu'
@@ -116,6 +117,7 @@ function PostalModal({ onClose, onSave }: { onClose: () => void; onSave: (cp: st
 // ── Main Header ───────────────────────────────────────────────────────────────
 export default function Header() {
   const { user, isAuthenticated, signOut } = useAuth()
+  const { canInstall, promptInstall } = usePwaInstall()
   const cart = useCart()
   const navigate = useNavigate()
   const count = cart.items.reduce((acc, it) => acc + (it.qty || 0), 0)
@@ -224,6 +226,16 @@ export default function Header() {
 
               {/* Acciones desktop */}
               <div className="flex items-center gap-4 text-white self-center">
+                {canInstall && (
+                  <button
+                    onClick={() => void promptInstall()}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+                    title="Instalar ArtDent Shop"
+                  >
+                    <Download size={16} strokeWidth={2} />
+                    <span className="hidden xl:inline">Instalar app</span>
+                  </button>
+                )}
 
                 {/* Login / cuenta */}
                 {isAuthenticated ? (

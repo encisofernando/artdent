@@ -2,6 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import { usePwaInstall } from '@/hooks/usePwaInstall';
 import {
     Menu,
     Moon,
@@ -88,6 +89,7 @@ function ToastItem({ toast, onDismiss, isDark }) {
 
 export default function Topbar({ user, onSidebarToggle }) {
     const { isDark, toggleTheme } = useTheme();
+    const { canInstall, promptInstall } = usePwaInstall();
     const userInitial = user?.name ? user.name[0].toUpperCase() : 'A';
     const printManagerDownloadUrl = (() => {
         const baseUrl = route('print-manager.download');
@@ -332,6 +334,20 @@ export default function Topbar({ user, onSidebarToggle }) {
                             </div>
                         )}
                     </div>
+
+                    {canInstall && (
+                        <button
+                            onClick={() => void promptInstall()}
+                            className={`inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
+                                ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200'
+                                : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800'
+                            }`}
+                            title="Instalar ArtDent CRM"
+                        >
+                            <Download className="h-4 w-4" />
+                            <span className="hidden xl:inline text-sm font-semibold">Instalar app</span>
+                        </button>
+                    )}
 
                     <a
                         href={printManagerDownloadUrl}

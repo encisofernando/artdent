@@ -1,0 +1,71 @@
+{
+  "id": "/dashboard",
+  "name": "ArtDent CRM",
+  "short_name": "ArtDent CRM",
+  "description": "Gestión comercial, laboratorio, e-commerce y finanzas de ArtDent en una experiencia instalable.",
+  "lang": "es-AR",
+  "dir": "ltr",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "categories": ["business", "medical", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Panel General",
+      "short_name": "Dashboard",
+      "description": "Abrí el panel general del CRM",
+      "url": "/dashboard?source=pwa-shortcut",
+      "icons": [
+        {
+          "src": "/pwa/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nueva Venta",
+      "short_name": "Ventas",
+      "description": "Creá una nueva venta desde la app instalada",
+      "url": "/sales/create?source=pwa-shortcut",
+      "icons": [
+        {
+          "src": "/pwa/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Órdenes",
+      "short_name": "Órdenes",
+      "description": "Consultá trabajos y órdenes del laboratorio",
+      "url": "/jobs?source=pwa-shortcut",
+      "icons": [
+        {
+          "src": "/pwa/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
