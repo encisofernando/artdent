@@ -38,56 +38,183 @@ function ScrollToTop() {
   return null
 }
 
-type RouteTitleRule = {
+type RouteMetaRule = {
   path: string
   title: string
+  description: string
   end?: boolean
+  noindex?: boolean
 }
 
-const ROUTE_TITLE_RULES: RouteTitleRule[] = [
-  { path: '/', title: 'ArtDent Insumos Odontológicos', end: true },
-  { path: '/productos', title: 'Productos', end: true },
-  { path: '/productos/:slug', title: 'Producto' },
-  { path: '/nosotros', title: 'Nosotros' },
-  { path: '/contacto', title: 'Contacto' },
-  { path: '/defensa-consumidor', title: 'Defensa del Consumidor' },
-  { path: '/privacidad', title: 'Política de Privacidad' },
-  { path: '/terminos', title: 'Términos y Condiciones' },
-  { path: '/cookies', title: 'Política de Cookies' },
-  { path: '/devoluciones', title: 'Cambios y Devoluciones' },
-  { path: '/preguntas-frecuentes', title: 'Preguntas Frecuentes' },
-  { path: '/ayuda', title: 'Ayuda' },
-  { path: '/politicas', title: 'Políticas' },
-  { path: '/comparar', title: 'Comparar Productos' },
-  { path: '/carrito', title: 'Carrito' },
-  { path: '/checkout', title: 'Checkout' },
-  { path: '/pedido/:code', title: 'Detalle del Pedido' },
-  { path: '/iniciar-sesion', title: 'Iniciar Sesión' },
-  { path: '/registrarme', title: 'Crear Cuenta' },
-  { path: '/recuperar', title: 'Recuperar Contraseña' },
-  { path: '/resetear-contrasena', title: 'Resetear Contraseña' },
-  { path: '/favoritos', title: 'Favoritos' },
-  { path: '/mi-cuenta', title: 'Mi Cuenta' },
+const ROUTE_META_RULES: RouteMetaRule[] = [
+  {
+    path: '/',
+    title: 'ArtDent Insumos Odontológicos',
+    description: 'Shop de ArtDent con insumos odontológicos, novedades, destacados y ofertas para profesionales.',
+    end: true,
+  },
+  {
+    path: '/productos',
+    title: 'Productos',
+    description: 'Catálogo de productos de ArtDent con insumos odontológicos, precios actualizados y opciones de compra online.',
+    end: true,
+  },
+  {
+    path: '/productos/:slug',
+    title: 'Producto',
+    description: 'Detalle del producto en el shop de ArtDent con imágenes, precio, stock y opciones de compra.',
+  },
+  {
+    path: '/nosotros',
+    title: 'Nosotros',
+    description: 'Conocé ArtDent, nuestra visión, experiencia y compromiso con profesionales de la odontología.',
+  },
+  {
+    path: '/contacto',
+    title: 'Contacto',
+    description: 'Contactate con ArtDent para consultas comerciales, soporte y atención del shop odontológico.',
+  },
+  {
+    path: '/defensa-consumidor',
+    title: 'Defensa del Consumidor',
+    description: 'Información de defensa del consumidor, derechos y canales de contacto disponibles en ArtDent.',
+  },
+  {
+    path: '/privacidad',
+    title: 'Política de Privacidad',
+    description: 'Cómo ArtDent recopila, utiliza y protege los datos personales dentro de su e-commerce.',
+  },
+  {
+    path: '/terminos',
+    title: 'Términos y Condiciones',
+    description: 'Términos y condiciones de uso del e-commerce de ArtDent, compras, pagos, envíos y devoluciones.',
+  },
+  {
+    path: '/cookies',
+    title: 'Política de Cookies',
+    description: 'Política de cookies y tecnologías de seguimiento utilizadas en el sitio de ArtDent.',
+  },
+  {
+    path: '/devoluciones',
+    title: 'Cambios y Devoluciones',
+    description: 'Condiciones de cambios, devoluciones y gestión postventa para compras realizadas en ArtDent.',
+  },
+  {
+    path: '/preguntas-frecuentes',
+    title: 'Preguntas Frecuentes',
+    description: 'Respuestas a las consultas más comunes sobre pedidos, pagos, envíos y funcionamiento del shop de ArtDent.',
+  },
+  {
+    path: '/ayuda',
+    title: 'Ayuda',
+    description: 'Centro de ayuda de ArtDent con asistencia para navegar, comprar y gestionar pedidos.',
+  },
+  {
+    path: '/politicas',
+    title: 'Políticas',
+    description: 'Resumen de políticas comerciales, operativas y legales del e-commerce de ArtDent.',
+  },
+  {
+    path: '/comparar',
+    title: 'Comparar Productos',
+    description: 'Compará insumos odontológicos del catálogo de ArtDent para elegir la opción más adecuada.',
+  },
+  {
+    path: '/carrito',
+    title: 'Carrito',
+    description: 'Resumen temporal de tu carrito de compras en ArtDent.',
+    noindex: true,
+  },
+  {
+    path: '/checkout',
+    title: 'Checkout',
+    description: 'Finalización segura de tu compra en el shop de ArtDent.',
+    noindex: true,
+  },
+  {
+    path: '/pedido/:code',
+    title: 'Detalle del Pedido',
+    description: 'Seguimiento y detalle de un pedido realizado en el shop de ArtDent.',
+    noindex: true,
+  },
+  {
+    path: '/iniciar-sesion',
+    title: 'Iniciar Sesión',
+    description: 'Accedé a tu cuenta de ArtDent para gestionar pedidos, favoritos y tus datos.',
+    noindex: true,
+  },
+  {
+    path: '/registrarme',
+    title: 'Crear Cuenta',
+    description: 'Creá tu cuenta en ArtDent para comprar más rápido y acceder a tu historial.',
+    noindex: true,
+  },
+  {
+    path: '/recuperar',
+    title: 'Recuperar Contraseña',
+    description: 'Recuperá el acceso a tu cuenta del shop de ArtDent.',
+    noindex: true,
+  },
+  {
+    path: '/resetear-contrasena',
+    title: 'Resetear Contraseña',
+    description: 'Definí una nueva contraseña para tu cuenta de ArtDent.',
+    noindex: true,
+  },
+  {
+    path: '/favoritos',
+    title: 'Favoritos',
+    description: 'Lista privada de productos favoritos guardados en tu cuenta de ArtDent.',
+    noindex: true,
+  },
+  {
+    path: '/mi-cuenta',
+    title: 'Mi Cuenta',
+    description: 'Panel privado de tu cuenta de ArtDent con pedidos, datos y preferencias.',
+    noindex: true,
+  },
 ]
 
-function resolveRouteTitle(pathname: string) {
-  const match = ROUTE_TITLE_RULES.find((rule) =>
+function resolveRouteMeta(pathname: string) {
+  const match = ROUTE_META_RULES.find((rule) =>
     matchPath({ path: rule.path, end: rule.end ?? true }, pathname)
   )
 
-  if (!match) return 'Página no encontrada | ArtDent'
-  if (match.title === 'ArtDent Insumos Odontológicos') return match.title
+  if (!match) {
+    return {
+      title: 'Página no encontrada | ArtDent',
+      description: 'La página solicitada no existe o fue movida dentro del e-commerce de ArtDent.',
+      noindex: true,
+    }
+  }
 
-  return `${match.title} | ArtDent`
+  return {
+    title: match.title === 'ArtDent Insumos Odontológicos'
+      ? match.title
+      : `${match.title} | ArtDent`,
+    description: match.description,
+    noindex: Boolean(match.noindex),
+  }
 }
 
 function RouteMeta() {
   const { pathname } = useLocation()
-  const pageTitle = useMemo(() => resolveRouteTitle(pathname), [pathname])
+  const pageMeta = useMemo(() => resolveRouteMeta(pathname), [pathname])
+  const canonicalUrl = useMemo(() => `https://shop.artdent.com.ar${pathname}`, [pathname])
+  const robots = pageMeta.noindex ? 'noindex, nofollow' : 'index, follow'
 
   return (
     <Helmet>
-      <title>{pageTitle}</title>
+      <title>{pageMeta.title}</title>
+      <meta name="description" content={pageMeta.description} />
+      <meta property="og:title" content={pageMeta.title} />
+      <meta property="og:description" content={pageMeta.description} />
+      <meta property="og:url" content={canonicalUrl} />
+      <meta name="twitter:title" content={pageMeta.title} />
+      <meta name="twitter:description" content={pageMeta.description} />
+      <meta name="robots" content={robots} />
+      <meta name="googlebot" content={robots} />
+      <link rel="canonical" href={canonicalUrl} />
     </Helmet>
   )
 }
