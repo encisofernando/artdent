@@ -6,6 +6,7 @@ interface SEOHeadProps {
   keywords?: string[]
   image?: string
   url?: string
+  robots?: string
   type?: 'website' | 'product' | 'article'
   productData?: {
     name: string
@@ -27,6 +28,7 @@ export default function SEOHead({
   keywords = [],
   image,
   url,
+  robots = 'index, follow',
   type = 'website',
   productData,
   breadcrumbs,
@@ -180,9 +182,9 @@ export default function SEOHead({
       )}
 
       {/* Robots */}
-      <meta name="robots" content="index, follow" />
-      <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-      <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+      <meta name="robots" content={robots} />
+      <meta name="googlebot" content={robots} />
+      <meta name="bingbot" content={robots} />
 
       {/* Additional meta tags */}
       <meta name="author" content="ArtDent" />

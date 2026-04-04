@@ -114,6 +114,7 @@ export default function Products() {
   const q = searchParams.get('q') || ''
   const categoryId = searchParams.get('cat') || searchParams.get('category_id') || ''
   const category_id = categoryId ? Number(categoryId) : undefined
+  const trimmedQuery = q.trim()
 
   const cart = useCart()
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -189,32 +190,66 @@ export default function Products() {
     })
   }
 
-  const title = q ? `Resultados para "${q}"` : 'Productos'
   const selectedCategory = categories.find((c) => c.id === category_id)
-  const seoTitle = selectedCategory
-    ? `${selectedCategory.name} - Productos`
-    : q
-      ? `Resultados para "${q}"`
+  const hasSearch = trimmedQuery.length > 0
+  const hasCategory = Boolean(selectedCategory)
+  const selectedCategoryName = selectedCategory?.name ?? ''
+  const selectedCategoryUrl = selectedCategory ? `/productos?cat=${selectedCategory.id}` : '/productos'
+
+  const pageTitle = hasSearch
+    ? `Resultados para "${trimmedQuery}"`
+    : hasCategory
+      ? selectedCategoryName
       : 'Productos'
-  const seoDescription = selectedCategory
-    ? `Explorá ${selectedCategory.name} en el shop de ArtDent. Encontrá insumos odontológicos con stock, precios y opciones de compra online.`
-    : q
-      ? `Resultados de búsqueda para "${q}" en el e-commerce de ArtDent.`
-      : 'Catálogo de productos de ArtDent. Encontrá insumos odontológicos, novedades y opciones de compra online.'
+
+  const seoTitle = hasCategory && hasSearch
+    ? `${selectedCategoryName}: resultados para "${trimmedQuery}"`
+    : hasCategory
+      ? `${selectedCategoryName}`
+      : hasSearch
+        ? `Resultados para "${trimmedQuery}"`
+        : 'Productos'
+
+  const seoDescription = hasCategory && hasSearch
+    ? `Resultados para "${trimmedQuery}" dentro de ${selectedCategoryName} en el shop de ArtDent. Consultá insumos odontológicos, stock y opciones de compra online.`
+    : hasCategory
+      ? `Explorá ${selectedCategoryName} en el shop de ArtDent. Encontrá insumos odontológicos con stock, precios y opciones de compra online.`
+      : hasSearch
+        ? `Resultados de búsqueda para "${trimmedQuery}" en el e-commerce de ArtDent.`
+        : 'Catálogo de productos de ArtDent. Encontrá insumos odontológicos, novedades y opciones de compra online.'
+
+  const seoKeywords = [
+    'artdent',
+    'productos dentales',
+    'insumos odontológicos',
+    ...(selectedCategory ? [selectedCategoryName] : []),
+    ...(trimmedQuery ? [trimmedQuery] : []),
+  ]
+
+  const seoUrl = (() => {
+    const params = new URLSearchParams()
+    if (category_id) params.set('cat', String(category_id))
+    if (trimmedQuery) params.set('q', trimmedQuery)
+    const query = params.toString()
+    return query ? `/productos?${query}` : '/productos'
+  })()
+
+  const seoRobots = hasSearch ? 'noindex, follow' : 'index, follow'
+  const seoBreadcrumbs = [
+    { name: 'Inicio', url: '/' },
+    { name: 'Productos', url: '/productos' },
+    ...(selectedCategory ? [{ name: selectedCategoryName, url: selectedCategoryUrl }] : []),
+  ]
 
   return (
     <>
       <SEOHead
         title={seoTitle}
         description={seoDescription}
-        keywords={[
-          'artdent',
-          'productos dentales',
-          'insumos odontológicos',
-          ...(selectedCategory ? [selectedCategory.name] : []),
-          ...(q ? [q] : []),
-        ]}
-        url={q || selectedCategory ? `/productos${window.location.search}` : '/productos'}
+        keywords={seoKeywords}
+        url={seoUrl}
+        robots={seoRobots}
+        breadcrumbs={seoBreadcrumbs}
       />
 
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -283,10 +318,16 @@ export default function Products() {
           {/* Header */}
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
               {!isLoading && (
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {selectedCategory ? selectedCategory.name : 'Todos los productos'}
+                  {hasCategory && hasSearch
+                    ? `${selectedCategory?.name} · búsqueda activa`
+                    : selectedCategory
+                      ? `Categoría ${selectedCategory.name}`
+                      : hasSearch
+                        ? 'Resultados del catálogo'
+                        : 'Todos los productos'}
                   {totalProducts > 0 && ` · ${totalProducts.toLocaleString('es-AR')} resultados`}
                 </p>
               )}
