@@ -1,6 +1,6 @@
 {
   "name": "artdent-print-server",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Servidor de Impresion ArtDent",
   "main": "main.js",
   "author": "ArtDent",
@@ -8,12 +8,15 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder",
+    "predist:win": "node scripts/generate-installer-assets.js",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux"
   },
   "build": {
     "appId": "com.artdent.print",
-    "productName": "ArtDentPrint",
+    "productName": "ArtDent Print Service",
+    "executableName": "ArtDentPrint",
+    "msiProjectCreated": "scripts/customize-msi.js",
     "icon": "icon.png",
     "win": {
       "target": [
@@ -22,12 +25,17 @@
       "signAndEditExecutable": false
     },
     "msi": {
+      "artifactName": "ArtDent Print Service ${version}.${ext}",
       "oneClick": false,
       "perMachine": true,
+      "menuCategory": "ArtDent",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
-      "shortcutName": "ArtDent Print Service"
+      "shortcutName": "ArtDent Print Service",
+      "additionalLightArgs": [
+        "-cultures:es-es"
+      ]
     },
     "linux": {
       "target": [
@@ -40,7 +48,9 @@
     },
     "deb": {
       "packageCategory": "utils",
-      "depends": ["libcups2"]
+      "depends": [
+        "libcups2"
+      ]
     }
   },
   "dependencies": {

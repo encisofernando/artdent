@@ -151,8 +151,9 @@ class SaleController extends Controller
     {
         $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.product_id' => 'nullable|integer|exists:products,id',
             'items.*.variant_id' => 'nullable|integer|exists:product_variants,id',
+            'items.*.name' => 'required|string|max:255',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.discount' => 'nullable|numeric|min:0',
@@ -285,14 +286,15 @@ class SaleController extends Controller
                     ? round($lineTotal - ($lineTotal / (1 + $item['tax_rate'])), 2)
                     : 0;
 
-                $product = Product::find($item['product_id']);
+                $productId = $item['product_id'] ?? null;
+                $product = $productId ? Product::find($productId) : null;
                 $variantId = isset($item['variant_id']) ? (int) $item['variant_id'] : null;
 
                 SaleItem::create([
                     'sale_id' => $sale->id,
-                    'product_id' => $item['product_id'],
+                    'product_id' => $productId,
                     'variant_id' => $variantId,
-                    'product_name' => $item['name'] ?? ($product->name ?? 'Producto'),
+                    'product_name' => $item['name'] ?? ($product->name ?? 'Producto manual'),
                     'sku' => $item['variant_sku'] ?? $product->sku ?? null,
                     'quantity' => $qty,
                     'unit_price' => $unitPrice,
@@ -303,7 +305,7 @@ class SaleController extends Controller
 
                 if ($product && $product->track_stock) {
                     $stock = Stock::firstOrCreate(
-                        ['product_id' => $item['product_id'], 'variant_id' => $variantId, 'warehouse_id' => $warehouse->id],
+                        ['product_id' => $productId, 'variant_id' => $variantId, 'warehouse_id' => $warehouse->id],
                         ['quantity' => 0]
                     );
 
@@ -313,7 +315,7 @@ class SaleController extends Controller
                     $stock->update(['quantity' => $stockAfter]);
 
                     StockMovement::create([
-                        'product_id' => $item['product_id'],
+                        'product_id' => $productId,
                         'variant_id' => $variantId,
                         'warehouse_id' => $warehouse->id,
                         'user_id' => $userId,
@@ -326,7 +328,7 @@ class SaleController extends Controller
                         'note' => "Venta POS {$saleNumber}",
                     ]);
 
-                    StockAlertService::checkAndNotify($item['product_id'], $variantId, $warehouse->id);
+                    StockAlertService::checkAndNotify($productId, $variantId, $warehouse->id);
                 }
             }
 

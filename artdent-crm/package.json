@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "postbuild": "mv public/build/.vite/manifest.json public/build/manifest.json",
+        "postbuild": "node -e \"const fs=require('fs');const src='public/build/.vite/manifest.json';const dest='public/build/manifest.json';if(fs.existsSync(src)){fs.renameSync(src,dest)}\"",
         "dev": "vite"
     },
     "devDependencies": {

@@ -3,7 +3,7 @@
  * Mobile: Catálogo full-screen + FAB carrito → Bottom Sheet
  * Desktop: Split layout 65/35
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import FacturaA4 from '@/Components/Sale/FacturaA4';
 import { Ticket80, Ticket57 } from '@/Components/Sale/TicketBase';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -93,6 +93,13 @@ const G_bar     = `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`;
 const G_primary = `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`;
 const fmtDate   = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
 const todayIso  = () => new Date().toISOString().slice(0, 10);
+const toMoney = (value) => {
+    const number = Number(String(value ?? '').replace(',', '.'));
+    if (!Number.isFinite(number)) return 0;
+    return Math.max(0, Math.round(number * 100) / 100);
+};
+const lineTotalFor = (unitPrice, quantity, discount = 0) =>
+    toMoney(toMoney(unitPrice) * Number(quantity || 0) - toMoney(discount));
 // ─── Ticket80 / Ticket57 — importados desde @/Components/Sale/TicketBase ─────
 
 export default function Create({ auth, products, customers = [], company = null }) {
@@ -125,6 +132,9 @@ export default function Create({ auth, products, customers = [], company = null 
     const [newProd, setNewProd]           = useState({ name: '', sku: '', price: '', tax_rate: '21' });
     const [savingProd, setSavingProd]     = useState(false);
     const [prodError, setProdError]       = useState('');
+    const [manualOpen, setManualOpen]     = useState(false);
+    const [manualItem, setManualItem]     = useState({ name: '', price: '' });
+    const [manualError, setManualError]   = useState('');
 
     // Alta rápida cliente
     const [altaClienteOpen, setAltaClienteOpen] = useState(false);
@@ -147,6 +157,7 @@ export default function Create({ auth, products, customers = [], company = null 
     const [waStep, setWaStep]             = useState('actions'); // 'actions' | 'phone'
     const [waLoading, setWaLoading]       = useState(false);
     const [pdfUrl, setPdfUrl]             = useState(null);
+    const priceDraftsRef = useRef({});
 
     // ── Derived ──────────────────────────────────────────────
     const filteredProducts = useMemo(() => {
@@ -162,7 +173,7 @@ export default function Create({ auth, products, customers = [], company = null 
     const totals = useMemo(() => {
         let total = 0, neto = 0, iva = 0;
         cart.forEach(item => {
-            const lineTotal = item.total;
+            const lineTotal = Number(item.total || 0);
             total += lineTotal;
             if (item.tax_rate > 0 && ['A', 'B', 'NCA', 'NDA', 'NCB', 'NDB'].includes(receiptType)) {
                 const lineNeto = lineTotal / (1 + item.tax_rate);
@@ -204,7 +215,7 @@ export default function Create({ auth, products, customers = [], company = null 
 
         const key      = `${product.id}_0`;
         const existing = cart.find(i => i.cartKey === key);
-        const price    = Number(product.price);
+        const price    = toMoney(product.price);
         const taxRate  = Number(product.tax_rate || 21) / 100;
 
         if (existing) {
@@ -212,7 +223,7 @@ export default function Create({ auth, products, customers = [], company = null 
         } else {
             setCart(prev => [...prev, {
                 cartKey: key, product_id: product.id, variant_id: null,
-                name: product.name, unit_price: price, tax_rate: taxRate,
+                name: product.name, unit_price: price, catalog_price: price, tax_rate: taxRate,
                 quantity: 1, discount: 0, total: price,
             }]);
         }
@@ -221,7 +232,7 @@ export default function Create({ auth, products, customers = [], company = null 
     const addVariantToCart = (product, variant) => {
         const key      = `${product.id}_${variant.id}`;
         const existing = cart.find(i => i.cartKey === key);
-        const price    = Number(variant.price || product.price);
+        const price    = toMoney(variant.price || product.price);
         const taxRate  = Number(product.tax_rate || 21) / 100;
 
         if (existing) {
@@ -231,25 +242,69 @@ export default function Create({ auth, products, customers = [], company = null 
                 cartKey: key, product_id: product.id, variant_id: variant.id,
                 variant_sku: variant.sku,
                 name: `${product.name} — ${variant.label}`,
-                unit_price: price, tax_rate: taxRate,
+                unit_price: price, catalog_price: price, tax_rate: taxRate,
                 quantity: 1, discount: 0, total: price,
             }]);
         }
         setVariantProduct(null);
     };
 
+    const addManualItemToCart = () => {
+        const name = manualItem.name.trim();
+        const price = toMoney(manualItem.price);
+
+        if (!name || price <= 0) {
+            setManualError('Completá nombre y precio.');
+            return;
+        }
+
+        const key = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        setCart(prev => [...prev, {
+            cartKey: key,
+            product_id: null,
+            variant_id: null,
+            name,
+            unit_price: price,
+            catalog_price: null,
+            tax_rate: 0.21,
+            quantity: 1,
+            discount: 0,
+            total: price,
+            is_custom: true,
+        }]);
+        setManualItem({ name: '', price: '' });
+        setManualError('');
+        setManualOpen(false);
+    };
+
     const updateQty = (cartKey, qty) => {
         if (qty <= 0) return removeFromCart(cartKey);
         setCart(prev => prev.map(i => i.cartKey === cartKey
-            ? { ...i, quantity: qty, total: i.unit_price * qty - i.discount }
+            ? { ...i, quantity: qty, total: lineTotalFor(i.unit_price, qty, i.discount) }
             : i
         ));
     };
 
-    const removeFromCart = (cartKey) =>
+    const updateUnitPriceDraft = (cartKey, value) => {
+        priceDraftsRef.current[cartKey] = String(value ?? '').replace(/[^\d.,]/g, '').replace(',', '.');
+    };
+
+    const commitUnitPrice = (cartKey, value = priceDraftsRef.current[cartKey]) => {
+        setCart(prev => prev.map(i => {
+            if (i.cartKey !== cartKey) return i;
+            const unitPrice = toMoney(value ?? i.unit_price);
+            return { ...i, unit_price: unitPrice, total: lineTotalFor(unitPrice, i.quantity, i.discount) };
+        }));
+        delete priceDraftsRef.current[cartKey];
+    };
+
+    const removeFromCart = (cartKey) => {
+        delete priceDraftsRef.current[cartKey];
         setCart(prev => prev.filter(i => i.cartKey !== cartKey));
+    };
 
     const clearCart = () => {
+        priceDraftsRef.current = {};
         setCart([]);
         setCustomerName('Consumidor Final');
         setCustomerId('');
@@ -302,13 +357,24 @@ export default function Create({ auth, products, customers = [], company = null 
             amount: Number(split.amount || 0),
         }));
 
+        const saleItems = cart.map(({ catalog_price, is_custom, ...item }) => {
+            const unitPrice = toMoney(priceDraftsRef.current[item.cartKey] ?? item.unit_price);
+            const discount = toMoney(item.discount);
+            return {
+                ...item,
+                unit_price: unitPrice,
+                discount,
+                total: lineTotalFor(unitPrice, item.quantity, discount),
+            };
+        });
+
         const payload = {
             customer_id: customerId,
             customer_name: customerName,
             notes,
             issue_date: issueDate,
             payments: normalizedPayments,
-            items: cart,
+            items: saleItems,
             subtotal: totals.neto,
             discount_amount: 0,
             tax_amount: totals.iva,
@@ -630,41 +696,106 @@ export default function Create({ auth, products, customers = [], company = null 
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {cart.map(item => (
-                            <div key={item.cartKey}
-                                className="flex items-center gap-3 p-[8px_10px] rounded-[10px]"
-                                style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${D.border}` }}>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-[12.5px] font-bold leading-[1.2] mb-0.5 truncate" style={{ color: D.text }}>
-                                        {item.name}
+                        {cart.map(item => {
+                            const isCustom = Boolean(item.is_custom);
+                            const catalogPrice = toMoney(item.catalog_price ?? item.unit_price);
+                            const manualPrice = !isCustom && Math.abs(toMoney(item.unit_price) - catalogPrice) > 0.009;
+
+                            return (
+                                <div key={item.cartKey}
+                                    className="flex items-start gap-3 p-[8px_10px] rounded-[10px]"
+                                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${D.border}` }}>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[12.5px] font-bold leading-[1.2] mb-1 truncate" style={{ color: D.text }}>
+                                            {item.name}
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <label
+                                                htmlFor={`price-${item.cartKey}`}
+                                                className="text-[10px] font-bold uppercase"
+                                                style={{ color: D.muted }}
+                                            >
+                                                Precio
+                                            </label>
+                                            <div
+                                                className="flex h-[26px] w-[112px] items-center px-0"
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    boxShadow: 'none',
+                                                }}
+                                            >
+                                                <span className="text-[12px] font-bold" style={{ color: D.muted }}>$</span>
+                                                <input
+                                                    id={`price-${item.cartKey}`}
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    defaultValue={item.unit_price}
+                                                    onChange={(e) => updateUnitPriceDraft(item.cartKey, e.target.value)}
+                                                    onBlur={(e) => commitUnitPrice(item.cartKey, e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') e.currentTarget.blur();
+                                                        if (e.key === 'Escape') {
+                                                            delete priceDraftsRef.current[item.cartKey];
+                                                            e.currentTarget.value = item.unit_price;
+                                                            e.currentTarget.blur();
+                                                        }
+                                                    }}
+                                                    onFocus={(e) => e.target.select()}
+                                                    aria-label={`Precio de ${item.name}`}
+                                                    className="ml-1 w-full min-w-0 bg-transparent p-0 text-right text-[16px] sm:text-[13px] font-extrabold outline-none border-0 shadow-none appearance-none focus:border-0 focus:ring-0"
+                                                    style={{
+                                                        color: manualPrice ? B.blue : D.text,
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        boxShadow: 'none',
+                                                        outline: 'none',
+                                                        padding: 0,
+                                                    }}
+                                                />
+                                            </div>
+                                            {manualPrice && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => commitUnitPrice(item.cartKey, catalogPrice)}
+                                                    className="h-[26px] rounded-lg px-2 text-[10.5px] font-bold"
+                                                    style={{ color: B.blue, background: 'rgba(57,123,156,0.12)' }}
+                                                >
+                                                    Restaurar
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]" style={{ color: D.muted }}>
+                                            <span>{isCustom ? 'Producto manual' : `Catalogo: $${fmt(catalogPrice)}`}</span>
+                                            <span>x {item.quantity}</span>
+                                            <span className="font-bold" style={{ color: B.blue }}>Linea: ${fmt(item.total)}</span>
+                                        </div>
                                     </div>
-                                    <div className="text-[11px]" style={{ color: D.muted }}>
-                                        ${fmt(item.unit_price)} × {item.quantity}
-                                        {' '}<span className="font-bold" style={{ color: B.blue }}>= ${fmt(item.total)}</span>
+                                    <div className="flex items-center gap-1 flex-shrink-0 pt-1">
+                                        <button onClick={() => updateQty(item.cartKey, item.quantity - 1)}
+                                            className="w-[26px] h-[26px] rounded-lg flex items-center justify-center transition-colors"
+                                            style={{ background: 'rgba(255,255,255,0.08)' }}>
+                                            <Minus size={12} color={D.text} />
+                                        </button>
+                                        <span className="w-5 text-center text-[12px] font-extrabold" style={{ color: D.text }}>
+                                            {item.quantity}
+                                        </span>
+                                        <button onClick={() => updateQty(item.cartKey, item.quantity + 1)}
+                                            className="w-[26px] h-[26px] rounded-lg flex items-center justify-center transition-colors"
+                                            style={{ background: 'rgba(255,255,255,0.08)' }}>
+                                            <Plus size={12} color={D.text} />
+                                        </button>
+                                        <button onClick={() => removeFromCart(item.cartKey)}
+                                            className="w-[26px] h-[26px] ml-1 rounded-lg flex items-center justify-center"
+                                            style={{ color: B.red }}>
+                                            <Trash2 size={13} />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                    <button onClick={() => updateQty(item.cartKey, item.quantity - 1)}
-                                        className="w-[26px] h-[26px] rounded-lg flex items-center justify-center transition-colors"
-                                        style={{ background: 'rgba(255,255,255,0.08)' }}>
-                                        <Minus size={12} color={D.text} />
-                                    </button>
-                                    <span className="w-5 text-center text-[12px] font-extrabold" style={{ color: D.text }}>
-                                        {item.quantity}
-                                    </span>
-                                    <button onClick={() => updateQty(item.cartKey, item.quantity + 1)}
-                                        className="w-[26px] h-[26px] rounded-lg flex items-center justify-center transition-colors"
-                                        style={{ background: 'rgba(255,255,255,0.08)' }}>
-                                        <Plus size={12} color={D.text} />
-                                    </button>
-                                    <button onClick={() => removeFromCart(item.cartKey)}
-                                        className="w-[26px] h-[26px] ml-1 rounded-lg flex items-center justify-center"
-                                        style={{ color: B.red }}>
-                                        <Trash2 size={13} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -752,6 +883,21 @@ export default function Create({ auth, products, customers = [], company = null 
                                 </button>
                             )}
                         </div>
+
+                        {/* Producto manual */}
+                        <button
+                            onClick={() => {
+                                setManualItem({ name: '', price: '' });
+                                setManualError('');
+                                setManualOpen(true);
+                            }}
+                            title="Producto manual"
+                            className="h-10 rounded-[10px] px-3 flex items-center justify-center gap-2 border-[1.5px] transition-colors"
+                            style={{ borderColor: `${B.teal}66`, color: B.teal, background: `${B.teal}0D` }}
+                        >
+                            <ReceiptText size={16} />
+                            <span className="hidden sm:inline text-[12px] font-bold">Manual</span>
+                        </button>
 
                         {/* Alta rápida */}
                         <button
@@ -1191,11 +1337,35 @@ export default function Create({ auth, products, customers = [], company = null 
                                         }}
                                     >
                                         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_130px_auto] gap-2 items-center">
-                                            <SearchableSelect
+                                            <select
                                                 value={split.method}
-                                                onChange={(value) => updatePaymentSplit(split.id, { method: value })}
-                                                options={methodOptions}
-                                            />
+                                                onChange={(e) => updatePaymentSplit(split.id, { method: e.target.value })}
+                                                className="w-full min-w-0 outline-none"
+                                                style={{
+                                                    height: 42,
+                                                    padding: '0 12px',
+                                                    borderRadius: 10,
+                                                    background: D.input,
+                                                    border: `1.5px solid ${D.inputBorder}`,
+                                                    color: D.text,
+                                                    fontSize: 13.5,
+                                                    fontWeight: 700,
+                                                    fontFamily: 'inherit',
+                                                }}
+                                            >
+                                                {methodOptions.map((method) => (
+                                                    <option
+                                                        key={method.value}
+                                                        value={method.value}
+                                                        style={{
+                                                            background: isDark ? '#1e293b' : '#ffffff',
+                                                            color: isDark ? '#e2e8f0' : '#0f172a',
+                                                        }}
+                                                    >
+                                                        {method.label}
+                                                    </option>
+                                                ))}
+                                            </select>
 
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold" style={{ color: D.muted }}>$</span>
@@ -1310,6 +1480,87 @@ export default function Create({ auth, products, customers = [], company = null 
                         >
                             {processing ? '...' : hasCuentaCorrienteSplit ? 'Registrar pago mixto' : 'Confirmar cobro'}
                         </Btn>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ═══ MODAL PRODUCTO MANUAL ══════════════════════════════════════ */}
+            <Modal open={manualOpen} onClose={() => setManualOpen(false)} title="Producto manual" D={D}
+                footer={
+                    <>
+                        <Btn variant="ghost" size="sm" onClick={() => setManualOpen(false)} style={{ color: D.muted }}>
+                            Cancelar
+                        </Btn>
+                        <Btn
+                            variant="primary"
+                            size="sm"
+                            disabled={!manualItem.name.trim() || toMoney(manualItem.price) <= 0}
+                            onClick={addManualItemToCart}
+                            style={{ background: B.teal }}
+                        >
+                            Agregar al carrito
+                        </Btn>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    {manualError && (
+                        <div className="p-2.5 rounded-lg text-[12.5px] font-medium text-center"
+                            style={{ background: `${B.red}18`, color: B.red, border: `1px solid ${B.red}33` }}>
+                            {manualError}
+                        </div>
+                    )}
+                    <p className="text-[12px] leading-relaxed" style={{ color: D.muted }}>
+                        Se registra solamente en esta venta. No se crea un artículo ni modifica el catálogo.
+                    </p>
+                    <div>
+                        <label className="block text-[11px] font-bold tracking-widest mb-1.5" style={{ color: D.label }}>
+                            NOMBRE *
+                        </label>
+                        <input
+                            type="text"
+                            value={manualItem.name}
+                            onChange={e => setManualItem({ ...manualItem, name: e.target.value })}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && manualItem.name.trim() && toMoney(manualItem.price) > 0) {
+                                    addManualItemToCart();
+                                }
+                            }}
+                            placeholder="Ej: Ajuste, seña, insumo eventual"
+                            className="w-full outline-none"
+                            style={{
+                                padding: '10px 12px', borderRadius: 11,
+                                border: `1.5px solid ${D.inputBorder}`,
+                                background: D.input, color: D.text, fontSize: 13.5, fontFamily: 'inherit',
+                            }}
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[11px] font-bold tracking-widest mb-1.5" style={{ color: D.label }}>
+                            PRECIO *
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold" style={{ color: D.muted }}>$</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={manualItem.price}
+                                onChange={e => setManualItem({ ...manualItem, price: e.target.value })}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' && manualItem.name.trim() && toMoney(manualItem.price) > 0) {
+                                        addManualItemToCart();
+                                    }
+                                }}
+                                className="w-full outline-none"
+                                style={{
+                                    padding: '10px 12px 10px 24px', borderRadius: 11,
+                                    border: `1.5px solid ${D.inputBorder}`,
+                                    background: D.input, color: D.text, fontSize: 13.5, fontFamily: 'inherit',
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             </Modal>

@@ -114,11 +114,11 @@ class JobController extends Controller
 
             $total = $subtotal - $discount;
 
-            $nextSeq = Job::where('company_id', auth()->user()->company_id)->lockForUpdate()->count() + 1;
-            $jobNumber = 'ORD-'.str_pad($nextSeq, 5, '0', STR_PAD_LEFT);
+            $companyId = (int) auth()->user()->company_id;
+            $jobNumber = $this->generateJobNumber($companyId);
 
             $job = Job::create([
-                'company_id' => auth()->user()->company_id,
+                'company_id' => $companyId,
                 'job_number' => $jobNumber,
                 'dentist_id' => $data['dentist_id'],
                 'patient_id' => $patient?->id,
@@ -153,6 +153,22 @@ class JobController extends Controller
         return redirect()
             ->route('jobs.index')
             ->with('success', 'Trabajo registrado correctamente');
+    }
+
+    protected function generateJobNumber(int $companyId): string
+    {
+        $latestJobNumber = Job::withTrashed()
+            ->where('company_id', $companyId)
+            ->where('job_number', 'like', 'ORD-%')
+            ->lockForUpdate()
+            ->orderByRaw('CAST(SUBSTRING(job_number, 5) AS UNSIGNED) DESC')
+            ->value('job_number');
+
+        $nextSeq = $latestJobNumber
+            ? ((int) substr($latestJobNumber, 4)) + 1
+            : 1;
+
+        return 'ORD-'.str_pad($nextSeq, 5, '0', STR_PAD_LEFT);
     }
 
     protected function chargeAccountIfNeeded(Job $job)
