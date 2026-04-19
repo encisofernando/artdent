@@ -195,9 +195,17 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                             Cuenta corriente pendiente
                                         </p>
                                     </div>
-                                    <span className={`text-sm font-extrabold whitespace-nowrap ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                                        {formatCurrency(item.balance)}
-                                    </span>
+                                    <div className="flex shrink-0 flex-col items-end gap-1">
+                                        <span className={`text-sm font-extrabold whitespace-nowrap ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                                            {formatCurrency(item.balance)}
+                                        </span>
+                                        <Link
+                                            href={route('lab-accounts.show', item.id)}
+                                            className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? 'text-sky-300 hover:text-sky-200' : 'text-sky-700 hover:text-sky-800'}`}
+                                        >
+                                            Ver detalle
+                                        </Link>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -216,8 +224,10 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                             placeholder="Buscar odontólogo..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`block w-full pl-10 pr-3 py-2 border rounded-xl
-                                ${isDark ? 'border-slate-700 text-slate-200' : 'border-slate-200 text-slate-900'}
+                            className={`block w-full pl-10 pr-3 py-2 border rounded-xl outline-none transition-colors
+                                ${isDark
+                                    ? 'bg-slate-950/60 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20'
+                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/15'}
                             `}
                         />
                     </div>
@@ -346,11 +356,16 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                                 {formatDate(move.move_date)}
                                             </td>
 
-                                            <td className="px-6 py-4 font-bold flex gap-2 items-center">
+                                            <td className="px-6 py-4 font-bold">
+                                                <Link
+                                                    href={move.account?.id ? route('lab-accounts.show', move.account.id) : '#'}
+                                                    className="flex items-center gap-2 hover:underline"
+                                                >
                                                 <Building2 size={14} />
                                                 {dentist
                                                     ? `${dentist.name} ${dentist.last_name || ''}`
                                                     : 'N/A'}
+                                                </Link>
                                             </td>
 
                                             <td className="px-6 py-4">

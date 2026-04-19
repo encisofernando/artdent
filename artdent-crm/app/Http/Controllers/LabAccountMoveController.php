@@ -11,6 +11,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class LabAccountMoveController extends Controller
 {
@@ -25,6 +26,7 @@ class LabAccountMoveController extends Controller
         $period = $request->input('period', 'week');
         $from = $request->input('from');
         $to = $request->input('to');
+        $dentistsHaveLastName = Schema::hasColumn('dentists', 'last_name');
 
         [$resolvedFrom, $resolvedTo] = $this->resolveDateRange($period, $from, $to);
 
@@ -34,10 +36,15 @@ class LabAccountMoveController extends Controller
             });
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('account.dentist', function ($dentistQuery) use ($search) {
-                    $dentistQuery->where('name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search, $dentistsHaveLastName) {
+                $q->whereHas('account.dentist', function ($dentistQuery) use ($search, $dentistsHaveLastName) {
+                    $dentistQuery->where(function ($nameQuery) use ($search, $dentistsHaveLastName) {
+                        $nameQuery->where('name', 'like', "%{$search}%");
+
+                        if ($dentistsHaveLastName) {
+                            $nameQuery->orWhere('last_name', 'like', "%{$search}%");
+                        }
+                    });
                 })
                 ->orWhere('description', 'like', "%{$search}%");
             });
@@ -56,13 +63,16 @@ class LabAccountMoveController extends Controller
 
         $debtors = LabAccount::with('dentist')
             ->where('balance', '>', 0)
-            ->whereHas('dentist', function ($q) use ($companyId, $search) {
+            ->whereHas('dentist', function ($q) use ($companyId, $search, $dentistsHaveLastName) {
                 $q->where('company_id', $companyId);
 
                 if ($search) {
-                    $q->where(function ($dentistQuery) use ($search) {
-                        $dentistQuery->where('name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%");
+                    $q->where(function ($dentistQuery) use ($search, $dentistsHaveLastName) {
+                        $dentistQuery->where('name', 'like', "%{$search}%");
+
+                        if ($dentistsHaveLastName) {
+                            $dentistQuery->orWhere('last_name', 'like', "%{$search}%");
+                        }
                     });
                 }
             })
@@ -74,7 +84,7 @@ class LabAccountMoveController extends Controller
                 'dentist' => $account->dentist ? [
                     'id' => $account->dentist->id,
                     'name' => $account->dentist->name,
-                    'last_name' => $account->dentist->last_name,
+                    'last_name' => $dentistsHaveLastName ? $account->dentist->last_name : null,
                 ] : null,
             ])
             ->values();
@@ -129,7 +139,7 @@ class LabAccountMoveController extends Controller
     /**
      * Show form for creating payment
      */
-    public function create()
+    public function create(Request $request)
     {
         $companyId = auth()->user()->company_id ?? 1;
 
@@ -139,7 +149,8 @@ class LabAccountMoveController extends Controller
                 ->orderBy('name')
                 ->get(),
 
-            'paymentMethods' => PaymentMethod::where('is_active', true)->get()
+            'paymentMethods' => PaymentMethod::where('is_active', true)->get(),
+            'selectedDentistId' => $request->integer('dentist_id') ?: null,
         ]);
     }
 
@@ -200,9 +211,11 @@ class LabAccountMoveController extends Controller
      */
     public function show(LabAccountMove $labAccountMove)
     {
-        $labAccountMove->load(['account.dentist.company', 'paymentMethod', 'user']);
+        $labAccountMove->loadMissing(['account.dentist.company', 'paymentMethod', 'user']);
 
-        if ($labAccountMove->account->dentist->company_id !== (auth()->user()->company_id ?? 1)) {
+        $dentist = $labAccountMove->account?->dentist;
+
+        if (! $dentist || $dentist->company_id !== (auth()->user()->company_id ?? 1)) {
             abort(403);
         }
 
