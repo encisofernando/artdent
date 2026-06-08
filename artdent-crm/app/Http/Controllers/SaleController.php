@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
@@ -18,6 +17,7 @@ use App\Models\Warehouse;
 use App\Services\CustomerAccountSaleAllocator;
 use App\Services\EmailTemplateService;
 use App\Services\StockAlertService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -112,9 +112,26 @@ class SaleController extends Controller
                 $arr = $p->toArray();
                 $arr['image'] = $p->product_images->first()?->url ?? null;
                 $variantsMapped = $p->product_variants->map(function ($v) {
-                    $label = $v->variant_attribute_values
-                        ->map(fn ($vav) => $vav->product_attribute_value->value)
-                        ->join(' / ');
+                    $attributes = $v->variant_attribute_values
+                        ->map(function ($vav) {
+                            $value = $vav->product_attribute_value;
+                            $attribute = $value?->product_attribute;
+
+                            if (! $value || ! $attribute) {
+                                return null;
+                            }
+
+                            return [
+                                'attribute_id' => $attribute->id,
+                                'attribute_name' => $attribute->name,
+                                'value_id' => $value->id,
+                                'value' => $value->value,
+                            ];
+                        })
+                        ->filter()
+                        ->values();
+
+                    $label = $attributes->pluck('value')->join(' / ');
 
                     return [
                         'id' => $v->id,
@@ -122,6 +139,7 @@ class SaleController extends Controller
                         'price' => (float) $v->price,
                         'is_active' => $v->is_active,
                         'label' => $label,
+                        'attributes' => $attributes,
                         'stock_quantity' => $v->stocks->sum('quantity'),
                     ];
                 })->values();
@@ -390,9 +408,26 @@ class SaleController extends Controller
                         $arr = $p->toArray();
                         $arr['image'] = $p->product_images->first()?->url ?? null;
                         $variantsMapped = $p->product_variants->map(function ($v) {
-                            $label = $v->variant_attribute_values
-                                ->map(fn ($vav) => $vav->product_attribute_value->value)
-                                ->join(' / ');
+                            $attributes = $v->variant_attribute_values
+                                ->map(function ($vav) {
+                                    $value = $vav->product_attribute_value;
+                                    $attribute = $value?->product_attribute;
+
+                                    if (! $value || ! $attribute) {
+                                        return null;
+                                    }
+
+                                    return [
+                                        'attribute_id' => $attribute->id,
+                                        'attribute_name' => $attribute->name,
+                                        'value_id' => $value->id,
+                                        'value' => $value->value,
+                                    ];
+                                })
+                                ->filter()
+                                ->values();
+
+                            $label = $attributes->pluck('value')->join(' / ');
 
                             return [
                                 'id' => $v->id,
@@ -400,6 +435,7 @@ class SaleController extends Controller
                                 'price' => (float) $v->price,
                                 'is_active' => $v->is_active,
                                 'label' => $label,
+                                'attributes' => $attributes,
                                 'stock_quantity' => $v->stocks->sum('quantity'),
                             ];
                         })->values();

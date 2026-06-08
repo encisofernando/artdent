@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Company;
 use App\Models\CollaboratorReceipt;
+use App\Models\Company;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\IncomeRecord;
@@ -13,7 +13,7 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,6 +25,7 @@ class LabFinanceController extends Controller
         $search = trim((string) $request->input('search', ''));
         $from = $request->input('from');
         $to = $request->input('to');
+        $dentistsHaveLastName = Schema::hasColumn('dentists', 'last_name');
 
         [$start, $end] = $this->resolveDateRange($from, $to);
 
@@ -58,12 +59,17 @@ class LabFinanceController extends Controller
             ->whereHas('account.dentist', fn ($query) => $query->where('company_id', $companyId))
             ->where('type', LabAccountMove::TYPE_PAYMENT)
             ->whereBetween('move_date', [$start->toDateString(), $end->toDateString()])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($inner) use ($search) {
+            ->when($search !== '', function ($query) use ($search, $dentistsHaveLastName) {
+                $query->where(function ($inner) use ($search, $dentistsHaveLastName) {
                     $inner->where('description', 'like', "%{$search}%")
-                        ->orWhereHas('account.dentist', function ($dentistQuery) use ($search) {
-                            $dentistQuery->where('name', 'like', "%{$search}%")
-                                ->orWhere('last_name', 'like', "%{$search}%");
+                        ->orWhereHas('account.dentist', function ($dentistQuery) use ($search, $dentistsHaveLastName) {
+                            $dentistQuery->where(function ($nameQuery) use ($search, $dentistsHaveLastName) {
+                                $nameQuery->where('name', 'like', "%{$search}%");
+
+                                if ($dentistsHaveLastName) {
+                                    $nameQuery->orWhere('last_name', 'like', "%{$search}%");
+                                }
+                            });
                         });
                 });
             })
@@ -78,7 +84,7 @@ class LabFinanceController extends Controller
                 'category' => 'Pago de odontologo',
                 'date' => optional($item->move_date)->toDateString(),
                 'description' => $item->description ?: 'Pago recibido de odontologo',
-                'party' => trim(($item->account?->dentist?->name ?? '').' '.($item->account?->dentist?->last_name ?? '')) ?: null,
+                'party' => trim(($item->account?->dentist?->name ?? '').' '.($dentistsHaveLastName ? ($item->account?->dentist?->last_name ?? '') : '')) ?: null,
                 'payment_method' => $item->paymentMethod?->name,
                 'amount' => (float) $item->amount,
                 'notes' => null,

@@ -10,3 +10,7 @@ export async function createMpPreference(order_code: string): Promise<MpPreferen
   const { data } = await http.post('/payment/mp/create', { order_code })
   return data
 }
+
+export function getMpCheckoutUrl(pref: MpPreference): string {
+  return pref.sandbox_init_point || pref.init_point
+}

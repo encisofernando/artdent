@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'
+const usesLocalTunnel = /\.loca\.lt(\/|$)/i.test(baseURL)
 
 /** Origen del backend (sin /api), para construir URLs de storage */
 export const backendOrigin = baseURL.replace(/\/api\/?$/, '')
@@ -8,7 +9,8 @@ export const backendOrigin = baseURL.replace(/\/api\/?$/, '')
 export const http = axios.create({
   baseURL,
   headers: {
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    ...(usesLocalTunnel ? { 'bypass-tunnel-reminder': 'true' } : {}),
   }
 })
 

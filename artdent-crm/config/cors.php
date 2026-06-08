@@ -28,7 +28,10 @@ return [
         'http://127.0.0.1:8080',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://[a-z0-9]+\.lhr\.life$#i',
+        '#^https://[a-z0-9]+\.loca\.lt$#i',
+    ],
 
     'allowed_headers' => ['*'],
 

@@ -13,7 +13,7 @@ const TRACKING_STATUS_LABELS: Record<string, string> = {
 import { getOrder } from '../api/orders'
 import { useAuth } from '../store/auth'
 import { getCustomerOrder, cancelOrder, changePaymentMethod } from '../api/customer'
-import { createMpPreference } from '../api/payment'
+import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
 import { getPaymentOptions, PaymentOption } from '../api/paymentOptions'
 
 const LS_LAST_EMAIL = 'artdent_last_checkout_email'
@@ -273,7 +273,7 @@ export default function OrderDetail() {
 
   const mpMut = useMutation({
     mutationFn: () => createMpPreference(code),
-    onSuccess: (pref) => { window.location.href = pref.init_point },
+    onSuccess: (pref) => { window.location.href = getMpCheckoutUrl(pref) },
   })
 
   const cancelMut = useMutation({

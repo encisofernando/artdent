@@ -13,7 +13,9 @@ class EcommercePaymentConfigController extends Controller
 {
     public function index(): Response
     {
-        $configs = EcommercePaymentConfig::orderBy('sort_order')->get();
+        $configs = EcommercePaymentConfig::orderBy('sort_order')
+            ->get()
+            ->map(fn (EcommercePaymentConfig $config) => $config->toMaskedArray());
 
         $pickupPoints = ShippingPickupPoint::query()
             ->where('is_active', true)
@@ -48,18 +50,25 @@ class EcommercePaymentConfigController extends Controller
             'config.payment_url' => ['nullable', 'url', 'max:500'],
         ]);
 
-        $config->update($validated);
+        $existingConfig = is_array($config->config) ? $config->config : [];
+        $incomingConfig = is_array($validated['config'] ?? null) ? $validated['config'] : [];
 
-        // Return config with secret keys masked
-        $data = $config->fresh()->toArray();
         if ($type === 'mercadopago') {
-            if (! empty($data['config']['access_token'])) {
-                $data['config']['access_token'] = '••••••••'.substr($data['config']['access_token'], -6);
-            }
-            if (! empty($data['config']['webhook_secret'])) {
-                $data['config']['webhook_secret'] = '••••••••'.substr($data['config']['webhook_secret'], -6);
+            foreach (['access_token', 'webhook_secret'] as $secretKey) {
+                if (
+                    array_key_exists($secretKey, $incomingConfig)
+                    && EcommercePaymentConfig::isMaskedSecretValue($incomingConfig[$secretKey])
+                ) {
+                    $incomingConfig[$secretKey] = $existingConfig[$secretKey] ?? null;
+                }
             }
         }
+
+        $validated['config'] = array_merge($existingConfig, $incomingConfig);
+
+        $config->update($validated);
+
+        $data = $config->fresh()->toMaskedArray();
 
         return response()->json($data);
     }

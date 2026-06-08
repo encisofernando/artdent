@@ -32,8 +32,14 @@ class MercadoPagoReportService
             ->where('type', 'mercadopago')
             ->first();
 
-        if ($mpConfig && ! empty($mpConfig->config['access_token'])) {
-            $this->accessToken = $mpConfig->config['access_token'];
+        if ($mpConfig) {
+            $token = $mpConfig->configValue('access_token');
+
+            if (! empty($token)) {
+                $this->accessToken = $token;
+            } else {
+                $this->accessToken = config('services.mercadopago.access_token', '');
+            }
         } else {
             $this->accessToken = config('services.mercadopago.access_token', '');
         }

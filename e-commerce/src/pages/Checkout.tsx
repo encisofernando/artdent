@@ -7,7 +7,7 @@ import { getShippingOptions, type PickupPoint, type MotoCompany } from '../api/s
 import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
 import { useCart } from '../store/cart'
 import { useAuth } from '../store/auth'
-import { createMpPreference } from '../api/payment'
+import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
 import CouponInput from '../components/CouponInput'
 
 function formatMoney(n: number) {
@@ -677,7 +677,7 @@ export default function Checkout() {
     setMpLoading(true)
     try {
       const pref = await createMpPreference(orderCode)
-      window.location.href = pref.init_point
+      window.location.href = getMpCheckoutUrl(pref)
     } catch {
       setError('No se pudo iniciar el pago con MercadoPago.')
       setMpLoading(false)

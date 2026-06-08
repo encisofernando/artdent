@@ -48,8 +48,9 @@ class DashboardController extends Controller
         $avgTicket = $totalSales > 0 ? round($revenue / $totalSales, 2) : 0.0;
         $newCustomers = Customer::whereBetween('created_at', [$start, $end])->count();
 
-        // ── Expenses ──────────────────────────────────────────────────────────
+        // ── Expenses (Gestión only, exclude lab scope) ────────────────────────
         $expenses = (float) Expense::where('company_id', $companyId)
+            ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
             ->whereBetween('expense_date', [$start, $end])
             ->sum('amount');
 
@@ -86,6 +87,7 @@ class DashboardController extends Controller
         $prevAvgTicket = $prevTotalSales > 0 ? round($prevRevenue / $prevTotalSales, 2) : 0.0;
         $prevNewCustomers = Customer::whereBetween('created_at', [$prevStart, $prevEnd])->count();
         $prevExpenses = (float) Expense::where('company_id', $companyId)
+            ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
             ->whereBetween('expense_date', [$prevStart, $prevEnd])
             ->sum('amount');
         $prevCashFlow = $prevRevenue - $prevExpenses;
@@ -245,6 +247,7 @@ class DashboardController extends Controller
                     ->sum('total');
 
                 $exp = (float) Expense::where('company_id', $companyId)
+                    ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
                     ->whereBetween('expense_date', [$hStart, $hEnd])
                     ->sum('amount');
 
@@ -277,6 +280,7 @@ class DashboardController extends Controller
                     ->sum('total');
 
                 $exp = (float) Expense::where('company_id', $companyId)
+                    ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
                     ->whereBetween('expense_date', [$mStart, $mEnd])
                     ->sum('amount');
 
@@ -309,6 +313,7 @@ class DashboardController extends Controller
                 ->sum('total');
 
             $exp = (float) Expense::where('company_id', $companyId)
+                ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
                 ->whereBetween('expense_date', [$dStart, $dEnd])
                 ->sum('amount');
 

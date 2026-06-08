@@ -78,8 +78,14 @@ class MercadoPagoRefundService
             ->where('type', 'mercadopago')
             ->first();
 
-        return ($mpConfig && ! empty($mpConfig->config['access_token']))
-            ? $mpConfig->config['access_token']
-            : (string) config('services.mercadopago.access_token', '');
+        if ($mpConfig) {
+            $token = $mpConfig->configValue('access_token');
+
+            if (! empty($token)) {
+                return $token;
+            }
+        }
+
+        return (string) config('services.mercadopago.access_token', '');
     }
 }

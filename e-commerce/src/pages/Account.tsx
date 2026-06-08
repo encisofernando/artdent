@@ -561,9 +561,9 @@ function PayOrderButton({ code, failed }: { code: string; failed?: boolean }) {
   const pay = async () => {
     setLoading(true); setErr(null)
     try {
-      const { createMpPreference } = await import('../api/payment')
+      const { createMpPreference, getMpCheckoutUrl } = await import('../api/payment')
       const pref = await createMpPreference(code)
-      window.location.href = pref.init_point
+      window.location.href = getMpCheckoutUrl(pref)
     } catch (e: any) {
       setErr(e?.response?.data?.message ?? 'Error al iniciar el pago.')
       setLoading(false)

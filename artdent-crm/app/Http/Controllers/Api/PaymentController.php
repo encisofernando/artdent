@@ -19,8 +19,12 @@ class PaymentController extends Controller
             ->where('type', 'mercadopago')
             ->first();
 
-        if ($mpConfig && ! empty($mpConfig->config['access_token'])) {
-            return $mpConfig->config['access_token'];
+        if ($mpConfig) {
+            $token = $mpConfig->configValue('access_token');
+
+            if (! empty($token)) {
+                return $token;
+            }
         }
 
         return config('services.mercadopago.access_token', '');
@@ -37,8 +41,12 @@ class PaymentController extends Controller
             ->where('type', 'mercadopago')
             ->first();
 
-        if ($mpConfig && ! empty($mpConfig->config['webhook_secret'])) {
-            return $mpConfig->config['webhook_secret'];
+        if ($mpConfig) {
+            $secret = $mpConfig->configValue('webhook_secret');
+
+            if (! empty($secret)) {
+                return $secret;
+            }
         }
 
         return config('services.mercadopago.webhook_secret', '');

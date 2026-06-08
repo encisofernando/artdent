@@ -160,6 +160,24 @@ function executePrint(html, mode, res = null, done = null) {
 
     workerWindow.webContents.once('did-finish-load', async () => {
         await waitForWorkerAssets();
+
+        // Measure actual content height so we don't advance blank paper.
+        // CSS pixels → microns: px / 96 dpi * 25.4 mm/in * 1000 µm/mm
+        let heightMicrons = 200000; // 200 mm safety fallback
+        try {
+            const contentPx = await workerWindow.webContents.executeJavaScript(`
+                Math.ceil(Math.max(
+                    document.body ? document.body.scrollHeight : 0,
+                    document.documentElement ? document.documentElement.scrollHeight : 0
+                ))
+            `);
+            if (contentPx > 0) {
+                heightMicrons = Math.ceil(contentPx / 96 * 25.4 * 1000) + 8000; // +8 mm bottom margin
+            }
+        } catch (e) {
+            addLog(`Aviso al medir alto: ${e.message}`, 'error');
+        }
+
         workerWindow.webContents.print({
             silent: true,
             printBackground: true,
@@ -167,7 +185,7 @@ function executePrint(html, mode, res = null, done = null) {
             margins: { marginType: 'none' },
             pageSize: {
                 width: widthMicrons,
-                height: 200000
+                height: heightMicrons,
             }
         }, (success, error) => {
             if (!success) {

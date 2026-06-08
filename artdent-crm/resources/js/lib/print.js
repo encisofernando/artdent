@@ -1,6 +1,7 @@
 const DEFAULT_PRINT_SERVER_URL = import.meta.env.VITE_PRINT_SERVER_URL || 'http://localhost:1234/print';
 
 export const TICKET_FORMAT_STORAGE_KEY = 'artdent_ticket_format';
+export const PRINT_BACKEND_KEY = 'artdent_print_backend';
 export const MONTSERRAT_PRINT_HEAD = '<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">';
 
 const THERMAL_MODES = new Set(['80mm', '57mm', '54mm']);
@@ -49,6 +50,25 @@ export function setStoredTicketFormat(format) {
     }
 
     return format;
+}
+
+export function getStoredPrintBackend() {
+    if (typeof window === 'undefined') return 'electron';
+    try {
+        return window.localStorage.getItem(PRINT_BACKEND_KEY) || 'electron';
+    } catch {
+        return 'electron';
+    }
+}
+
+export function setStoredPrintBackend(backend) {
+    if (typeof window === 'undefined') return backend;
+    try {
+        window.localStorage.setItem(PRINT_BACKEND_KEY, backend);
+    } catch {
+        // ignore
+    }
+    return backend;
 }
 
 export function collectPrintAssets() {
@@ -255,13 +275,52 @@ export async function printElementWithElectron({
 
     const printableElement = target.cloneNode(true);
     await inlineElementImages(printableElement);
+    const bodyHtml = printableElement.outerHTML;
+
+    // If the user has configured browser/system print, skip Electron entirely.
+    // For thermal modes we also set an explicit @page size and remove the zoom,
+    // otherwise the browser renders to A4 and the zoom inflates content across 2+ pages.
+    if (getStoredPrintBackend() === 'browser') {
+        const isThermalBrowser = isThermalMode(mode);
+        const normalizedModeBrowser = normalizePrintMode(mode);
+        const thermalMmBrowser = normalizedModeBrowser === '57mm' ? 50 : 74;
+        const browserHtml = buildPrintHtml({
+            title,
+            bodyHtml,
+            pageSize: isThermalBrowser ? `${thermalMmBrowser}mm auto` : pageSize,
+            zoneWidth: isThermalBrowser ? `${thermalMmBrowser}mm` : zoneWidth,
+            zoom: isThermalBrowser ? 1 : zoom,
+            extraHead,
+            extraStyles,
+            includeDocumentStyles,
+            zoneSelector,
+            bodyStyle,
+        });
+        openBrowserPrint(browserHtml, { delay: browserDelay });
+        return { ok: true, html: browserHtml, fallbackUsed: false };
+    }
+
+    // For Electron thermal printing we must NOT apply the browser zoom factor.
+    // The zoom (e.g. 2.215×) inflates the content to ~576 px while the thermal
+    // page is only ~280 px (74 mm @ 96 dpi), so Chromium tries to scale it back
+    // down and the ticket ends up tiny or reverts to A4.
+    // - webContents.print() path: no zoom needed; let the explicit @page size drive layout.
+    // - ESC/POS path: executePrintLinuxESCPOS already applies its own scale via JS.
+    // Also set the @page size explicitly so Chromium 130+ doesn't fall back to the
+    // system default paper (A4) when "auto" is specified.
+    const isThermal = isThermalMode(mode);
+    const normalizedMode = normalizePrintMode(mode);
+    const thermalWidthMm = normalizedMode === '57mm' ? 50 : 74;
+    const electronPageSize = isThermal && pageSize === 'auto'
+        ? `${thermalWidthMm}mm auto`
+        : pageSize;
 
     const html = buildPrintHtml({
         title,
-        bodyHtml: printableElement.outerHTML,
-        pageSize,
+        bodyHtml,
+        pageSize: electronPageSize,
         zoneWidth,
-        zoom,
+        zoom: isThermal ? 1 : zoom,
         extraHead,
         extraStyles,
         includeDocumentStyles,
@@ -272,7 +331,24 @@ export async function printElementWithElectron({
     const result = await printHtmlWithElectron({ html, mode });
 
     if (!result.ok && fallbackToBrowser) {
-        openBrowserPrint(html, { delay: browserDelay });
+        // For the browser fallback we also use explicit @page size + no zoom so the
+        // content doesn't render on A4 or overflow to multiple pages.
+        const fallbackHtml = isThermal
+            ? buildPrintHtml({
+                title,
+                bodyHtml,
+                pageSize: `${thermalWidthMm}mm auto`,
+                zoneWidth: `${thermalWidthMm}mm`,
+                zoom: 1,
+                extraHead,
+                extraStyles,
+                includeDocumentStyles,
+                zoneSelector,
+                bodyStyle,
+            })
+            : html;
+
+        openBrowserPrint(fallbackHtml, { delay: browserDelay });
     }
 
     return {

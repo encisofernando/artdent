@@ -28,14 +28,29 @@ const DEFAULT_CHATBOT_MODELS = {
 export default function Settings({ company, accountingSettings }) {
     const { isDark } = useTheme();
     const { flash } = usePage().props;
-    const [activeTab, setActiveTab] = useState('perfil');
+    const [activeTab, setActiveTab] = useState(() => {
+        try {
+            const t = new URLSearchParams(window.location.search).get('tab');
+            if (['perfil', 'fiscal', 'contable', 'ubicacion', 'preferencias', 'emails', 'afip'].includes(t)) {
+                return t;
+            }
+        } catch {}
+        return 'perfil';
+    });
     const [ticketFormat, setTicketFormat] = useState(
         () => localStorage.getItem('artdent_ticket_format') || '80mm'
+    );
+    const [printBackend, setPrintBackend] = useState(
+        () => localStorage.getItem('artdent_print_backend') || 'electron'
     );
 
     const saveTicketFormat = (fmt) => {
         setTicketFormat(fmt);
         localStorage.setItem('artdent_ticket_format', fmt);
+    };
+    const savePrintBackend = (b) => {
+        setPrintBackend(b);
+        localStorage.setItem('artdent_print_backend', b);
     };
     const [logoPreview, setLogoPreview] = useState(company.logo_url || null);
     const [labLogoPreview, setLabLogoPreview] = useState(company.lab_logo_url || null);
@@ -771,6 +786,58 @@ export default function Settings({ company, accountingSettings }) {
 
                                     <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                         Esta preferencia se guarda en este navegador. Para cambiarla en otra computadora, configurá desde allí.
+                                    </p>
+                                </div>
+
+                                {/* Motor de Impresión */}
+                                <div className={`rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-slate-50/60'}`}>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDark ? 'bg-violet-500/15' : 'bg-violet-50'}`}>
+                                            <Printer size={18} className="text-violet-500" />
+                                        </div>
+                                        <div>
+                                            <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Motor de Impresión</h4>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Cómo se envía la orden al hacer clic en "Imprimir"
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mt-5">
+                                        {[
+                                            { id: 'electron', label: 'Print Service', desc: 'Gestor ArtDent instalado', icon: '🖨️' },
+                                            { id: 'browser', label: 'Navegador', desc: 'Diálogo del sistema', icon: '🌐' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => savePrintBackend(opt.id)}
+                                                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 font-bold text-sm transition-all
+                                                    ${printBackend === opt.id
+                                                        ? 'border-violet-500 bg-violet-500/10 text-violet-500'
+                                                        : isDark
+                                                            ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                                                            : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                                    }`}
+                                            >
+                                                <span className="text-2xl">{opt.icon}</span>
+                                                <span className="font-black">{opt.label}</span>
+                                                <span className={`text-[11px] font-medium ${printBackend === opt.id ? 'text-violet-400' : isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {opt.desc}
+                                                </span>
+                                                {printBackend === opt.id && (
+                                                    <span className="text-[10px] font-black tracking-wide uppercase bg-violet-500 text-white px-2 py-0.5 rounded-full">
+                                                        Activo
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                        {printBackend === 'electron'
+                                            ? 'Se usará el gestor ArtDent. Si no está instalado, caerá al diálogo del navegador automáticamente.'
+                                            : 'Se usará siempre el diálogo de impresión del sistema, sin necesitar el Print Service instalado.'}
                                     </p>
                                 </div>
                             </div>

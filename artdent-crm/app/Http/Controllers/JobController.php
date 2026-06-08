@@ -13,13 +13,20 @@ use App\Models\Patient;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class JobController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Job::with(['dentist', 'patient', 'jobType']);
+        $relations = ['dentist', 'patient'];
+
+        if ($this->hasJobTypesTable()) {
+            $relations[] = 'jobType';
+        }
+
+        $query = Job::with($relations);
 
         if ($request->search) {
             $search = $request->search;
@@ -56,7 +63,7 @@ class JobController extends Controller
         return Inertia::render('Job/Create', [
             'dentists' => Dentist::orderBy('name')->get(),
             'patients' => Patient::orderBy('name')->get(),
-            'jobTypes' => JobType::orderBy('name')->get(),
+            'jobTypes' => $this->jobTypesForForm(),
             'collaborators' => Collaborator::where('is_active', true)->orderBy('name')->get(),
             'tariffs' => Tariff::orderBy('name')->get(),
         ]);
@@ -67,7 +74,7 @@ class JobController extends Controller
         $data = $request->validate([
             'dentist_id' => 'required|exists:dentists,id',
             'patient_name' => 'nullable|string|max:255',
-            'job_type_id' => 'nullable|exists:job_types,id',
+            'job_type_id' => $this->jobTypeValidationRule(),
 
             'assigned_user_id' => 'nullable|exists:collaborators,id',
 
@@ -90,6 +97,10 @@ class JobController extends Controller
 
             'teeth' => 'nullable|array',
         ]);
+
+        if (! $this->hasJobTypesTable()) {
+            $data['job_type_id'] = null;
+        }
 
         DB::transaction(function () use ($data) {
 
@@ -209,7 +220,13 @@ class JobController extends Controller
 
     public function show(Job $job)
     {
-        $job->load(['company', 'dentist', 'patient', 'job_type', 'job_items', 'job_teeths', 'collaborators']);
+        $relations = ['company', 'dentist', 'patient', 'job_items', 'job_teeths', 'collaborators'];
+
+        if ($this->hasJobTypesTable()) {
+            $relations[] = 'job_type';
+        }
+
+        $job->load($relations);
 
         return Inertia::render('Job/Show', [
             'item' => $job,
@@ -218,13 +235,19 @@ class JobController extends Controller
 
     public function edit(Job $job)
     {
-        $job->load(['dentist', 'patient', 'job_type', 'job_items', 'job_teeths']);
+        $relations = ['dentist', 'patient', 'job_items', 'job_teeths'];
+
+        if ($this->hasJobTypesTable()) {
+            $relations[] = 'job_type';
+        }
+
+        $job->load($relations);
 
         return Inertia::render('Job/Edit', [
             'item' => $job,
             'dentists' => Dentist::orderBy('name')->get(),
             'patients' => Patient::orderBy('name')->get(),
-            'jobTypes' => JobType::orderBy('name')->get(),
+            'jobTypes' => $this->jobTypesForForm(),
             'collaborators' => Collaborator::where('is_active', true)->orderBy('name')->get(),
             'tariffs' => Tariff::orderBy('name')->get(),
         ]);
@@ -235,7 +258,7 @@ class JobController extends Controller
         $data = $request->validate([
             'dentist_id' => 'required|exists:dentists,id',
             'patient_name' => 'nullable|string|max:255',
-            'job_type_id' => 'nullable|exists:job_types,id',
+            'job_type_id' => $this->jobTypeValidationRule(),
             'assigned_user_id' => 'nullable|exists:collaborators,id',
             'status' => 'required|string',
             'priority' => 'required|string',
@@ -253,6 +276,10 @@ class JobController extends Controller
             'items.*.unit_price' => 'required|numeric|min:0',
             'teeth' => 'nullable|array',
         ]);
+
+        if (! $this->hasJobTypesTable()) {
+            $data['job_type_id'] = null;
+        }
 
         DB::transaction(function () use ($data, $job) {
 
@@ -316,11 +343,38 @@ class JobController extends Controller
 
     public function ticket(Job $job)
     {
-        $job->load(['dentist', 'patient', 'job_type', 'job_items']);
+        $relations = ['dentist', 'patient', 'job_items'];
+
+        if ($this->hasJobTypesTable()) {
+            $relations[] = 'job_type';
+        }
+
+        $job->load($relations);
 
         return Inertia::render('Job/Ticket', [
             'item' => $job,
         ]);
+    }
+
+    private function hasJobTypesTable(): bool
+    {
+        return Schema::hasTable('job_types');
+    }
+
+    private function jobTypesForForm()
+    {
+        if (! $this->hasJobTypesTable()) {
+            return collect();
+        }
+
+        return JobType::orderBy('name')->get();
+    }
+
+    private function jobTypeValidationRule(): string
+    {
+        return $this->hasJobTypesTable()
+            ? 'nullable|exists:job_types,id'
+            : 'nullable';
     }
 
     protected function adjustAccountCharge(Job $job, float $oldTotal, float $newTotal): void

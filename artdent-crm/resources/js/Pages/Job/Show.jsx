@@ -89,11 +89,9 @@ export default function Show({ auth, item }) {
                         </div>
 
                         <div style={{ display: 'flex', gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${D.border}`, flexWrap: 'wrap' }}>
-                            <Link href={route('jobs.index')}>
-                                <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${D.border}`, background: 'transparent', color: D.sub, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                                    <ArrowLeft size={13} />Volver
-                                </button>
-                            </Link>
+                            <button onClick={() => window.history.back()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${D.border}`, background: 'transparent', color: D.sub, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <ArrowLeft size={13} />Volver
+                            </button>
                             <Link href={route('jobs.ticket', item.id)}>
                                 <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${D.border}`, background: 'transparent', color: D.sub, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                                     <Printer size={13} />Imprimir

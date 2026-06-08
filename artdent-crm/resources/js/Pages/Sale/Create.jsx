@@ -100,6 +100,84 @@ const toMoney = (value) => {
 };
 const lineTotalFor = (unitPrice, quantity, discount = 0) =>
     toMoney(toMoney(unitPrice) * Number(quantity || 0) - toMoney(discount));
+const normalizeOptionText = (value) => String(value ?? '').trim();
+const normalizeOptionKey = (value) => normalizeOptionText(value).toLowerCase();
+const variantAttributeKey = (attribute) => {
+    if (attribute?.attribute_id) return `attr:${attribute.attribute_id}`;
+    return `attr:${normalizeOptionKey(attribute?.attribute_name || 'Opción')}`;
+};
+const variantValueKey = (attribute) => {
+    if (attribute?.value_id) return `value:${attribute.value_id}`;
+    return `value:${normalizeOptionKey(attribute?.value)}`;
+};
+const getVariantAttributes = (variant) => {
+    if (Array.isArray(variant?.attributes) && variant.attributes.length > 0) {
+        return variant.attributes
+            .filter((attribute) => normalizeOptionText(attribute?.attribute_name) && normalizeOptionText(attribute?.value))
+            .map((attribute) => ({
+                ...attribute,
+                attribute_name: normalizeOptionText(attribute.attribute_name),
+                value: normalizeOptionText(attribute.value),
+            }));
+    }
+
+    return normalizeOptionText(variant?.label)
+        .split('/')
+        .map((value, index) => normalizeOptionText(value))
+        .filter(Boolean)
+        .map((value, index) => ({
+            attribute_id: null,
+            attribute_name: `Opción ${index + 1}`,
+            value_id: null,
+            value,
+        }));
+};
+const buildVariantGroups = (variants = []) => {
+    const groups = new Map();
+
+    variants.forEach((variant) => {
+        getVariantAttributes(variant).forEach((attribute, index) => {
+            const groupKey = variantAttributeKey(attribute);
+            const valueKey = variantValueKey(attribute);
+
+            if (!groups.has(groupKey)) {
+                groups.set(groupKey, {
+                    key: groupKey,
+                    name: attribute.attribute_name,
+                    order: index,
+                    options: new Map(),
+                });
+            }
+
+            const group = groups.get(groupKey);
+            if (!group.options.has(valueKey)) {
+                group.options.set(valueKey, {
+                    key: valueKey,
+                    value: attribute.value,
+                    stock: 0,
+                });
+            }
+
+            group.options.get(valueKey).stock += Number(variant.stock_quantity ?? 0);
+        });
+    });
+
+    return Array.from(groups.values())
+        .sort((a, b) => a.order - b.order)
+        .map((group) => ({
+            ...group,
+            options: Array.from(group.options.values()),
+        }));
+};
+const variantMatchesSelection = (variant, selection = {}) => {
+    const selectedEntries = Object.entries(selection).filter(([, value]) => Boolean(value));
+    if (selectedEntries.length === 0) return true;
+
+    const attributes = getVariantAttributes(variant);
+    return selectedEntries.every(([groupKey, selectedValueKey]) => attributes.some((attribute) => (
+        variantAttributeKey(attribute) === groupKey && variantValueKey(attribute) === selectedValueKey
+    )));
+};
 // ─── Ticket80 / Ticket57 — importados desde @/Components/Sale/TicketBase ─────
 
 export default function Create({ auth, products, customers = [], company = null }) {
@@ -147,6 +225,7 @@ export default function Create({ auth, products, customers = [], company = null 
 
     // Variant picker
     const [variantProduct, setVariantProduct] = useState(null); // product whose variants are being picked
+    const [variantSelection, setVariantSelection] = useState({});
 
     // Post-sale modal
     const [postSale, setPostSale]         = useState(null);  // sale object returned from server
@@ -158,6 +237,10 @@ export default function Create({ auth, products, customers = [], company = null 
     const [waLoading, setWaLoading]       = useState(false);
     const [pdfUrl, setPdfUrl]             = useState(null);
     const priceDraftsRef = useRef({});
+
+    useEffect(() => {
+        setVariantSelection({});
+    }, [variantProduct?.id]);
 
     // ── Derived ──────────────────────────────────────────────
     const filteredProducts = useMemo(() => {
@@ -232,7 +315,7 @@ export default function Create({ auth, products, customers = [], company = null 
     const addVariantToCart = (product, variant) => {
         const key      = `${product.id}_${variant.id}`;
         const existing = cart.find(i => i.cartKey === key);
-        const price    = toMoney(variant.price || product.price);
+        const price    = toMoney(variant.price ?? product.price);
         const taxRate  = Number(product.tax_rate || 21) / 100;
 
         if (existing) {
@@ -974,13 +1057,33 @@ export default function Create({ auth, products, customers = [], company = null 
                 open={!!variantProduct}
                 onClose={() => setVariantProduct(null)}
                 title={variantProduct?.name ?? ''}
-                maxWidth={500}
+                maxWidth={760}
                 D={D}
             >
                 {variantProduct && (() => {
                     const available = (variantProduct.variants ?? []).filter(v =>
                         v.is_active && (!variantProduct.track_stock || (v.stock_quantity ?? 0) > 0)
                     );
+                    const groups = buildVariantGroups(available);
+                    const hasStructuredOptions = groups.length > 0;
+                    const matchingVariants = available.filter((variant) => variantMatchesSelection(variant, variantSelection));
+                    const selectionComplete = hasStructuredOptions && groups.every((group) => Boolean(variantSelection[group.key]));
+                    const selectedVariant = selectionComplete ? matchingVariants[0] : null;
+                    const selectedLabel = groups
+                        .map((group) => group.options.find((option) => option.key === variantSelection[group.key])?.value)
+                        .filter(Boolean)
+                        .join(' / ');
+                    const selectOption = (groupKey, optionKey) => {
+                        setVariantSelection((current) => {
+                            const next = { ...current };
+                            if (next[groupKey] === optionKey) {
+                                delete next[groupKey];
+                            } else {
+                                next[groupKey] = optionKey;
+                            }
+                            return next;
+                        });
+                    };
 
                     if (available.length === 0) {
                         return (
@@ -992,58 +1095,182 @@ export default function Create({ auth, products, customers = [], company = null 
                         );
                     }
 
+                    if (!hasStructuredOptions) {
+                        return (
+                            <div
+                                className="grid grid-cols-2 gap-2 overflow-y-auto"
+                                style={{ maxHeight: '58vh' }}
+                            >
+                                {available.map(variant => {
+                                    const inCart = cart.some(i => i.variant_id === variant.id);
+                                    const cartQty = cart.find(i => i.variant_id === variant.id)?.quantity ?? 0;
+                                    return (
+                                        <button
+                                            key={variant.id}
+                                            onClick={() => addVariantToCart(variantProduct, variant)}
+                                            className="flex flex-col gap-1.5 w-full px-3 py-2.5 rounded-xl text-left transition-all active:scale-[0.97]"
+                                            style={{
+                                                background: inCart ? `${B.green}1a` : D.input,
+                                                border: `1.5px solid ${inCart ? B.green : D.inputBorder ?? D.border}`,
+                                            }}
+                                        >
+                                            <div className="flex items-start justify-between gap-1">
+                                                <span className="text-[12px] font-bold leading-snug" style={{ color: D.text }}>
+                                                    {variant.label}
+                                                </span>
+                                                {inCart && (
+                                                    <span className="shrink-0 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full"
+                                                        style={{ background: `${B.green}33`, color: B.green }}>
+                                                        ×{cartQty}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className="text-[13px] font-extrabold" style={{ color: B.blue }}>
+                                                    ${fmt(variant.price)}
+                                                </span>
+                                                {variantProduct.track_stock && (
+                                                    <span className="text-[10px] font-semibold" style={{ color: D.muted }}>
+                                                        Stock {variant.stock_quantity}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {variant.sku && (
+                                                <span className="text-[10px] font-mono truncate" style={{ color: D.placeholder ?? D.muted }}>
+                                                    {variant.sku}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        );
+                    }
+
                     return (
-                        <div
-                            className="grid grid-cols-2 gap-2 overflow-y-auto"
-                            style={{ maxHeight: '58vh' }}
-                        >
-                            {available.map(variant => {
-                                const inCart = cart.some(i => i.variant_id === variant.id);
-                                const cartQty = cart.find(i => i.variant_id === variant.id)?.quantity ?? 0;
-                                return (
-                                    <button
-                                        key={variant.id}
-                                        onClick={() => addVariantToCart(variantProduct, variant)}
-                                        className="flex flex-col gap-1.5 w-full px-3 py-2.5 rounded-xl text-left transition-all active:scale-[0.97]"
-                                        style={{
-                                            background: inCart ? `${B.green}1a` : D.input,
-                                            border: `1.5px solid ${inCart ? B.green : D.inputBorder ?? D.border}`,
-                                        }}
-                                    >
-                                        {/* Variant name + in-cart badge */}
-                                        <div className="flex items-start justify-between gap-1">
-                                            <span className="text-[12px] font-bold leading-snug" style={{ color: D.text }}>
-                                                {variant.label}
-                                            </span>
-                                            {inCart && (
-                                                <span className="shrink-0 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full"
-                                                    style={{ background: `${B.green}33`, color: B.green }}>
-                                                    ×{cartQty}
-                                                </span>
-                                            )}
-                                        </div>
+                        <div className="space-y-4">
+                            <div
+                                className="rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                                style={{ background: `${B.blue}12`, border: `1px solid ${D.border}` }}
+                            >
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold" style={{ color: B.green }}>
+                                        Opciones del artículo
+                                    </p>
+                                    <p className="text-[12px] mt-1" style={{ color: D.muted }}>
+                                        Seleccioná la presentación, color o medida para sumar la variante correcta a la orden.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2 text-[11px] font-bold" style={{ color: D.muted }}>
+                                    <Package size={14} />
+                                    {matchingVariants.length} combinación{matchingVariants.length === 1 ? '' : 'es'} disponible{matchingVariants.length === 1 ? '' : 's'}
+                                </div>
+                            </div>
 
-                                        {/* Price + stock */}
-                                        <div className="flex items-center justify-between gap-1">
-                                            <span className="text-[13px] font-extrabold" style={{ color: B.blue }}>
-                                                ${fmt(variant.price)}
-                                            </span>
-                                            {variantProduct.track_stock && (
-                                                <span className="text-[10px] font-semibold" style={{ color: D.muted }}>
-                                                    Stock {variant.stock_quantity}
-                                                </span>
-                                            )}
-                                        </div>
+                            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
+                                <div className="space-y-4 max-h-[52vh] overflow-y-auto pr-1">
+                                    {groups.map((group) => (
+                                        <section key={group.key} className="space-y-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <h4 className="text-[13px] font-extrabold" style={{ color: D.text }}>
+                                                    {group.name}
+                                                </h4>
+                                                {variantSelection[group.key] && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setVariantSelection((current) => {
+                                                            const next = { ...current };
+                                                            delete next[group.key];
+                                                            return next;
+                                                        })}
+                                                        className="text-[11px] font-bold"
+                                                        style={{ color: D.muted }}
+                                                    >
+                                                        Limpiar
+                                                    </button>
+                                                )}
+                                            </div>
 
-                                        {/* SKU */}
-                                        {variant.sku && (
-                                            <span className="text-[10px] font-mono truncate" style={{ color: D.placeholder ?? D.muted }}>
-                                                {variant.sku}
-                                            </span>
-                                        )}
-                                    </button>
-                                );
-                            })}
+                                            <div className="flex flex-wrap gap-2">
+                                                {group.options.map((option) => {
+                                                    const selected = variantSelection[group.key] === option.key;
+                                                    const candidateSelection = { ...variantSelection, [group.key]: option.key };
+                                                    const optionMatches = available.filter((variant) => variantMatchesSelection(variant, candidateSelection));
+                                                    const optionStock = optionMatches.reduce((sum, variant) => sum + Number(variant.stock_quantity ?? 0), 0);
+                                                    const disabled = optionMatches.length === 0 || (variantProduct.track_stock && optionStock <= 0);
+
+                                                    return (
+                                                        <button
+                                                            key={option.key}
+                                                            type="button"
+                                                            disabled={disabled}
+                                                            onClick={() => selectOption(group.key, option.key)}
+                                                            className="min-h-[38px] px-3 py-2 rounded-xl text-[12px] font-extrabold transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                                                            style={{
+                                                                background: selected ? `${B.green}24` : D.input,
+                                                                color: selected ? B.green : D.text,
+                                                                border: `1.5px solid ${selected ? B.green : D.inputBorder ?? D.border}`,
+                                                                boxShadow: selected ? `0 0 0 3px ${B.green}16` : 'none',
+                                                            }}
+                                                        >
+                                                            <span className="inline-flex items-center gap-1.5">
+                                                                {selected && <Check size={13} />}
+                                                                {option.value}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </section>
+                                    ))}
+                                </div>
+
+                                <aside
+                                    className="rounded-2xl p-4 flex flex-col gap-3"
+                                    style={{ background: D.input, border: `1px solid ${D.border}` }}
+                                >
+                                    <div>
+                                        <p className="text-[11px] uppercase tracking-[0.16em] font-extrabold" style={{ color: D.muted }}>
+                                            Variante seleccionada
+                                        </p>
+                                        <h3 className="mt-1 text-[14px] font-black leading-snug" style={{ color: D.text }}>
+                                            {selectedLabel || 'Elegí las opciones'}
+                                        </h3>
+                                    </div>
+
+                                    {selectedVariant ? (
+                                        <>
+                                            <div className="rounded-xl p-3" style={{ background: `${B.blue}14` }}>
+                                                <p className="text-[22px] font-black" style={{ color: B.blue }}>
+                                                    ${fmt(selectedVariant.price ?? variantProduct.price)}
+                                                </p>
+                                                {selectedVariant.sku && (
+                                                    <p className="mt-1 text-[11px] font-mono truncate" style={{ color: D.muted }}>
+                                                        {selectedVariant.sku}
+                                                    </p>
+                                                )}
+                                                {variantProduct.track_stock && (
+                                                    <p className="mt-1 text-[11px] font-bold" style={{ color: B.green }}>
+                                                        Stock {selectedVariant.stock_quantity}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <Btn
+                                                onClick={() => addVariantToCart(variantProduct, selectedVariant)}
+                                                className="w-full justify-center"
+                                                style={{ background: G.success }}
+                                            >
+                                                <Plus size={16} />
+                                                Agregar a la orden
+                                            </Btn>
+                                        </>
+                                    ) : (
+                                        <div className="rounded-xl p-3 text-[12px] leading-relaxed" style={{ background: '#F59E0B12', color: D.muted }}>
+                                            Completá las opciones para ver precio, SKU y stock de la combinación.
+                                        </div>
+                                    )}
+                                </aside>
+                            </div>
                         </div>
                     );
                 })()}

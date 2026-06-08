@@ -1,6 +1,4 @@
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'
+import { http } from './http'
 
 export interface ComparisonItem {
   id: number
@@ -11,23 +9,23 @@ export interface ComparisonItem {
 }
 
 export async function getComparison(): Promise<ComparisonItem[]> {
-  const response = await axios.get(`${API_URL}/comparison`)
+  const response = await http.get('/comparison')
   return response.data
 }
 
 export async function addToComparison(productId: number) {
-  const response = await axios.post(`${API_URL}/comparison`, {
+  const response = await http.post('/comparison', {
     product_id: productId,
   })
   return response.data
 }
 
 export async function removeFromComparison(comparisonId: number) {
-  const response = await axios.delete(`${API_URL}/comparison/${comparisonId}`)
+  const response = await http.delete(`/comparison/${comparisonId}`)
   return response.data
 }
 
 export async function clearComparison() {
-  const response = await axios.delete(`${API_URL}/comparison/clear`)
+  const response = await http.delete('/comparison/clear')
   return response.data
 }
