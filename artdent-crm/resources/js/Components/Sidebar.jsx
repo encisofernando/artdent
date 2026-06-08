@@ -25,6 +25,7 @@ import {
     CreditCard,
     Bot,
     Landmark,
+    Printer,
 } from 'lucide-react';
 
 export default function Sidebar({ className = "" }) {
@@ -55,6 +56,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Lista de Ventas", path: "/sales" },
                         { title: "Presupuesto", path: "/quotes" },
                         { title: "Artículos", path: "/products" },
+                        { title: "Etiquetas / Códigos", path: "/barcode-labels", permission: 'products.view' },
                     ],
                 },
                 {
@@ -180,6 +182,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Usuarios", path: "/users", permission: 'users.view' },
                         { title: "Roles y Permisos", path: "/roles", permission: 'roles.view' },
                         { title: "Empresa", path: "/settings", permission: 'settings.edit' },
+                        { title: "Impresión", path: "/settings?tab=preferencias", permission: 'settings.edit' },
                         { title: "API", path: "/admin/api-tokens", permission: 'settings.edit' },
                         ...(billingEnabled ? [{ title: "Suscripción", path: "/subscription", permission: 'settings.edit' }] : []),
                     ],

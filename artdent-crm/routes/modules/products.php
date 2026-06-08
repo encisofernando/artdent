@@ -8,6 +8,9 @@ use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductVariantController;
 use Illuminate\Support\Facades\Route;
 
+// Etiquetas de código de barras
+Route::get('barcode-labels', [ProductController::class, 'barcodeLabels'])->name('products.barcode-labels')->middleware('permission:products.view');
+
 // Productos y Catálogo
 Route::get('products', [ProductController::class, 'index'])->name('products.index')->middleware('permission:products.view');
 Route::get('products/create', [ProductController::class, 'create'])->name('products.create')->middleware('permission:products.create');

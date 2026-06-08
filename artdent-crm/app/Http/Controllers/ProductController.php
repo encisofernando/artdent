@@ -79,6 +79,14 @@ class ProductController extends Controller
     }
 
     /**
+     * Barcode / shelf-label printing page.
+     */
+    public function barcodeLabels(): \Inertia\Response
+    {
+        return Inertia::render('Product/BarcodeLabels');
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create(): \Inertia\Response

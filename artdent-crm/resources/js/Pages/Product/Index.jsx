@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Power, Box as BoxIcon, FileText, Loader2, Trash2 } from 'lucide-react';
+import { Search, Plus, Edit, Power, Box as BoxIcon, FileText, Loader2, Trash2, Tag } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import ImportExportModal from './ImportExportModal';
+import BarcodeLabelModal from './BarcodeLabelModal';
 import axios from 'axios';
 
 // Helper: fetch a page as plain JSON (bypasses Inertia).
@@ -23,6 +24,8 @@ export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
 
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+    const [barcodeInitialProducts, setBarcodeInitialProducts] = useState([]);
     const [search, setSearch] = useState(filters?.search || '');
     const [status, setStatus] = useState(filters?.status || 'all');
     const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -198,6 +201,16 @@ export default function Index({ auth, items, filters }) {
                         {/* Buttons */}
                         <div className="flex w-full sm:w-auto gap-2">
                             <Button
+                                onClick={() => { setBarcodeInitialProducts([]); setIsBarcodeModalOpen(true); }}
+                                variant="outline"
+                                className={`w-full sm:w-auto shadow-sm rounded-xl transition-all
+                                    ${isDark ? 'border-violet-700/60 bg-violet-900/20 text-violet-300 hover:bg-violet-900/40' : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'}
+                                `}
+                            >
+                                <Tag className="mr-2" size={18} />
+                                Etiquetas
+                            </Button>
+                            <Button
                                 onClick={() => setIsImportModalOpen(true)}
                                 variant="outline"
                                 className={`w-full sm:w-auto shadow-sm rounded-xl transition-all
@@ -224,6 +237,12 @@ export default function Index({ auth, items, filters }) {
                 <ImportExportModal
                     isOpen={isImportModalOpen}
                     onClose={() => setIsImportModalOpen(false)}
+                />
+
+                <BarcodeLabelModal
+                    isOpen={isBarcodeModalOpen}
+                    onClose={() => setIsBarcodeModalOpen(false)}
+                    initialProducts={barcodeInitialProducts}
                 />
 
                 {/* Counter */}
