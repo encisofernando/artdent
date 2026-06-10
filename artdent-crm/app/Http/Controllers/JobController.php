@@ -135,6 +135,7 @@ class JobController extends Controller
                 'patient_id' => $patient?->id,
                 'job_type_id' => $data['job_type_id'] ?? null,
                 'assigned_user_id' => $data['assigned_user_id'] ?? null,
+                'received_by_user_id' => auth()->id(),
                 'status' => $data['status'],
                 'priority' => $data['priority'],
                 'clinical_notes' => $data['clinical_notes'] ?? null,
@@ -158,6 +159,9 @@ class JobController extends Controller
                 ]);
             }
 
+            // Inicializar fases sin colaborador si el arancel principal las tiene configuradas
+            $this->initializePhasesForJob($job);
+
             $this->chargeAccountIfNeeded($job);
         });
 
@@ -180,6 +184,32 @@ class JobController extends Controller
             : 1;
 
         return 'ORD-'.str_pad($nextSeq, 5, '0', STR_PAD_LEFT);
+    }
+
+    protected function initializePhasesForJob(Job $job): void
+    {
+        $primaryTariffId = $job->job_items()->whereNotNull('tariff_id')->value('tariff_id');
+
+        if (! $primaryTariffId) {
+            return;
+        }
+
+        $phases = \App\Models\TariffPhase::where('tariff_id', $primaryTariffId)
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($phases->isEmpty()) {
+            return;
+        }
+
+        foreach ($phases as $tariffPhase) {
+            \App\Models\JobPhaseProgress::create([
+                'job_id' => $job->id,
+                'tariff_phase_id' => $tariffPhase->id,
+                'collaborator_id' => null,
+                'status' => \App\Models\JobPhaseProgress::STATUS_PENDING,
+            ]);
+        }
     }
 
     protected function chargeAccountIfNeeded(Job $job)
@@ -220,7 +250,8 @@ class JobController extends Controller
 
     public function show(Job $job)
     {
-        $relations = ['company', 'dentist', 'patient', 'job_items', 'job_teeths', 'collaborators'];
+        $relations = ['company', 'dentist', 'patient', 'job_items', 'job_teeths', 'collaborators',
+            'phaseProgress.tariffPhase', 'phaseProgress.collaborator', 'phaseProgress.ticket'];
 
         if ($this->hasJobTypesTable()) {
             $relations[] = 'job_type';

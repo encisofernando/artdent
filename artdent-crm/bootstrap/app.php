@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'tenant.session' => \App\Http\Middleware\InitializeTenancyBySession::class,
             'lab.network' => \App\Http\Middleware\RestrictToLabNetwork::class,
+            'colaborador.auth' => \App\Http\Middleware\ColaboradorAuth::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,

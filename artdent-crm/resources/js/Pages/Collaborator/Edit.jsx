@@ -364,6 +364,7 @@ export default function Edit({ auth, item }) {
         faceio_fid: item.faceio_fid || '',
         is_active: item.is_active === false || item.is_active === 0 ? 0 : 1,
         notes: item.notes || '',
+        pin: '',
     });
 
     const submit = (e) => {
@@ -538,6 +539,22 @@ export default function Edit({ auth, item }) {
                                     />
                                 </div>
                                 {errors.hourly_rate && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.hourly_rate}</div>}
+                            </div>
+
+                            <div className="md:col-span-1">
+                                <label className={labelClasses}>PIN Portal Técnicos</label>
+                                <input
+                                    type="password"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    value={data.pin}
+                                    onChange={e => setData('pin', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    className={inputClasses}
+                                    placeholder="Dejar vacío para no cambiar"
+                                    autoComplete="new-password"
+                                />
+                                <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>4 a 6 dígitos numéricos{item.pin ? ' · Ya tiene PIN configurado' : ' · Sin PIN asignado'}</p>
+                                {errors.pin && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.pin}</div>}
                             </div>
 
                             <div className="md:col-span-1 flex items-center mt-2 md:mt-6">

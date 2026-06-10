@@ -20,6 +20,7 @@ const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE'
 
 const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+const fmtToday = () => new Date().toLocaleDateString('es-AR');
 
 // ─── Ticket térmico (80mm / 54mm) ────────────────────────────────────────────
 function TicketBase({ job, widthMM = 80 }) {
@@ -37,7 +38,7 @@ function TicketBase({ job, widthMM = 80 }) {
     const notes = job.description || job.notes || job.observations || '';
 
     const F = {
-        logo: is54 ? 26 : 34,
+        logo: is54 ? 54 : 62,
         caption: is54 ? 7.2 : 8.1,
         label: is54 ? 7.6 : 8.4,
         body: is54 ? 8.2 : 9.2,
@@ -65,26 +66,20 @@ function TicketBase({ job, widthMM = 80 }) {
                     scope="lab"
                     thermal
                     height={F.logo}
-                    maxWidth={is54 ? 112 : 156}
+                    maxWidth={is54 ? 140 : 180}
                     style={{ margin: '0 auto' }}
                 />
-                <div style={{ marginTop: 6, fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' }}>Orden de servicio</div>
-                <div style={{ fontSize: `${F.small}pt`, letterSpacing: 0.8, textTransform: 'uppercase' }}>Laboratorio odontológico</div>
-                <div style={{ fontSize: `${F.small}pt`, marginTop: 2 }}>Documento interno. No válido como factura.</div>
+                <div style={{ fontSize: `${F.small}pt`, marginTop: 4 }}>Documento interno. No válido como factura.</div>
             </div>
 
-            <div style={{ border: '2px solid #000', padding: is54 ? '4px 6px' : '5px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
-                <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>Orden N°</div>
-                <div style={{ fontSize: `${F.number}pt`, fontWeight: 900, letterSpacing: 0.3 }}>{ticketNum}</div>
-                <div style={{ fontSize: `${F.small}pt`, marginTop: 2 }}>{serviceLabel}</div>
+            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
+                <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>Orden N° {ticketNum}</div>
             </div>
 
             <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
-                <InfoRow label="Ingreso" value={fmtDate(job.received_at || job.created_at)} />
-                <InfoRow label="Entrega" value={fmtDate(job.due_date)} />
+                <InfoRow label="Fecha" value={fmtDate(job.received_at)} />
                 <InfoRow label="Paciente" value={patientName} />
                 <InfoRow label="Profesional" value={dentistName} />
-                <InfoRow label="Tipo" value={serviceLabel} />
                 {job.shade && <InfoRow label="Tono" value={job.shade} />}
             </div>
 
@@ -126,17 +121,7 @@ function TicketBase({ job, widthMM = 80 }) {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: is54 ? 6 : 8 }}>
-                <div style={{ flex: 1, textAlign: 'center', fontSize: `${F.small}pt` }}>
-                    <div style={{ borderTop: '1px solid #000', marginTop: 18, paddingTop: 2 }}>Recibe</div>
-                </div>
-                <div style={{ flex: 1, textAlign: 'center', fontSize: `${F.small}pt` }}>
-                    <div style={{ borderTop: '1px solid #000', marginTop: 18, paddingTop: 2 }}>Entrega</div>
-                </div>
-            </div>
-
             <div style={{ textAlign: 'center', fontSize: `${F.small}pt`, borderTop: '1px solid #000', paddingTop: 5 }}>
-                <div style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.6 }}>{companyDisplayName}</div>
                 <div style={{ marginTop: 2 }}>Tu sonrisa, es nuestra prioridad.</div>
             </div>
 
@@ -173,8 +158,7 @@ function OrdenA4({ job }) {
                     <div style={{ fontSize: 22, fontWeight: 900, color: AD.blue, letterSpacing: -0.5 }}>ORDEN</div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#222', marginTop: 2 }}>{job.job_number}</div>
                     <div style={{ fontSize: 8.5, color: '#555', marginTop: 5, lineHeight: 1.8 }}>
-                        <div><strong>Fecha Ingreso:</strong> {fmtDate(job.received_at)}</div>
-                        <div><strong>Entrega Est.:</strong> {fmtDate(job.due_date)}</div>
+                        <div><strong>Fecha:</strong> {fmtDate(job.received_at)}</div>
                     </div>
                 </div>
             </div>
@@ -202,7 +186,6 @@ function OrdenA4({ job }) {
                     <div style={{ fontSize: 8.5, lineHeight: 1.9 }}>
                         <div><span style={{ fontWeight: 700 }}>Paciente: </span>{patientName}</div>
                         <div><span style={{ fontWeight: 700 }}>Tono/Color: </span>{job.shade || '—'}</div>
-                        <div><span style={{ fontWeight: 700 }}>Tipo Trabajo: </span>{job.jobType?.name || job.job_type?.name || '—'}</div>
                     </div>
                 </div>
             </div>

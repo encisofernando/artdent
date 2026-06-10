@@ -22,7 +22,7 @@ class CollaboratorController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('document', 'like', "%{$search}%")
                     ->orWhere('specialty', 'like', "%{$search}%");
-                });
+            });
         }
 
         $summaryQuery = clone $query;
@@ -95,6 +95,7 @@ class CollaboratorController extends Controller
         return Inertia::render('Collaborator/Edit', [
             'item' => array_merge($collaborator->toArray(), [
                 'webauthn_credentials' => $credentials,
+                'pin' => $collaborator->pin ? true : false,
             ]),
         ]);
     }
@@ -115,7 +116,14 @@ class CollaboratorController extends Controller
             'faceio_fid' => 'nullable|string|max:255|unique:collaborators,faceio_fid,'.$collaborator->id,
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
+            'pin' => 'nullable|string|min:4|max:6|regex:/^\d+$/',
         ]);
+
+        if (! empty($validated['pin'])) {
+            $validated['pin'] = \Illuminate\Support\Facades\Hash::make($validated['pin']);
+        } else {
+            unset($validated['pin']);
+        }
 
         $collaborator->update($validated);
 

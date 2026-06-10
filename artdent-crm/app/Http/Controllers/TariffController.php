@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tariff;
-use App\Models\TariffCost;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,15 +14,15 @@ class TariffController extends Controller
     public function index(Request $request)
     {
         $companyId = auth()->user()->company_id;
-        
+
         $query = Tariff::where('company_id', $companyId);
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
             });
         }
 
@@ -35,14 +34,14 @@ class TariffController extends Controller
 
         // Get unique categories for the filter dropdown
         $categories = Tariff::where('company_id', $companyId)
-                            ->whereNotNull('category')
-                            ->distinct()
-                            ->pluck('category');
+            ->whereNotNull('category')
+            ->distinct()
+            ->pluck('category');
 
         return Inertia::render('Tariff/Index', [
             'items' => $items,
             'categories' => $categories,
-            'filters' => $request->only(['search', 'category'])
+            'filters' => $request->only(['search', 'category']),
         ]);
     }
 
@@ -79,7 +78,7 @@ class TariffController extends Controller
         ]);
 
         $calculatedPrice = 0;
-        if (!empty($validated['costs'])) {
+        if (! empty($validated['costs'])) {
             foreach ($validated['costs'] as $cost) {
                 $totalCost = $cost['unit_cost'] * $cost['quantity'];
                 $suggestedPrice = round($totalCost * (1 + ($cost['margin_pct'] / 100)), 2);
@@ -88,8 +87,8 @@ class TariffController extends Controller
         }
 
         // Si mandaron price manual lo usamos, si no usamos el calculado.
-        $finalPrice = isset($validated['price']) && $validated['price'] > 0 
-            ? $validated['price'] 
+        $finalPrice = isset($validated['price']) && $validated['price'] > 0
+            ? $validated['price']
             : $calculatedPrice;
 
         $tariff = Tariff::create([
@@ -103,7 +102,7 @@ class TariffController extends Controller
             'is_active' => $validated['is_active'],
         ]);
 
-        if (!empty($validated['costs'])) {
+        if (! empty($validated['costs'])) {
             $tariff->costs()->createMany($validated['costs']);
         }
 
@@ -120,7 +119,7 @@ class TariffController extends Controller
         }
 
         return Inertia::render('Tariff/Edit', [
-            'item' => $tariff
+            'item' => $tariff->load('costs', 'phases'),
         ]);
     }
 
@@ -152,7 +151,7 @@ class TariffController extends Controller
         ]);
 
         $calculatedPrice = 0;
-        if (!empty($validated['costs'])) {
+        if (! empty($validated['costs'])) {
             foreach ($validated['costs'] as $cost) {
                 $totalCost = $cost['unit_cost'] * $cost['quantity'];
                 $suggestedPrice = round($totalCost * (1 + ($cost['margin_pct'] / 100)), 2);
@@ -160,8 +159,8 @@ class TariffController extends Controller
             }
         }
 
-        $finalPrice = isset($validated['price']) && $validated['price'] > 0 
-            ? $validated['price'] 
+        $finalPrice = isset($validated['price']) && $validated['price'] > 0
+            ? $validated['price']
             : $calculatedPrice;
 
         $tariff->update([
@@ -176,7 +175,7 @@ class TariffController extends Controller
 
         // Reemplazar costos.
         $tariff->costs()->delete();
-        if (!empty($validated['costs'])) {
+        if (! empty($validated['costs'])) {
             $tariff->costs()->createMany($validated['costs']);
         }
 
@@ -191,8 +190,9 @@ class TariffController extends Controller
         if ($tariff->company_id !== auth()->user()->company_id) {
             abort(403);
         }
-        
+
         $tariff->delete();
+
         return redirect()->route('tariffs.index')->with('success', 'Arancel eliminado exitosamente.');
     }
 }

@@ -77,4 +77,9 @@ class Tariff extends Model
     {
         return $this->hasMany(JobItem::class);
     }
+
+    public function phases()
+    {
+        return $this->hasMany(TariffPhase::class)->orderBy('sort_order');
+    }
 }

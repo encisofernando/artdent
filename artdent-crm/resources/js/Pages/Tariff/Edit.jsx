@@ -1,10 +1,115 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, Banknote, FileText, Calculator } from 'lucide-react';
+import { ArrowLeft, Save, Banknote, FileText, Calculator, Layers, Plus, Trash2, GripVertical } from 'lucide-react';
 import TariffCostBuilder from '@/Components/TariffCostBuilder';
+
+function PhasesManager({ tariffId, initialPhases, isDark }) {
+    const [phases, setPhases] = useState(initialPhases || []);
+    const [newPhase, setNewPhase] = useState({ name: '', price: '' });
+    const [saving, setSaving] = useState(false);
+
+    const B = { blue: '#397B9C', teal: '#5AAD9C' };
+    const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200';
+    const input = isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900';
+
+    const handleAdd = () => {
+        if (!newPhase.name || !newPhase.price) return;
+        setSaving(true);
+        router.post(route('tariff-phases.store', tariffId), {
+            name: newPhase.name,
+            price: parseFloat(newPhase.price),
+            sort_order: phases.length,
+        }, {
+            preserveState: true,
+            onSuccess: (page) => {
+                setPhases(page.props.item?.phases || phases);
+                setNewPhase({ name: '', price: '' });
+            },
+            onFinish: () => setSaving(false),
+        });
+    };
+
+    const handleDelete = (phaseId) => {
+        if (!confirm('¿Eliminar esta fase?')) return;
+        router.delete(route('tariff-phases.destroy', { tariff: tariffId, phase: phaseId }), {
+            preserveState: true,
+            onSuccess: (page) => setPhases(page.props.item?.phases || phases.filter(p => p.id !== phaseId)),
+        });
+    };
+
+    const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+
+    return (
+        <div className={`rounded-2xl border p-6 shadow-sm ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
+            <div className="flex items-center gap-2 mb-4">
+                <Layers size={16} style={{ color: B.teal }} />
+                <h2 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>Fases de Trabajo</h2>
+                <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                    {phases.length} {phases.length === 1 ? 'fase' : 'fases'}
+                </span>
+            </div>
+            <p className={`text-xs mb-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                Definí las etapas de producción de este arancel. El cargo al odontólogo se generará al completar cada fase.
+            </p>
+
+            {/* Lista de fases existentes */}
+            {phases.length > 0 && (
+                <div className="space-y-2 mb-4">
+                    {phases.map((phase, idx) => (
+                        <div key={phase.id} className={`flex items-center gap-3 p-3 rounded-xl border ${card}`}>
+                            <span className={`text-xs font-bold w-5 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{idx + 1}</span>
+                            <div className="flex-1 min-w-0">
+                                <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>{phase.name}</p>
+                            </div>
+                            <span className="font-bold text-sm" style={{ color: B.teal }}>$ {fmt(phase.price)}</span>
+                            <button onClick={() => handleDelete(phase.id)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                                <Trash2 size={13} />
+                            </button>
+                        </div>
+                    ))}
+                    <div className={`flex justify-between items-center pt-2 px-1 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <span>Total fases</span>
+                        <span style={{ color: B.blue }}>$ {fmt(phases.reduce((s, p) => s + Number(p.price), 0))}</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Agregar nueva fase */}
+            <div className={`flex gap-2 items-end p-3 rounded-xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex-1">
+                    <label className={`text-[11px] font-semibold uppercase tracking-wider mb-1 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Nombre</label>
+                    <input
+                        type="text"
+                        placeholder="Ej: RODETE"
+                        value={newPhase.name}
+                        onChange={e => setNewPhase(p => ({ ...p, name: e.target.value.toUpperCase() }))}
+                        className={`w-full text-sm px-3 py-2 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${input}`}
+                    />
+                </div>
+                <div className="w-28">
+                    <label className={`text-[11px] font-semibold uppercase tracking-wider mb-1 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Precio</label>
+                    <input
+                        type="number"
+                        placeholder="0.00"
+                        value={newPhase.price}
+                        onChange={e => setNewPhase(p => ({ ...p, price: e.target.value }))}
+                        className={`w-full text-sm px-3 py-2 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${input}`}
+                    />
+                </div>
+                <button onClick={handleAdd} disabled={saving || !newPhase.name || !newPhase.price}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-40 transition-all"
+                    style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                    <Plus size={14} />
+                    Agregar
+                </button>
+            </div>
+        </div>
+    );
+}
 
 export default function Edit({ auth, item }) {
     const { isDark } = useTheme();
@@ -246,6 +351,9 @@ export default function Edit({ auth, item }) {
                         </div>
                     </div>
 
+
+                    {/* Fases de trabajo */}
+                    <PhasesManager tariffId={item.id} initialPhases={item.phases || []} isDark={isDark} />
 
                     <div className={`rounded-2xl border p-6 shadow-sm transition-colors flex justify-end gap-3
                         ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}

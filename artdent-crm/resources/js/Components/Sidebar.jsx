@@ -136,6 +136,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Descuentos", path: "/collaborator-discounts", permission: 'staff.view' },
                         { title: "Recibos", path: "/collaborator-receipts", permission: 'staff.edit' },
                         { title: "Kiosk de Fichaje", path: "/attendance-kiosk", external: true },
+                        { title: "Portal Técnicos", path: "/colaboradores", external: true },
                     ],
                 },
             ],

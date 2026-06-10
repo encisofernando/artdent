@@ -5,7 +5,8 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import {
     ArrowLeft, Edit, Printer,
     User, Calendar, Layers, FileText,
-    CheckCircle2, AlertCircle, BriefcaseMedical, SlidersHorizontal, Clock
+    CheckCircle2, AlertCircle, BriefcaseMedical, SlidersHorizontal, Clock,
+    GitBranch, Loader2
 } from 'lucide-react';
 
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE' };
@@ -193,7 +194,69 @@ export default function Show({ auth, item }) {
                         </>
                     )}
                 </Card>
+
+                {/* ── Progreso de Fases ── */}
+                {item.phase_progress && item.phase_progress.length > 0 && (
+                    <PhaseProgressPanel phases={item.phase_progress} D={D} />
+                )}
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+const PHASE_STATUS_META = {
+    pending:     { label: 'Pendiente',  color: '#64748b', Icon: Clock },
+    in_progress: { label: 'En Proceso', color: '#397B9C', Icon: Loader2 },
+    prueba:      { label: 'En Prueba',  color: '#F97316', Icon: SlidersHorizontal },
+    completed:   { label: 'Completado', color: '#5AAD9C', Icon: CheckCircle2 },
+};
+
+function PhaseProgressPanel({ phases, D }) {
+    const fmtDateTime = (d) => d ? new Date(d).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : null;
+
+    return (
+        <div style={{ background: D.card, border: `1.5px solid ${D.border}`, borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '12px 16px', borderBottom: `1px solid ${D.border}` }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(57,123,156,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <GitBranch size={14} color="#397B9C" />
+                </div>
+                <span style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: D.sub }}>Progreso de Fases</span>
+            </div>
+            <div style={{ padding: '8px 0' }}>
+                {phases.map((phase, idx) => {
+                    const meta = PHASE_STATUS_META[phase.status] ?? PHASE_STATUS_META.pending;
+                    const Icon = meta.Icon;
+                    const isLast = idx === phases.length - 1;
+                    return (
+                        <div key={phase.id} style={{ display: 'flex', gap: 12, padding: '10px 16px', borderBottom: isLast ? 'none' : `1px solid ${D.border}` }}>
+                            {/* Icon */}
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', border: `2px solid ${meta.color}`, background: `${meta.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                                <Icon size={13} color={meta.color} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 13, color: D.text }}>{phase.tariff_phase?.name ?? `Fase ${idx + 1}`}</span>
+                                    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, color: meta.color, background: `${meta.color}18` }}>{meta.label}</span>
+                                    {phase.ticket && (
+                                        <span style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8' }}>#{phase.ticket.ticket_number}</span>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                    {phase.collaborator && (
+                                        <span style={{ fontSize: 11, color: D.sub }}>Técnico: <strong style={{ color: D.text }}>{phase.collaborator.name}</strong></span>
+                                    )}
+                                    {phase.tariff_phase?.price > 0 && (
+                                        <span style={{ fontSize: 11, color: D.sub }}>Importe: <strong style={{ color: '#397B9C' }}>${Number(phase.tariff_phase.price).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong></span>
+                                    )}
+                                </div>
+                                {phase.completed_at && (
+                                    <p style={{ fontSize: 10, color: D.sub, marginTop: 3 }}>Completado: {fmtDateTime(phase.completed_at)}</p>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
     );
 }

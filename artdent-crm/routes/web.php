@@ -83,6 +83,9 @@ Route::get('/q/{token}', [\App\Http\Controllers\QuoteController::class, 'publicS
 // Portal del cliente — sin autenticación, acceso por token único
 Route::get('/portal/{token}', [\App\Http\Controllers\CustomerPortalController::class, 'show'])->name('customer.portal');
 
+// Portal de colaboradores — autenticación independiente por PIN
+require __DIR__.'/modules/colaborador_portal.php';
+
 // Panel de asignación — usa auth:sanctum (Bearer token) fuera del grupo de sesión
 require __DIR__.'/modules/assign-panel.php';
 

@@ -6,12 +6,12 @@
 
 namespace App\Models;
 
+use App\Observers\JobObserver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Observers\JobObserver;
 
 /**
  * Class Job
@@ -64,6 +64,7 @@ class Job extends Model
         'patient_id' => 'int',
         'job_type_id' => 'int',
         'assigned_user_id' => 'int',
+        'received_by_user_id' => 'int',
         'remake_of_job_id' => 'int',
         'received_at' => 'datetime',
         'due_date' => 'datetime',
@@ -84,6 +85,7 @@ class Job extends Model
         'patient_id',
         'job_type_id',
         'assigned_user_id',
+        'received_by_user_id',
         'job_number',
         'status',
         'priority',
@@ -135,6 +137,11 @@ class Job extends Model
     public function user()
     {
         return $this->belongsTo(Collaborator::class, 'assigned_user_id');
+    }
+
+    public function receivedBy()
+    {
+        return $this->belongsTo(User::class, 'received_by_user_id');
     }
 
     public function job_attachments()
@@ -196,5 +203,22 @@ class Job extends Model
     public function job_remake()
     {
         return $this->hasOne(JobRemake::class, 'job_id');
+    }
+
+    public function phaseProgress()
+    {
+        return $this->hasMany(JobPhaseProgress::class)->orderBy('id');
+    }
+
+    public function currentPhase()
+    {
+        return $this->hasOne(JobPhaseProgress::class)
+            ->whereIn('status', [JobPhaseProgress::STATUS_IN_PROGRESS, JobPhaseProgress::STATUS_PRUEBA])
+            ->orderBy('id');
+    }
+
+    public function phaseTickets()
+    {
+        return $this->hasMany(JobPhaseTicket::class);
     }
 }
