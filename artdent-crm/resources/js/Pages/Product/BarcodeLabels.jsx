@@ -13,10 +13,10 @@ import {
 import { getCompanyLogoSrc } from '@/lib/companyBranding';
 import axios from 'axios';
 
-/* ── Brand tokens ───────────────────────────────────────────────────────── */
-const BLUE  = '#397B9C';
-const TEAL  = '#5AAD9C';
-const LIGHT = '#ACD6CE';
+/* ── Brand tokens (ArtDent Insumos — manual de marca) ───────────────────── */
+const BLUE  = '#124C69';   // Navy principal R:18 G:76 B:105
+const TEAL  = '#1E6B8A';   // Variante más clara para gradientes
+const LIGHT = '#B8D4E0';   // Tinte claro para bordes
 
 /* ── Husares A4 templates ───────────────────────────────────────────────── */
 // w × h in mm, cols × rows as printed on the physical sheet
@@ -78,10 +78,10 @@ function ThermalLabelCard({ product, format, logoSrc }) {
     return (
         <div style={{ width: W, background: '#fff', borderRadius: 6, overflow: 'hidden', border: `1px solid ${LIGHT}`, boxShadow: '0 1px 4px rgba(57,123,156,0.12)', flexShrink: 0, fontFamily: "'Montserrat',Arial,sans-serif" }}>
             <div style={{ background: BLUE, height: headerH, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 6 }}>
-                <img src={logoSrc} alt="ArtDent" style={{ height: headerH - 8, objectFit: 'contain' }} />
+                <img src={logoSrc} alt="ArtDent" style={{ height: headerH - 8, objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
                 <div style={{ flex: 1 }} />
-                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: format === '57mm' ? 5.5 : 6.5, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'right', lineHeight: 1.2 }}>
-                    LABORATORIO<br />ODONTOLÓGICO
+                <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: format === '57mm' ? 5.5 : 6.5, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'right', lineHeight: 1.2, fontFamily: "'Montserrat',Arial,sans-serif" }}>
+                    INSUMOS<br />ODONTOLÓGICOS
                 </span>
             </div>
             <div style={{ padding: format === '57mm' ? '5px 7px 4px' : '7px 9px 5px' }}>
@@ -133,14 +133,14 @@ function A4LabelCard({ product, tpl, scale, logoSrc }) {
             {/* Header */}
             <div style={{ background: BLUE, height: hdrH, minHeight: hdrH, display: 'flex', alignItems: 'center', padding: `0 ${Math.max(1, tpl.w * 0.012) * scale}px`, gap: Math.max(1, scale * 0.5), flexShrink: 0, overflow: 'hidden' }}>
                 {showLogo
-                    ? <img src={logoSrc} alt="" style={{ height: logoH, maxWidth: tpl.w * 0.52 * scale, objectFit: 'contain', flexShrink: 0 }} />
+                    ? <img src={logoSrc} alt="" style={{ height: logoH, maxWidth: tpl.w * 0.52 * scale, objectFit: 'contain', flexShrink: 0, filter: 'brightness(0) invert(1)' }} />
                     : <span style={{ color: '#fff', fontSize: hdrH * 0.38, fontWeight: 900, letterSpacing: 0.3, textTransform: 'uppercase' }}>ARTDENT</span>
                 }
                 {showSub && (
                     <>
                         <div style={{ flex: 1 }} />
-                        <span style={{ color: 'rgba(255,255,255,0.82)', fontSize: hdrH * 0.22, fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', lineHeight: 1.1 }}>
-                            LAB.<br />ODONT.
+                        <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: hdrH * 0.22, fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', lineHeight: 1.1 }}>
+                            INSUMOS<br />ODONT.
                         </span>
                     </>
                 )}
@@ -184,7 +184,7 @@ function buildThermalLabelsHtml(items, format, logoSrc) {
 
     const labelsHtml = expanded.map(p => {
         const code = escHtml(p.barcode || p.sku || String(p.id));
-        return `<div class="lbl"><div class="hdr"><img src="${logoSrc}" class="logo"><div class="sub">LABORATORIO<br>ODONTOLÓGICO</div></div><div class="body"><div class="name">${escHtml(p.name)}</div><div class="bwrap"><svg class="bc" data-v="${code}" data-w="${barcW}" data-h="${barcH}"></svg></div><div class="bval">${code}</div></div><div class="accent"></div></div>`;
+        return `<div class="lbl"><div class="hdr"><img src="${logoSrc}" class="logo"><div class="sub">INSUMOS<br>ODONTOLÓGICOS</div></div><div class="body"><div class="name">${escHtml(p.name)}</div><div class="bwrap"><svg class="bc" data-v="${code}" data-w="${barcW}" data-h="${barcH}"></svg></div><div class="bval">${code}</div></div><div class="accent"></div></div>`;
     }).join('');
 
     return `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -192,15 +192,15 @@ function buildThermalLabelsHtml(items, format, logoSrc) {
 <style>
 @page{size:${pageSize};margin:2mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{margin:0;padding:0;background:#fff;font-family:'Montserrat',Arial,sans-serif}
-.lbl{width:${labelW}mm;height:${labelH}mm;background:#fff;border:.3mm solid ${LIGHT};border-radius:1.2mm;overflow:hidden;page-break-inside:avoid;break-inside:avoid;display:flex;flex-direction:column}
-.hdr{background:${BLUE};height:${headerH}px;display:flex;align-items:center;padding:0 2.5mm;gap:1.5mm;flex-shrink:0}
-.logo{height:${logoH}px;object-fit:contain;display:block}
-.sub{margin-left:auto;color:rgba(255,255,255,.75);font-size:${format==='57mm'?'4.5pt':'5pt'};font-weight:600;letter-spacing:.4px;text-transform:uppercase;line-height:1.2;text-align:right}
+.lbl{width:${labelW}mm;height:${labelH}mm;background:#fff;border:.3mm solid #b8d4e0;border-radius:1.2mm;overflow:hidden;page-break-inside:avoid;break-inside:avoid;display:flex;flex-direction:column}
+.hdr{background:#124C69;height:${headerH}px;display:flex;align-items:center;padding:0 2.5mm;gap:1.5mm;flex-shrink:0}
+.logo{height:${logoH}px;object-fit:contain;display:block;filter:brightness(0) invert(1)}
+.sub{margin-left:auto;color:rgba(255,255,255,.85);font-size:${format==='57mm'?'4.5pt':'5pt'};font-weight:700;letter-spacing:.4px;text-transform:uppercase;line-height:1.2;text-align:right}
 .body{flex:1;padding:${format==='57mm'?'1mm 2mm .5mm':'1.5mm 2.5mm 1mm'};display:flex;flex-direction:column;justify-content:space-between}
 .name{font-size:${nameSz}pt;font-weight:700;color:#1e293b;line-height:1.25;text-transform:uppercase;letter-spacing:.3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:${format==='57mm'?'.8mm':'1mm'}}
 .bwrap{display:flex;align-items:center;justify-content:center;flex:1;min-height:0}.bwrap svg{max-width:100%;height:auto}
 .bval{text-align:center;font-family:monospace;font-size:${format==='57mm'?'4.5pt':'5.5pt'};color:#64748b;letter-spacing:1.5px;margin-top:.5mm}
-.accent{height:2.5px;background:linear-gradient(90deg,${BLUE},${TEAL});flex-shrink:0}
+.accent{height:2.5px;background:linear-gradient(90deg,#124C69,#1E6B8A);flex-shrink:0}
 </style></head><body>
 <div style="display:flex;flex-wrap:wrap;gap:2mm">${labelsHtml}</div>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -244,7 +244,7 @@ function buildA4LabelsHtml(items, tplId, logoSrc) {
     const subFontMm = hdrMm * 0.22;
 
     const hdrInner = showLogo
-        ? `<img src="${logoSrc}" class="logo">${showSub ? `<div style="flex:1"></div><span class="sub">LAB.<br>ODONT.</span>` : ''}`
+        ? `<img src="${logoSrc}" class="logo">${showSub ? `<div style="flex:1"></div><span class="sub">INSUMOS<br>ODONT.</span>` : ''}`
         : `<span style="color:#fff;font-size:${hdrMm * 0.38}mm;font-weight:900;letter-spacing:.3px;text-transform:uppercase">ARTDENT</span>`;
 
     function labelHtml(p) {
@@ -297,9 +297,10 @@ body{margin:0;padding:0;background:#fff;font-family:'Montserrat',Arial,sans-seri
   height:${logoH};
   max-width:${tpl.w * 0.52}mm;
   object-fit:contain;display:block;flex-shrink:0;
+  filter:brightness(0) invert(1);
 }
 .sub{
-  color:rgba(255,255,255,.82);
+  color:rgba(255,255,255,.85);
   font-size:${subFontMm}mm;
   font-weight:700;text-transform:uppercase;
   line-height:1.1;text-align:right;
