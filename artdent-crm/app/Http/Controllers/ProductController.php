@@ -83,7 +83,12 @@ class ProductController extends Controller
      */
     public function barcodeLabels(): \Inertia\Response
     {
-        return Inertia::render('Product/BarcodeLabels');
+        $company = \App\Models\Company::where('id', auth()->user()->company_id)
+            ->first(['id', 'name', 'fantasy_name', 'logo_url', 'lab_logo_url']);
+
+        return Inertia::render('Product/BarcodeLabels', [
+            'company' => $company,
+        ]);
     }
 
     /**

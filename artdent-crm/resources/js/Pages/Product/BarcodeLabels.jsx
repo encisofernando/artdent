@@ -10,6 +10,7 @@ import {
     getStoredTicketFormat,
     getStoredPrintBackend,
 } from '@/lib/print';
+import { getCompanyLogoSrc } from '@/lib/companyBranding';
 import axios from 'axios';
 
 /* ── Brand tokens ───────────────────────────────────────────────────────── */
@@ -66,7 +67,7 @@ function BarcodeSvg({ value, width = 1.8, height = 50 }) {
 }
 
 /* ── Thermal label card (preview) ──────────────────────────────────────── */
-function ThermalLabelCard({ product, format }) {
+function ThermalLabelCard({ product, format, logoSrc }) {
     const code     = product.barcode || product.sku || String(product.id);
     const W        = format === '57mm' ? 164 : format === '55x44' ? 200 : 234;
     const bH       = format === '57mm' ? 38  : format === '55x44' ? 44  : 46;
@@ -77,7 +78,7 @@ function ThermalLabelCard({ product, format }) {
     return (
         <div style={{ width: W, background: '#fff', borderRadius: 6, overflow: 'hidden', border: `1px solid ${LIGHT}`, boxShadow: '0 1px 4px rgba(57,123,156,0.12)', flexShrink: 0, fontFamily: "'Montserrat',Arial,sans-serif" }}>
             <div style={{ background: BLUE, height: headerH, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 6 }}>
-                <img src="/assets/logo-artdent-blanco.png" alt="ArtDent" style={{ height: headerH - 8, objectFit: 'contain' }} />
+                <img src={logoSrc} alt="ArtDent" style={{ height: headerH - 8, objectFit: 'contain' }} />
                 <div style={{ flex: 1 }} />
                 <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: format === '57mm' ? 5.5 : 6.5, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'right', lineHeight: 1.2 }}>
                     LABORATORIO<br />ODONTOLÓGICO
@@ -98,7 +99,7 @@ function ThermalLabelCard({ product, format }) {
 }
 
 /* ── A4 label card (preview — scaled) ──────────────────────────────────── */
-function A4LabelCard({ product, tpl, scale }) {
+function A4LabelCard({ product, tpl, scale, logoSrc }) {
     const code = product.barcode || product.sku || String(product.id);
 
     // Mirror exact same proportions as buildA4LabelsHtml
@@ -132,7 +133,7 @@ function A4LabelCard({ product, tpl, scale }) {
             {/* Header */}
             <div style={{ background: BLUE, height: hdrH, minHeight: hdrH, display: 'flex', alignItems: 'center', padding: `0 ${Math.max(1, tpl.w * 0.012) * scale}px`, gap: Math.max(1, scale * 0.5), flexShrink: 0, overflow: 'hidden' }}>
                 {showLogo
-                    ? <img src="/assets/logo-artdent-blanco.png" alt="" style={{ height: logoH, maxWidth: tpl.w * 0.52 * scale, objectFit: 'contain', flexShrink: 0 }} />
+                    ? <img src={logoSrc} alt="" style={{ height: logoH, maxWidth: tpl.w * 0.52 * scale, objectFit: 'contain', flexShrink: 0 }} />
                     : <span style={{ color: '#fff', fontSize: hdrH * 0.38, fontWeight: 900, letterSpacing: 0.3, textTransform: 'uppercase' }}>ARTDENT</span>
                 }
                 {showSub && (
@@ -169,7 +170,7 @@ function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function buildThermalLabelsHtml(items, format, logoOrigin) {
+function buildThermalLabelsHtml(items, format, logoSrc) {
     const expanded = items.flatMap(({ product, qty }) => Array.from({ length: qty }, () => product));
 
     const labelW  = format === '57mm' ? 44  : format === '55x44' ? 53  : 68;
@@ -180,7 +181,6 @@ function buildThermalLabelsHtml(items, format, logoOrigin) {
     const logoH   = headerH - 6;
     const nameSz  = format === '57mm' ? 6   : format === '55x44' ? 7   : 7.5;
     const pageSize = format === '57mm' ? '50mm auto' : format === '55x44' ? '55mm auto' : '74mm auto';
-    const logoSrc = `${logoOrigin}/assets/logo-artdent-blanco.png`;
 
     const labelsHtml = expanded.map(p => {
         const code = escHtml(p.barcode || p.sku || String(p.id));
@@ -208,7 +208,7 @@ body{margin:0;padding:0;background:#fff;font-family:'Montserrat',Arial,sans-seri
 </body></html>`;
 }
 
-function buildA4LabelsHtml(items, tplId, logoOrigin) {
+function buildA4LabelsHtml(items, tplId, logoSrc) {
     const tpl = HUSARES_TEMPLATES.find(t => t.id === tplId) || HUSARES_TEMPLATES[2];
     const expanded = items.flatMap(({ product, qty }) => Array.from({ length: qty }, () => product));
 
@@ -237,7 +237,6 @@ function buildA4LabelsHtml(items, tplId, logoOrigin) {
     const barcW    = tpl.w > 70 ? 1.6 : tpl.w > 55 ? 1.3 : tpl.w > 42 ? 1.05 : 0.8;
 
     const logoH   = `${Math.max(2.0, hdrMm - 2.0)}mm`;
-    const logoSrc = `${logoOrigin}/assets/logo-artdent-blanco.png`;
 
     // Sub-text only when header is tall enough
     const showSub  = hdrMm >= 7.0;
@@ -339,7 +338,7 @@ ${sheetsHtml}
 }
 
 /* ── Main page ──────────────────────────────────────────────────────────── */
-export default function BarcodeLabels({ auth }) {
+export default function BarcodeLabels({ auth, company }) {
     const { isDark } = useTheme();
 
     const [search,        setSearch]        = useState('');
@@ -355,6 +354,7 @@ export default function BarcodeLabels({ auth }) {
     const [printError, setPrintError] = useState(null);
 
     const currentTpl = HUSARES_TEMPLATES.find(t => t.id === husaresId) || HUSARES_TEMPLATES[2];
+    const logoSrc    = getCompanyLogoSrc(company, { scope: 'general', variant: 'white' });
 
     // Product search
     useEffect(() => {
@@ -400,12 +400,13 @@ export default function BarcodeLabels({ auth }) {
         setPrintError(null);
         try {
             const origin = window.location.origin;
+            const printLogoSrc = logoSrc?.startsWith('/storage/') ? `${origin}${logoSrc}` : logoSrc;
             let html;
             if (format === 'a4') {
-                html = buildA4LabelsHtml(selectedItems, husaresId, origin);
+                html = buildA4LabelsHtml(selectedItems, husaresId, printLogoSrc);
                 openBrowserPrint(html, { delay: 1000 });
             } else {
-                html = buildThermalLabelsHtml(selectedItems, format, origin);
+                html = buildThermalLabelsHtml(selectedItems, format, printLogoSrc);
                 const backend = getStoredPrintBackend();
                 if (backend === 'browser') {
                     openBrowserPrint(html, { delay: 900 });
@@ -672,7 +673,7 @@ export default function BarcodeLabels({ auth }) {
                                                             {Array.from({ length: currentTpl.cols * currentTpl.rows }, (_, ci) => {
                                                                 const product = page[ci];
                                                                 return product
-                                                                    ? <A4LabelCard key={ci} product={product} tpl={currentTpl} scale={scaleF} />
+                                                                    ? <A4LabelCard key={ci} product={product} tpl={currentTpl} scale={scaleF} logoSrc={logoSrc} />
                                                                     : <div key={ci} style={{ width: currentTpl.w * scaleF, height: currentTpl.h * scaleF, border: '0.3px dashed #e2e8f0' }} />;
                                                             })}
                                                         </div>
@@ -689,7 +690,7 @@ export default function BarcodeLabels({ auth }) {
                                         <div className="flex flex-wrap gap-2">
                                             {selectedItems.flatMap(({ product, qty }) =>
                                                 Array.from({ length: qty }, (_, i) => (
-                                                    <ThermalLabelCard key={`${product.id}-${i}`} product={product} format={format} />
+                                                    <ThermalLabelCard key={`${product.id}-${i}`} product={product} format={format} logoSrc={logoSrc} />
                                                 ))
                                             )}
                                         </div>
