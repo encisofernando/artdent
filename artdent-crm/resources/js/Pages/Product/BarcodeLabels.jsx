@@ -68,11 +68,11 @@ function BarcodeSvg({ value, width = 1.8, height = 50 }) {
 /* ── Thermal label card (preview) ──────────────────────────────────────── */
 function ThermalLabelCard({ product, format }) {
     const code     = product.barcode || product.sku || String(product.id);
-    const W        = format === '57mm' ? 164 : 234;
-    const bH       = format === '57mm' ? 38 : 46;
-    const bW       = format === '57mm' ? 1.2 : 1.5;
-    const nameSz   = format === '57mm' ? 9 : 11;
-    const headerH  = format === '57mm' ? 26 : 32;
+    const W        = format === '57mm' ? 164 : format === '55x44' ? 200 : 234;
+    const bH       = format === '57mm' ? 38  : format === '55x44' ? 44  : 46;
+    const bW       = format === '57mm' ? 1.2 : format === '55x44' ? 1.3 : 1.5;
+    const nameSz   = format === '57mm' ? 9   : format === '55x44' ? 10  : 11;
+    const headerH  = format === '57mm' ? 26  : format === '55x44' ? 30  : 32;
 
     return (
         <div style={{ width: W, background: '#fff', borderRadius: 6, overflow: 'hidden', border: `1px solid ${LIGHT}`, boxShadow: '0 1px 4px rgba(57,123,156,0.12)', flexShrink: 0, fontFamily: "'Montserrat',Arial,sans-serif" }}>
@@ -172,14 +172,14 @@ function escHtml(s) {
 function buildThermalLabelsHtml(items, format, logoOrigin) {
     const expanded = items.flatMap(({ product, qty }) => Array.from({ length: qty }, () => product));
 
-    const labelW  = format === '57mm' ? 44  : 68;
-    const labelH  = format === '57mm' ? 30  : 36;
-    const barcH   = format === '57mm' ? 32  : 40;
-    const barcW   = format === '57mm' ? 1.1 : 1.4;
-    const headerH = format === '57mm' ? 24  : 30;
+    const labelW  = format === '57mm' ? 44  : format === '55x44' ? 53  : 68;
+    const labelH  = format === '57mm' ? 30  : format === '55x44' ? 42  : 36;
+    const barcH   = format === '57mm' ? 32  : format === '55x44' ? 38  : 40;
+    const barcW   = format === '57mm' ? 1.1 : format === '55x44' ? 1.3 : 1.4;
+    const headerH = format === '57mm' ? 24  : format === '55x44' ? 28  : 30;
     const logoH   = headerH - 6;
-    const nameSz  = format === '57mm' ? 6   : 7.5;
-    const pageSize = `${format === '57mm' ? '50mm' : '74mm'} auto`;
+    const nameSz  = format === '57mm' ? 6   : format === '55x44' ? 7   : 7.5;
+    const pageSize = format === '57mm' ? '50mm auto' : format === '55x44' ? '55mm auto' : '74mm auto';
     const logoSrc = `${logoOrigin}/assets/logo-artdent-blanco.png`;
 
     const labelsHtml = expanded.map(p => {
@@ -348,7 +348,7 @@ export default function BarcodeLabels({ auth }) {
     const [selectedItems, setSelectedItems] = useState([]);
     const [format,        setFormat]        = useState(() => {
         const s = getStoredTicketFormat('80mm');
-        return s === '57mm' ? '57mm' : '80mm';
+        return ['57mm', '55x44', '80mm'].includes(s) ? s : '80mm';
     });
     const [husaresId,  setHusaresId]  = useState('21');
     const [printing,   setPrinting]   = useState(false);
@@ -447,7 +447,7 @@ export default function BarcodeLabels({ auth }) {
                             Etiquetas de Código de Barras
                         </h1>
                         <p className={`text-sm ${sub}`}>
-                            Imprimí etiquetas de góndola en papel adhesivo 57 mm, 80 mm o en hojas A4 Húsares
+                            Imprimí etiquetas de góndola en papel adhesivo 57 mm, 55×44 mm, 80 mm o en hojas A4 Húsares
                         </p>
                     </div>
 
@@ -455,9 +455,10 @@ export default function BarcodeLabels({ auth }) {
                         {/* Format picker */}
                         <div className={`flex items-center p-0.5 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
                             {[
-                                { id: '57mm', label: '57 mm' },
-                                { id: '80mm', label: '80 mm' },
-                                { id: 'a4',   label: 'A4 Húsares' },
+                                { id: '57mm',  label: '57 mm' },
+                                { id: '55x44', label: '55×44 mm' },
+                                { id: '80mm',  label: '80 mm' },
+                                { id: 'a4',    label: 'A4 Húsares' },
                             ].map(f => (
                                 <button key={f.id} onClick={() => setFormat(f.id)}
                                     className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${format === f.id
@@ -613,9 +614,10 @@ export default function BarcodeLabels({ auth }) {
                                 </span>
                             )}
                             <span className={`ml-auto text-xs ${sub}`}>
-                                {format === '57mm' && 'Papel adhesivo 57 mm'}
-                                {format === '80mm' && 'Papel adhesivo 80 mm'}
-                                {format === 'a4'   && `A4 Húsares · ${currentTpl.count} etiq/hoja · ${currentTpl.cols}×${currentTpl.rows}`}
+                                {format === '57mm'  && 'Papel adhesivo 57 mm'}
+                                {format === '55x44' && 'Rollo adhesivo 55×44 mm'}
+                                {format === '80mm'  && 'Papel adhesivo 80 mm'}
+                                {format === 'a4'    && `A4 Húsares · ${currentTpl.count} etiq/hoja · ${currentTpl.cols}×${currentTpl.rows}`}
                             </span>
                         </div>
 
@@ -683,7 +685,7 @@ export default function BarcodeLabels({ auth }) {
                                 : (
                                     /* Thermal paper preview */
                                     <div className="mx-auto bg-white rounded-xl shadow-lg border border-slate-200 p-3"
-                                        style={{ width: format === '57mm' ? 186 : 258, minHeight: 80 }}>
+                                        style={{ width: format === '57mm' ? 186 : format === '55x44' ? 222 : 258, minHeight: 80 }}>
                                         <div className="flex flex-wrap gap-2">
                                             {selectedItems.flatMap(({ product, qty }) =>
                                                 Array.from({ length: qty }, (_, i) => (
