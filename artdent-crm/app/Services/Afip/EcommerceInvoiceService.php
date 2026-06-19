@@ -149,19 +149,8 @@ class EcommerceInvoiceService
             );
         }
 
-        $originalInvoiceType = $originalInvoice->invoice_type;
-        $receiptKey = $originalInvoiceType?->name ?? 'FC';
-
-        $ncKey = match ($receiptKey) {
-            'FA' => 'NCA',
-            'FB' => 'NCB',
-            'FC' => 'NCC',
-            default => throw new RuntimeException(
-                "No se puede emitir NC para tipo {$receiptKey}"
-            ),
-        };
-
         // Buscar la venta vinculada a la factura original
+        // receipt_type en la venta almacena la clave corta ('FA','FB','FC')
         $sale = Sale::query()
             ->where('invoice_id', $originalInvoice->id)
             ->with(['company', 'customer', 'sale_items'])
@@ -172,6 +161,15 @@ class EcommerceInvoiceService
                 "No se encontró la venta vinculada a la factura #{$originalInvoice->id}."
             );
         }
+
+        $ncKey = match ($sale->receipt_type) {
+            'FA' => 'NCA',
+            'FB' => 'NCB',
+            'FC' => 'NCC',
+            default => throw new RuntimeException(
+                "No se puede emitir NC para tipo {$sale->receipt_type}"
+            ),
+        };
 
         Log::info('EcommerceInvoiceService: generando nota de crédito', [
             'order_id' => $order->id,
