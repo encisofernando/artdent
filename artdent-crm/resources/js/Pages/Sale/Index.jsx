@@ -337,34 +337,61 @@ export default function Index({ auth, items, filters }) {
                             </div>
                         </div>
 
-                        {/* ══ Pagination — original intacto ══ */}
-                        {items?.links && items.links.length > 3 && (
-                            <div className="flex justify-center mt-2">
-                                <div className={`flex gap-1 p-1 rounded-xl border
-                                    ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
-                                `}>
-                                    {items.links.map((link, i) => {
-                                        if (!link.url && !link.active) {
-                                            return (
-                                                <span key={i} className={`px-3 py-1.5 rounded-lg text-sm ${isDark ? 'text-slate-600' : 'text-slate-400'}`}
-                                                    dangerouslySetInnerHTML={{ __html: link.label }} />
-                                            );
-                                        }
-                                        return (
-                                            <Link key={i} href={link.url} preserveScroll
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-                                                    ${link.active
-                                                        ? (isDark ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600')
-                                                        : (isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100')
-                                                    }
-                                                `}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        );
-                                    })}
+                        {/* ══ Pagination responsive ══ */}
+                        {items?.links && items.links.length > 3 && (() => {
+                            const prev = items.links[0];
+                            const next = items.links[items.links.length - 1];
+                            const pages = items.links.slice(1, -1);
+                            const current = items.current_page;
+                            const last = items.last_page;
+                            const btnBase = `px-3 py-1.5 rounded-lg text-sm font-medium transition-colors`;
+                            const btnEnabled = isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100';
+                            const btnDisabled = isDark ? 'text-slate-700 cursor-default' : 'text-slate-300 cursor-default';
+                            const btnActive = isDark ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600';
+                            const wrap = `inline-flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}`;
+
+                            return (
+                                <div className="mt-2 space-y-2">
+                                    {/* Mobile: solo Anterior / X de Y / Siguiente */}
+                                    <div className={`flex sm:hidden items-center justify-between ${wrap}`}>
+                                        {prev.url
+                                            ? <Link href={prev.url} preserveScroll className={`${btnBase} ${btnEnabled}`}>← Anterior</Link>
+                                            : <span className={`${btnBase} ${btnDisabled}`}>← Anterior</span>}
+                                        <span className={`${btnBase} ${isDark ? 'text-slate-300' : 'text-slate-700'} font-semibold`}>
+                                            {current} / {last}
+                                        </span>
+                                        {next.url
+                                            ? <Link href={next.url} preserveScroll className={`${btnBase} ${btnEnabled}`}>Siguiente →</Link>
+                                            : <span className={`${btnBase} ${btnDisabled}`}>Siguiente →</span>}
+                                    </div>
+
+                                    {/* Desktop: todos los números con truncado en listas largas */}
+                                    <div className={`hidden sm:flex flex-wrap justify-center gap-1 p-1 rounded-xl border
+                                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}`}>
+                                        {/* Anterior */}
+                                        {prev.url
+                                            ? <Link href={prev.url} preserveScroll className={`${btnBase} ${btnEnabled}`} dangerouslySetInnerHTML={{ __html: prev.label }} />
+                                            : <span className={`${btnBase} ${btnDisabled}`} dangerouslySetInnerHTML={{ __html: prev.label }} />}
+                                        {/* Números: muestra primera, últimas 2, y ventana alrededor de current */}
+                                        {pages.map((link, i) => {
+                                            const n = parseInt(link.label, 10);
+                                            const show = isNaN(n) || n === 1 || n === last || Math.abs(n - current) <= 2;
+                                            const showDots = !isNaN(n) && !show &&
+                                                (pages[i - 1] && Math.abs(parseInt(pages[i - 1].label, 10) - n) === 1);
+                                            if (!show && showDots) return <span key={i} className={`${btnBase} ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>…</span>;
+                                            if (!show) return null;
+                                            return link.url
+                                                ? <Link key={i} href={link.url} preserveScroll className={`${btnBase} ${link.active ? btnActive : btnEnabled}`} dangerouslySetInnerHTML={{ __html: link.label }} />
+                                                : <span key={i} className={`${btnBase} ${link.active ? btnActive : btnDisabled}`} dangerouslySetInnerHTML={{ __html: link.label }} />;
+                                        })}
+                                        {/* Siguiente */}
+                                        {next.url
+                                            ? <Link href={next.url} preserveScroll className={`${btnBase} ${btnEnabled}`} dangerouslySetInnerHTML={{ __html: next.label }} />
+                                            : <span className={`${btnBase} ${btnDisabled}`} dangerouslySetInnerHTML={{ __html: next.label }} />}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                     </div>{/* /content padding */}
                 </div>{/* /scrollable */}
