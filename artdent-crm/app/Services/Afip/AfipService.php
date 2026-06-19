@@ -337,6 +337,11 @@ class AfipService
         }
 
         if (! empty($dni)) {
+            // CUIT/CUIL almacenado en campo dni → usar DocTipo 80
+            if (ctype_digit($dni) && strlen($dni) === 11) {
+                return [80, (int) $dni, 5];
+            }
+
             if (! ctype_digit($dni) || strlen($dni) < 7 || strlen($dni) > 8) {
                 throw new RuntimeException(
                     "DNI inválido: debe ser numérico de 7 u 8 dígitos (recibido: '{$dni}')."
