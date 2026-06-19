@@ -389,6 +389,9 @@ class SaleController extends Controller
             }
             // ─────────────────────────────────────────────────────────────────
 
+            // Recargar atributos del modelo para reflejar el sale_number asignado por AFIP
+            $sale->refresh();
+
             // Cargar relaciones para el modal post-venta del frontend
             $sale->load([
                 'sale_items',
