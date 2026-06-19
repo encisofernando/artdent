@@ -337,9 +337,10 @@ class AfipService
         }
 
         if (! empty($dni)) {
-            // CUIT/CUIL almacenado en campo dni → usar DocTipo 80
+            // CUIL/CUIT (11 dígitos) en campo dni → extraer los 8 dígitos centrales como DNI
+            // Formato CUIL: XX-XXXXXXXX-X (prefijo 2 + dni 8 + verificador 1)
             if (ctype_digit($dni) && strlen($dni) === 11) {
-                return [80, (int) $dni, 5];
+                $dni = substr($dni, 2, 8);
             }
 
             if (! ctype_digit($dni) || strlen($dni) < 7 || strlen($dni) > 8) {

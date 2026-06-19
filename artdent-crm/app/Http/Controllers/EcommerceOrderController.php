@@ -170,7 +170,11 @@ class EcommerceOrderController extends Controller
                 ->exists();
 
             if (! $hasInvoice) {
-                GenerateEcommerceAfipInvoiceJob::dispatch($ecommerceOrder->id);
+                try {
+                    GenerateEcommerceAfipInvoiceJob::dispatch($ecommerceOrder->id);
+                } catch (\Throwable) {
+                    // El job loguea el error internamente; no bloqueamos la actualización
+                }
             }
         }
 
@@ -214,7 +218,11 @@ class EcommerceOrderController extends Controller
             return back()->withErrors(['error' => 'El pedido ya tiene comprobante AFIP autorizado.']);
         }
 
-        GenerateEcommerceAfipInvoiceJob::dispatch($ecommerceOrder->id);
+        try {
+            GenerateEcommerceAfipInvoiceJob::dispatch($ecommerceOrder->id);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['error' => 'Error AFIP: '.$e->getMessage()]);
+        }
 
         return back()->with('success', 'Comprobante AFIP en proceso. Se enviará por email al cliente.');
     }
