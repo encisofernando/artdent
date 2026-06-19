@@ -71,6 +71,22 @@ export default function Index({ auth, items, filters }) {
     const isCredit = (rt) => ['NCA', 'NCB', 'NCC'].includes((rt || '').toUpperCase());
     const signFor  = (rt) => isCredit(rt) ? -1 : 1;
 
+    const receiptLabel = (rt) => {
+        const map = {
+            X: { label: 'Ticket',   color: '#94a3b8' },
+            FA: { label: 'Fact. A', color: '#6366f1' }, A: { label: 'Fact. A', color: '#6366f1' },
+            FB: { label: 'Fact. B', color: '#3b82f6' }, B: { label: 'Fact. B', color: '#3b82f6' },
+            FC: { label: 'Fact. C', color: '#0ea5e9' }, C: { label: 'Fact. C', color: '#0ea5e9' },
+            NCA: { label: 'NC A',   color: '#f59e0b' },
+            NCB: { label: 'NC B',   color: '#f59e0b' },
+            NCC: { label: 'NC C',   color: '#f59e0b' },
+            NDA: { label: 'ND A',   color: '#ef4444' },
+            NDB: { label: 'ND B',   color: '#ef4444' },
+            NDC: { label: 'ND C',   color: '#ef4444' },
+        };
+        return map[(rt || '').toUpperCase()] ?? { label: rt || '—', color: '#94a3b8' };
+    };
+
     const pageTotal = data.reduce((sum, item) => sum + signFor(item.receipt_type) * Number(item.total || 0), 0);
     const pagePaid  = data.reduce((sum, item) => sum + signFor(item.receipt_type) * Number(item.paid_amount || 0), 0);
     const pageDue   = pageTotal - pagePaid;
@@ -197,7 +213,13 @@ export default function Index({ auth, items, filters }) {
                                                     <p className="font-bold text-sm truncate" style={{ color: B.teal }}>
                                                         {item.sale_number || `VNT-${item.id.toString().padStart(5, '0')}`}
                                                     </p>
-                                                    <div className="mt-1.5">
+                                                    <div className="mt-1 flex items-center gap-1.5">
+                                                        {(() => { const r = receiptLabel(item.receipt_type); return (
+                                                            <span className="text-xs font-semibold px-1.5 py-0.5 rounded"
+                                                                style={{ backgroundColor: r.color + '22', color: r.color }}>
+                                                                {r.label}
+                                                            </span>
+                                                        ); })()}
                                                         <StatusBadge status={item.status} />
                                                     </div>
                                                 </div>
@@ -258,7 +280,15 @@ export default function Index({ auth, items, filters }) {
                                         {data.length > 0 ? data.map((item) => (
                                             <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                                 <td className={`px-6 py-4 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                    {item.sale_number || `VNT-${item.id.toString().padStart(5, '0')}`}
+                                                    <div className="flex flex-col gap-0.5">
+                                                        {item.sale_number || `VNT-${item.id.toString().padStart(5, '0')}`}
+                                                        {(() => { const r = receiptLabel(item.receipt_type); return (
+                                                            <span className="text-xs font-semibold px-1.5 py-0.5 rounded w-fit"
+                                                                style={{ backgroundColor: r.color + '22', color: r.color }}>
+                                                                {r.label}
+                                                            </span>
+                                                        ); })()}
+                                                    </div>
                                                 </td>
                                                 <td className={`px-6 py-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                                                     {item.sold_at ? new Date(item.sold_at).toLocaleDateString('es-AR') : new Date(item.created_at).toLocaleDateString('es-AR')}
