@@ -198,37 +198,37 @@ export default function Index({ auth, items, filters }) {
                             ))}
                         </div>
 
-                        {/* Buttons */}
+                        {/* Buttons — mobile: igual ancho, ícono + texto corto / desktop: texto completo */}
                         <div className="flex w-full sm:w-auto gap-2">
-                            <Button
+                            <button
                                 onClick={() => { setBarcodeInitialProducts([]); setIsBarcodeModalOpen(true); }}
-                                variant="outline"
-                                className={`w-full sm:w-auto shadow-sm rounded-xl transition-all
+                                className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-all
                                     ${isDark ? 'border-violet-700/60 bg-violet-900/20 text-violet-300 hover:bg-violet-900/40' : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'}
                                 `}
                             >
-                                <Tag className="mr-2" size={18} />
-                                Etiquetas
-                            </Button>
-                            <Button
+                                <Tag size={16} />
+                                <span className="hidden sm:inline">Etiquetas</span>
+                                <span className="sm:hidden text-xs">Etiquetas</span>
+                            </button>
+                            <button
                                 onClick={() => setIsImportModalOpen(true)}
-                                variant="outline"
-                                className={`w-full sm:w-auto shadow-sm rounded-xl transition-all
+                                className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-all
                                     ${isDark ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}
                                 `}
                             >
-                                <FileText className="mr-2" size={18} />
-                                Importar/Exportar
-                            </Button>
-
-                            <Link href={route('products.create')} className="w-full sm:w-auto">
-                                <Button
-                                    className="w-full text-white border-none shadow-md hover:shadow-lg transition-all rounded-xl"
+                                <FileText size={16} />
+                                <span className="hidden sm:inline">Importar/Exportar</span>
+                                <span className="sm:hidden text-xs">Importar</span>
+                            </button>
+                            <Link href={route('products.create')} className="flex flex-1 sm:flex-none">
+                                <button
+                                    className="flex w-full items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
                                     style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
                                 >
-                                    <Plus className="mr-2" size={18} />
-                                    Nuevo
-                                </Button>
+                                    <Plus size={16} />
+                                    <span className="hidden sm:inline">Nuevo</span>
+                                    <span className="sm:hidden text-xs">Nuevo</span>
+                                </button>
                             </Link>
                         </div>
                     </div>
