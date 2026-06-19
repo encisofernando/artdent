@@ -68,8 +68,11 @@ export default function Index({ auth, items, filters }) {
         </div>
     );
 
-    const pageTotal = data.reduce((sum, item) => sum + Number(item.total || 0), 0);
-    const pagePaid  = data.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
+    const isCredit = (rt) => ['NCA', 'NCB', 'NCC'].includes((rt || '').toUpperCase());
+    const signFor  = (rt) => isCredit(rt) ? -1 : 1;
+
+    const pageTotal = data.reduce((sum, item) => sum + signFor(item.receipt_type) * Number(item.total || 0), 0);
+    const pagePaid  = data.reduce((sum, item) => sum + signFor(item.receipt_type) * Number(item.paid_amount || 0), 0);
     const pageDue   = pageTotal - pagePaid;
 
     return (
@@ -199,8 +202,8 @@ export default function Index({ auth, items, filters }) {
                                                     </div>
                                                 </div>
                                                 <div className="text-right shrink-0">
-                                                    <p className={`font-extrabold text-base ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                                                        $ {Number(item.total).toLocaleString('es-AR')}
+                                                    <p className={`font-extrabold text-base ${isCredit(item.receipt_type) ? 'text-amber-500' : (isDark ? 'text-slate-100' : 'text-slate-900')}`}>
+                                                        {isCredit(item.receipt_type) ? '-' : ''}$ {Number(item.total).toLocaleString('es-AR')}
                                                     </p>
                                                     <p className="text-xs font-semibold text-emerald-500 mt-0.5">
                                                         Cobrado $ {Number(item.paid_amount || 0).toLocaleString('es-AR')}
@@ -270,8 +273,8 @@ export default function Index({ auth, items, filters }) {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 font-bold" style={{ color: B.blue }}>
-                                                    ${Number(item.total).toLocaleString('es-AR')}
+                                                <td className="px-6 py-4 font-bold" style={{ color: isCredit(item.receipt_type) ? '#f59e0b' : B.blue }}>
+                                                    {isCredit(item.receipt_type) ? '-' : ''}${Number(item.total).toLocaleString('es-AR')}
                                                 </td>
                                                 <td className="px-6 py-4 font-bold text-emerald-500">
                                                     ${Number(item.paid_amount || 0).toLocaleString('es-AR')}
