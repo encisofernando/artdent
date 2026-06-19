@@ -33,14 +33,14 @@ class AfipService
         'NDC' => 13,  // Nota de Débito C
     ];
 
-    // Alícuota IVA % → código AFIP
+    // Alícuota IVA % (string) → código AFIP
     private const IVA_CODES = [
-        0 => 3,
-        10.5 => 4,
-        21 => 5,
-        27 => 6,
-        5 => 8,
-        2.5 => 9,
+        '0' => 3,
+        '10.5' => 4,
+        '21' => 5,
+        '27' => 6,
+        '5' => 8,
+        '2.5' => 9,
     ];
 
     private WsaaService $wsaa;
@@ -89,24 +89,31 @@ class AfipService
         // 3 — Calcular importes
         $items = $sale->sale_items;
         $neto = 0.0;
+        $opEx = 0.0;
         $ivaTotal = 0.0;
         $ivaItems = [];
 
+        // FA/NCA/NDA/FB/NCB/NDB son comprobantes de Responsable Inscripto.
+        // Para RI: items sin IVA son "exentos" → ImpOpEx (no ImpNeto).
+        // Para FC/NCC/NDC (monotributista): todo va a ImpNeto, sin sección IVA.
+        $isRI = in_array($cbteTipo, [1, 2, 3, 6, 7, 8]);
+
         foreach ($items as $item) {
             $taxRate = (float) ($item->tax_rate ?? 0);
-            $itemNeto = $taxRate > 0
-                ? round($item->total / (1 + $taxRate / 100), 2)
-                : (float) $item->total;
-            $itemIva = round($item->total - $itemNeto, 2);
-
-            $neto += $itemNeto;
-            $ivaTotal += $itemIva;
 
             if ($taxRate > 0) {
-                $code = self::IVA_CODES[(float) $taxRate] ?? 5;
+                $itemNeto = round($item->total / (1 + $taxRate / 100), 2);
+                $itemIva = round($item->total - $itemNeto, 2);
+                $neto += $itemNeto;
+                $ivaTotal += $itemIva;
+                $code = self::IVA_CODES[(string) $taxRate] ?? 5;
                 $ivaItems[$code] ??= ['Id' => $code, 'BaseImp' => 0, 'Importe' => 0];
                 $ivaItems[$code]['BaseImp'] += $itemNeto;
                 $ivaItems[$code]['Importe'] += $itemIva;
+            } elseif ($isRI) {
+                $opEx += (float) $item->total;
+            } else {
+                $neto += (float) $item->total;
             }
         }
 
@@ -120,7 +127,8 @@ class AfipService
         // Datos del receptor
         [$docTipo, $docNro, $ivaReceptor] = $this->resolveRecipient($sale, $receiptKey);
 
-        $date = Carbon::parse($sale->sold_at ?? $sale->created_at)->format('Ymd');
+        $saleDate = Carbon::parse($sale->sold_at ?? $sale->created_at);
+        $date = $saleDate->format('Ymd');
 
         $invoiceData = [
             'point_sale' => $pointSale,
@@ -129,6 +137,7 @@ class AfipService
             'date' => $date,
             'total' => round((float) $sale->total, 2),
             'neto' => round($neto, 2),
+            'op_ex' => round($opEx, 2),
             'iva_total' => round($ivaTotal, 2),
             'iva_items' => array_values($ivaItems),
             'doc_tipo' => $docTipo,
@@ -136,6 +145,17 @@ class AfipService
             'iva_receptor' => $ivaReceptor, // RG 5616: CondicionIVAReceptorId
             'concepto' => 1, // Productos
         ];
+
+        // NC/ND requieren CbteAsoc o PeriodoAsoc obligatorio (error AFIP 10197).
+        // Usamos PeriodoAsoc con el mes de la venta para no depender del comprobante original.
+        $isDebitCredit = in_array($receiptKey, ['NCA', 'NCB', 'NCC', 'NDA', 'NDB', 'NDC']);
+        if ($isDebitCredit) {
+            // FchHasta no puede ser posterior a la fecha de emisión (error AFIP 10208)
+            $invoiceData['period_asoc'] = [
+                'fch_desde' => $saleDate->copy()->startOfMonth()->format('Ymd'),
+                'fch_hasta' => $saleDate->format('Ymd'),
+            ];
+        }
 
         // 4 — Solicitar CAE
         DB::beginTransaction();

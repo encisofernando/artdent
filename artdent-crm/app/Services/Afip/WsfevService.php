@@ -134,7 +134,7 @@ class WsfevService
             'ImpTotal' => $this->fmt($data['total']),
             'ImpTotConc' => 0,
             'ImpNeto' => $this->fmt($data['neto']),
-            'ImpOpEx' => 0,
+            'ImpOpEx' => $this->fmt($data['op_ex'] ?? 0),
             'ImpIVA' => $this->fmt($data['iva_total']),
             'ImpTrib' => 0,
             'MonId' => 'PES',
@@ -149,9 +149,17 @@ class WsfevService
             $detail['Iva'] = ['AlicIva' => $data['iva_items']];
         }
 
-        // Comprobantes asociados (para NC/ND)
+        // Comprobantes asociados (para NC/ND) — se usa si se tiene el comprobante original
         if (! empty($data['associated_invoices'])) {
             $detail['CbtesAsoc'] = ['CbteAsoc' => $data['associated_invoices']];
+        }
+
+        // Período asociado — alternativa a CbteAsoc cuando no se tiene el comprobante original
+        if (! empty($data['period_asoc'])) {
+            $detail['PeriodoAsoc'] = [
+                'FchDesde' => $data['period_asoc']['fch_desde'],
+                'FchHasta' => $data['period_asoc']['fch_hasta'],
+            ];
         }
 
         // Para Factura A: fecha de vto de pago
