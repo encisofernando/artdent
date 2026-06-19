@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateEcommerceAfipCreditNoteJob;
 use App\Models\CrmNotification;
+use App\Models\EcommerceOrder;
 use App\Models\EcommercePaymentReport;
+use App\Models\Invoice;
 use App\Models\Stock;
 use App\Services\MercadoPagoRefundService;
 use Illuminate\Http\JsonResponse;
@@ -219,7 +222,23 @@ class CustomerController extends Controller
             }
         }
 
+        // Verificar si tiene factura AFIP antes de actualizar (para generar NC después)
+        $hasAfipInvoice = Invoice::query()
+            ->where('reference_type', EcommerceOrder::class)
+            ->where('reference_id', $order->id)
+            ->whereNotNull('cae')
+            ->exists();
+
         $order->update($orderUpdates);
+
+        // Generar NC AFIP automáticamente si el pedido tenía factura autorizada
+        if ($hasAfipInvoice) {
+            try {
+                GenerateEcommerceAfipCreditNoteJob::dispatch($order->id);
+            } catch (\Throwable) {
+                // El job loguea el error y genera notificación CRM
+            }
+        }
 
         CrmNotification::create([
             'type' => 'order_cancelled',

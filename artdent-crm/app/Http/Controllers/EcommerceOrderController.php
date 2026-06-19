@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateEcommerceAfipCreditNoteJob;
 use App\Jobs\GenerateEcommerceAfipInvoiceJob;
 use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
@@ -119,6 +120,14 @@ class EcommerceOrderController extends Controller
         $wasTerminal = in_array($previousStatus, $terminalStatuses);
         $becomesTerminal = in_array($newStatus, $terminalStatuses);
 
+        // Si cancela/reembolsa por primera vez y tiene factura AFIP, generar NC automáticamente
+        $shouldGenerateCreditNote = $becomesTerminal && ! $wasTerminal
+            && Invoice::query()
+                ->where('reference_type', EcommerceOrder::class)
+                ->where('reference_id', $ecommerceOrder->id)
+                ->whereNotNull('cae')
+                ->exists();
+
         // Return stock when transitioning to cancelled/refunded for the first time
         if ($becomesTerminal && ! $wasTerminal) {
             $warehouseId = (int) env('ECOMMERCE_WAREHOUSE_ID', 1);
@@ -175,6 +184,15 @@ class EcommerceOrderController extends Controller
                 } catch (\Throwable) {
                     // El job loguea el error internamente; no bloqueamos la actualización
                 }
+            }
+        }
+
+        // Disparar NC AFIP cuando se cancela/reembolsa un pedido con factura autorizada
+        if ($shouldGenerateCreditNote) {
+            try {
+                GenerateEcommerceAfipCreditNoteJob::dispatch($ecommerceOrder->id);
+            } catch (\Throwable) {
+                // El job loguea el error y genera notificación CRM; no bloqueamos la actualización
             }
         }
 
