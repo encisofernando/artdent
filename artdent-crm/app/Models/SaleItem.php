@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class SaleItem
- * 
+ *
  * @property int $id
  * @property int $sale_id
  * @property int|null $product_id
@@ -22,48 +22,48 @@ use Illuminate\Database\Eloquent\Model;
  * @property float|null $discount
  * @property float|null $tax_amount
  * @property float $total
- * 
  * @property Product|null $product
  * @property Sale $sale
- *
- * @package App\Models
  */
 class SaleItem extends Model
 {
-	protected $table = 'sale_items';
-	public $timestamps = false;
+    protected $table = 'sale_items';
 
-	protected $casts = [
-		'sale_id' => 'int',
-		'product_id' => 'int',
-		'variant_id' => 'int',
-		'quantity' => 'float',
-		'unit_price' => 'float',
-		'discount' => 'float',
-		'tax_amount' => 'float',
-		'total' => 'float'
-	];
+    public $timestamps = false;
 
-	protected $fillable = [
-		'sale_id',
-		'product_id',
-		'variant_id',
-		'product_name',
-		'sku',
-		'quantity',
-		'unit_price',
-		'discount',
-		'tax_amount',
-		'total'
-	];
+    protected $casts = [
+        'sale_id' => 'int',
+        'product_id' => 'int',
+        'variant_id' => 'int',
+        'quantity' => 'float',
+        'unit_price' => 'float',
+        'discount' => 'float',
+        'tax_rate' => 'float',
+        'tax_amount' => 'float',
+        'total' => 'float',
+    ];
 
-	public function product()
-	{
-		return $this->belongsTo(Product::class);
-	}
+    protected $fillable = [
+        'sale_id',
+        'product_id',
+        'variant_id',
+        'product_name',
+        'sku',
+        'quantity',
+        'unit_price',
+        'discount',
+        'tax_rate',
+        'tax_amount',
+        'total',
+    ];
 
-	public function sale()
-	{
-		return $this->belongsTo(Sale::class);
-	}
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class);
+    }
 }

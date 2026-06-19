@@ -101,6 +101,12 @@ class AfipService
         foreach ($items as $item) {
             $taxRate = (float) ($item->tax_rate ?? 0);
 
+            // El frontend guarda tax_rate como decimal (0.21); IVA_CODES usa porcentaje (21).
+            // Normalizar: si el valor es fraccionario (< 1) convertir a porcentaje.
+            if ($taxRate > 0 && $taxRate < 1) {
+                $taxRate = round($taxRate * 100, 2);
+            }
+
             if ($taxRate > 0) {
                 $itemNeto = round($item->total / (1 + $taxRate / 100), 2);
                 $itemIva = round($item->total - $itemNeto, 2);

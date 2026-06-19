@@ -317,6 +317,9 @@ class SaleController extends Controller
                     'quantity' => $qty,
                     'unit_price' => $unitPrice,
                     'discount' => $discount,
+                    'tax_rate' => isset($item['tax_rate']) && (float) $item['tax_rate'] > 0
+                        ? (float) $item['tax_rate']
+                        : null,
                     'tax_amount' => $taxAmount,
                     'total' => $lineTotal,
                 ]);
@@ -388,7 +391,7 @@ class SaleController extends Controller
                 'sale_payments.paymentMethod',
                 'company',
                 'user',
-                'invoice',
+                'invoice.invoice_type',
             ]);
 
             // Retornamos Sale/Create con el prop 'sale' para que el modal
@@ -525,7 +528,7 @@ class SaleController extends Controller
                 ]),
                 'payment_breakdown' => $this->buildPaymentBreakdown($sale),
                 'customer' => $sale->customer
-                    ? $sale->customer->only('id', 'name', 'phone', 'dni')
+                    ? $sale->customer->only('id', 'name', 'phone', 'dni', 'cuit', 'email')
                     : null,
             ]),
             'account' => $accountData,
