@@ -92,14 +92,24 @@ class EcommerceInvoiceService
             'receipt_key' => $receiptKey,
         ]);
 
-        // Solicitar CAE a AFIP
+        // Solicitar CAE a AFIP — si falla, eliminar la venta auxiliar para no dejar huérfanas
         $afipService = new AfipService($order->company);
-        $invoice = $afipService->generateFromSale($sale, $receiptKey);
+        try {
+            $invoice = $afipService->generateFromSale($sale, $receiptKey);
+        } catch (\Throwable $e) {
+            $sale->sale_items()->delete();
+            $sale->delete();
+            throw $e;
+        }
 
-        // Vincular factura al pedido y actualizar la venta
+        // Sincronizar sale_number con el número oficial asignado por AFIP
+        $pointSale = str_pad($order->company->afip_point_sale ?? 1, 5, '0', STR_PAD_LEFT);
+        $afipNumber = str_pad($invoice->number, 8, '0', STR_PAD_LEFT);
+
         $sale->update([
             'receipt_type' => $receiptKey,
             'invoice_id' => $invoice->id,
+            'sale_number' => "{$pointSale}-{$afipNumber}",
         ]);
 
         // Actualizar reference en el invoice para que apunte al pedido
