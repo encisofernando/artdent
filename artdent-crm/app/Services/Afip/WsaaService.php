@@ -179,9 +179,11 @@ class WsaaService
         // Se permiten ciphers con DH keys pequeñas porque los servidores de prod de AFIP
         // usan DH de 512 bits, rechazado por OpenSSL con security level >= 1.
         $systemCa = '/etc/ssl/certs/ca-certificates.crt';
+        // open_basedir en hosting compartido puede bloquear file_exists() en /etc/ssl
+        $caExists = @file_exists($systemCa);
         $sslOpts = [
-            'verify_peer' => file_exists($systemCa),
-            'verify_peer_name' => file_exists($systemCa),
+            'verify_peer' => $caExists,
+            'verify_peer_name' => $caExists,
             'cafile' => $systemCa,
             'ciphers' => 'DEFAULT:@SECLEVEL=0',
         ];
