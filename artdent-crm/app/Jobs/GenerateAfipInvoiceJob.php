@@ -39,10 +39,16 @@ class GenerateAfipInvoiceJob implements ShouldQueue
         }
 
         $service = new AfipService($sale->company);
-        $service->generateFromSale($sale, $this->receiptKey);
+        $invoice = $service->generateFromSale($sale, $this->receiptKey);
 
-        // Actualizar receipt_type al tipo AFIP generado exitosamente
-        $sale->update(['receipt_type' => $this->receiptKey]);
+        // Sincronizar sale_number con el número oficial asignado por AFIP
+        $pointSale = str_pad($sale->company->afip_point_sale ?? 1, 5, '0', STR_PAD_LEFT);
+        $afipNumber = str_pad($invoice->number, 8, '0', STR_PAD_LEFT);
+
+        $sale->update([
+            'receipt_type' => $this->receiptKey,
+            'sale_number' => "{$pointSale}-{$afipNumber}",
+        ]);
     }
 
     public function failed(Throwable $exception): void

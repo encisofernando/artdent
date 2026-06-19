@@ -204,14 +204,18 @@ class SaleController extends Controller
         $receiptType = strtoupper($request->receipt_type ?? 'X');
         $company = \App\Models\Company::find($companyId);
 
-        // X → punto de venta fijo 00001 | A/B/C → companies.afip_point_sale
-        $pointSale = in_array($receiptType, ['A', 'B', 'C'])
+        // X → punto de venta fijo 00001 | A/B/C/FA/FB/FC/NC*/ND* → companies.afip_point_sale
+        $isAfipType = in_array($receiptType, ['A', 'B', 'C', 'FA', 'FB', 'FC', 'NCA', 'NCB', 'NCC', 'NDA', 'NDB', 'NDC']);
+        $pointSale = $isAfipType
             ? str_pad($company?->afip_point_sale ?? 1, 5, '0', STR_PAD_LEFT)
             : '00001';
 
-        $sequence = Sale::where('company_id', $companyId)
-            ->where('receipt_type', $receiptType)
-            ->count() + 1;
+        // MAX sobre la secuencia numérica del sale_number para el mismo punto de venta.
+        // COUNT era frágil: reiniciaba cuando ventas AFIP revertían a 'X'.
+        $maxSeq = Sale::where('company_id', $companyId)
+            ->where('sale_number', 'like', $pointSale.'-%')
+            ->max(\DB::raw("CAST(SUBSTRING_INDEX(sale_number, '-', -1) AS UNSIGNED)"));
+        $sequence = ($maxSeq ?? 0) + 1;
         $saleNumber = $pointSale.'-'.str_pad($sequence, 8, '0', STR_PAD_LEFT);
         // ─────────────────────────────────────────────────────────────────────
 
