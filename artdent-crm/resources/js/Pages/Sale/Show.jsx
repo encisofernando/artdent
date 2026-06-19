@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Printer, Download, CreditCard, User, Check, FileCheck2, AlertTriangle, Loader2, ChevronDown, Mail, Send } from 'lucide-react';
+import { ArrowLeft, Printer, Download, CreditCard, User, Check, FileCheck2, AlertTriangle, Loader2, ChevronDown, Mail, Send, Trash2, FileMinus, FilePlus } from 'lucide-react';
 import axios from 'axios';
 import SearchableSelect from '@/Components/SearchableSelect';
 import FacturaA4 from '@/Components/Sale/FacturaA4';
@@ -16,6 +16,15 @@ import {
     openBrowserPrint,
     printElementWithElectron,
 } from '@/lib/print';
+
+// Mapea tipo de factura a sus NC/ND correspondientes
+function getNotaFiscalTypes(rt) {
+    const r = (rt || '').toUpperCase();
+    if (['FA', 'A'].includes(r)) return { nc: 'NCA', nd: 'NDA', label: 'A' };
+    if (['FB', 'B'].includes(r)) return { nc: 'NCB', nd: 'NDB', label: 'B' };
+    if (['FC', 'C'].includes(r)) return { nc: 'NCC', nd: 'NDC', label: 'C' };
+    return null;
+}
 
 // ─── Paleta ArtDent (Manual de Identidad) ───────────────────────────────────
 const AD = {
@@ -167,6 +176,19 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const [afipResult, setAfipResult]   = useState(sale.invoice || null);
     const [afipError, setAfipError]     = useState('');
 
+    // ── Eliminar (solo X) ─────────────────────────────────────────────────────
+    const isTicketX = sale.receipt_type === 'X';
+    const hasCae = Boolean(afipResult?.cae || sale.invoice?.cae);
+    const notaFiscalTypes = getNotaFiscalTypes(sale.receipt_type);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [notaFiscalOpen, setNotaFiscalOpen] = useState(false);
+
+    const handleDelete = () => {
+        router.delete(route('sales.destroy', sale.id), {
+            onSuccess: () => {},
+        });
+    };
+
     // ── Email ─────────────────────────────────────────────────────────────────
     const [emailOpen, setEmailOpen]     = useState(false);
     const [emailAddr, setEmailAddr]     = useState(sale.customer?.email || '');
@@ -299,6 +321,73 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+
+                        {/* Eliminar — solo para tickets X */}
+                        {isTicketX && (
+                            confirmDelete ? (
+                                <div className="flex items-center gap-1.5">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDelete}
+                                        className="rounded-xl gap-1.5 border-red-400 text-red-500 hover:bg-red-50"
+                                    >
+                                        <Trash2 size={14} /> Confirmar
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setConfirmDelete(false)}
+                                        className={`rounded-xl ${isDark ? 'border-slate-700' : ''}`}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setConfirmDelete(true)}
+                                    className={`rounded-xl gap-2 border-red-300 text-red-500 hover:bg-red-50 ${isDark ? 'border-red-800/60 hover:bg-red-950/30' : ''}`}
+                                >
+                                    <Trash2 size={16} /> Eliminar
+                                </Button>
+                            )
+                        )}
+
+                        {/* Nota Fiscal — solo para comprobantes AFIP con CAE */}
+                        {hasCae && notaFiscalTypes && (
+                            <div className="relative">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setNotaFiscalOpen(v => !v)}
+                                    className={`rounded-xl gap-2 ${isDark ? 'border-slate-700 hover:bg-slate-800' : ''}`}
+                                >
+                                    <FileMinus size={16} /> Nota Fiscal <ChevronDown size={14} />
+                                </Button>
+                                {notaFiscalOpen && (
+                                    <div className={`absolute right-0 top-12 z-50 w-52 rounded-2xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                        <Link
+                                            href={route('sales.create') + `?receipt_type=${notaFiscalTypes.nc}`}
+                                            className={`flex items-center gap-2.5 px-4 py-3 text-sm font-medium transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}
+                                            onClick={() => setNotaFiscalOpen(false)}
+                                        >
+                                            <FileMinus size={15} className="text-amber-500" />
+                                            Nota de Crédito {notaFiscalTypes.label}
+                                        </Link>
+                                        <div className={`h-px ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`} />
+                                        <Link
+                                            href={route('sales.create') + `?receipt_type=${notaFiscalTypes.nd}`}
+                                            className={`flex items-center gap-2.5 px-4 py-3 text-sm font-medium transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}
+                                            onClick={() => setNotaFiscalOpen(false)}
+                                        >
+                                            <FilePlus size={15} className="text-blue-500" />
+                                            Nota de Débito {notaFiscalTypes.label}
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Enviar por email */}
                         <div className="relative">
                             <Button

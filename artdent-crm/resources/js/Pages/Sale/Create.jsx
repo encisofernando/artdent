@@ -189,7 +189,11 @@ export default function Create({ auth, products, customers = [], company = null 
     // ── State ────────────────────────────────────────────────
     const [busca, setBusca]               = useState('');
     const [cart, setCart]                 = useState([]);
-    const [receiptType, setReceiptType]   = useState('X');
+    const [receiptType, setReceiptType]   = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        const rt = params.get('receipt_type')?.toUpperCase();
+        return rt && getTipos(company?.iva_condition ?? '').some(t => t.id === rt) ? rt : 'X';
+    });
     const [customerName, setCustomerName] = useState('Consumidor Final');
     const [customerId, setCustomerId]     = useState('');
     const [notes, setNotes]               = useState('');

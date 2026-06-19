@@ -629,6 +629,10 @@ class SaleController extends Controller
             return back()->withErrors(['error' => 'La venta ya está cancelada.']);
         }
 
+        if ($sale->receipt_type !== 'X') {
+            return back()->withErrors(['error' => 'Los comprobantes fiscales no pueden eliminarse. Emití una Nota de Crédito o Débito.']);
+        }
+
         $companyId = auth()->user()->company_id ?? 1;
         $warehouse = Warehouse::where('company_id', $companyId)->first();
 
