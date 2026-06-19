@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateEcommerceAfipInvoiceJob;
 use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
+use App\Models\Invoice;
 use App\Models\Stock;
 use App\Services\MercadoPagoRefundService;
 use Illuminate\Http\Request;
@@ -77,8 +79,15 @@ class EcommerceOrderController extends Controller
             'shipments',
         ]);
 
+        $invoice = Invoice::query()
+            ->where('reference_type', EcommerceOrder::class)
+            ->where('reference_id', $ecommerceOrder->id)
+            ->with('invoice_type')
+            ->first();
+
         return Inertia::render('EcommerceOrder/Show', [
             'order' => $ecommerceOrder,
+            'invoice' => $invoice,
         ]);
     }
 
@@ -148,7 +157,22 @@ class EcommerceOrderController extends Controller
             }
         }
 
+        $previousPaymentStatus = $ecommerceOrder->payment_status;
+
         $ecommerceOrder->update($validated);
+
+        // Disparar factura AFIP cuando el pago se confirma manualmente
+        if (($validated['payment_status'] ?? null) === 'paid' && $previousPaymentStatus !== 'paid') {
+            $hasInvoice = Invoice::query()
+                ->where('reference_type', EcommerceOrder::class)
+                ->where('reference_id', $ecommerceOrder->id)
+                ->whereNotNull('cae')
+                ->exists();
+
+            if (! $hasInvoice) {
+                GenerateEcommerceAfipInvoiceJob::dispatch($ecommerceOrder->id);
+            }
+        }
 
         // Handle shipment tracking
         $trackingData = array_filter([
@@ -172,6 +196,27 @@ class EcommerceOrderController extends Controller
         }
 
         return back()->with('success', 'Pedido actualizado.');
+    }
+
+    public function generateInvoice(EcommerceOrder $ecommerceOrder)
+    {
+        if ($ecommerceOrder->payment_status !== 'paid') {
+            return back()->withErrors(['error' => 'Solo se puede facturar pedidos con pago confirmado.']);
+        }
+
+        $hasInvoice = Invoice::query()
+            ->where('reference_type', EcommerceOrder::class)
+            ->where('reference_id', $ecommerceOrder->id)
+            ->whereNotNull('cae')
+            ->exists();
+
+        if ($hasInvoice) {
+            return back()->withErrors(['error' => 'El pedido ya tiene comprobante AFIP autorizado.']);
+        }
+
+        GenerateEcommerceAfipInvoiceJob::dispatch($ecommerceOrder->id);
+
+        return back()->with('success', 'Comprobante AFIP en proceso. Se enviará por email al cliente.');
     }
 
     public function destroy(EcommerceOrder $ecommerceOrder)

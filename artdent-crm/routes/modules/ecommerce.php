@@ -39,6 +39,8 @@ Route::resource('crm-clients', CrmClientController::class)->middleware('permissi
 // Órdenes E-commerce
 Route::get('ecommerce-orders', [EcommerceOrderController::class, 'index'])->name('ecommerce-orders.index')->middleware('permission:ecommerce.view');
 Route::get('ecommerce-orders/{ecommerce_order}', [EcommerceOrderController::class, 'show'])->name('ecommerce-orders.show')->middleware('permission:ecommerce.view');
+Route::put('ecommerce-orders/{ecommerce_order}', [EcommerceOrderController::class, 'update'])->name('ecommerce-orders.update')->middleware('permission:ecommerce.edit');
+Route::post('ecommerce-orders/{ecommerce_order}/generate-invoice', [EcommerceOrderController::class, 'generateInvoice'])->name('ecommerce-orders.generate-invoice')->middleware('permission:ecommerce.edit');
 Route::delete('ecommerce-orders/{ecommerce_order}', [EcommerceOrderController::class, 'destroy'])->name('ecommerce-orders.destroy')->middleware('permission:ecommerce.delete');
 Route::resource('ecommerce-order-items', EcommerceOrderItemController::class)->middleware('permission:ecommerce.view');
 

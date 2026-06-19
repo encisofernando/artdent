@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag, MapPin, Banknote, QrCode, Printer } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag, MapPin, Banknote, QrCode, Printer, FileCheck2, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -310,7 +310,67 @@ function RemitoEcommerce({ order }) {
     );
 }
 
-export default function Show({ auth, order }) {
+function AfipPanel({ order, invoice, isDark }) {
+    const [generating, setGenerating] = React.useState(false);
+
+    const handleGenerate = () => {
+        setGenerating(true);
+        router.post(route('ecommerce-orders.generate-invoice', order.id), {}, {
+            onFinish: () => setGenerating(false),
+        });
+    };
+
+    const hasCae = Boolean(invoice?.cae);
+    const isPaid = order.payment_status === 'paid';
+
+    return (
+        <Section title="Comprobante AFIP" icon={FileCheck2} isDark={isDark}>
+            {hasCae ? (
+                <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-emerald-500 text-xs font-semibold mb-3">
+                        <Check size={13} /> Autorizado por AFIP
+                    </div>
+                    {[
+                        ['Tipo',    invoice.invoice_type?.name ?? '—'],
+                        ['Nº',      invoice.number],
+                        ['CAE',     invoice.cae],
+                        ['Vto CAE', invoice.cae_expiry ? new Date(invoice.cae_expiry).toLocaleDateString('es-AR') : '—'],
+                    ].map(([label, value]) => value && (
+                        <div key={label} className="flex justify-between text-xs">
+                            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{label}</span>
+                            <span className={`font-semibold font-mono ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{value}</span>
+                        </div>
+                    ))}
+                </div>
+            ) : isPaid ? (
+                <div className="space-y-3">
+                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Pedido pagado sin comprobante fiscal.
+                    </p>
+                    <button
+                        onClick={handleGenerate}
+                        disabled={generating}
+                        className="w-full py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-opacity"
+                        style={{ background: 'linear-gradient(135deg, #397B9C, #49949C)', opacity: generating ? 0.7 : 1 }}
+                    >
+                        {generating
+                            ? <><Loader2 size={13} className="animate-spin" /> Generando…</>
+                            : <><FileCheck2 size={13} /> Generar Factura AFIP</>}
+                    </button>
+                </div>
+            ) : (
+                <div className="flex items-start gap-2 text-xs">
+                    <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Se generará automáticamente al confirmar el pago.
+                    </span>
+                </div>
+            )}
+        </Section>
+    );
+}
+
+export default function Show({ auth, order, invoice }) {
     const { isDark } = useTheme();
     const [saved, setSaved] = useState(false);
 
@@ -580,6 +640,9 @@ export default function Show({ auth, order }) {
                                 </div>
                             </form>
                         </Section>
+
+                        {/* Panel AFIP */}
+                        <AfipPanel order={order} invoice={invoice} isDark={isDark} />
 
                         {order.coupon && (
                             <Section title="Cupón Aplicado" icon={Tag} isDark={isDark}>
