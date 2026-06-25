@@ -251,11 +251,79 @@ export default function Create({ auth, products, customers = [], company = null 
         if (!busca) return products;
         const lower = busca.toLowerCase();
         return products.filter(p =>
-            (p.name   && p.name.toLowerCase().includes(lower))   ||
-            (p.sku    && p.sku.toLowerCase().includes(lower))     ||
-            (p.barcode && p.barcode.toLowerCase().includes(lower))
+            (p.name    && p.name.toLowerCase().includes(lower))   ||
+            (p.sku     && p.sku.toLowerCase().includes(lower))     ||
+            (p.barcode && p.barcode.toLowerCase().includes(lower)) ||
+            (p.variants && p.variants.some(v =>
+                (v.sku     && v.sku.toLowerCase().includes(lower)) ||
+                (v.barcode && v.barcode.toLowerCase().includes(lower))
+            ))
         );
     }, [products, busca]);
+
+    // ── Buscar por barcode exacto (scanner) ──────────────────────────────────
+    const addByBarcode = (code) => {
+        if (!code) return;
+        const upper = code.trim().toUpperCase();
+        for (const p of products) {
+            // Producto sin variantes: match por barcode o SKU exacto
+            if (!p.has_variants) {
+                if ((p.barcode && p.barcode.toUpperCase() === upper) ||
+                    (p.sku     && p.sku.toUpperCase()     === upper)) {
+                    addToCart(p);
+                    setBusca('');
+                    return;
+                }
+            }
+            // Producto con variantes: match por barcode o SKU de variante
+            if (p.has_variants && p.variants) {
+                const variant = p.variants.find(v =>
+                    v.is_active && (
+                        (v.barcode && v.barcode.toUpperCase() === upper) ||
+                        (v.sku     && v.sku.toUpperCase()     === upper)
+                    )
+                );
+                if (variant) {
+                    addVariantToCart(p, variant);
+                    setBusca('');
+                    return;
+                }
+            }
+        }
+        // Sin coincidencia exacta — dejar el texto en el buscador
+    };
+
+    // Global keydown: captura input del scanner cuando no hay input enfocado
+    useEffect(() => {
+        const buf = { chars: '', ts: 0 };
+        const TIMEOUT = 150;
+        let timer = null;
+
+        const onKey = (e) => {
+            const tag = document.activeElement?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+            if (e.key === 'Enter') {
+                if (buf.chars.length >= 3) addByBarcode(buf.chars);
+                buf.chars = '';
+                clearTimeout(timer);
+                return;
+            }
+            if (e.key.length === 1) {
+                const now = Date.now();
+                // Si pasó más de TIMEOUT desde el último char, reiniciar buffer
+                if (now - buf.ts > TIMEOUT && buf.chars.length > 0) buf.chars = '';
+                buf.chars += e.key;
+                buf.ts = now;
+                clearTimeout(timer);
+                timer = setTimeout(() => { buf.chars = ''; }, TIMEOUT * 3);
+            }
+        };
+
+        window.addEventListener('keydown', onKey);
+        return () => { window.removeEventListener('keydown', onKey); clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [products]);
 
     const totals = useMemo(() => {
         let total = 0, neto = 0, iva = 0;
@@ -775,7 +843,7 @@ export default function Create({ auth, products, customers = [], company = null 
                 style={{ minHeight: inSheet ? 120 : 0 }}>
                 {cart.length === 0 ? (
                     <div className="h-full min-h-[120px] flex flex-col items-center justify-center text-center pb-4">
-                        <ShoppingCart size={36} style={{ color: 'rgba(255,255,255,0.08)' }} className="mb-2" />
+                        <ShoppingCart size={36} style={{ color: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(57,123,156,0.18)' }} className="mb-2" />
                         <p className="text-[13px] font-semibold" style={{ color: D.muted }}>Carrito vacío</p>
                         <p className="text-[11.5px] mt-1" style={{ color: D.placeholder }}>
                             Tocá un artículo para agregarlo
@@ -954,13 +1022,18 @@ export default function Create({ auth, products, customers = [], company = null 
                     {/* Search bar */}
                     <div className="px-4 pt-4 pb-3 flex items-center gap-3 flex-shrink-0">
                         <div className="flex-1 flex items-center h-10 px-3 rounded-[10px]"
-                            style={{ background: D.card }}>
+                            style={{ background: D.card, border: `1.5px solid ${D.inputBorder}` }}>
                             <Search size={16} className="mr-2 flex-shrink-0" style={{ color: D.muted }} />
                             <input
                                 type="text"
-                                placeholder="Buscar por nombre, SKU o código..."
+                                placeholder="Buscar por nombre, SKU o código de barras..."
                                 value={busca}
                                 onChange={e => setBusca(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        addByBarcode(busca);
+                                    }
+                                }}
                                 className="w-full h-full bg-transparent border-none focus:ring-0 text-[13.5px] outline-none"
                                 style={{ color: D.text }}
                             />
@@ -1024,7 +1097,11 @@ export default function Create({ auth, products, customers = [], company = null 
 
                 {/* ═══ RIGHT — Cart (DESKTOP only) ═══════════════════════════ */}
                 <div className="hidden lg:flex w-[35%] flex-col flex-shrink-0 h-full"
-                    style={{ background: D.sidebar }}>
+                    style={{
+                        background: isDark ? D.sidebar : '#FFFFFF',
+                        borderLeft: isDark ? `1px solid ${D.divider}` : '3px solid #397B9C',
+                        boxShadow: isDark ? 'none' : '-4px 0 16px rgba(57,123,156,0.12)',
+                    }}>
                     <CartPanel />
                 </div>
             </div>

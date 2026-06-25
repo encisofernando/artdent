@@ -53,7 +53,7 @@ function ToastItem({ toast, onDismiss, isDark }) {
     return (
         <div
             className={`pointer-events-auto w-80 rounded-xl shadow-2xl border overflow-hidden
-                ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}
+                ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-artdent-border'}
             `}
             style={{ animation: 'toastSlideIn 0.3s ease' }}
         >
@@ -204,7 +204,7 @@ export default function Topbar({ user, onSidebarToggle }) {
     return (
         <>
             <header className={`h-16 flex items-center justify-between px-4 border-b transition-colors shadow-sm
-                ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}
+                ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-[#397B9C] border-[#2D6585]'}
             `}>
                 {/* Left side */}
                 <div className="flex items-center gap-4">
@@ -212,14 +212,14 @@ export default function Topbar({ user, onSidebarToggle }) {
                         onClick={onSidebarToggle}
                         className={`lg:hidden p-2 rounded-md transition-colors ${isDark
                             ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            : 'text-white/80 hover:bg-white/15 hover:text-white'
                         }`}
                     >
                         <Menu className="h-5 w-5" />
                     </button>
 
                     <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold select-none
-                        ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'}
+                        ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-300' : 'bg-white/15 border-white/25 text-white'}
                     `}>
                         <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
                         Sistema Activo
@@ -233,7 +233,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                         onClick={toggleTheme}
                         className={`p-2 rounded-md transition-colors ${isDark
                             ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            : 'text-white/80 hover:bg-white/15 hover:text-white'
                         }`}
                         title={isDark ? 'Modo Claro' : 'Modo Oscuro'}
                     >
@@ -246,7 +246,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                             onClick={() => setDropdownOpen((v) => !v)}
                             className={`relative p-2 rounded-md transition-colors ${isDark
                                 ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                : 'text-white/80 hover:bg-white/15 hover:text-white'
                             }`}
                             title="Notificaciones"
                         >
@@ -260,11 +260,11 @@ export default function Topbar({ user, onSidebarToggle }) {
 
                         {dropdownOpen && (
                             <div className={`absolute right-0 top-full mt-2 w-96 rounded-xl shadow-2xl border z-50 overflow-hidden
-                                ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}
+                                ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-[#A8C8DC]'}
                             `}>
                                 {/* Header */}
                                 <div className={`flex items-center justify-between px-4 py-3 border-b
-                                    ${isDark ? 'border-slate-700' : 'border-slate-100'}
+                                    ${isDark ? 'border-slate-700' : 'border-[#A8C8DC]'}
                                 `}>
                                     <span className={`font-semibold text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                         Notificaciones
@@ -340,7 +340,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                             onClick={() => void promptInstall()}
                             className={`inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
                                 ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200'
-                                : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800'
+                                : 'border-white/25 text-white/80 hover:bg-white/15 hover:text-white'
                             }`}
                             title="Instalar ArtDent CRM"
                         >
@@ -353,7 +353,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                         href={printManagerDownloadUrl}
                         className={`inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
                             ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            : 'border-white/25 text-white/80 hover:bg-white/15 hover:text-white'
                         }`}
                         title="Descargar gestor de impresión"
                     >
@@ -368,25 +368,25 @@ export default function Topbar({ user, onSidebarToggle }) {
                         as="button"
                         className={`p-2 rounded-md transition-colors ${isDark
                             ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            : 'text-white/80 hover:bg-white/15 hover:text-white'
                         }`}
                         title="Cerrar sesión"
                     >
                         <LogOut className="h-5 w-5" />
                     </Link>
 
-                    <div className={`w-px h-6 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                    <div className={`w-px h-6 mx-2 ${isDark ? 'bg-slate-700' : 'bg-white/25'}`} />
 
                     {/* User profile */}
                     <Link
                         href={route('profile.edit')}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ${isDark ? 'hover:bg-slate-800' : 'hover:bg-white/15'}`}
                     >
                         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-sm">
                             {userInitial}
                         </div>
                         <div className="hidden lg:block text-left">
-                            <p className={`text-sm font-semibold truncate max-w-[120px] leading-tight ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                            <p className={`text-sm font-semibold truncate max-w-[120px] leading-tight ${isDark ? 'text-slate-200' : 'text-white'}`}>
                                 {user?.name || 'Usuario'}
                             </p>
                         </div>

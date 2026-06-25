@@ -176,7 +176,7 @@ export default function Index({ auth, items, filters }) {
 
                         {/* Status tabs */}
                         <div className={`flex items-center p-1 rounded-xl border
-                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-slate-50 border-slate-200'}
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-[#EAF3F9] border-[#94B8CC]/70'}
                         `}>
                             {[
                                 { id: 'all', label: 'Todos' },
@@ -307,7 +307,7 @@ export default function Index({ auth, items, filters }) {
 function ProductCard({ item, isDark, B, onToggle, onDelete }) {
     return (
         <div className={`relative flex flex-col rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md
-            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/60'}
+            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-[#F2F8FC] border-[#94B8CC]/70'}
         `}>
             {!item.is_active && (
                 <div className="absolute inset-0 z-10 bg-slate-900/60 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 p-4">
@@ -405,7 +405,7 @@ function ProductCard({ item, isDark, B, onToggle, onDelete }) {
 function SkeletonCard({ isDark }) {
     return (
         <div className={`rounded-2xl border shadow-sm overflow-hidden animate-pulse
-            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/60'}
+            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-[#F2F8FC] border-[#94B8CC]/70'}
         `}>
             <div className={`h-36 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`} />
             <div className="p-4 flex flex-col gap-3">
@@ -420,7 +420,7 @@ function SkeletonCard({ isDark }) {
 function EmptyState({ search, isDark, B }) {
     return (
         <div className={`flex flex-col items-center justify-center p-12 text-center border rounded-2xl
-            ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-100'}
+            ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-[#EAF3F9] border-[#94B8CC]/70'}
         `}>
             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4
                 ${isDark ? 'bg-slate-800' : 'bg-white shadow-sm border border-slate-100'}

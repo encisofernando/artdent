@@ -105,6 +105,17 @@ export default function RichTextEditor({ value = '', onChange, isDark: isDarkPro
     const activeFontSize = editor.getAttributes('textStyle').fontSize ?? '';
     const activeColor    = editor.getAttributes('textStyle').color ?? '';
 
+    // input[type=color] solo acepta #rrggbb — convierte rgb() si Tiptap retorna esa forma
+    const toHexColor = (c) => {
+        if (!c) return '#000000';
+        if (c.startsWith('#')) return c.length === 4
+            ? '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3]
+            : c;
+        const m = c.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (m) return '#' + m.slice(1).map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
+        return '#000000';
+    };
+
     const applyFontSize = (val) => {
         if (!val) {
             // unset: remove fontSize but keep other textStyle attrs
@@ -204,7 +215,7 @@ export default function RichTextEditor({ value = '', onChange, isDark: isDarkPro
                     <input
                         ref={colorInputRef}
                         type="color"
-                        value={activeColor || '#000000'}
+                        value={toHexColor(activeColor)}
                         onChange={e => editor.chain().focus().setColor(e.target.value).run()}
                         className="sr-only"
                     />

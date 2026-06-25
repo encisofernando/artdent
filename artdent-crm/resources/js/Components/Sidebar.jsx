@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import {
@@ -194,6 +194,8 @@ export default function Sidebar({ className = "" }) {
 
     const { sidebarCollapsed, isDark, toggleSidebar } = useTheme();
     const [openMenus, setOpenMenus] = useState({});
+    const [flyout, setFlyout] = useState(null); // { key, top, item }
+    const flyoutRef = useRef(null);
 
     const hasPermission = (permission) => {
         if (!permission) return true;
@@ -216,18 +218,18 @@ export default function Sidebar({ className = "" }) {
         <aside
             className={`transition-all duration-300 ease-in-out flex flex-col h-screen shadow-xl z-20 shrink-0
             ${isDark ? 'bg-slate-900 border-r border-slate-800 text-slate-300'
-                    : 'bg-white border-r border-slate-200 text-slate-600'}
+                    : 'bg-[#397B9C] border-r border-[#2D6585] text-white'}
             ${sidebarCollapsed ? 'w-20' : 'w-64'}
             ${className}`}
         >
             {/* Logo Header */}
             <div className={`h-16 flex items-center border-b shrink-0 px-4 transition-colors relative
-                ${isDark ? 'border-slate-800' : 'border-slate-100'}
+                ${isDark ? 'border-slate-800' : 'border-white/20'}
                 ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}
             >
                 {!sidebarCollapsed ? (
                     <img
-                        src={isDark ? "/assets/logo-artdent-blanco.png" : "/assets/logo-artdent-color.png"}
+                        src="/assets/logo-artdent-blanco.png"
                         alt="ArtDent"
                         className="h-8 object-contain transition-all"
                     />
@@ -235,7 +237,8 @@ export default function Sidebar({ className = "" }) {
                     <img
                         src="/assets/logo-artdent-icon.png"
                         alt="AD"
-                        className="h-8 w-8 rounded-md object-cover transition-all"
+                        className="h-8 w-8 rounded-md object-contain transition-all"
+                        style={{ filter: 'brightness(0) invert(1)' }}
                     />
                 )}
 
@@ -244,7 +247,7 @@ export default function Sidebar({ className = "" }) {
                     onClick={toggleSidebar}
                     className={`hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full items-center justify-center border shadow-sm transition-colors z-50
                         ${isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
-                            : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'}
+                            : 'bg-[#2D6585] border-white/30 text-white/70 hover:text-white'}
                     `}
                 >
                     <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${!sidebarCollapsed ? 'rotate-180' : ''}`} />
@@ -263,7 +266,7 @@ export default function Sidebar({ className = "" }) {
                         return (
                             <div key={idx} className={sidebarCollapsed ? "px-2" : "px-3"}>
                                 {!sidebarCollapsed && section.label && (
-                                    <h3 className="px-3 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    <h3 className={`px-3 text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-500' : 'text-[#ACD6CE]'}`}>
                                         {section.label}
                                     </h3>
                                 )}
@@ -281,14 +284,23 @@ export default function Sidebar({ className = "" }) {
                                                 <li key={item.key}>
                                                     <button
                                                         onClick={() => toggleMenu(item.key)}
+                                                        onMouseEnter={sidebarCollapsed ? (e) => {
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            setFlyout({ key: item.key, top: rect.top, item, visibleChildren });
+                                                        } : undefined}
+                                                        onMouseLeave={sidebarCollapsed ? () => {
+                                                            setTimeout(() => {
+                                                                if (!flyoutRef.current?.matches(':hover')) setFlyout(null);
+                                                            }, 80);
+                                                        } : undefined}
                                                         className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
                                                             ${sidebarCollapsed ? 'justify-center' : 'justify-between'}
-                                                            ${activeNode ? (isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 text-emerald-600')
-                                                                : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-slate-50 hover:text-emerald-700')}`}
+                                                            ${activeNode ? (isDark ? 'bg-slate-800 text-white' : 'bg-white/20 text-white')
+                                                                : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-white/15 hover:text-white')}`}
                                                         title={sidebarCollapsed ? item.title : undefined}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <item.icon className={`h-5 w-5 shrink-0 ${activeNode ? 'text-emerald-400' : 'text-slate-400'}`} />
+                                                            <item.icon className={`h-5 w-5 shrink-0 ${activeNode ? (isDark ? 'text-emerald-400' : 'text-[#ACD6CE]') : (isDark ? 'text-slate-400' : 'text-white/60')}`} />
                                                             {!sidebarCollapsed && <span className="truncate">{item.title}</span>}
                                                         </div>
                                                         {!sidebarCollapsed && (expanded ? <ChevronDown className="h-4 w-4 opacity-50 shrink-0" /> : <ChevronRight className="h-4 w-4 opacity-50 shrink-0" />)}
@@ -296,11 +308,11 @@ export default function Sidebar({ className = "" }) {
 
                                                     {/* Children */}
                                                     {expanded && !sidebarCollapsed && (
-                                                        <ul className="mt-1 ml-4 pl-4 border-l border-slate-700 space-y-1">
+                                                        <ul className={`mt-1 ml-4 pl-4 border-l space-y-1 ${isDark ? 'border-slate-700' : 'border-white/20'}`}>
                                                             {visibleChildren.map(child => {
                                                                 const childActive = isActive(child.path);
                                                                 const childClass = `block px-3 py-2 text-sm rounded-md transition-colors truncate
-                                                                    ${childActive ? 'bg-emerald-500/10 text-emerald-500 font-semibold' : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-600 hover:bg-slate-50 hover:text-emerald-700')}`;
+                                                                    ${childActive ? (isDark ? 'bg-emerald-500/10 text-emerald-500 font-semibold' : 'bg-white/20 text-white font-semibold') : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-white/70 hover:bg-white/10 hover:text-white')}`;
                                                                 return (
                                                                     <li key={child.path}>
                                                                         {child.external ? (
@@ -325,16 +337,21 @@ export default function Sidebar({ className = "" }) {
                                             <li key={item.path}>
                                                 <Link
                                                     href={item.path}
+                                                    onMouseEnter={sidebarCollapsed ? (e) => {
+                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                        setFlyout({ key: item.path, top: rect.top, item, visibleChildren: null });
+                                                    } : undefined}
+                                                    onMouseLeave={sidebarCollapsed ? () => setFlyout(null) : undefined}
                                                     className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors relative
                                                         ${sidebarCollapsed ? 'justify-center' : ''}
-                                                        ${isActive(item.path) ? (isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 text-emerald-600')
-                                                            : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-slate-50 hover:text-emerald-700')}`}
+                                                        ${isActive(item.path) ? (isDark ? 'bg-slate-800 text-white' : 'bg-white/20 text-white')
+                                                            : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-white/15 hover:text-white')}`}
                                                     title={sidebarCollapsed ? item.title : undefined}
                                                 >
                                                     {isActive(item.path) && (
-                                                        <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-emerald-500 rounded-r-md"></div>
+                                                        <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-emerald-500"></div>
                                                     )}
-                                                    <item.icon className={`h-5 w-5 shrink-0 ${isActive(item.path) ? 'text-emerald-400' : 'text-slate-400'}`} />
+                                                    <item.icon className={`h-5 w-5 shrink-0 ${isActive(item.path) ? (isDark ? 'text-emerald-500' : 'text-[#ACD6CE]') : (isDark ? 'text-slate-400' : 'text-white/60')}`} />
                                                     {!sidebarCollapsed && <span className="truncate">{item.title}</span>}
                                                 </Link>
                                             </li>
@@ -347,10 +364,71 @@ export default function Sidebar({ className = "" }) {
                 </nav>
             </div>
 
+            {/* Fly-out panel (collapsed mode hover) */}
+            {sidebarCollapsed && flyout && (
+                <div
+                    ref={flyoutRef}
+                    className="fixed z-[200] pointer-events-auto"
+                    style={{ top: flyout.top, left: 80 }}
+                    onMouseEnter={() => setFlyout(f => f)}
+                    onMouseLeave={() => setFlyout(null)}
+                >
+                    <div className={`rounded-r-lg shadow-2xl min-w-[200px] py-1 overflow-hidden
+                        ${isDark ? 'bg-slate-800 border border-l-0 border-slate-700' : 'bg-[#2D6585] border border-l-0 border-[#1E4F6A]'}`}
+                    >
+                        <div className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b
+                            ${isDark ? 'text-slate-400 border-slate-700' : 'text-[#ACD6CE] border-white/20'}`}>
+                            {flyout.item.title}
+                        </div>
+                        {flyout.visibleChildren ? (
+                            <ul className="py-1">
+                                {flyout.visibleChildren.map(child => (
+                                    <li key={child.path}>
+                                        {child.external ? (
+                                            <a
+                                                href={child.path}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`block px-4 py-2 text-sm transition-colors
+                                                    ${isActive(child.path)
+                                                        ? (isDark ? 'bg-emerald-500/10 text-emerald-400 font-semibold' : 'bg-white/20 text-white font-semibold')
+                                                        : (isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-white/80 hover:bg-white/15 hover:text-white')}`}
+                                            >
+                                                {child.title}
+                                            </a>
+                                        ) : (
+                                            <Link
+                                                href={child.path}
+                                                onClick={() => setFlyout(null)}
+                                                className={`block px-4 py-2 text-sm transition-colors
+                                                    ${isActive(child.path)
+                                                        ? (isDark ? 'bg-emerald-500/10 text-emerald-400 font-semibold' : 'bg-white/20 text-white font-semibold')
+                                                        : (isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-white/80 hover:bg-white/15 hover:text-white')}`}
+                                            >
+                                                {child.title}
+                                            </Link>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <Link
+                                href={flyout.item.path}
+                                onClick={() => setFlyout(null)}
+                                className={`block px-4 py-2 text-sm transition-colors
+                                    ${isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-white/80 hover:bg-white/15 hover:text-white'}`}
+                            >
+                                Ir a {flyout.item.title}
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Footer */}
             {!sidebarCollapsed && (
-                <div className="p-4 border-t border-slate-800 shrink-0">
-                    <p className="text-xs text-slate-500 text-center truncate">
+                <div className={`p-4 border-t shrink-0 ${isDark ? 'border-slate-800' : 'border-white/20'}`}>
+                    <p className={`text-xs text-center truncate ${isDark ? 'text-slate-500' : 'text-white/40'}`}>
                         © {new Date().getFullYear()} ArtDent
                     </p>
                 </div>

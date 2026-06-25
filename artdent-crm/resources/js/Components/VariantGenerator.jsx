@@ -3,7 +3,40 @@ import { Button } from '@/Components/ui/button';
 import { Plus, X, ListTree, RefreshCcw } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 
-export default function VariantGenerator({ variantsData = [], onVariantsChange, hidePrices = false, trackStock = false }) {
+const genSku = (productName = '', attributes = {}) => {
+    const STOP = new Set(['de','del','la','las','el','los','en','con','por','para','un','una','y','o','e','x','i']);
+    const norm = s => String(s)
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
+
+    const nameWords = norm(productName).split(/\s+/).filter(w => w.length > 2 && !STOP.has(w.toLowerCase()));
+    const mainWord  = [...nameWords].sort((a, b) => b.length - a.length)[0] || '';
+    const prefix    = (mainWord.slice(0, 3) || 'SKU');
+
+    const attrVals = Object.values(attributes).filter(Boolean);
+    if (attrVals.length === 0) {
+        return prefix + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    }
+
+    const parts = attrVals.map(val => {
+        const v = norm(val);
+        if (!v) return '';
+        if (v.length <= 5 && !/\s/.test(v)) return v;   // código corto sin espacio → literal
+        const words = v.split(/\s+/).filter(Boolean);
+        if (words.length > 1) {
+            // Si todas las palabras son cortas (≤3 chars): concatenar para preservar info
+            // "61 A1" → "61A1", "62 A2" → "62A2" (distintas entre sí)
+            if (words.every(w => w.length <= 3)) return words.join('');
+            // Mezcla de cortas y largas: cortas literal, largas solo primera letra
+            return words.map(w => w.length <= 3 ? w : w[0]).join('');
+        }
+        return v.slice(0, 3);
+    }).filter(Boolean);
+
+    return [prefix, ...parts].join('-');
+};
+
+export default function VariantGenerator({ variantsData = [], onVariantsChange, hidePrices = false, trackStock = false, productName = '' }) {
     const { isDark } = useTheme();
 
     const normalizeOptionName = (value) => value.trim().replace(/\s+/g, ' ');
@@ -142,7 +175,8 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
             return {
                 id: null,
                 attributes: normalizedCombo,
-                sku: '',
+                sku: genSku(productName, normalizedCombo),
+                barcode: '',
                 price: '',
                 cost_price: '',
                 stock_quantity: '',
@@ -241,6 +275,7 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                                 <tr>
                                     <th className="px-4 py-3">Variante</th>
                                     <th className="px-4 py-3">SKU</th>
+                                    <th className="px-4 py-3">Cód. Barras</th>
                                     {!hidePrices && (
                                         <>
                                             <th className="px-4 py-3 w-32">Precio</th>
@@ -260,12 +295,31 @@ export default function VariantGenerator({ variantsData = [], onVariantsChange, 
                                             {variant.attributes && Object.values(variant.attributes).join(' / ')}
                                         </td>
                                         <td className="px-4 py-2">
-                                            <input 
-                                                type="text" 
+                                            <div className="flex gap-1">
+                                                <input
+                                                    type="text"
+                                                    className={`flex-1 min-w-0 text-xs px-2 py-1 rounded border focus:ring-1 focus:outline-none ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300'}`}
+                                                    value={variant.sku || ''}
+                                                    onChange={(e) => updateVariantField(index, 'sku', e.target.value)}
+                                                    placeholder="SKU"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    title="Generar SKU desde nombre y atributos"
+                                                    onClick={() => updateVariantField(index, 'sku', genSku(productName, variant.attributes || {}))}
+                                                    className={`shrink-0 px-1.5 rounded border transition-colors ${isDark ? 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-300 text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}
+                                                >
+                                                    <RefreshCcw size={11} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <input
+                                                type="text"
                                                 className={`w-full text-xs px-2 py-1 rounded border focus:ring-1 focus:outline-none ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300'}`}
-                                                value={variant.sku || ''}
-                                                onChange={(e) => updateVariantField(index, 'sku', e.target.value)}
-                                                placeholder="SKU"
+                                                value={variant.barcode || ''}
+                                                onChange={(e) => updateVariantField(index, 'barcode', e.target.value)}
+                                                placeholder="Ej: 7798012345678"
                                             />
                                         </td>
                                         {!hidePrices && (

@@ -25,7 +25,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
 
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-300
-      ${isDark ? 'bg-slate-950 text-slate-300' : 'bg-slate-50 text-slate-800'}
+      ${isDark ? 'bg-slate-950 text-slate-300' : 'bg-artdent-bg text-slate-800'}
     `}>
 
       {/* Sidebar Desktop */}
@@ -61,7 +61,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
           {/* Header opcional (retrocompatibilidad con Breeze por defecto) */}
           {header && (
             <header className={`shadow-sm border-b transition-colors
-                ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}
+                ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-artdent-border'}
             `}>
               <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                 {header}

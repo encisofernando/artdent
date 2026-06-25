@@ -136,6 +136,7 @@ class SaleController extends Controller
                     return [
                         'id' => $v->id,
                         'sku' => $v->sku,
+                        'barcode' => $v->barcode,
                         'price' => (float) $v->price,
                         'is_active' => $v->is_active,
                         'label' => $label,
@@ -442,6 +443,7 @@ class SaleController extends Controller
                             return [
                                 'id' => $v->id,
                                 'sku' => $v->sku,
+                                'barcode' => $v->barcode,
                                 'price' => (float) $v->price,
                                 'is_active' => $v->is_active,
                                 'label' => $label,

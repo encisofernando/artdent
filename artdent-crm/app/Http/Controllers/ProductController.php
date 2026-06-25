@@ -40,7 +40,14 @@ class ProductController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhere('barcode', 'like', "%{$search}%");
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhereHas('product_variants', fn ($qv) => $qv
+                        ->where('is_active', 1)
+                        ->where(fn ($inner) => $inner
+                            ->where('sku', 'like', "%{$search}%")
+                            ->orWhere('barcode', 'like', "%{$search}%")
+                        )
+                    );
             });
         }
 
@@ -54,8 +61,29 @@ class ProductController extends Controller
 
         // Infinite scroll: axios requests llegan con Accept: application/json
         if ($request->wantsJson()) {
-            $items->getCollection()->transform(function ($p) {
+            $items->getCollection()->transform(function ($p) use ($search) {
                 $p->stock_quantity = $p->stocks->sum('quantity');
+
+                if ($p->has_variants) {
+                    $variantsQuery = $p->product_variants()
+                        ->where('is_active', 1)
+                        ->with('variant_attribute_values.product_attribute_value.product_attribute');
+
+                    // Si hay búsqueda, priorizar variantes que coincidan (pero cargar todas)
+                    $p->variants_list = $variantsQuery->get()->map(function ($v) {
+                        $label = $v->variant_attribute_values
+                            ->map(fn ($vav) => $vav->product_attribute_value?->value)
+                            ->filter()
+                            ->join(' / ');
+
+                        return [
+                            'id'      => $v->id,
+                            'sku'     => $v->sku,
+                            'barcode' => $v->barcode,
+                            'label'   => $label ?: $v->sku,
+                        ];
+                    })->values();
+                }
 
                 return $p;
             });
@@ -161,6 +189,19 @@ class ProductController extends Controller
             );
         }
 
+        // Validar unicidad de códigos de barras y SKUs antes de persistir
+        $allBarcodes = array_merge(
+            [$validated['barcode'] ?? null],
+            array_column($variantsData, 'barcode')
+        );
+        $this->assertBarcodesUnique($allBarcodes, null);
+
+        $allSkus = array_merge(
+            [$validated['sku'] ?? null],
+            array_column($variantsData, 'sku')
+        );
+        $this->assertSkusUnique($allSkus, null);
+
         $product = DB::transaction(function () use ($request, $validated, $warehouseId, $variantsData) {
             $product = \App\Models\Product::create($validated);
 
@@ -209,6 +250,7 @@ class ProductController extends Controller
                 $variant = \App\Models\ProductVariant::create([
                     'product_id' => $product->id,
                     'sku' => $variantItem['sku'] ?? null,
+                    'barcode' => $variantItem['barcode'] ?? null,
                     'price' => $variantItem['price'] ?? $product->price,
                     'cost_price' => $variantItem['cost_price'] ?? null,
                     'is_active' => $variantItem['is_active'] ?? 1,
@@ -337,11 +379,29 @@ class ProductController extends Controller
         $attributeCache = [];
         $attrValueCache = [];
 
+        // Validar unicidad del SKU del producto (sin variantes) antes de persistir
+        if (! empty($validated['sku']) && empty($validated['has_variants'])) {
+            $this->assertSkusUnique([$validated['sku']], $product->id);
+        }
+
         if (! empty($validated['has_variants']) && ! empty($validated['variants'])) {
             $variantsData = $this->sanitizeVariantsPayload(
                 $this->decodeVariantsPayload($validated['variants']),
                 $validated['price']
             );
+
+            // Validar unicidad de códigos de barras y SKUs excluyendo el producto actual
+            $allBarcodes = array_merge(
+                [$validated['barcode'] ?? null],
+                array_column($variantsData, 'barcode')
+            );
+            $this->assertBarcodesUnique($allBarcodes, $product->id);
+
+            $allSkus = array_merge(
+                [$validated['sku'] ?? null],
+                array_column($variantsData, 'sku')
+            );
+            $this->assertSkusUnique($allSkus, $product->id);
 
             $attrNames = [];
             $attrValuePairs = [];
@@ -503,6 +563,7 @@ class ProductController extends Controller
                         ['product_id' => $product->id, 'id' => $variantItem['id'] ?? null],
                         [
                             'sku' => $variantItem['sku'] ?? null,
+                            'barcode' => $variantItem['barcode'] ?? null,
                             'price' => $variantItem['price'] ?? $product->price,
                             'cost_price' => $variantItem['cost_price'] ?? null,
                             'is_active' => $variantItem['is_active'] ?? 1,
@@ -658,6 +719,7 @@ class ProductController extends Controller
             $sanitized[] = [
                 'id' => $this->normalizeNullableInteger($variantItem['id'] ?? null),
                 'sku' => $this->normalizeNullableString($variantItem['sku'] ?? null),
+                'barcode' => $this->normalizeNullableString($variantItem['barcode'] ?? null),
                 'price' => $normalizedPrice ?? $normalizedDefaultPrice,
                 'cost_price' => $this->normalizeNullableNumber($variantItem['cost_price'] ?? null),
                 'stock_quantity' => $this->normalizeNullableNumber($variantItem['stock_quantity'] ?? null),
@@ -824,6 +886,82 @@ class ProductController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    /**
+     * Verifica que ningún código de barras se repita en products ni product_variants.
+     * Lanza ValidationException si encuentra un duplicado.
+     *
+     * @param  array<string|null>  $barcodes   todos los barcodes del request (producto + variantes)
+     * @param  int|null  $excludeProductId  ID del producto actual (para ignorarlo en la búsqueda)
+     */
+    private function assertBarcodesUnique(array $barcodes, ?int $excludeProductId = null): void
+    {
+        $barcodes = array_values(array_filter($barcodes));
+
+        // Duplicados dentro del propio request
+        if (count($barcodes) !== count(array_unique($barcodes))) {
+            throw ValidationException::withMessages([
+                'barcode' => 'El mismo código de barras no puede asignarse a más de una variante.',
+            ]);
+        }
+
+        foreach ($barcodes as $bc) {
+            // Buscar en products (excluyendo el producto actual)
+            $inProducts = Product::where('barcode', $bc)
+                ->when($excludeProductId, fn ($q) => $q->where('id', '!=', $excludeProductId))
+                ->exists();
+
+            // Buscar en product_variants (excluyendo variantes del producto actual)
+            $inVariants = \App\Models\ProductVariant::where('barcode', $bc)
+                ->when($excludeProductId, fn ($q) => $q->where('product_id', '!=', $excludeProductId))
+                ->exists();
+
+            if ($inProducts || $inVariants) {
+                throw ValidationException::withMessages([
+                    'barcode' => "El código de barras «{$bc}» ya está asignado a otro producto o variante.",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Verifica que ningún SKU se repita en products ni product_variants.
+     * Lanza ValidationException si encuentra un duplicado.
+     *
+     * @param  array<string|null>  $skus            todos los SKUs del request (producto + variantes)
+     * @param  int|null            $excludeProductId  ID del producto actual (para ignorarlo en edición)
+     */
+    private function assertSkusUnique(array $skus, ?int $excludeProductId = null): void
+    {
+        $skus = array_values(array_filter(array_map('trim', $skus)));
+
+        if (count($skus) === 0) {
+            return;
+        }
+
+        // Duplicados dentro del propio request
+        if (count($skus) !== count(array_unique($skus))) {
+            throw ValidationException::withMessages([
+                'sku' => 'El mismo SKU no puede asignarse a más de una variante del mismo producto.',
+            ]);
+        }
+
+        foreach ($skus as $sku) {
+            $inProducts = Product::where('sku', $sku)
+                ->when($excludeProductId, fn ($q) => $q->where('id', '!=', $excludeProductId))
+                ->exists();
+
+            $inVariants = \App\Models\ProductVariant::where('sku', $sku)
+                ->when($excludeProductId, fn ($q) => $q->where('product_id', '!=', $excludeProductId))
+                ->exists();
+
+            if ($inProducts || $inVariants) {
+                throw ValidationException::withMessages([
+                    'sku' => "El SKU «{$sku}» ya está en uso por otro producto o variante.",
+                ]);
+            }
+        }
     }
 
     private function checkLowStock(Product $product, int|float|null $currentStock): ?string

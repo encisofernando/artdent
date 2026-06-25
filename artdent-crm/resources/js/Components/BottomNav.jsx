@@ -13,11 +13,12 @@ export default function BottomNav({ onMenuOpen }) {
         return url.startsWith(path);
     };
 
-    const muted = isDark ? '#475569' : '#94a3b8';
+    const muted = isDark ? '#475569' : 'rgba(255,255,255,0.55)';
+    const activeColor = isDark ? B.active : '#ACD6CE';
 
     const NavItem = ({ path, icon: Icon, label }) => {
         const active = isActive(path);
-        const color = active ? B.active : muted;
+        const color = active ? activeColor : muted;
         return (
             <Link href={path} className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 select-none">
                 <Icon size={22} style={{ color }} strokeWidth={active ? 2.5 : 2} />
@@ -29,7 +30,7 @@ export default function BottomNav({ onMenuOpen }) {
     return (
         <nav
             className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden
-                ${isDark ? 'bg-slate-900/95 border-t border-slate-800' : 'bg-white/95 border-t border-slate-200'}
+                ${isDark ? 'bg-slate-900/95 border-t border-slate-800' : 'bg-[#397B9C]/95 border-t border-[#2D6585]'}
             `}
             style={{
                 backdropFilter: 'blur(12px)',

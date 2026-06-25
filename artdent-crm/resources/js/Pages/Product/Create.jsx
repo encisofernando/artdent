@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import {
     ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2,
-    Star, X, Video, GripVertical, AlertTriangle,
+    Star, X, Video, GripVertical, AlertTriangle, RefreshCcw,
 } from 'lucide-react';
 import VariantGenerator from '@/Components/VariantGenerator';
 import RichTextEditor from '@/Components/RichTextEditor';
@@ -263,6 +263,39 @@ function PriceBlock({ isDark, cost, onCostChange, price, onPriceChange, marginPc
 
 // ─── main ──────────────────────────────────────────────────────────────────
 
+// Genera un SKU basado en el nombre del producto y atributos de variante.
+// Sin atributos → prefijo del nombre + sufijo aleatorio corto.
+// Con atributos → prefijo del nombre + valor abreviado de cada atributo.
+const genSku = (productName = '', attributes = {}) => {
+    const STOP = new Set(['de','del','la','las','el','los','en','con','por','para','un','una','y','o','e','x','i']);
+    const norm = s => String(s)
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
+
+    const nameWords = norm(productName).split(/\s+/).filter(w => w.length > 2 && !STOP.has(w.toLowerCase()));
+    const mainWord  = [...nameWords].sort((a, b) => b.length - a.length)[0] || '';
+    const prefix    = (mainWord.slice(0, 3) || 'SKU');
+
+    const attrVals = Object.values(attributes).filter(Boolean);
+    if (attrVals.length === 0) {
+        return prefix + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    }
+
+    const parts = attrVals.map(val => {
+        const v = norm(val);
+        if (!v) return '';
+        if (v.length <= 5 && !/\s/.test(v)) return v;          // código corto sin espacio → literal
+        const words = v.split(/\s+/).filter(Boolean);
+        if (words.length > 1) {
+            if (words.every(w => w.length <= 3)) return words.join(''); // "61 A1" → "61A1"
+            return words.map(w => w.length <= 3 ? w : w[0]).join('');  // mezcla: cortas literal, largas inicial
+        }
+        return v.slice(0, 3);
+    }).filter(Boolean);
+
+    return [prefix, ...parts].join('-');
+};
+
 export default function Create({ auth, categories = [], vendors = [] }) {
     const { isDark } = useTheme();
     const { data, setData, post, processing, errors, transform } = useForm({
@@ -301,6 +334,9 @@ export default function Create({ auth, categories = [], vendors = [] }) {
 
     // ── margin state ─────────────────────────────────────────────────────────
     const [marginPct, setMarginPct] = useState('');
+
+    // ── SKU auto-generado al crear ────────────────────────────────────────────
+    useEffect(() => { setData('sku', genSku(data.name)); }, []);
 
     // ── helpers ──────────────────────────────────────────────────────────────
     const addImages = (files) => {
@@ -594,10 +630,17 @@ export default function Create({ auth, categories = [], vendors = [] }) {
                         <div className="flex flex-col gap-4">
                             <div className="grid grid-cols-2 gap-3">
                                 <Field label="SKU" error={errors.sku}>
-                                    <Input isDark={isDark} type="text" value={data.sku}
-                                        onChange={e => setData('sku', e.target.value)}
-                                        placeholder="ART-001" className="font-mono"
-                                    />
+                                    <div className="flex gap-1.5">
+                                        <Input isDark={isDark} type="text" value={data.sku}
+                                            onChange={e => setData('sku', e.target.value)}
+                                            placeholder="ART-001" className="font-mono flex-1"
+                                        />
+                                        <button type="button" title="Generar SKU desde el nombre"
+                                            onClick={() => setData('sku', genSku(data.name))}
+                                            className={`shrink-0 px-2 rounded-xl border transition-colors ${isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500' : 'bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}>
+                                            <RefreshCcw size={13} />
+                                        </button>
+                                    </div>
                                 </Field>
                                 <Field label="Código de Barras" error={errors.barcode}>
                                     <Input isDark={isDark} type="text" value={data.barcode}
@@ -690,6 +733,7 @@ export default function Create({ auth, categories = [], vendors = [] }) {
                                 onVariantsChange={(v) => setData('variants', v)}
                                 hidePrices={data.same_price_for_variants}
                                 trackStock={trackStock}
+                                productName={data.name}
                             />
                         </SectionCard>
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Search, Plus, Minus, Printer, Tag, Trash2, ChevronDown } from 'lucide-react';
@@ -43,6 +43,52 @@ function tier(hMm) {
     return 'lg';                 // 14, 16, 21, 24 labels
 }
 
+/* ── FitName: reduce font-size until text fits within lineClamp lines ─── */
+function FitName({ name, initialFontSize, lineClamp = 2, style }) {
+    const ref = useRef(null);
+
+    useLayoutEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+
+        // Temporarily unconstrain to measure true rendered height
+        el.style.display  = 'block';
+        el.style.overflow = 'visible';
+        el.style.webkitLineClamp = 'unset';
+        el.style.fontSize = `${initialFontSize}px`;
+
+        let fs   = initialFontSize;
+        let maxH = fs * 1.28 * lineClamp;
+
+        while (el.scrollHeight > maxH + 1 && fs > 5) {
+            fs  -= 0.4;
+            maxH = fs * 1.28 * lineClamp;
+            el.style.fontSize = `${fs}px`;
+        }
+
+        // Restore clamp
+        el.style.display  = '-webkit-box';
+        el.style.overflow = 'hidden';
+        el.style.webkitLineClamp = String(lineClamp);
+    }, [name, initialFontSize, lineClamp]);
+
+    return (
+        <div
+            ref={ref}
+            style={{
+                ...style,
+                fontSize: initialFontSize,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: lineClamp,
+                WebkitBoxOrient: 'vertical',
+            }}
+        >
+            {name}
+        </div>
+    );
+}
+
 /* ── Barcode SVG (preview) ──────────────────────────────────────────────── */
 function BarcodeSvg({ value, width = 1.8, height = 50 }) {
     const ref = useRef(null);
@@ -85,9 +131,12 @@ function ThermalLabelCard({ product, format, logoSrc }) {
                 </span>
             </div>
             <div style={{ padding: format === '57mm' ? '5px 7px 4px' : '7px 9px 5px' }}>
-                <div style={{ fontSize: nameSz, fontWeight: 700, color: '#1e293b', lineHeight: 1.25, marginBottom: format === '57mm' ? 4 : 5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    {product.name}
-                </div>
+                <FitName
+                    name={product.name}
+                    initialFontSize={nameSz}
+                    lineClamp={2}
+                    style={{ fontWeight: 700, color: '#1e293b', lineHeight: 1.25, marginBottom: format === '57mm' ? 4 : 5, textTransform: 'uppercase', letterSpacing: 0.3 }}
+                />
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
                     <BarcodeSvg value={code} width={bW} height={bH} />
                 </div>
@@ -148,9 +197,12 @@ function A4LabelCard({ product, tpl, scale, logoSrc }) {
 
             {/* Body */}
             <div style={{ flex: 1, minHeight: 0, padding: `${padPx}px ${Math.max(1.5, tpl.w * 0.018) * scale}px ${padPx * 0.5}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ fontSize: nameSz, fontWeight: 700, color: '#1a1a2e', lineHeight: 1.25, textTransform: 'uppercase', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: nameLines, WebkitBoxOrient: 'vertical', flexShrink: 0, marginBottom: padPx * 0.3 }}>
-                    {product.name}
-                </div>
+                <FitName
+                    name={product.name}
+                    initialFontSize={nameSz}
+                    lineClamp={nameLines}
+                    style={{ fontWeight: 700, color: '#1a1a2e', lineHeight: 1.25, textTransform: 'uppercase', flexShrink: 0, marginBottom: padPx * 0.3 }}
+                />
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     <BarcodeSvg value={code} width={barcW} height={barcH} />
                 </div>
@@ -166,8 +218,13 @@ function A4LabelCard({ product, tpl, scale, logoSrc }) {
 }
 
 /* ── HTML builders ──────────────────────────────────────────────────────── */
+// Para atributos HTML entre comillas dobles: solo escapa & < > "
+function escAttr(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// Para texto HTML dentro de elementos: escapa & < >  (los apóstrofos son válidos en texto)
 function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function buildThermalLabelsHtml(items, format, logoSrc) {
@@ -183,8 +240,10 @@ function buildThermalLabelsHtml(items, format, logoSrc) {
     const pageSize = format === '57mm' ? '50mm auto' : format === '55x44' ? '55mm auto' : '74mm auto';
 
     const labelsHtml = expanded.map(p => {
-        const code = escHtml(p.barcode || p.sku || String(p.id));
-        return `<div class="lbl"><div class="hdr"><img src="${logoSrc}" class="logo"><div class="sub">INSUMOS<br>ODONTOLÓGICOS</div></div><div class="body"><div class="name">${escHtml(p.name)}</div><div class="bwrap"><svg class="bc" data-v="${code}" data-w="${barcW}" data-h="${barcH}"></svg></div><div class="bval">${code}</div></div><div class="accent"></div></div>`;
+        const rawCode  = String(p.barcode || p.sku || p.id);
+        const attrCode = escAttr(rawCode);   // para data-v=""
+        const dispCode = escHtml(rawCode);   // para texto visible en .bval
+        return `<div class="lbl"><div class="hdr"><img src="${logoSrc}" class="logo"><div class="sub">INSUMOS<br>ODONTOLÓGICOS</div></div><div class="body"><div class="name">${escHtml(p.name)}</div><div class="bwrap"><svg class="bc" data-v="${attrCode}" data-w="${barcW}" data-h="${barcH}"></svg></div><div class="bval">${dispCode}</div></div><div class="accent"></div></div>`;
     }).join('');
 
     return `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -204,7 +263,7 @@ body{margin:0;padding:0;background:#fff;font-family:'Montserrat',Arial,sans-seri
 </style></head><body>
 <div style="display:flex;flex-wrap:wrap;gap:2mm">${labelsHtml}</div>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<script>window.addEventListener('load',function(){document.querySelectorAll('svg.bc').forEach(function(s){try{JsBarcode(s,s.getAttribute('data-v'),{format:'CODE128',width:parseFloat(s.getAttribute('data-w')),height:parseFloat(s.getAttribute('data-h')),margin:0,displayValue:false,background:'transparent',lineColor:'#1a1a1a'});}catch(e){}});setTimeout(function(){window.print();},900);});</script>
+<script>window.addEventListener('load',function(){document.querySelectorAll('svg.bc').forEach(function(s){try{JsBarcode(s,s.getAttribute('data-v'),{format:'CODE128',width:parseFloat(s.getAttribute('data-w')),height:parseFloat(s.getAttribute('data-h')),margin:0,displayValue:false,background:'transparent',lineColor:'#1a1a1a'});}catch(e){}});document.querySelectorAll('.name').forEach(function(el){el.style.overflow='visible';el.style.display='block';el.style.webkitLineClamp='unset';var fs=parseFloat(getComputedStyle(el).fontSize);var maxH=fs*1.28*2;while(el.scrollHeight>maxH+1&&fs>4){fs-=0.3;el.style.fontSize=fs+'px';maxH=fs*1.28*2;}el.style.overflow='hidden';el.style.display='-webkit-box';el.style.webkitLineClamp='2';});setTimeout(function(){window.print();},900);});</script>
 </body></html>`;
 }
 
@@ -248,8 +307,10 @@ function buildA4LabelsHtml(items, tplId, logoSrc) {
         : `<span style="color:#fff;font-size:${hdrMm * 0.38}mm;font-weight:900;letter-spacing:.3px;text-transform:uppercase">ARTDENT</span>`;
 
     function labelHtml(p) {
-        const code = escHtml(p.barcode || p.sku || String(p.id));
-        return `<div class="lbl"><div class="hdr">${hdrInner}</div><div class="body"><div class="name">${escHtml(p.name)}</div><div class="bwrap"><svg class="bc" data-v="${code}" data-w="${barcW}" data-h="${barcHpx}"></svg></div><div class="bval">${code}</div></div><div class="accent"></div></div>`;
+        const rawCode  = String(p.barcode || p.sku || p.id);
+        const attrCode = escAttr(rawCode);
+        const dispCode = escHtml(rawCode);
+        return `<div class="lbl"><div class="hdr">${hdrInner}</div><div class="body"><div class="name">${escHtml(p.name)}</div><div class="bwrap"><svg class="bc" data-v="${attrCode}" data-w="${barcW}" data-h="${barcHpx}"></svg></div><div class="bval">${dispCode}</div></div><div class="accent"></div></div>`;
     }
 
     const pages = [];
@@ -334,7 +395,7 @@ body{margin:0;padding:0;background:#fff;font-family:'Montserrat',Arial,sans-seri
 </style></head><body>
 ${sheetsHtml}
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<script>window.addEventListener('load',function(){document.querySelectorAll('svg.bc').forEach(function(s){try{JsBarcode(s,s.getAttribute('data-v'),{format:'CODE128',width:parseFloat(s.getAttribute('data-w')),height:parseFloat(s.getAttribute('data-h')),margin:0,displayValue:false,background:'transparent',lineColor:'#1a1a1a'});}catch(e){}});setTimeout(function(){window.print();},1000);});</script>
+<script>window.addEventListener('load',function(){document.querySelectorAll('svg.bc').forEach(function(s){try{JsBarcode(s,s.getAttribute('data-v'),{format:'CODE128',width:parseFloat(s.getAttribute('data-w')),height:parseFloat(s.getAttribute('data-h')),margin:0,displayValue:false,background:'transparent',lineColor:'#1a1a1a'});}catch(e){}});var nl=${nameLines};document.querySelectorAll('.name').forEach(function(el){el.style.overflow='visible';el.style.display='block';el.style.webkitLineClamp='unset';var fs=parseFloat(getComputedStyle(el).fontSize);var maxH=fs*1.28*nl;while(el.scrollHeight>maxH+1&&fs>3){fs-=0.2;el.style.fontSize=fs+'px';maxH=fs*1.28*nl;}el.style.overflow='hidden';el.style.display='-webkit-box';el.style.webkitLineClamp=String(nl);});setTimeout(function(){window.print();},1000);});</script>
 </body></html>`;
 }
 
@@ -379,6 +440,22 @@ export default function BarcodeLabels({ auth, company }) {
             const found = prev.find(i => i.product.id === product.id);
             if (found) return prev.map(i => i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i);
             return [...prev, { product, qty: 1 }];
+        });
+        setSearch('');
+        setSearchResults([]);
+    }, []);
+
+    const addVariant = useCallback((product, variant) => {
+        const vProduct = {
+            id:      `v${variant.id}`,
+            name:    `${product.name}${variant.label ? ` — ${variant.label}` : ''}`,
+            sku:     variant.sku,
+            barcode: variant.barcode,
+        };
+        setSelectedItems(prev => {
+            const found = prev.find(i => i.product.id === vProduct.id);
+            if (found) return prev.map(i => i.product.id === vProduct.id ? { ...i, qty: i.qty + 1 } : i);
+            return [...prev, { product: vProduct, qty: 1 }];
         });
         setSearch('');
         setSearchResults([]);
@@ -546,19 +623,53 @@ export default function BarcodeLabels({ auth, company }) {
                                 <input type="text" placeholder="Buscar nombre o SKU…" value={search}
                                     onChange={e => setSearch(e.target.value)} className={`${inp} pl-8 text-xs`} />
                                 {(searchResults.length > 0 || searching) && (
-                                    <div className={`absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-xl z-20 max-h-60 overflow-y-auto ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <div className={`absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-xl z-20 max-h-72 overflow-y-auto ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                                         {searching
                                             ? <div className={`px-3 py-2 text-xs ${sub}`}>Buscando…</div>
-                                            : searchResults.map(p => (
-                                                <button key={p.id} onClick={() => addProduct(p)}
-                                                    className={`w-full text-left px-3 py-2.5 flex items-center gap-2 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-800'}`}>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="font-semibold text-xs truncate">{p.name}</div>
-                                                        <div className={`text-[10px] ${sub}`}>{p.barcode || p.sku || `#${p.id}`}</div>
+                                            : searchResults.map(p => {
+                                                const lower = search.toLowerCase();
+                                                const variants = p.variants_list || [];
+                                                const hasVariants = p.has_variants && variants.length > 0;
+
+                                                // Variantes que coinciden con la búsqueda (SKU o barcode), o todas si el producto coincide por nombre
+                                                const matchedVariants = hasVariants
+                                                    ? variants.filter(v =>
+                                                        (v.sku     && v.sku.toLowerCase().includes(lower)) ||
+                                                        (v.barcode && v.barcode.toLowerCase().includes(lower)) ||
+                                                        (p.name    && p.name.toLowerCase().includes(lower))
+                                                      )
+                                                    : [];
+
+                                                const showVariants = hasVariants && matchedVariants.length > 0;
+
+                                                return (
+                                                    <div key={p.id}>
+                                                        {/* Fila del producto */}
+                                                        <button onClick={() => !hasVariants && addProduct(p)}
+                                                            className={`w-full text-left px-3 py-2 flex items-center gap-2 transition-colors ${hasVariants ? 'cursor-default' : (isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50')} ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-semibold text-xs truncate">{p.name}</div>
+                                                                <div className={`text-[10px] ${sub}`}>
+                                                                    {hasVariants ? `${variants.length} variantes` : (p.barcode || p.sku || `#${p.id}`)}
+                                                                </div>
+                                                            </div>
+                                                            {!hasVariants && <Plus size={13} style={{ color: TEAL, flexShrink: 0 }} />}
+                                                        </button>
+
+                                                        {/* Filas de variantes */}
+                                                        {showVariants && matchedVariants.map(v => (
+                                                            <button key={v.id} onClick={() => addVariant(p, v)}
+                                                                className={`w-full text-left pl-6 pr-3 py-2 flex items-center gap-2 transition-colors border-t ${isDark ? 'border-slate-700/50 hover:bg-slate-700 text-slate-300' : 'border-slate-100 hover:bg-blue-50 text-slate-700'}`}>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="font-medium text-[11px] truncate">{v.label}</div>
+                                                                    <div className={`text-[10px] font-mono ${sub}`}>{v.barcode || v.sku || `#${v.id}`}</div>
+                                                                </div>
+                                                                <Plus size={12} style={{ color: TEAL, flexShrink: 0 }} />
+                                                            </button>
+                                                        ))}
                                                     </div>
-                                                    <Plus size={13} style={{ color: TEAL, flexShrink: 0 }} />
-                                                </button>
-                                            ))
+                                                );
+                                            })
                                         }
                                     </div>
                                 )}

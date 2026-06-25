@@ -61,20 +61,20 @@ export function useD(isDark) {
             inputBorder: 'rgba(148,163,184,0.15)',
         }
         : {
-            bg: '#f8fafc',        // slate-50
-            surface: '#f1f5f9',   // slate-100
-            card: '#ffffff',
-            sidebar: '#f8fafc',   // slate-50
-            input: '#f8fafc',
-            hover: 'rgba(0,0,0,0.03)',
-            border: 'rgba(0,0,0,0.07)',
+            bg: '#DAE6F0',
+            surface: '#EAF3F9',
+            card: '#F2F8FC',
+            sidebar: '#FFFFFF',
+            input: '#EAF3F9',
+            hover: 'rgba(57,123,156,0.07)',
+            border: 'rgba(57,123,156,0.22)',
             borderFocus: B.teal,
-            divider: 'rgba(0,0,0,0.07)',
-            text: '#1e293b',      // slate-800
-            muted: 'rgba(51,65,85,0.55)',      // slate-700
+            divider: 'rgba(57,123,156,0.14)',
+            text: '#1e293b',
+            muted: 'rgba(51,65,85,0.55)',
             label: 'rgba(51,65,85,0.65)',
             placeholder: 'rgba(51,65,85,0.35)',
-            inputBorder: 'rgba(0,0,0,0.10)',
+            inputBorder: 'rgba(57,123,156,0.18)',
         };
 }
 
