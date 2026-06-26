@@ -331,12 +331,17 @@ function ProductCard({ item, isDark, B, onToggle, onDelete }) {
             `}>
                 {item.product_images?.length > 0 ? (
                     <img
-                        src={item.product_images.find(img => img.is_cover)?.url || item.product_images[0].url}
+                        src={item.product_images.find(img => img.is_cover)?.thumb_url
+                          || item.product_images.find(img => img.is_cover)?.url
+                          || item.product_images[0].thumb_url
+                          || item.product_images[0].url}
                         alt={item.name}
                         className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                     />
                 ) : (
-                    <FileText size={40} className={isDark ? 'text-slate-700' : 'text-slate-300'} />
+                    <img src="/placeholder-product.png" alt="Sin imagen" className="w-full h-full object-contain p-2 opacity-80" />
                 )}
 
                 {/* Stock badge */}

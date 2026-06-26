@@ -110,7 +110,8 @@ class SaleController extends Controller
             ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
             ->map(function ($p) {
                 $arr = $p->toArray();
-                $arr['image'] = $p->product_images->first()?->url ?? null;
+                $coverImg = $p->product_images->firstWhere('is_cover', true) ?? $p->product_images->first();
+                $arr['image'] = $coverImg?->thumb_url ?? $coverImg?->url ?? null;
                 $variantsMapped = $p->product_variants->map(function ($v) {
                     $attributes = $v->variant_attribute_values
                         ->map(function ($vav) {
@@ -417,7 +418,8 @@ class SaleController extends Controller
                     ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
                     ->map(function ($p) {
                         $arr = $p->toArray();
-                        $arr['image'] = $p->product_images->first()?->url ?? null;
+                        $coverImg = $p->product_images->firstWhere('is_cover', true) ?? $p->product_images->first();
+                        $arr['image'] = $coverImg?->thumb_url ?? $coverImg?->url ?? null;
                         $variantsMapped = $p->product_variants->map(function ($v) {
                             $attributes = $v->variant_attribute_values
                                 ->map(function ($vav) {

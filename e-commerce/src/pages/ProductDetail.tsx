@@ -83,7 +83,7 @@ export default function ProductDetail() {
     return [...product.images].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
   }, [product])
 
-  const currentImage = images[activeImageIndex]?.url || '/placeholder-product.jpg'
+  const currentImage = images[activeImageIndex]?.url || '/placeholder-product.png'
 
   const price = selectedVariant != null
     ? Number(selectedVariant.price_final ?? selectedVariant.price ?? 0)

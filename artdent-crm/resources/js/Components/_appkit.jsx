@@ -470,12 +470,9 @@ export function ProductCard({ product, cartItem, onAdd, isDark, D }) {
             {/* Image placeholder */}
             <div className="h-[90px] flex items-center justify-center relative"
                 style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
-                {product.image_url
-                    ? <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
-                    : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"
-                        style={{ color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-                        <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" />
-                        <path d="M21 15l-5-5L5 21" /></svg>
+                {(product.image_url || product.image)
+                    ? <img src={product.image_url || product.image} alt={product.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                    : <img src="/placeholder-product.png" alt="Sin imagen" className="h-full w-full object-contain p-1 opacity-80" />
                 }
                 {/* Stock badge — esquina inferior izquierda de la imagen */}
                 {product.track_stock && (

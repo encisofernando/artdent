@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Vendor;
+use App\Services\ImageResizeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -61,7 +62,7 @@ class ProductController extends Controller
 
         // Infinite scroll: axios requests llegan con Accept: application/json
         if ($request->wantsJson()) {
-            $items->getCollection()->transform(function ($p) use ($search) {
+            $items->getCollection()->transform(function ($p) {
                 $p->stock_quantity = $p->stocks->sum('quantity');
 
                 if ($p->has_variants) {
@@ -77,10 +78,10 @@ class ProductController extends Controller
                             ->join(' / ');
 
                         return [
-                            'id'      => $v->id,
-                            'sku'     => $v->sku,
+                            'id' => $v->id,
+                            'sku' => $v->sku,
                             'barcode' => $v->barcode,
-                            'label'   => $label ?: $v->sku,
+                            'label' => $label ?: $v->sku,
                         ];
                     })->values();
                 }
@@ -209,10 +210,12 @@ class ProductController extends Controller
             // El orden en que llegan los archivos es el orden que el usuario definió
             // con drag & drop en el frontend. La primera (índice 0) es la portada.
             if ($request->hasFile('images')) {
+                $resizer = app(ImageResizeService::class);
                 foreach ($request->file('images') as $i => $file) {
-                    $path = $file->store('products', 'public');
+                    $processed = $resizer->processUpload($file);
                     $product->product_images()->create([
-                        'url' => '/storage/'.$path,
+                        'url' => $processed['url'],
+                        'thumb_url' => $processed['thumb_url'],
                         'is_cover' => $i === 0 ? 1 : 0,
                         'sort_order' => $i,
                     ]);
@@ -447,8 +450,9 @@ class ProductController extends Controller
         // Subir archivos ANTES de la transacción (puede tardar y no necesita rollback de BD)
         $uploadedImages = [];
         if ($request->hasFile('images')) {
+            $resizer = app(ImageResizeService::class);
             foreach ($request->file('images') as $file) {
-                $uploadedImages[] = $file->store('products', 'public');
+                $uploadedImages[] = $resizer->processUpload($file);
             }
         }
 
@@ -508,10 +512,11 @@ class ProductController extends Controller
                 $hasCover = $product->product_images()->where('is_cover', 1)->exists();
 
                 $newImages = [];
-                foreach ($uploadedImages as $i => $path) {
+                foreach ($uploadedImages as $i => $processed) {
                     $newImages[] = [
                         'product_id' => $product->id,
-                        'url' => '/storage/'.$path,
+                        'url' => $processed['url'],
+                        'thumb_url' => $processed['thumb_url'],
                         'is_cover' => (! $hasCover && $i === 0) ? 1 : 0,
                         'sort_order' => $maxSortOrder + 1 + $i,
                     ];
@@ -892,7 +897,7 @@ class ProductController extends Controller
      * Verifica que ningún código de barras se repita en products ni product_variants.
      * Lanza ValidationException si encuentra un duplicado.
      *
-     * @param  array<string|null>  $barcodes   todos los barcodes del request (producto + variantes)
+     * @param  array<string|null>  $barcodes  todos los barcodes del request (producto + variantes)
      * @param  int|null  $excludeProductId  ID del producto actual (para ignorarlo en la búsqueda)
      */
     private function assertBarcodesUnique(array $barcodes, ?int $excludeProductId = null): void
@@ -929,8 +934,8 @@ class ProductController extends Controller
      * Verifica que ningún SKU se repita en products ni product_variants.
      * Lanza ValidationException si encuentra un duplicado.
      *
-     * @param  array<string|null>  $skus            todos los SKUs del request (producto + variantes)
-     * @param  int|null            $excludeProductId  ID del producto actual (para ignorarlo en edición)
+     * @param  array<string|null>  $skus  todos los SKUs del request (producto + variantes)
+     * @param  int|null  $excludeProductId  ID del producto actual (para ignorarlo en edición)
      */
     private function assertSkusUnique(array $skus, ?int $excludeProductId = null): void
     {
