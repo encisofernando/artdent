@@ -272,6 +272,28 @@ class CatalogController extends Controller
         return response()->json($brands);
     }
 
+    public function trackCart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer'],
+            'items.*.name' => ['required', 'string'],
+            'items.*.qty' => ['required', 'numeric', 'min:1'],
+            'items.*.price' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $cart = \App\Models\AbandonedCart::create([
+            'company_id' => $this->defaultCompanyId(),
+            'email' => strtolower(trim($validated['email'])),
+            'cart_json' => $validated['items'],
+        ]);
+
+        \App\Jobs\SendAbandonedCartEmail::dispatch($cart->id)->delay(now()->addHour());
+
+        return response()->json(['ok' => true]);
+    }
+
     public function checkout(Request $request): JsonResponse
     {
         $companyId = $request->integer('company_id') ?: $this->defaultCompanyId();
@@ -486,6 +508,12 @@ class CatalogController extends Controller
         } catch (\Throwable) {
             // Email failure must not roll back the order
         }
+
+        // Mark any pending abandoned cart for this email as recovered
+        \App\Models\AbandonedCart::query()
+            ->where('email', strtolower(trim($validated['customer_email'])))
+            ->whereNull('recovered_at')
+            ->update(['recovered_at' => now()]);
 
         if ($customerId) {
             try {
@@ -750,6 +778,7 @@ class CatalogController extends Controller
             'type' => $o->type,
             'value' => $o->value,
             'description' => $o->description,
+            'ends_at' => $o->ends_at?->toIso8601String(),
         ])->values()->all();
 
         return [

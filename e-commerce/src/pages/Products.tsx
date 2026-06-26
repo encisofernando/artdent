@@ -8,6 +8,10 @@ import { listCategories } from '../api/categories'
 import { useCart } from '../store/cart'
 import WishlistButton from '../components/WishlistButton'
 import SEOHead from '../components/SEOHead'
+import CountdownTimer from '../components/CountdownTimer'
+import { analytics } from '../api/analytics'
+
+const LOW_STOCK_THRESHOLD = 5
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduct) => void }) {
@@ -18,6 +22,9 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
   const hasStock = hasVariants
     ? (p.variants?.length ? p.variants.some(v => v.is_active && v.stock > 0) : true)
     : (p.stock ?? 0) > 0
+  const stockCount = !hasVariants ? (p.stock ?? 0) : null
+  const isLowStock = !hasVariants && hasStock && stockCount !== null && stockCount > 0 && stockCount <= LOW_STOCK_THRESHOLD
+  const offerEndsAt = p.offer?.ends_at ?? null
 
   return (
     <div className="product-card-ml flex flex-col group relative">
@@ -62,6 +69,16 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
           </h3>
         </Link>
         <div className="mt-auto pt-1">
+          {isLowStock && (
+            <p className="text-[10px] font-semibold text-amber-600 mb-0.5">
+              ¡Últimas {stockCount} unidades!
+            </p>
+          )}
+          {offerEndsAt && (
+            <div className="mb-0.5">
+              <CountdownTimer endsAt={offerEndsAt} />
+            </div>
+          )}
           {originalPrice && (
             <p className="text-[10px] text-gray-400 line-through">${originalPrice.toLocaleString('es-AR')}</p>
           )}
@@ -119,6 +136,13 @@ export default function Products() {
   const cart = useCart()
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Track search events con debounce de 1.5s para no disparar en cada keystroke
+  useEffect(() => {
+    if (!trimmedQuery) return
+    const t = setTimeout(() => analytics.search(trimmedQuery), 1500)
+    return () => clearTimeout(t)
+  }, [trimmedQuery])
 
   // Categories
   const categoriesQuery = useQuery({
@@ -241,6 +265,22 @@ export default function Products() {
     ...(selectedCategory ? [{ name: selectedCategoryName, url: selectedCategoryUrl }] : []),
   ]
 
+  const seoStructuredData = useMemo(() => {
+    if (products.length === 0) return undefined
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: seoTitle,
+      numberOfItems: products.length,
+      itemListElement: products.slice(0, 20).map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `https://shop.artdent.com.ar${productPath(p.id, p.name)}`,
+        name: p.name,
+      })),
+    }
+  }, [products, seoTitle])
+
   return (
     <>
       <SEOHead
@@ -250,6 +290,7 @@ export default function Products() {
         url={seoUrl}
         robots={seoRobots}
         breadcrumbs={seoBreadcrumbs}
+        structuredData={seoStructuredData}
       />
 
       <div className="mx-auto max-w-7xl px-4 py-8">

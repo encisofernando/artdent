@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CreditCard, MapPin, Bike, Home, ChevronRight, Check, Package, Landmark, QrCode, Banknote } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { checkout } from '../api/orders'
+import { checkout, trackCart } from '../api/orders'
 import { getShippingOptions, type PickupPoint, type MotoCompany } from '../api/shipping'
 import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
 import { useCart } from '../store/cart'
 import { useAuth } from '../store/auth'
 import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
+import { createNavePayment } from '../api/nave'
+import { analytics } from '../api/analytics'
 import CouponInput from '../components/CouponInput'
 
 function formatMoney(n: number) {
@@ -15,6 +17,35 @@ function formatMoney(n: number) {
 }
 
 const LS_LAST_EMAIL = 'artdent_last_checkout_email'
+const SS_CHECKOUT = 'artdent_checkout_draft'
+
+type CheckoutDraft = {
+  step: number
+  name: string
+  email: string
+  phone: string
+  dni: string
+  notes: string
+  city: string
+  province: string
+  address: string
+  postalCode: string
+}
+
+function loadDraft(): Partial<CheckoutDraft> {
+  try {
+    const raw = sessionStorage.getItem(SS_CHECKOUT)
+    return raw ? (JSON.parse(raw) as Partial<CheckoutDraft>) : {}
+  } catch { return {} }
+}
+
+function saveDraft(draft: CheckoutDraft): void {
+  try { sessionStorage.setItem(SS_CHECKOUT, JSON.stringify(draft)) } catch { /* noop */ }
+}
+
+function clearDraft(): void {
+  try { sessionStorage.removeItem(SS_CHECKOUT) } catch { /* noop */ }
+}
 
 // ── Step indicator ─────────────────────────────────────────────────────────────
 function StepBar({ step }: { step: number }) {
@@ -477,11 +508,22 @@ function StepShipping({
   )
 }
 
+// Nave SVG icon (Galicia colors)
+function NaveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+      <rect width="24" height="24" rx="4" fill="#E8001D" />
+      <path d="M5 17V7l4.5 7V7M14.5 7h4.5M14.5 12h4M14.5 17h4.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 const PAYMENT_ICONS: Record<string, React.ReactNode> = {
   mercadopago: <CreditCard size={20} />,
   bank_transfer: <Landmark size={20} />,
   qr: <QrCode size={20} />,
   cash: <Banknote size={20} />,
+  nave: <NaveIcon />,
 }
 
 // ── Step 3: Payment method ──────────────────────────────────────────────────────
@@ -581,20 +623,20 @@ export default function Checkout() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(() => loadDraft().step ?? 1)
 
-  // Step 1 fields
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState(() => localStorage.getItem(LS_LAST_EMAIL) || '')
-  const [phone, setPhone] = useState('')
-  const [dni, setDni] = useState('')
-  const [notes, setNotes] = useState('')
+  // Step 1 fields — se restauran desde sessionStorage si existen
+  const [name, setName] = useState(() => loadDraft().name ?? '')
+  const [email, setEmail] = useState(() => loadDraft().email ?? localStorage.getItem(LS_LAST_EMAIL) ?? '')
+  const [phone, setPhone] = useState(() => loadDraft().phone ?? '')
+  const [dni, setDni] = useState(() => loadDraft().dni ?? '')
+  const [notes, setNotes] = useState(() => loadDraft().notes ?? '')
 
   // Step 2 fields
-  const [city, setCity] = useState('')
-  const [province, setProvince] = useState('')
-  const [address, setAddress] = useState('')
-  const [postalCode, setPostalCode] = useState('')
+  const [city, setCity] = useState(() => loadDraft().city ?? '')
+  const [province, setProvince] = useState(() => loadDraft().province ?? '')
+  const [address, setAddress] = useState(() => loadDraft().address ?? '')
+  const [postalCode, setPostalCode] = useState(() => loadDraft().postalCode ?? '')
   const [selectedMethod, setSelectedMethod] = useState<ShippingMethod | null>(null)
   const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null)
   const [selectedMotoCompany, setSelectedMotoCompany] = useState<MotoCompany | null>(null)
@@ -606,15 +648,21 @@ export default function Checkout() {
   const [error, setError] = useState<string | null>(null)
   const [orderCode, setOrderCode] = useState<string | null>(null)
   const [mpLoading, setMpLoading] = useState(false)
+  const [naveLoading, setNaveLoading] = useState(false)
 
-  // Prefill from user
+  // Prefill from user (solo si el campo está vacío para no pisar el draft)
   useEffect(() => {
     if (user) {
-      if (user.name) setName(user.name)
-      if (user.email) setEmail(user.email)
-      if (user.phone) setPhone(user.phone)
+      if (user.name && !name) setName(user.name)
+      if (user.email && !email) setEmail(user.email)
+      if (user.phone && !phone) setPhone(user.phone)
     }
-  }, [user])
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persistencia automática del borrador en sessionStorage
+  useEffect(() => {
+    saveDraft({ step, name, email, phone, dni, notes, city, province, address, postalCode })
+  }, [step, name, email, phone, dni, notes, city, province, address, postalCode])
 
   const shippingCost = useMemo(() => {
     if (selectedMethod === 'moto' && selectedMotoCompany) return selectedMotoCompany.price
@@ -662,7 +710,23 @@ export default function Checkout() {
 
       const res = await checkout(payload)
       localStorage.setItem(LS_LAST_EMAIL, email.trim())
+
+      // purchase event — fired once order is created in the backend
+      const cartTotal = Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0) + shippingCost)
+      analytics.purchase({
+        id: res.code,
+        value: cartTotal,
+        shipping: shippingCost,
+        items: cart.items.map((it) => ({
+          product_id: it.product.id,
+          name: it.product.name,
+          unit_price: Number(it.variant_price ?? it.product.price_final ?? it.product.price ?? 0),
+          qty: it.qty,
+        })),
+      })
+
       cart.clear()
+      clearDraft()
       setOrderCode(res.code)
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'No se pudo generar el pedido.'
@@ -681,6 +745,18 @@ export default function Checkout() {
     } catch {
       setError('No se pudo iniciar el pago con MercadoPago.')
       setMpLoading(false)
+    }
+  }
+
+  async function payWithNave() {
+    if (!orderCode) return
+    setNaveLoading(true)
+    try {
+      const intent = await createNavePayment(orderCode)
+      window.location.href = intent.checkout_url
+    } catch {
+      setError('No se pudo iniciar el pago con Nave.')
+      setNaveLoading(false)
     }
   }
 
@@ -775,6 +851,42 @@ export default function Checkout() {
             </div>
           )}
 
+          {/* Nave */}
+          {pm?.type === 'nave' && (
+            <div className="space-y-4">
+              {pm.instructions && <p className="text-sm text-gray-600">{pm.instructions}</p>}
+              <div className="rounded-xl border border-red-100 bg-red-50 p-4 space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <NaveIcon />
+                  <p className="font-semibold text-gray-800">Nave (Galicia / Naranja X)</p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Vas a ser redirigido al checkout de Nave donde podés pagar con QR o tarjeta.
+                  En desktop se muestra un QR; en mobile te redirige a MODO o tu app bancaria.
+                </p>
+                {pm.sandbox_mode && (
+                  <p className="text-[10px] text-amber-600 font-semibold">Modo sandbox activo (entorno de pruebas)</p>
+                )}
+              </div>
+              <div className="space-y-3">
+                <button
+                  onClick={payWithNave}
+                  disabled={naveLoading}
+                  className="btn btn-primary w-full py-3 gap-2 flex items-center justify-center"
+                >
+                  <NaveIcon />
+                  {naveLoading ? 'Redirigiendo a Nave…' : 'Pagar ahora con Nave'}
+                </button>
+                <button
+                  onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)}
+                  className="btn btn-outline w-full py-3"
+                >
+                  Pagar después / Ver pedido
+                </button>
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-xs text-red-600 text-center">{error}</p>}
         </div>
       </div>
@@ -810,7 +922,19 @@ export default function Checkout() {
               dni={dni} setDni={setDni}
               phone={phone} setPhone={setPhone}
               notes={notes} setNotes={setNotes}
-              onNext={() => setStep(2)}
+              onNext={() => {
+                setStep(2)
+                // Registrar intención de compra — job diferido 1h enviará email si no completa
+                trackCart(
+                  email.trim(),
+                  cart.items.map((it) => ({
+                    product_id: it.product.id,
+                    name: it.product.name,
+                    qty: it.qty,
+                    price: Number(it.variant_price ?? it.product.price_final ?? it.product.price ?? 0),
+                  })),
+                )
+              }}
             />
           )}
 
@@ -843,7 +967,18 @@ export default function Checkout() {
               selectedMethod={selectedMethod}
               selectedPickupPoint={selectedPickupPoint}
               onBack={() => setStep(2)}
-              onNext={() => setStep(4)}
+              onNext={() => {
+                analytics.beginCheckout(
+                  cart.items.map((it) => ({
+                    product_id: it.product.id,
+                    name: it.product.name,
+                    unit_price: Number(it.variant_price ?? it.product.price_final ?? it.product.price ?? 0),
+                    qty: it.qty,
+                  })),
+                  Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0) + shippingCost),
+                )
+                setStep(4)
+              }}
             />
           )}
 

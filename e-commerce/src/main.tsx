@@ -5,10 +5,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HelmetProvider } from 'react-helmet-async'
 import App from './App'
 import { registerPwa } from './lib/registerPwa'
+import { fetchRemoteConfig } from './api/config'
+import { ConfigProvider } from './contexts/ConfigContext'
+import { analytics } from './api/analytics'
 import './styles.css'
 import './styles/expansive-display.css'
 
 registerPwa()
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -18,6 +22,12 @@ const queryClient = new QueryClient({
     }
   }
 })
+
+// Fetch config antes de montar la app
+const remoteConfig = await fetchRemoteConfig()
+
+// Almacena IDs — los scripts se cargan solo tras consentimiento (ver CookieConsent)
+analytics.storeRemoteIds(remoteConfig.analytics)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -29,7 +39,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             v7_startTransition: true,
           }}
         >
-          <App />
+          <ConfigProvider config={remoteConfig}>
+            <App />
+          </ConfigProvider>
         </BrowserRouter>
       </HelmetProvider>
     </QueryClientProvider>

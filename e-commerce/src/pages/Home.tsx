@@ -658,6 +658,7 @@ export default function Home() {
       <SEOHead
         title="Insumos Odontológicos"
         description="ArtDent Insumos Odontológicos para profesionales. Explorá productos, novedades, destacados y ofertas del shop."
+        url="/"
         keywords={[
           'artdent',
           'insumos odontológicos',
@@ -665,6 +666,20 @@ export default function Home() {
           'laboratorio dental',
           'e-commerce odontológico',
         ]}
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'ArtDent',
+          url: 'https://shop.artdent.com.ar',
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: {
+              '@type': 'EntryPoint',
+              urlTemplate: 'https://shop.artdent.com.ar/productos?q={search_term_string}',
+            },
+            'query-input': 'required name=search_term_string',
+          },
+        }}
       />
 
       <div className="min-h-screen" style={{ background: 'var(--bg)' }}>

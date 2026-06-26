@@ -48,19 +48,28 @@ class EcommercePaymentConfigController extends Controller
             // QR
             'config.image_url' => ['nullable', 'url', 'max:500'],
             'config.payment_url' => ['nullable', 'url', 'max:500'],
+            // Nave
+            'config.client_id' => ['nullable', 'string', 'max:255'],
+            'config.client_secret' => ['nullable', 'string', 'max:255'],
+            'config.audience' => ['nullable', 'string', 'max:255'],
+            'config.pos_id' => ['nullable', 'string', 'max:60'],
+            'config.sandbox_mode' => ['nullable', 'boolean'],
         ]);
 
         $existingConfig = is_array($config->config) ? $config->config : [];
         $incomingConfig = is_array($validated['config'] ?? null) ? $validated['config'] : [];
 
-        if ($type === 'mercadopago') {
-            foreach (['access_token', 'webhook_secret'] as $secretKey) {
-                if (
-                    array_key_exists($secretKey, $incomingConfig)
-                    && EcommercePaymentConfig::isMaskedSecretValue($incomingConfig[$secretKey])
-                ) {
-                    $incomingConfig[$secretKey] = $existingConfig[$secretKey] ?? null;
-                }
+        $secretsByType = [
+            'mercadopago' => ['access_token', 'webhook_secret'],
+            'nave' => ['client_secret'],
+        ];
+
+        foreach ($secretsByType[$type] ?? [] as $secretKey) {
+            if (
+                array_key_exists($secretKey, $incomingConfig)
+                && EcommercePaymentConfig::isMaskedSecretValue($incomingConfig[$secretKey])
+            ) {
+                $incomingConfig[$secretKey] = $existingConfig[$secretKey] ?? null;
             }
         }
 

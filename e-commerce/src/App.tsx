@@ -6,6 +6,7 @@ import { Helmet } from 'react-helmet-async'
 import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LiveChat from './components/LiveChat'
+import WhatsAppButton from './components/WhatsAppButton'
 import { analytics } from './api/analytics'
 
 import Home from './pages/Home'
@@ -49,23 +50,11 @@ function RouteAnalytics() {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const payload = {
-        page_title: document.title,
-        page_path: `${location.pathname}${location.search}`,
-        page_location: window.location.href,
-      }
-
-      window.dataLayer = window.dataLayer || []
-      window.dataLayer.push({
-        event: 'spa_page_view',
-        ...payload,
-      })
-
-      if (typeof window.gtag === 'function') {
-        window.gtag('event', 'page_view', payload)
-      }
+      analytics.pageView(
+        `${location.pathname}${location.search}`,
+        document.title,
+      )
     })
-
     return () => window.cancelAnimationFrame(frame)
   }, [location.pathname, location.search])
 
@@ -231,21 +220,34 @@ function resolveRouteMeta(pathname: string) {
   }
 }
 
+const SITE_URL = 'https://shop.artdent.com.ar'
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.jpg`
+
 function RouteMeta() {
   const { pathname } = useLocation()
   const pageMeta = useMemo(() => resolveRouteMeta(pathname), [pathname])
-  const canonicalUrl = useMemo(() => `https://shop.artdent.com.ar${pathname}`, [pathname])
+  // canonical siempre sin query params para evitar duplicados por filtros
+  const canonicalUrl = useMemo(() => `${SITE_URL}${pathname}`, [pathname])
   const robots = pageMeta.noindex ? 'noindex, nofollow' : 'index, follow'
 
   return (
     <Helmet>
       <title>{pageMeta.title}</title>
       <meta name="description" content={pageMeta.description} />
+      {/* Open Graph */}
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="ArtDent" />
+      <meta property="og:locale" content="es_AR" />
       <meta property="og:title" content={pageMeta.title} />
       <meta property="og:description" content={pageMeta.description} />
       <meta property="og:url" content={canonicalUrl} />
+      <meta property="og:image" content={DEFAULT_OG_IMAGE} />
+      {/* Twitter */}
+      <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={pageMeta.title} />
       <meta name="twitter:description" content={pageMeta.description} />
+      <meta name="twitter:image" content={DEFAULT_OG_IMAGE} />
+      {/* Indexing */}
       <meta name="robots" content={robots} />
       <meta name="googlebot" content={robots} />
       <link rel="canonical" href={canonicalUrl} />
@@ -296,10 +298,6 @@ function NotFound() {
 }
 
 export default function App() {
-  // Inicializar analytics al cargar la app
-  useEffect(() => {
-    analytics.init()
-  }, [])
 
   return (
     <AuthProvider>
@@ -364,8 +362,8 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
 
-          {/* Chat en vivo - sin props, ya que el componente usa env vars directamente */}
           <LiveChat />
+          <WhatsAppButton />
         </AppLayout>
       </CartProvider>
     </AuthProvider>

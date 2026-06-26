@@ -6,7 +6,7 @@ import {
     Building2, Receipt, MapPin, Globe, MessageSquare,
     Save, UploadCloud, X, Camera, CheckCircle2,
     ShieldCheck, KeyRound, FileCheck2, Loader2, Wifi, CircleCheck, CircleX, FileCog,
-    Mail, Printer, Bot, Landmark, BookOpen,
+    Mail, Printer, Bot, Landmark, BookOpen, ShoppingBag, BarChart3,
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -31,7 +31,7 @@ export default function Settings({ company, accountingSettings }) {
     const [activeTab, setActiveTab] = useState(() => {
         try {
             const t = new URLSearchParams(window.location.search).get('tab');
-            if (['perfil', 'fiscal', 'contable', 'ubicacion', 'preferencias', 'emails', 'afip'].includes(t)) {
+            if (['perfil', 'fiscal', 'contable', 'ubicacion', 'preferencias', 'integraciones', 'ecommerce', 'emails', 'afip'].includes(t)) {
                 return t;
             }
         } catch {}
@@ -81,6 +81,11 @@ export default function Settings({ company, accountingSettings }) {
         whatsapp_phone_number_id: company.whatsapp_phone_number_id || '',
         whatsapp_access_token: company.whatsapp_access_token || '',
         whatsapp_message_template: company.whatsapp_message_template || '',
+        whatsapp_contact_number: company.whatsapp_contact_number || '',
+        ga4_measurement_id: company.ga4_measurement_id || '',
+        meta_pixel_id: company.meta_pixel_id || '',
+        hotjar_id: company.hotjar_id || '',
+        google_tag_manager_id: company.google_tag_manager_id || '',
         email_sale_subject: company.email_sale_subject || '',
         email_sale_body: company.email_sale_body || '',
         email_quote_subject: company.email_quote_subject || '',
@@ -101,6 +106,7 @@ export default function Settings({ company, accountingSettings }) {
         { id: 'ubicacion', label: 'Ubicación', icon: MapPin },
         { id: 'preferencias', label: 'Preferencias', icon: Globe },
         { id: 'integraciones', label: 'Integraciones', icon: MessageSquare },
+        { id: 'ecommerce', label: 'E-commerce', icon: ShoppingBag },
         { id: 'emails', label: 'Emails', icon: Mail },
         { id: 'afip', label: 'AFIP / ARCA', icon: ShieldCheck },
     ];
@@ -1259,6 +1265,67 @@ export default function Settings({ company, accountingSettings }) {
                                     )}
                                 </div>
 
+                            </div>
+                        )}
+
+                        {/* Tab Content: E-COMMERCE */}
+                        {activeTab === 'ecommerce' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {/* Analytics */}
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>Analytics y rastreo</h3>
+                                    <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Estas claves se sirven al frontend del e-commerce en tiempo real. No requieren rebuild.
+                                    </p>
+                                    <div className={`rounded-2xl border p-6 space-y-5 ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                        {[
+                                            { field: 'ga4_measurement_id', label: 'Google Analytics 4 — Measurement ID', placeholder: 'G-XXXXXXXXXX', hint: 'Formato: G-XXXXXXXXXX' },
+                                            { field: 'google_tag_manager_id', label: 'Google Tag Manager — Container ID', placeholder: 'GTM-XXXXXXX', hint: 'Formato: GTM-XXXXXXX' },
+                                            { field: 'meta_pixel_id', label: 'Meta (Facebook) Pixel ID', placeholder: '123456789012345', hint: 'Solo dígitos, sin prefijo' },
+                                            { field: 'hotjar_id', label: 'Hotjar Site ID', placeholder: '1234567', hint: 'Solo el número de sitio' },
+                                        ].map(({ field, label, placeholder, hint }) => (
+                                            <div key={field}>
+                                                <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</label>
+                                                <input
+                                                    type="text"
+                                                    value={data[field]}
+                                                    onChange={e => setData(field, e.target.value)}
+                                                    placeholder={placeholder}
+                                                    className={`w-full rounded-xl px-4 py-2.5 text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-colors ${isDark ? 'bg-slate-900 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400'}`}
+                                                />
+                                                <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{hint}</p>
+                                                {errors[field] && <p className="text-red-500 text-xs mt-1">{errors[field]}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* WhatsApp contacto */}
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>WhatsApp de contacto</h3>
+                                    <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Número que se muestra en el botón de WhatsApp del e-commerce (distinto al número de la API de mensajería).
+                                    </p>
+                                    <div className={`rounded-2xl border p-6 ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Número con código de país</label>
+                                        <input
+                                            type="text"
+                                            value={data.whatsapp_contact_number}
+                                            onChange={e => setData('whatsapp_contact_number', e.target.value)}
+                                            placeholder="5493704995406"
+                                            className={`w-full rounded-xl px-4 py-2.5 text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-colors ${isDark ? 'bg-slate-900 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400'}`}
+                                        />
+                                        <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Sin + ni espacios. Ejemplo: 5493704995406</p>
+                                        {errors.whatsapp_contact_number && <p className="text-red-500 text-xs mt-1">{errors.whatsapp_contact_number}</p>}
+                                    </div>
+                                </div>
+
+                                <div className={`rounded-2xl border p-4 flex items-start gap-3 ${isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-100'}`}>
+                                    <BarChart3 size={18} className="text-blue-500 shrink-0 mt-0.5" />
+                                    <p className={`text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+                                        Los valores se entregan al e-commerce vía <code className="font-mono text-xs bg-blue-500/10 px-1 rounded">GET /api/config</code> con caché de 5 minutos. Los cambios se reflejan en el frontend sin necesidad de rebuild.
+                                    </p>
+                                </div>
                             </div>
                         )}
 

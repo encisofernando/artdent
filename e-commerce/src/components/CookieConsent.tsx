@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Cookie, ChevronDown, ChevronUp, Check, Shield } from 'lucide-react'
+import { analytics as analyticsService } from '../api/analytics'
 
 const STORAGE_KEY = 'artdent_cookie_consent'
 
@@ -24,16 +25,17 @@ function getStoredConsent(): ConsentState | null {
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [analytics, setAnalytics] = useState(false)
-  const [marketing, setMarketing] = useState(false)
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false)
+  const [marketingEnabled, setMarketingEnabled] = useState(false)
 
   useEffect(() => {
     const stored = getStoredConsent()
     if (!stored) {
-      // Pequeño delay para que no aparezca durante el primer render
       const t = setTimeout(() => setVisible(true), 800)
       return () => clearTimeout(t)
     }
+    // Consentimiento ya dado: activar analytics según preferencias guardadas
+    analyticsService.initWithConsent({ analytics: stored.analytics, marketing: stored.marketing })
   }, [])
 
   if (!visible) return null
@@ -47,12 +49,13 @@ export default function CookieConsent() {
       timestamp: Date.now(),
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(consent))
+    analyticsService.initWithConsent({ analytics: analyticsVal, marketing: marketingVal })
     setVisible(false)
   }
 
   const acceptAll = () => save(true, true)
   const rejectOptional = () => save(false, false)
-  const saveCustom = () => save(analytics, marketing)
+  const saveCustom = () => save(analyticsEnabled, marketingEnabled)
 
   return (
     <>
@@ -106,11 +109,11 @@ export default function CookieConsent() {
                 </div>
                 <button
                   role="switch"
-                  aria-checked={analytics}
-                  onClick={() => setAnalytics(v => !v)}
-                  className={`relative flex items-center w-9 h-5 rounded-full transition-colors shrink-0 ${analytics ? 'bg-[var(--brand-primary)]' : 'bg-gray-300'}`}
+                  aria-checked={analyticsEnabled}
+                  onClick={() => setAnalyticsEnabled(v => !v)}
+                  className={`relative flex items-center w-9 h-5 rounded-full transition-colors shrink-0 ${analyticsEnabled ? 'bg-[var(--brand-primary)]' : 'bg-gray-300'}`}
                 >
-                  <span className={`absolute w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${analytics ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+                  <span className={`absolute w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${analyticsEnabled ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
                 </button>
               </div>
 
@@ -122,11 +125,11 @@ export default function CookieConsent() {
                 </div>
                 <button
                   role="switch"
-                  aria-checked={marketing}
-                  onClick={() => setMarketing(v => !v)}
-                  className={`relative flex items-center w-9 h-5 rounded-full transition-colors shrink-0 ${marketing ? 'bg-[var(--brand-primary)]' : 'bg-gray-300'}`}
+                  aria-checked={marketingEnabled}
+                  onClick={() => setMarketingEnabled(v => !v)}
+                  className={`relative flex items-center w-9 h-5 rounded-full transition-colors shrink-0 ${marketingEnabled ? 'bg-[var(--brand-primary)]' : 'bg-gray-300'}`}
                 >
-                  <span className={`absolute w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${marketing ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+                  <span className={`absolute w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${marketingEnabled ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
                 </button>
               </div>
             </div>

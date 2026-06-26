@@ -25,14 +25,28 @@ export type PricingInfo = {
   final: number
 }
 
+export type ProductOffer = {
+  id: number
+  badge_text: string | null
+  badge_color: string | null
+  type: 'percentage' | 'fixed' | string
+  value: number
+  description: string | null
+  ends_at: string | null
+}
+
 export type CatalogProduct = Product & {
   pricing?: PricingInfo
   price_final?: number
   price_mode?: 'b2c' | 'b2b'
+  compare_price?: number | null
   primary_image_url?: string | null
   images?: Array<{ id: number; url: string; alt?: string | null; sort_order?: number; is_primary?: boolean }>
+  offers?: ProductOffer[]
+  offer?: ProductOffer | null
 
   // Campos agregados para eliminar los errores de "property does not exist"
+  brand?: string | null
   stock?: number
   average_rating?: number
   review_count?: number

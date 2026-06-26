@@ -8,7 +8,10 @@ import { useCart } from '../store/cart'
 import ProductReviews from '../components/ProductReviews'
 import WishlistButton from '../components/WishlistButton'
 import SEOHead from '../components/SEOHead'
+import CountdownTimer from '../components/CountdownTimer'
 import { analytics } from '../api/analytics'
+
+const LOW_STOCK_THRESHOLD = 5
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>()
@@ -281,10 +284,19 @@ export default function ProductDetail() {
         image={currentImage}
         url={productPath(product.id, product.name)}
         type="product"
+        productData={{
+          name: product.name,
+          price,
+          currency: 'ARS',
+          availability: hasStock ? 'InStock' : 'OutOfStock',
+          brand: product.brand ?? 'ArtDent',
+          sku: selectedVariant?.sku ?? product.sku ?? undefined,
+          image: currentImage,
+        }}
         breadcrumbs={[
           { name: 'Inicio', url: '/' },
           { name: 'Productos', url: '/productos' },
-          ...(product.category ? [{ name: product.category.name, url: `/categoria/${product.category.id}` }] : []),
+          ...(product.category ? [{ name: product.category.name, url: `/productos?cat=${product.category.id}` }] : []),
           { name: product.name, url: productPath(product.id, product.name) },
         ]}
       />
@@ -497,6 +509,12 @@ export default function ProductDetail() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500">IVA {Number(product.tax_rate || 0)}% incluido</p>
+                {product.offer?.ends_at && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <span className="text-gray-600">Oferta termina en:</span>
+                    <CountdownTimer endsAt={product.offer.ends_at} className="text-sm" />
+                  </div>
+                )}
               </div>
 
               {/* Selector de variantes */}
@@ -539,10 +557,19 @@ export default function ProductDetail() {
                 {product.has_variants && !selectedVariant ? (
                   <span className="text-gray-400">Seleccioná una opción para ver stock</span>
                 ) : hasStock ? (
-                  <span className="text-green-600 font-medium">
-                    Stock disponible
-                    <span className="text-gray-500 font-normal"> · {stockCount} unidades</span>
-                  </span>
+                  stockCount > 0 && stockCount <= LOW_STOCK_THRESHOLD ? (
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-amber-600">
+                      <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 fill-current" aria-hidden="true">
+                        <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11zM7.5 5a.5.5 0 0 1 1 0v3.5a.5.5 0 0 1-1 0V5zm.5 6.25a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5z" />
+                      </svg>
+                      ¡Últimas {stockCount} unidades!
+                    </span>
+                  ) : (
+                    <span className="text-green-600 font-medium">
+                      En stock
+                      {stockCount > 0 && <span className="text-gray-500 font-normal"> · {stockCount} unidades</span>}
+                    </span>
+                  )
                 ) : (
                   <span className="text-red-600 font-medium">Sin stock</span>
                 )}
@@ -576,7 +603,7 @@ export default function ProductDetail() {
                     +
                   </button>
                 </div>
-                {hasStock && stockCount <= 10 && (
+                {hasStock && stockCount > LOW_STOCK_THRESHOLD && stockCount <= 10 && (
                   <span className="text-xs text-amber-600">({stockCount} disponibles)</span>
                 )}
               </div>

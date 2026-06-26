@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import SocialButtons from '../components/SocialButtons'
+import { analytics } from '../api/analytics'
 
 export default function SignIn() {
   const { signIn } = useAuth()
@@ -43,6 +44,7 @@ export default function SignIn() {
           setIsSubmitting(true)
           try {
             await signIn(email, password)
+            analytics.login('email')
             window.location.replace(from)
           } catch (err: any) {
             setError(err?.response?.data?.message || 'Correo o contraseña incorrectos.')

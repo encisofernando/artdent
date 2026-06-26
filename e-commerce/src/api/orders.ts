@@ -39,6 +39,21 @@ export async function checkout(payload: CheckoutPayload): Promise<CheckoutRespon
   return data
 }
 
+export type CartTrackItem = {
+  product_id: number
+  name: string
+  qty: number
+  price?: number
+}
+
+export async function trackCart(email: string, items: CartTrackItem[]): Promise<void> {
+  try {
+    await http.post('/catalog/cart/track', { email, items })
+  } catch {
+    // fire-and-forget: no bloquear el flujo si falla
+  }
+}
+
 export type Order = {
   id: number
   code: string

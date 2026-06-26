@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async'
+import { useConfig } from '../contexts/ConfigContext'
 
 interface SEOHeadProps {
   title?: string
@@ -35,6 +36,7 @@ export default function SEOHead({
   productData,
   breadcrumbs,
 }: SEOHeadProps) {
+  const config = useConfig()
   const siteUrl = 'https://shop.artdent.com.ar'
   const defaultImage = `${siteUrl}/og-image.jpg`
   const defaultDescription =
@@ -110,26 +112,38 @@ export default function SEOHead({
       : [customStructuredData]
     : []
 
-  // Organization data
-  const organizationData = {
+  // Organization data — populated from RemoteConfig
+  const orgName = config.company.name || 'ArtDent'
+  const orgPhone = config.company.phone || config.company.whatsapp
+  const orgAddress = [config.company.address, config.company.city, config.company.province]
+    .filter(Boolean).join(', ')
+
+  const organizationData: Record<string, any> = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'ArtDent',
+    name: orgName,
     url: siteUrl,
-    logo: `${siteUrl}/logo.png`,
+    logo: config.company.logo_url ? config.company.logo_url : `${siteUrl}/logo.png`,
     description: defaultDescription,
-    contactPoint: {
-      '@type': 'ContactPoint',
-      telephone: '+54-11-XXXX-XXXX',
-      contactType: 'customer service',
-      areaServed: 'AR',
-      availableLanguage: 'es',
-    },
-    sameAs: [
-      'https://www.facebook.com/artdent',
-      'https://www.instagram.com/artdent',
-      'https://www.linkedin.com/company/artdent',
-    ],
+    ...(orgAddress && {
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: config.company.address || undefined,
+        addressLocality: config.company.city || undefined,
+        addressRegion: config.company.province || undefined,
+        addressCountry: 'AR',
+      },
+    }),
+    ...(orgPhone && {
+      contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: orgPhone,
+        contactType: 'customer service',
+        areaServed: 'AR',
+        availableLanguage: 'es',
+      },
+    }),
+    ...(config.company.email && { email: config.company.email }),
   }
 
   return (

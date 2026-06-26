@@ -11,6 +11,7 @@ export async function createMpPreference(order_code: string): Promise<MpPreferen
   return data
 }
 
-export function getMpCheckoutUrl(pref: MpPreference): string {
-  return pref.sandbox_init_point || pref.init_point
+export function getMpCheckoutUrl(pref: MpPreference, sandbox?: boolean): string {
+  if (sandbox && pref.sandbox_init_point) return pref.sandbox_init_point
+  return pref.init_point
 }

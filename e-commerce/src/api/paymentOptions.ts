@@ -1,6 +1,6 @@
 import { http } from './http'
 
-export type PaymentMethodType = 'mercadopago' | 'bank_transfer' | 'qr' | 'cash'
+export type PaymentMethodType = 'mercadopago' | 'bank_transfer' | 'qr' | 'cash' | 'nave'
 
 export interface CashPickupPoint {
   id: number
@@ -27,6 +27,8 @@ export interface PaymentOption {
   payment_url?: string
   // cash
   pickup_points?: CashPickupPoint[]
+  // nave
+  sandbox_mode?: boolean
 }
 
 export async function getPaymentOptions(): Promise<PaymentOption[]> {

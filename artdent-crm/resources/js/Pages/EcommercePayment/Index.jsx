@@ -9,6 +9,15 @@ import {
     Eye, EyeOff, Save, CheckCircle, AlertCircle,
 } from 'lucide-react';
 
+function NaveIcon({ className = 'h-5 w-5' }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+            <rect width="24" height="24" rx="4" fill="#E8001D" />
+            <path d="M5 17V7l4.5 7V7M14.5 7h4.5M14.5 12h4M14.5 17h4.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
 const METHOD_META = {
     mercadopago: {
         icon: CreditCard,
@@ -37,6 +46,14 @@ const METHOD_META = {
         bg: 'bg-amber-500/10',
         title: 'Efectivo',
         description: 'Pago en persona en los puntos de retiro habilitados.',
+    },
+    nave: {
+        icon: null,
+        iconComponent: NaveIcon,
+        color: 'text-red-600',
+        bg: 'bg-red-500/10',
+        title: 'Nave (Galicia / Naranja X)',
+        description: 'Pago con QR o tarjeta vía Nave. En desktop muestra QR; en mobile redirige a MODO.',
     },
 };
 
@@ -79,6 +96,7 @@ function PasswordInput({ className, value, onChange, placeholder }) {
 function PaymentCard({ config, pickupPoints, isDark }) {
     const meta = METHOD_META[config.type] ?? {};
     const Icon = meta.icon ?? CreditCard;
+    const CustomIcon = meta.iconComponent ?? null;
 
     const [form, setForm] = useState({
         is_enabled: config.is_enabled ?? false,
@@ -101,13 +119,18 @@ function PaymentCard({ config, pickupPoints, isDark }) {
 
         try {
             const res = await axios.put(route('ecommerce-payment-configs.update', config.type), form);
-            // Update the access_token field to show the masked version returned by the server
+            // Sync masked secrets back from server response
             if (config.type === 'mercadopago') {
                 if (res.data?.config?.access_token) {
                     setForm(f => ({ ...f, config: { ...f.config, access_token: res.data.config.access_token } }));
                 }
                 if (res.data?.config?.webhook_secret) {
                     setForm(f => ({ ...f, config: { ...f.config, webhook_secret: res.data.config.webhook_secret } }));
+                }
+            }
+            if (config.type === 'nave') {
+                if (res.data?.config?.client_secret) {
+                    setForm(f => ({ ...f, config: { ...f.config, client_secret: res.data.config.client_secret } }));
                 }
             }
             setSaved(true);
@@ -131,7 +154,7 @@ function PaymentCard({ config, pickupPoints, isDark }) {
             <div className={`flex items-center justify-between gap-4 px-6 py-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                 <div className="flex items-center gap-3">
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${meta.bg}`}>
-                        <Icon size={20} className={meta.color} />
+                        {CustomIcon ? <CustomIcon className="h-5 w-5" /> : <Icon size={20} className={meta.color} />}
                     </div>
                     <div>
                         <p className={`font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{meta.title}</p>
@@ -235,6 +258,71 @@ function PaymentCard({ config, pickupPoints, isDark }) {
                                 <img src={form.config.image_url} alt="QR" className="h-32 w-32 rounded-xl border object-contain p-2 bg-white" />
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Nave */}
+                {config.type === 'nave' && (
+                    <div className="space-y-4">
+                        <div className={`rounded-xl border p-4 text-sm ${isDark ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50'}`}>
+                            <p className={`font-semibold mb-1 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Credenciales proporcionadas por Galicia / Nave</p>
+                            <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                                Para obtenerlas: Nave {'>'} Integraciones {'>'} Tienda Online Propia.
+                                El <strong>pos_id</strong> lo descargás desde Nave {'>'} Integraciones {'>'} Sistema de gestión.
+                                La URL del webhook para Nave es: <code className="font-mono text-xs bg-black/10 px-1 rounded">/api/payment/nave/webhook</code>
+                            </p>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label className={lbl}>Client ID</label>
+                                <input
+                                    className={inp}
+                                    value={form.config.client_id ?? ''}
+                                    onChange={e => setConfigField('client_id', e.target.value)}
+                                    placeholder="eGXu7VV...LsXWylDmrE"
+                                />
+                            </div>
+                            <div>
+                                <label className={lbl}>Client Secret (privado)</label>
+                                <PasswordInput
+                                    className={inp}
+                                    value={form.config.client_secret ?? ''}
+                                    onChange={e => setConfigField('client_secret', e.target.value)}
+                                    placeholder="BAdRFax_McS..."
+                                />
+                                <p className="text-xs text-slate-400 mt-1">Nunca se expone al frontend.</p>
+                            </div>
+                            <div>
+                                <label className={lbl}>Audience</label>
+                                <input
+                                    className={inp}
+                                    value={form.config.audience ?? 'https://naranja.com/ranty/merchants/api'}
+                                    onChange={e => setConfigField('audience', e.target.value)}
+                                    placeholder="https://naranja.com/ranty/merchants/api"
+                                />
+                            </div>
+                            <div>
+                                <label className={lbl}>POS ID (Punto de Venta)</label>
+                                <input
+                                    className={inp}
+                                    value={form.config.pos_id ?? ''}
+                                    onChange={e => setConfigField('pos_id', e.target.value)}
+                                    placeholder="f71ba756-1d80-4ab3-9f43-5dc247fd6c4a"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input
+                                id="nave_sandbox"
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-slate-300"
+                                checked={!!form.config.sandbox_mode}
+                                onChange={e => setConfigField('sandbox_mode', e.target.checked)}
+                            />
+                            <label htmlFor="nave_sandbox" className={`text-sm font-medium cursor-pointer ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                Modo sandbox (pruebas)
+                            </label>
+                        </div>
                     </div>
                 )}
 

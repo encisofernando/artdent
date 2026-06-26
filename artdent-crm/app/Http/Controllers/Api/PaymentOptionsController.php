@@ -44,6 +44,8 @@ class PaymentOptionsController extends Controller
                     ->orderBy('name')
                     ->get(['id', 'name', 'address', 'city', 'province', 'schedule', 'phone'])
                     ->toArray();
+            } elseif ($config->type === 'nave') {
+                $item['sandbox_mode'] = (bool) ($config->config['sandbox_mode'] ?? true);
             }
 
             return $item;

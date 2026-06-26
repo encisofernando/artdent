@@ -1,2 +1,11 @@
 User-agent: *
-Disallow:
+Disallow: /checkout
+Disallow: /mi-cuenta
+Disallow: /carrito
+Disallow: /iniciar-sesion
+Disallow: /registrarme
+Disallow: /recuperar
+Disallow: /resetear-contrasena
+Disallow: /pedido/
+
+Sitemap: https://artdent.com.ar/api/sitemap.xml

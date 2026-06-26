@@ -87,6 +87,8 @@ class EcommerceOrder extends Model
         'admin_notes',
         'selected_payment_method',
         'mp_payment_id',
+        'nave_payment_request_id',
+        'nave_payment_id',
     ];
 
     public function company()

@@ -9,11 +9,14 @@
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\NavePaymentController;
 use App\Http\Controllers\Api\NewsletterApiController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentOptionsController;
+use App\Http\Controllers\Api\PublicConfigController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShippingController;
+use App\Http\Controllers\Api\SitemapController;
 use App\Http\Controllers\Api\SocialAuthApiController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\CollaboratorAssignController;
@@ -41,6 +44,14 @@ Route::prefix('auth')->name('api.auth.')->group(function (): void {
 
 /*
 |--------------------------------------------------------------------------
+| Configuración pública del frontend (sin auth)
+|--------------------------------------------------------------------------
+*/
+Route::get('config', [PublicConfigController::class, 'index'])->name('api.config');
+Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('api.sitemap');
+
+/*
+|--------------------------------------------------------------------------
 | E-commerce: Catálogo público
 |--------------------------------------------------------------------------
 */
@@ -51,6 +62,7 @@ Route::prefix('catalog')->name('api.catalog.')->group(function (): void {
     Route::get('brands', [CatalogController::class, 'brands'])->name('brands');
     Route::get('offers', [CatalogController::class, 'offers'])->name('offers');
     Route::post('checkout', [CatalogController::class, 'checkout'])->name('checkout');
+    Route::post('cart/track', [CatalogController::class, 'trackCart'])->name('cart.track');
     Route::get('orders/{code}', [CatalogController::class, 'order'])->name('orders.show');
 });
 
@@ -84,6 +96,8 @@ Route::prefix('customer')->name('api.customer.')->middleware('auth:sanctum')->gr
 Route::prefix('payment')->name('api.payment.')->group(function (): void {
     Route::post('mp/create', [PaymentController::class, 'createPreference'])->name('mp.create');
     Route::post('mp/webhook', [PaymentController::class, 'webhook'])->name('mp.webhook');
+    Route::post('nave/create', [NavePaymentController::class, 'create'])->name('nave.create');
+    Route::post('nave/webhook', [NavePaymentController::class, 'webhook'])->name('nave.webhook');
 });
 
 /*

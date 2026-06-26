@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { http } from '../api/http'
 import SocialButtons from '../components/SocialButtons'
+import { analytics } from '../api/analytics'
 
 export default function Register() {
   const { signIn } = useAuth()
@@ -46,6 +47,7 @@ export default function Register() {
         cuit: isCuit ? cleanDoc : undefined,
         accepts_marketing: form.accepts_marketing,
       })
+      analytics.signup('email')
       await signIn(form.email, form.password)
       window.location.replace('/mi-cuenta')
     } catch (err: any) {

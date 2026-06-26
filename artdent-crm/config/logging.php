@@ -125,6 +125,13 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'nave' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/nave.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
         'null' => [
             'driver' => 'monolog',
             'handler' => NullHandler::class,

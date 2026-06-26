@@ -71,6 +71,14 @@ class EcommercePaymentConfig extends Model
             }
         }
 
+        if ($this->type === 'nave' && isset($data['config']) && is_array($data['config'])) {
+            foreach (['client_secret'] as $key) {
+                if (! empty($data['config'][$key])) {
+                    $data['config'][$key] = self::maskSecret($data['config'][$key]);
+                }
+            }
+        }
+
         return $data;
     }
 }
