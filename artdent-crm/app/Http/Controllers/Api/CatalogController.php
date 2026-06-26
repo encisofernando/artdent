@@ -753,13 +753,17 @@ class CatalogController extends Controller
         $images = $product->product_images?->map(fn ($img): array => [
             'id' => $img->id,
             'url' => $img->url,
+            'thumb_url' => $img->thumb_url ?? null,
             'alt' => $img->alt,
             'sort_order' => $img->sort_order,
             'is_primary' => $img->is_cover,
         ])->values()->all() ?? [];
 
-        $primaryImage = $product->product_images?->firstWhere('is_cover', true)?->url
-            ?? $product->product_images?->first()?->url;
+        $primaryImg = $product->product_images?->firstWhere('is_cover', true)
+            ?? $product->product_images?->first();
+
+        $primaryImage = $primaryImg?->url;
+        $primaryThumb = $primaryImg?->thumb_url ?? null;
 
         $offers = $product->offers ?? collect();
 
@@ -801,6 +805,7 @@ class CatalogController extends Controller
             'has_variants' => $product->has_variants ?? false,
             'stock' => (int) $stock,
             'primary_image_url' => $primaryImage,
+            'primary_thumb_url' => $primaryThumb,
             'images' => $images,
             'category' => $product->category ? [
                 'id' => $product->category->id,

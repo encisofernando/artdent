@@ -35,8 +35,8 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
               -{pct}%
             </span>
           )}
-          {p.primary_image_url ? (
-            <img src={p.primary_image_url} alt={p.name}
+          {(p.primary_thumb_url || p.primary_image_url) ? (
+            <img src={p.primary_thumb_url ?? p.primary_image_url!} alt={p.name}
               className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
               loading="lazy" />
           ) : (

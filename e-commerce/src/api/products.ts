@@ -41,7 +41,8 @@ export type CatalogProduct = Product & {
   price_mode?: 'b2c' | 'b2b'
   compare_price?: number | null
   primary_image_url?: string | null
-  images?: Array<{ id: number; url: string; alt?: string | null; sort_order?: number; is_primary?: boolean }>
+  primary_thumb_url?: string | null
+  images?: Array<{ id: number; url: string; thumb_url?: string | null; alt?: string | null; sort_order?: number; is_primary?: boolean }>
   offers?: ProductOffer[]
   offer?: ProductOffer | null
 
@@ -93,7 +94,8 @@ function normalizeProductUrls(p: CatalogProduct): CatalogProduct {
   return {
     ...p,
     primary_image_url: storageUrl(p.primary_image_url) ?? p.primary_image_url,
-    images: p.images?.map(img => ({ ...img, url: storageUrl(img.url) ?? img.url })),
+    primary_thumb_url: storageUrl(p.primary_thumb_url) ?? p.primary_thumb_url,
+    images: p.images?.map(img => ({ ...img, url: storageUrl(img.url) ?? img.url, thumb_url: img.thumb_url ? (storageUrl(img.thumb_url) ?? img.thumb_url) : null })),
     variants: p.variants?.map((variant) => ({
       ...variant,
       attributes: variant.attributes.map((attribute) => ({
