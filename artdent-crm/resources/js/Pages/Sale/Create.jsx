@@ -247,16 +247,19 @@ export default function Create({ auth, products, customers = [], company = null 
     }, [variantProduct?.id]);
 
     // ── Derived ──────────────────────────────────────────────
+    // Normaliza barcodes: convierte cualquier separador (', /, etc) a - para que SOP'GBEM === SOP-GBEM
+    const normBarcode = (s) => s ? s.toUpperCase().replace(/[^A-Z0-9]/g, '-') : '';
+
     const filteredProducts = useMemo(() => {
         if (!busca) return products;
-        const lower = busca.toLowerCase();
+        const lower = normBarcode(busca).toLowerCase();
         return products.filter(p =>
-            (p.name    && p.name.toLowerCase().includes(lower))   ||
-            (p.sku     && p.sku.toLowerCase().includes(lower))     ||
-            (p.barcode && p.barcode.toLowerCase().includes(lower)) ||
+            (p.name    && p.name.toLowerCase().includes(busca.toLowerCase())) ||
+            (p.sku     && normBarcode(p.sku).toLowerCase().includes(lower))     ||
+            (p.barcode && normBarcode(p.barcode).toLowerCase().includes(lower)) ||
             (p.variants && p.variants.some(v =>
-                (v.sku     && v.sku.toLowerCase().includes(lower)) ||
-                (v.barcode && v.barcode.toLowerCase().includes(lower))
+                (v.sku     && normBarcode(v.sku).toLowerCase().includes(lower)) ||
+                (v.barcode && normBarcode(v.barcode).toLowerCase().includes(lower))
             ))
         );
     }, [products, busca]);
@@ -264,12 +267,12 @@ export default function Create({ auth, products, customers = [], company = null 
     // ── Buscar por barcode exacto (scanner) ──────────────────────────────────
     const addByBarcode = (code) => {
         if (!code) return;
-        const upper = code.trim().toUpperCase();
+        const upper = normBarcode(code.trim());
         for (const p of products) {
             // Producto sin variantes: match por barcode o SKU exacto
             if (!p.has_variants) {
-                if ((p.barcode && p.barcode.toUpperCase() === upper) ||
-                    (p.sku     && p.sku.toUpperCase()     === upper)) {
+                if ((p.barcode && normBarcode(p.barcode) === upper) ||
+                    (p.sku     && normBarcode(p.sku)     === upper)) {
                     addToCart(p);
                     setBusca('');
                     return;
@@ -279,8 +282,8 @@ export default function Create({ auth, products, customers = [], company = null 
             if (p.has_variants && p.variants) {
                 const variant = p.variants.find(v =>
                     v.is_active && (
-                        (v.barcode && v.barcode.toUpperCase() === upper) ||
-                        (v.sku     && v.sku.toUpperCase()     === upper)
+                        (v.barcode && normBarcode(v.barcode) === upper) ||
+                        (v.sku     && normBarcode(v.sku)     === upper)
                     )
                 );
                 if (variant) {
