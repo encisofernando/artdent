@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Search, Plus, Pencil, Trash2, Warehouse as WarehouseIcon, X, Save, CheckCircle, XCircle } from 'lucide-react';
 
@@ -174,20 +175,7 @@ export default function Index({ auth, items, filters }) {
                         </div>
                     )}
 
-                    {items.last_page > 1 && (
-                        <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                            <span className="text-xs">Mostrando {items.from}–{items.to} de {items.total}</span>
-                            <div className="flex gap-1">
-                                {items.links.map((link, i) => (
-                                    <button key={i} disabled={!link.url}
-                                        onClick={() => link.url && router.get(link.url)}
-                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${link.active ? 'text-white' : ''} ${!link.url ? 'opacity-40 cursor-not-allowed' : ''}`}
-                                        style={link.active ? { background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` } : {}}
-                                        dangerouslySetInnerHTML={{ __html: link.label }} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <Pagination data={items} />
                 </div>
             </div>
 

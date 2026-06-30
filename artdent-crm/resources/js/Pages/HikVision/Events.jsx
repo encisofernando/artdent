@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { Fingerprint, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import Pagination from '@/Components/Pagination';
+import { Fingerprint, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 const STATUS_LABELS = {
     checkIn: { label: 'Entrada', color: 'text-emerald-500' },
@@ -111,30 +112,7 @@ export default function Events({ auth, events }) {
                     </table>
                 </div>
 
-                {/* Pagination */}
-                {last_page > 1 && (
-                    <div className="flex items-center justify-between">
-                        <span className={`text-sm ${muted}`}>Página {current_page} de {last_page}</span>
-                        <div className="flex gap-2">
-                            {prev_page_url && (
-                                <Link href={prev_page_url}
-                                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border ${
-                                        isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                                    }`}>
-                                    <ChevronLeft className="h-4 w-4" /> Anterior
-                                </Link>
-                            )}
-                            {next_page_url && (
-                                <Link href={next_page_url}
-                                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border ${
-                                        isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                                    }`}>
-                                    Siguiente <ChevronRight className="h-4 w-4" />
-                                </Link>
-                            )}
-                        </div>
-                    </div>
-                )}
+                <Pagination data={events} />
             </div>
         </AuthenticatedLayout>
     );

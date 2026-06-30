@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, MessageSquare } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -243,38 +244,7 @@ export default function Index({ auth, items, dentists, filters }) {
                     </div>
                 )}
 
-                {/* Pagination */}
-                {items?.links && items.links.length > 3 && (
-                    <div className="flex justify-center mt-4">
-                        <div className={`flex gap-1 p-1 rounded-xl border
-                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
-                        `}>
-                            {items.links.map((link, i) => {
-                                if (!link.url && !link.active) {
-                                    return (
-                                        <span key={i} className={`px-3 py-1.5 rounded-lg text-sm
-                                            ${isDark ? 'text-slate-600' : 'text-slate-400'}
-                                        `} dangerouslySetInnerHTML={{ __html: link.label }} />
-                                    );
-                                }
-                                return (
-                                    <Link
-                                        key={i}
-                                        href={link.url}
-                                        preserveScroll
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-                                            ${link.active
-                                                ? (isDark ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600')
-                                                : (isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100')
-                                            }
-                                        `}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+                <Pagination data={items} />
             </div>
         </AuthenticatedLayout>
     );

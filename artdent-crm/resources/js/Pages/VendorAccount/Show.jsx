@@ -2,6 +2,7 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Pagination from '@/Components/Pagination';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, FileText, CreditCard, BookOpen, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -170,20 +171,7 @@ export default function Show({ auth, vendor, account, moves }) {
                     )}
                 </div>
 
-                {/* Pagination */}
-                {moves?.links && moves.links.length > 3 && (
-                    <div className="flex justify-center mt-2">
-                        <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}`}>
-                            {moves.links.map((link, i) => (
-                                link.url
-                                    ? <Link key={i} href={link.url} preserveScroll
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${link.active ? (isDark ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600') : (isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100')}`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }} />
-                                    : <span key={i} className={`px-3 py-1.5 text-sm ${isDark ? 'text-slate-600' : 'text-slate-400'}`} dangerouslySetInnerHTML={{ __html: link.label }} />
-                            ))}
-                        </div>
-                    </div>
-                )}
+                <Pagination data={moves} />
             </div>
         </AuthenticatedLayout>
     );

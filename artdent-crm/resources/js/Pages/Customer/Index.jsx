@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, CreditCard, Download } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Pagination from '@/Components/Pagination';
 import { Button } from '@/Components/ui/button';
 
 export default function Index({ auth, items, filters }) {
@@ -240,37 +241,7 @@ export default function Index({ auth, items, filters }) {
                         </table>
                     </div>
 
-                    {/* Pagination */}
-                    {items?.links && items.links.length > 3 && (
-                        <div className={`px-6 py-4 border-t w-full flex items-center justify-center
-                            ${isDark ? 'border-slate-700/60 bg-slate-800/30' : 'border-slate-100 bg-slate-50'}
-                        `}>
-                            <div className="flex gap-1">
-                                {items.links.map((link, i) => {
-                                    if (!link.url && !link.active) {
-                                        return (
-                                            <span key={i} className={`px-3 py-1.5 rounded-lg text-sm
-                                                ${isDark ? 'text-slate-600' : 'text-slate-400'}
-                                            `} dangerouslySetInnerHTML={{ __html: link.label }} />
-                                        )
-                                    }
-                                    return (
-                                        <Link
-                                            key={i}
-                                            href={link.url}
-                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-                                                ${link.active
-                                                    ? (isDark ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600')
-                                                    : (isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100')
-                                                }
-                                            `}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
+                    <Pagination data={items} />
                 </div>
             </div>
         </AuthenticatedLayout>

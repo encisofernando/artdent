@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import {
     Plus, Search, Edit, Trash2, BriefcaseMedical,
-    ChevronLeft, ChevronRight, SlidersHorizontal,
+    SlidersHorizontal,
     Clock, CheckCircle2, AlertCircle, Printer, Eye, X,
     CalendarClock, Banknote
 } from 'lucide-react';
@@ -270,36 +271,7 @@ export default function Index({ auth, items, filters }) {
                     </div>
                 )}
 
-                {/* ── Paginación ── */}
-                {items.data.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px' }}>
-                        <p style={{ fontSize: 12, color: D.sub }}>
-                            {items.from}–{items.to} de <strong>{items.total}</strong>
-                        </p>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                            {items.links.map((link, i) => {
-                                const isPrev = link.label.includes('Previous');
-                                const isNext = link.label.includes('Next');
-                                if (!link.url && !isPrev && !isNext) return null;
-                                return (
-                                    <Link key={i} href={link.url || '#'}>
-                                        <button disabled={!link.url} style={{
-                                            width: 34, height: 34, borderRadius: 10,
-                                            border: `1.5px solid ${link.active ? AD.teal : D.border}`,
-                                            background: link.active ? `rgba(73,148,156,0.12)` : D.card,
-                                            color: link.active ? AD.teal : D.sub,
-                                            fontWeight: link.active ? 700 : 400, fontSize: 13,
-                                            cursor: link.url ? 'pointer' : 'not-allowed', opacity: link.url ? 1 : 0.4,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
-                                        }}>
-                                            {isPrev ? <ChevronLeft size={14} /> : isNext ? <ChevronRight size={14} /> : link.label}
-                                        </button>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+                <Pagination data={items} />
             </div>
         </AuthenticatedLayout>
     );

@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Eye, Trash2, CheckCircle, XCircle, PackageMinus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { DatePicker, useD } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -202,27 +203,7 @@ export default function Index({ auth, items, collaborators, filters }) {
                     )}
 
                     {/* Paginación */}
-                    {items.last_page > 1 && (
-                        <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                            <span className="text-xs">
-                                Mostrando {items.from}–{items.to} de {items.total}
-                            </span>
-                            <div className="flex gap-1">
-                                {items.links.map((link, i) => (
-                                    <button key={i}
-                                        disabled={!link.url}
-                                        onClick={() => link.url && router.get(link.url)}
-                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors
-                                            ${link.active ? 'text-white' : ''}
-                                            ${!link.url ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-                                            ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}
-                                        style={link.active ? { background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` } : {}}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <Pagination data={items} />
                 </div>
             </div>
         </AuthenticatedLayout>

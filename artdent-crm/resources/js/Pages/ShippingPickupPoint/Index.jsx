@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, MapPin, CheckCircle2, XCircle } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -164,20 +165,7 @@ export default function Index({ auth, items, filters }) {
                         </div>
                     )}
 
-                    {/* Pagination */}
-                    {items?.last_page > 1 && (
-                        <div className={`px-4 py-3 border-t flex items-center justify-between text-xs ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                            <span>{items.total} resultados</span>
-                            <div className="flex gap-2">
-                                {items.prev_page_url && (
-                                    <Link href={items.prev_page_url} className="px-3 py-1 rounded-lg border hover:bg-slate-50 transition">Anterior</Link>
-                                )}
-                                {items.next_page_url && (
-                                    <Link href={items.next_page_url} className="px-3 py-1 rounded-lg border hover:bg-slate-50 transition">Siguiente</Link>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    <Pagination data={items} />
                 </div>
             </div>
         </AuthenticatedLayout>
