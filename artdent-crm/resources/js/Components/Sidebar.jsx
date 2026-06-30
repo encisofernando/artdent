@@ -147,6 +147,8 @@ export default function Sidebar({ className = "" }) {
                         { title: "Recibos", path: "/collaborator-receipts", permission: 'staff.edit' },
                         { title: "Kiosk de Fichaje", path: "/attendance-kiosk", external: true },
                         { title: "Kiosk de Producción", path: "/job-kiosk", external: true },
+                        { title: "Terminales HikVision", path: "/hikvision/devices", permission: 'staff.edit' },
+                        { title: "Eventos Biométricos", path: "/hikvision/events", permission: 'staff.view' },
                     ],
                 },
                 {

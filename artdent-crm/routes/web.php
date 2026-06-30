@@ -67,6 +67,7 @@ Route::middleware(['tenant.session', 'auth'])->group(function () {
 
     require __DIR__.'/modules/hr.php';
     require __DIR__.'/modules/ecommerce.php';
+    require __DIR__.'/modules/hikvision.php';
 
     require __DIR__.'/modules/admin.php';
     require __DIR__.'/modules/user.php';
