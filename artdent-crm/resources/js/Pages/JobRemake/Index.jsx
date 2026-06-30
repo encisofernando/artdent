@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, RefreshCcw } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
@@ -26,6 +27,7 @@ const RESPONSIBILITY_COLORS = {
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -48,9 +50,9 @@ export default function Index({ auth, items, filters }) {
     }, [debouncedSearch, responsibility]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este rehacimiento?')) {
-            router.delete(route('job-remakes.destroy', id), { preserveScroll: true });
-        }
+        confirmDialog('¿Estás seguro de que deseas eliminar este rehacimiento?', () =>
+            router.delete(route('job-remakes.destroy', id), { preserveScroll: true })
+        );
     };
 
     const formatCurrency = (amount) => {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Plus, Edit2, Trash2, Search, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 
@@ -29,6 +30,7 @@ function RoleBadge({ role }) {
 
 export default function Index({ auth, users }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const { flash } = usePage().props;
     const [search, setSearch] = useState('');
 
@@ -42,8 +44,9 @@ export default function Index({ auth, users }) {
     const th   = isDark ? 'text-slate-400' : 'text-slate-500';
 
     const destroy = (user) => {
-        if (!confirm(`¿Eliminar al usuario "${user.name}"? Esta acción no se puede deshacer.`)) return;
-        router.delete(route('users.destroy', user.id), { preserveScroll: true });
+        confirmDialog(`¿Eliminar al usuario "${user.name}"? Esta acción no se puede deshacer.`, () => {
+            router.delete(route('users.destroy', user.id), { preserveScroll: true });
+        });
     };
 
     return (

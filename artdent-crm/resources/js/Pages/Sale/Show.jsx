@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useToast } from '@/Contexts/ToastContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Printer, Download, CreditCard, User, Check, FileCheck2, AlertTriangle, Loader2, ChevronDown, Mail, Send, Trash2, FileMinus, FilePlus } from 'lucide-react';
 import axios from 'axios';
@@ -140,6 +141,7 @@ const MODES = [
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
 export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const { isDark } = useTheme();
+    const toast = useToast();
     const [mode, setMode] = useState('a4');
     const saleBalance = Math.max(0, Number(sale.total || 0) - Number(sale.paid_amount || 0));
 
@@ -292,7 +294,7 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            alert('⚠️ El gestor de impresión ArtDent no está activo. Por favor, inicie la aplicación.');
+            toast.warning('El gestor de impresión ArtDent no está activo. Por favor, inicie la aplicación.');
         }
     };
 

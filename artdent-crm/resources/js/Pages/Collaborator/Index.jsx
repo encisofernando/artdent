@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Power, Users, DollarSign } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 
 const fmtMoney = (value) => Number(value || 0).toLocaleString('es-AR', {
@@ -12,6 +13,7 @@ const fmtMoney = (value) => Number(value || 0).toLocaleString('es-AR', {
 
 export default function Index({ auth, items, filters, summary }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -49,9 +51,9 @@ export default function Index({ auth, items, filters, summary }) {
     };
 
     const handleDelete = (id) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este colaborador?')) {
-            router.delete(route('collaborators.destroy', id), { preserveScroll: true });
-        }
+        confirmDialog('¿Estás seguro de que deseas eliminar este colaborador?', () =>
+            router.delete(route('collaborators.destroy', id), { preserveScroll: true })
+        );
     };
 
     const B = {

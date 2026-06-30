@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Banknote, FileText, Calculator, Layers, Plus, Trash2, GripVertical } from 'lucide-react';
 import TariffCostBuilder from '@/Components/TariffCostBuilder';
 
 function PhasesManager({ tariffId, initialPhases, isDark }) {
+    const confirmDialog = useConfirm();
     const [phases, setPhases] = useState(initialPhases || []);
     const [newPhase, setNewPhase] = useState({ name: '', price: '' });
     const [saving, setSaving] = useState(false);
@@ -33,10 +35,11 @@ function PhasesManager({ tariffId, initialPhases, isDark }) {
     };
 
     const handleDelete = (phaseId) => {
-        if (!confirm('¿Eliminar esta fase?')) return;
-        router.delete(route('tariff-phases.destroy', { tariff: tariffId, phase: phaseId }), {
-            preserveState: true,
-            onSuccess: (page) => setPhases(page.props.item?.phases || phases.filter(p => p.id !== phaseId)),
+        confirmDialog('¿Eliminar esta fase?', () => {
+            router.delete(route('tariff-phases.destroy', { tariff: tariffId, phase: phaseId }), {
+                preserveState: true,
+                onSuccess: (page) => setPhases(page.props.item?.phases || phases.filter(p => p.id !== phaseId)),
+            });
         });
     };
 

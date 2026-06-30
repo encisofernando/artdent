@@ -7,6 +7,7 @@ import React, { useState, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useToast } from '@/Contexts/ToastContext';
 import axios from 'axios';
 import {
     B, G, useD, fmt,
@@ -33,6 +34,7 @@ function calcTotals(items, discountPct) {
 
 export default function Create({ auth, products = [], customers = [] }) {
     const { isDark, sidebarCollapsed } = useTheme();
+    const toast = useToast();
     const D = useD(isDark);
 
     /* ── Cart state ───────────────────────────────────────── */
@@ -197,8 +199,8 @@ export default function Create({ auth, products = [], customers = [] }) {
 
     /* ── Submit ───────────────────────────────────────────── */
     const handleSubmit = (selectedStatus) => {
-        if (!customerName.trim()) { alert('Seleccioná o ingresá un cliente.'); return; }
-        if (cart.length === 0)    { alert('Agregá al menos un ítem.'); return; }
+        if (!customerName.trim()) { toast.warning('Seleccioná o ingresá un cliente.'); return; }
+        if (cart.length === 0)    { toast.warning('Agregá al menos un ítem.'); return; }
         setSubmitting(true);
         router.post(route('quotes.store'), {
             recipient_name:    customerName,

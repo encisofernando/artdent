@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useToast } from '@/Contexts/ToastContext';
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') {
@@ -24,6 +25,7 @@ function isIosSafari() {
 }
 
 export function usePwaInstall() {
+  const toast = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(() => isStandaloneMode());
 
@@ -62,7 +64,7 @@ export function usePwaInstall() {
 
   const promptInstall = useCallback(async () => {
     if (isIosSafari() && !deferredPrompt) {
-      window.alert('En Safari tocá Compartir y luego "Agregar a pantalla de inicio".');
+      toast.info('En Safari tocá Compartir y luego "Agregar a pantalla de inicio".');
       return false;
     }
 

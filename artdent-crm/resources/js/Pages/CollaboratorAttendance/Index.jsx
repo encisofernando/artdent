@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Clock, Calendar, X, Check } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
@@ -93,6 +94,7 @@ function AttendanceForm({ form, collaborators, isEdit = false, isDark }) {
 
 export default function Index({ auth, items, collaborators, filters, summary }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [collaboratorFilter, setCollaboratorFilter] = useState(filters?.collaborator_id || '');
@@ -154,9 +156,9 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
     };
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar este registro de asistencia?')) {
-            router.delete(route('collaborator-attendances.destroy', id), { preserveScroll: true });
-        }
+        confirmDialog('¿Eliminar este registro de asistencia?', () =>
+            router.delete(route('collaborator-attendances.destroy', id), { preserveScroll: true })
+        );
     };
 
     const inputClass = `px-3 py-2 rounded-xl border text-sm transition-colors ${isDark ? 'bg-slate-900 border-slate-700/60 text-slate-100' : 'bg-white border-slate-200 text-slate-800'} outline-none`;

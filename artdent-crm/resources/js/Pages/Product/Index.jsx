@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Power, Box as BoxIcon, FileText, Loader2, Trash2, Tag } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import ImportExportModal from './ImportExportModal';
 import BarcodeLabelModal from './BarcodeLabelModal';
@@ -22,6 +23,7 @@ async function fetchPage(search, status, page) {
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
 
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
@@ -121,19 +123,19 @@ export default function Index({ auth, items, filters }) {
 
     // ── Eliminar producto ─────────────────────────────────────────────────────
     const deleteProduct = (item) => {
-        if (!window.confirm(`¿Eliminar "${item.name}"?\n\nEsta acción no se puede deshacer.`)) return;
+        confirmDialog(`¿Eliminar "${item.name}"? Esta acción no se puede deshacer.`, () => {
+            // optimistic remove
+            setProducts(prev => prev.filter(p => p.id !== item.id));
+            setTotalItems(prev => prev - 1);
 
-        // optimistic remove
-        setProducts(prev => prev.filter(p => p.id !== item.id));
-        setTotalItems(prev => prev - 1);
-
-        router.delete(route('products.destroy', item.id), {
-            preserveScroll: true,
-            onError: () => {
-                // revert on failure
-                setProducts(prev => [...prev, item]);
-                setTotalItems(prev => prev + 1);
-            },
+            router.delete(route('products.destroy', item.id), {
+                preserveScroll: true,
+                onError: () => {
+                    // revert on failure
+                    setProducts(prev => [...prev, item]);
+                    setTotalItems(prev => prev + 1);
+                },
+            });
         });
     };
 

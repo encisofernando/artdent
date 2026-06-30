@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Key, Plus, Trash2, Copy, Check, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 
@@ -9,6 +10,7 @@ const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
 export default function ApiTokens({ auth, tokens = [] }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const { flash } = usePage().props;
     const [copied, setCopied] = useState(false);
 
@@ -20,8 +22,9 @@ export default function ApiTokens({ auth, tokens = [] }) {
     };
 
     const revoke = (id) => {
-        if (!confirm('¿Revocar este token? No podrá usarse más.')) return;
-        router.delete(route('admin.api-tokens.destroy', id), { preserveScroll: true });
+        confirmDialog('¿Revocar este token? No podrá usarse más.', () =>
+            router.delete(route('admin.api-tokens.destroy', id), { preserveScroll: true })
+        );
     };
 
     const copyToken = (token) => {

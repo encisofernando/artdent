@@ -7,6 +7,9 @@ use App\Http\Controllers\CollaboratorDiscountController;
 use App\Http\Controllers\CollaboratorExtraController;
 use App\Http\Controllers\CollaboratorReceiptController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeDiscountController;
+use App\Http\Controllers\EmployeeExtraController;
+use App\Http\Controllers\EmployeeReceiptController;
 use App\Http\Controllers\WebAuthnKioskController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,7 +39,26 @@ Route::post('collaborator-receipts', [CollaboratorReceiptController::class, 'sto
 Route::get('collaborator-receipts/{collaboratorReceipt}', [CollaboratorReceiptController::class, 'show'])->name('collaborator-receipts.show')->middleware('permission:staff.edit');
 Route::put('collaborator-receipts/{collaboratorReceipt}', [CollaboratorReceiptController::class, 'update'])->name('collaborator-receipts.update')->middleware('permission:staff.edit');
 Route::delete('collaborator-receipts/{collaboratorReceipt}', [CollaboratorReceiptController::class, 'destroy'])->name('collaborator-receipts.destroy')->middleware('permission:staff.delete');
-Route::resource('employees', EmployeeController::class)->middleware('permission:staff.view');
+// Personal / Insumos
+Route::resource('employees', EmployeeController::class)
+    ->only(['index', 'show', 'store', 'update', 'destroy'])
+    ->middleware('permission:staff.view');
+
+Route::get('employee-extras', [EmployeeExtraController::class, 'index'])->name('employee-extras.index')->middleware('permission:staff.view');
+Route::post('employee-extras', [EmployeeExtraController::class, 'store'])->name('employee-extras.store')->middleware('permission:staff.edit');
+Route::put('employee-extras/{employeeExtra}', [EmployeeExtraController::class, 'update'])->name('employee-extras.update')->middleware('permission:staff.edit');
+Route::delete('employee-extras/{employeeExtra}', [EmployeeExtraController::class, 'destroy'])->name('employee-extras.destroy')->middleware('permission:staff.delete');
+
+Route::get('employee-discounts', [EmployeeDiscountController::class, 'index'])->name('employee-discounts.index')->middleware('permission:staff.view');
+Route::post('employee-discounts', [EmployeeDiscountController::class, 'store'])->name('employee-discounts.store')->middleware('permission:staff.edit');
+Route::put('employee-discounts/{employeeDiscount}', [EmployeeDiscountController::class, 'update'])->name('employee-discounts.update')->middleware('permission:staff.edit');
+Route::delete('employee-discounts/{employeeDiscount}', [EmployeeDiscountController::class, 'destroy'])->name('employee-discounts.destroy')->middleware('permission:staff.delete');
+
+Route::get('employee-receipts', [EmployeeReceiptController::class, 'index'])->name('employee-receipts.index')->middleware('permission:staff.edit');
+Route::post('employee-receipts', [EmployeeReceiptController::class, 'store'])->name('employee-receipts.store')->middleware('permission:staff.edit');
+Route::get('employee-receipts/{employeeReceipt}', [EmployeeReceiptController::class, 'show'])->name('employee-receipts.show')->middleware('permission:staff.edit');
+Route::put('employee-receipts/{employeeReceipt}', [EmployeeReceiptController::class, 'update'])->name('employee-receipts.update')->middleware('permission:staff.edit');
+Route::delete('employee-receipts/{employeeReceipt}', [EmployeeReceiptController::class, 'destroy'])->name('employee-receipts.destroy')->middleware('permission:staff.delete');
 
 // Kiosk Face & Auth
 Route::post('/collaborators/{collaborator}/enroll-face', [AttendanceKioskController::class, 'enroll'])->name('collaborators.enroll-face')->middleware('permission:staff.edit');

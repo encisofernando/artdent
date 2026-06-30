@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Calendar, X, Check, WalletCards } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
@@ -93,6 +94,7 @@ export default function AdjustmentIndex({
     config,
 }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
     const today = new Date().toISOString().split('T')[0];
     const { routeBase, pageTitle, title, subtitle, createLabel, emptyTitle, emptyText, amountLabel, isDiscount } = config;
@@ -166,9 +168,9 @@ export default function AdjustmentIndex({
     };
 
     const handleDelete = (id) => {
-        if (confirm(`¿Eliminar este ${isDiscount ? 'descuento' : 'extra'}?`)) {
-            router.delete(route(`${routeBase}.destroy`, id), { preserveScroll: true });
-        }
+        confirmDialog(`¿Eliminar este ${isDiscount ? 'descuento' : 'extra'}?`, () =>
+            router.delete(route(`${routeBase}.destroy`, id), { preserveScroll: true })
+        );
     };
 
     const inputClass = `px-3 py-2 rounded-xl border text-sm transition-colors ${isDark ? 'bg-slate-900 border-slate-700/60 text-slate-100' : 'bg-white border-slate-200 text-slate-800'} outline-none`;

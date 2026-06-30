@@ -315,12 +315,36 @@ main {
 }
 .job-card:hover .assign-hint { opacity: 1; }
 
-/* Colaboradores asignados en la card */
-.collaborators-row {
+/* Fases activas en card asignada */
+.active-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.phase-row {
+  background: rgba(90,173,156,0.07);
+  border: 1px solid rgba(90,173,156,0.18);
+  border-radius: 8px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.phase-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green);
+  flex-shrink: 0;
+}
+
+.phase-collabs {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex: 1;
 }
 
 .collab-chip {
@@ -331,20 +355,26 @@ main {
   border: 1px solid rgba(90,173,156,0.25);
   border-radius: 6px;
   padding: 3px 8px 3px 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .collab-avatar {
-  width: 20px; height: 20px;
-  border-radius: 5px;
+  width: 18px; height: 18px;
+  border-radius: 4px;
   background: var(--grad-g);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 900;
   color: #fff;
+}
+
+.no-collabs {
+  font-size: 10px;
+  color: var(--muted);
+  font-style: italic;
 }
 
 /* ─── EMPTY STATE ──────────────────────────────────────────── */
@@ -682,11 +712,11 @@ main {
 
 <!-- ─── MAIN ───────────────────────────────────────────── -->
 <main>
-  <!-- Sin asignar -->
+  <!-- Disponibles -->
   <div class="column col-unassigned">
     <div class="col-header">
       <div class="col-dot"></div>
-      <span class="col-title">Sin Asignar</span>
+      <span class="col-title">Disponibles</span>
       <div class="col-count" id="countUnassigned">0</div>
     </div>
     <div class="cards-list" id="listUnassigned">
@@ -696,11 +726,11 @@ main {
     </div>
   </div>
 
-  <!-- Asignadas -->
+  <!-- En proceso -->
   <div class="column col-assigned">
     <div class="col-header">
       <div class="col-dot"></div>
-      <span class="col-title">Asignadas</span>
+      <span class="col-title">En Proceso</span>
       <div class="col-count" id="countAssigned">0</div>
     </div>
     <div class="cards-list" id="listAssigned">
@@ -864,24 +894,31 @@ function formatDate(dateStr) {
   });
 }
 
-function collabChips(collaborators) {
-  if (!collaborators?.length) return '';
-  return collaborators.map(c => `
-    <div class="collab-chip">
-      <div class="collab-avatar">${c.initials}</div>
-      ${c.name.split(' ')[0]}
-    </div>
-  `).join('');
+function activePhasesHtml(phases) {
+  if (!phases?.length) return '';
+  return `<div class="active-phases">${phases.map(p => {
+    const collabs = p.collaborators?.length
+      ? p.collaborators.map(c => `
+          <div class="collab-chip">
+            <div class="collab-avatar">${c.initials}</div>
+            ${escHtml(c.name.split(' ')[0])}
+          </div>`).join('')
+      : `<span class="no-collabs">Sin asignar</span>`;
+    return `
+      <div class="phase-row">
+        <span class="phase-name">⚙ ${escHtml(p.phase_name)}</span>
+        <div class="phase-collabs">${collabs}</div>
+      </div>`;
+  }).join('')}</div>`;
 }
 
 function buildJobCard(job, isAssigned) {
-  const cls    = isAssigned ? 'assigned' : 'clickable';
-  const footer = isAssigned
-    ? `<div class="collaborators-row">${collabChips(job.collaborators)}</div>`
-    : `<span class="assign-hint">↑ Toca para asignar</span>`;
-
+  const cls      = isAssigned ? 'assigned' : 'clickable';
   const dueClass = dueDateClass(job.due_date);
   const dueIcon  = dueClass === 'overdue' ? '⚠' : '📅';
+  const footer   = isAssigned
+    ? activePhasesHtml(job.active_phases)
+    : `<span class="assign-hint">↑ Toca para asignar</span>`;
 
   return `
     <div class="job-card ${cls}" data-id="${job.id}" onclick="${isAssigned ? '' : `selectJob(${job.id})`}">
@@ -921,7 +958,7 @@ function renderList(containerId, jobs, isAssigned) {
     el.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">${isAssigned ? '✅' : '📋'}</div>
-        <div class="empty-text">${isAssigned ? 'Aún no hay órdenes asignadas hoy.' : 'No hay órdenes pendientes.'}</div>
+        <div class="empty-text">${isAssigned ? 'No hay órdenes en proceso ahora.' : 'No hay órdenes disponibles.'}</div>
       </div>`;
     return;
   }

@@ -3,11 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Users, BriefcaseMedical } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, dentists, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -32,9 +34,9 @@ export default function Index({ auth, items, dentists, filters }) {
     }, [debouncedSearch, dentistId, filters]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este paciente?')) {
+        confirmDialog('¿Estás seguro de que deseas eliminar este paciente?', () => {
             router.delete(route('patients.destroy', id), { preserveScroll: true });
-        }
+        });
     };
 
     const B = { blue: "#397B9C", teal: "#49949C" };

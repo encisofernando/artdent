@@ -3,10 +3,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Power, LayoutGrid } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -39,9 +41,9 @@ export default function Index({ auth, items, filters }) {
     };
 
     const handleDelete = (id) => {
-        if (confirm('¿Estás seguro de que deseas eliminar esta categoría?')) {
-            router.delete(route('categorys.destroy', id), { preserveScroll: true });
-        }
+        confirmDialog('¿Estás seguro de que deseas eliminar esta categoría?', () =>
+            router.delete(route('categorys.destroy', id), { preserveScroll: true })
+        );
     };
 
     const B = {

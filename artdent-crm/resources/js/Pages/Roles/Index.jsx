@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { 
+import { useConfirm } from '@/Contexts/ConfirmContext';
+import {
     Shield, Plus, Edit2, Trash2, CheckCircle2, 
     XCircle, Lock, ChevronRight, Save
 } from 'lucide-react';
@@ -16,6 +17,7 @@ const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
 export default function Index({ auth, roles, all_permissions }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const { flash } = usePage().props;
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
@@ -66,9 +68,9 @@ export default function Index({ auth, roles, all_permissions }) {
 
     const handleDelete = (role) => {
         if (role.name === 'Super Admin') return;
-        if (confirm(`¿Estás seguro de eliminar el rol "${role.display_name}"?`)) {
+        confirmDialog(`¿Estás seguro de eliminar el rol "${role.display_name}"?`, () => {
             destroy(route('roles.destroy', role.id));
-        }
+        });
     };
 
     const togglePermission = (perm) => {

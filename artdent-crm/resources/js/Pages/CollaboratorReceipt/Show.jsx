@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useToast } from '@/Contexts/ToastContext';
 import { ArrowLeft, Printer, Eye } from 'lucide-react';
 import {
     getStoredTicketFormat,
@@ -170,6 +171,7 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function Show({ auth, receipt, extras, discounts, company }) {
     const { isDark } = useTheme();
+    const toast = useToast();
     const [mode, setMode] = useState(() => {
         const saved = getStoredTicketFormat('80mm');
         return ['57mm', '80mm'].includes(saved) ? saved : '80mm';
@@ -193,7 +195,7 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            alert('Error de hardware: ' + result.error);
+            toast.error('Error de hardware: ' + result.error);
         }
     };
 

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import {
     Plus, Trash2, Save, Image, ToggleLeft, ToggleRight,
@@ -145,12 +146,14 @@ function BannerForm({ auth, banner = null, onClose }) {
 
 export default function Index({ auth, banners }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const [showCreate, setShowCreate] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
     const handleDelete = (id) => {
-        if (!confirm('¿Eliminar este banner? La imagen también se borrará.')) { return; }
-        router.delete(route('sidebar-banners.destroy', id), { preserveScroll: true });
+        confirmDialog('¿Eliminar este banner? La imagen también se borrará.', () => {
+            router.delete(route('sidebar-banners.destroy', id), { preserveScroll: true });
+        });
     };
 
     const card = `rounded-2xl border shadow-sm transition-colors ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`;

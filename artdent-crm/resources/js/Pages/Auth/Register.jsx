@@ -180,9 +180,13 @@ export default function Register() {
           type="button"
           className="w-full h-11 rounded-xl border border-white/15 bg-white/[0.02]
                      text-white/70 font-semibold hover:bg-white/[0.06] hover:border-white/25 transition"
-          onClick={() => alert("Google OAuth pendiente de implementar.")}
+          disabled
+          title="Próximamente disponible"
+          className="w-full h-11 rounded-xl border border-white/15 bg-white/[0.02]
+                     text-white/40 font-semibold cursor-not-allowed opacity-60 transition"
+          onClick={() => {}}
         >
-          Registrarse con Google
+          Registrarse con Google (próximamente)
         </button>
 
         {/* Link login */}

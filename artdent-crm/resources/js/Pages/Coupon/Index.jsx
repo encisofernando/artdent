@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Power, Tag, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
@@ -42,6 +43,7 @@ function StatusBadge({ coupon, isDark }) {
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -71,9 +73,9 @@ export default function Index({ auth, items, filters }) {
     };
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar este cupón? Esta acción no se puede deshacer.')) {
-            router.delete(route('coupons.destroy', id), { preserveScroll: true });
-        }
+        confirmDialog('¿Eliminar este cupón? Esta acción no se puede deshacer.', () =>
+            router.delete(route('coupons.destroy', id), { preserveScroll: true })
+        );
     };
 
     const fmt = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;

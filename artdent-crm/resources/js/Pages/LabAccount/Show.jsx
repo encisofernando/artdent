@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useToast } from '@/Contexts/ToastContext';
 import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft,
@@ -202,6 +203,7 @@ function AccountTicket({ account, dentist, company, summary, owedJobs, payments 
 
 export default function Show({ auth, account, dentist, company, moves = [], payments = [], owedJobs = [], summary }) {
     const { isDark } = useTheme();
+    const toast = useToast();
     const [printing, setPrinting] = useState(false);
     const dentistName = fullDentistName(dentist);
 
@@ -241,7 +243,7 @@ export default function Show({ auth, account, dentist, company, moves = [], paym
         setPrinting(false);
 
         if (!result.ok && !result.fallbackUsed) {
-            alert('El gestor de impresión ArtDent no está activo. Iniciá la aplicación o usá la impresión del navegador.');
+            toast.warning('El gestor de impresión ArtDent no está activo. Iniciá la aplicación o usá la impresión del navegador.');
         }
     };
 

@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
+import { useToast } from '@/Contexts/ToastContext';
 import {
     ArrowDownCircle,
     ArrowUpCircle,
@@ -143,6 +145,8 @@ function ThermalReport({ items, summary, filters, company, mode = '80mm' }) {
 
 export default function Index({ auth, items = [], summary, filters, paymentMethods = [], expenseCategories = [], company = null }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
+    const toast = useToast();
     const [search, setSearch] = useState(filters.search || '');
     const [from, setFrom] = useState(filters.from || '');
     const [to, setTo] = useState(filters.to || '');
@@ -227,7 +231,7 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            alert('No se pudo conectar con ArtDent Print.');
+            toast.error('No se pudo conectar con ArtDent Print.');
         }
     };
 
@@ -240,12 +244,12 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
 
         const label = item.flow === 'income' ? 'ingreso' : 'egreso';
 
-        if (confirm(`¿Eliminar este ${label}?`)) {
+        confirmDialog(`¿Eliminar este ${label}?`, () =>
             router.delete(route(routeName, item.source_id), {
                 data: { search, from, to },
                 preserveState: true,
-            });
-        }
+            })
+        );
     };
 
     const card = isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100';

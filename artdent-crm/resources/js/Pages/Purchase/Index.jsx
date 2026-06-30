@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Eye, Trash2, FileText, CheckCircle, Clock, AlertCircle, XCircle, ChevronRight, SquarePen } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import SearchableSelect from '@/Components/SearchableSelect';
 
 const STATUS_MAP = {
@@ -32,6 +33,7 @@ function StatusBadge({ status, isDark }) {
 
 export default function Index({ auth, items, vendors, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
     const B    = { blue: '#397B9C', teal: '#49949C' };
 
@@ -46,8 +48,9 @@ export default function Index({ auth, items, vendors, filters }) {
     }, [debounced, vendorId, status]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar este comprobante? Se revertirá el stock y la cuenta corriente.'))
+        confirmDialog('¿Eliminar este comprobante? Se revertirá el stock y la cuenta corriente.', () => {
             router.delete(route('proveedores.comprobantes.destroy', id), { preserveScroll: true });
+        });
     };
 
     const fmt     = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n ?? 0);

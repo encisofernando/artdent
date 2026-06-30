@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import {
     ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2,
     Star, X, Video, GripVertical, Trash2, AlertTriangle, RefreshCcw,
@@ -301,6 +302,7 @@ const genSku = (productName = '', attributes = {}) => {
 
 export default function Edit({ auth, item, categories = [], vendors = [] }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
 
     // ── categoría: inicializar raíz correctamente según category_id del item ──
     const initRootCatId = () => {
@@ -483,8 +485,9 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
     };
 
     const handleDelete = () => {
-        if (!window.confirm(`¿Eliminar "${item.name}"?\n\nEsta acción eliminará el producto y todos sus datos. No se puede deshacer.`)) return;
-        router.delete(route('products.destroy', item.id));
+        confirmDialog(`¿Eliminar "${item.name}"? Esta acción eliminará el producto y todos sus datos. No se puede deshacer.`, () => {
+            router.delete(route('products.destroy', item.id));
+        });
     };
 
     const hasVariants = data.has_variants === 1 || data.has_variants === true;

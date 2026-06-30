@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useToast } from '@/Contexts/ToastContext';
 import {
     ArrowLeft, Edit, Printer,
     User, Calendar, Layers, FileText,
     CheckCircle2, AlertCircle, BriefcaseMedical, SlidersHorizontal, Clock,
-    GitBranch, Loader2
+    GitBranch, Loader2, FlaskConical, Truck, Play
 } from 'lucide-react';
+import axios from 'axios';
 
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE' };
 
@@ -52,6 +54,50 @@ function KV({ label, value, D, accent, last }) {
 
 export default function Show({ auth, item }) {
     const { isDark } = useTheme();
+    const toast = useToast();
+    const [actionLoading, setActionLoading] = useState(null);
+    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+    const [deliveryMethod, setDeliveryMethod] = useState('retiro_dentista');
+
+    const handleInitPhases = async () => {
+        setActionLoading('init');
+        try {
+            await axios.post(route('jobs.initialize-phases', item.id));
+            toast.success('Fases inicializadas correctamente.');
+            router.reload({ only: ['item'] });
+        } catch {
+            toast.error('No se pudieron inicializar las fases.');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleReturnFromProof = async () => {
+        setActionLoading('proof');
+        try {
+            await axios.post(route('jobs.return-from-proof', item.id));
+            toast.success('Retorno de prueba registrado.');
+            router.reload({ only: ['item'] });
+        } catch (e) {
+            toast.error(e?.response?.data?.error ?? 'Error al registrar retorno.');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleRegisterDelivery = async () => {
+        setActionLoading('delivery');
+        try {
+            await axios.post(route('jobs.register-delivery', item.id), { delivery_method: deliveryMethod });
+            toast.success('Entrega registrada correctamente.');
+            setShowDeliveryModal(false);
+            router.reload({ only: ['item'] });
+        } catch (e) {
+            toast.error(e?.response?.data?.error ?? 'Error al registrar entrega.');
+        } finally {
+            setActionLoading(null);
+        }
+    };
 
     const D = isDark
         ? { bg: '#0f1623', card: '#161f2e', border: 'rgba(255,255,255,0.07)', text: '#e2e8f0', sub: '#94a3b8' }
@@ -195,9 +241,59 @@ export default function Show({ auth, item }) {
                     )}
                 </Card>
 
+                {/* ── CRM Phase Actions ── */}
+                {(() => {
+                    const hasTariffWithPhases = (item.job_items ?? []).some(it => it.tariff?.phases?.length > 0);
+                    const hasPhases = item.phase_progress?.length > 0;
+                    return (
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            {!hasPhases && hasTariffWithPhases && item.status !== 'delivered' && item.status !== 'cancelled' && (
+                                <button
+                                    onClick={handleInitPhases}
+                                    disabled={actionLoading === 'init'}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${AD.blue},${AD.teal})`, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: actionLoading === 'init' ? 0.6 : 1 }}
+                                >
+                                    {actionLoading === 'init' ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+                                    Iniciar fases de producción
+                                </button>
+                            )}
+                            {item.status === 'quality_check' && (
+                                <button
+                                    onClick={handleReturnFromProof}
+                                    disabled={actionLoading === 'proof'}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: actionLoading === 'proof' ? 0.6 : 1 }}
+                                >
+                                    {actionLoading === 'proof' ? <Loader2 size={13} className="animate-spin" /> : <FlaskConical size={13} />}
+                                    Devuelto de prueba
+                                </button>
+                            )}
+                            {item.status === 'ready' && (
+                                <button
+                                    onClick={() => setShowDeliveryModal(true)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${AD.green},${AD.teal})`, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                    <Truck size={13} />Registrar entrega
+                                </button>
+                            )}
+                        </div>
+                    );
+                })()}
+
                 {/* ── Progreso de Fases ── */}
                 {item.phase_progress && item.phase_progress.length > 0 && (
                     <PhaseProgressPanel phases={item.phase_progress} D={D} />
+                )}
+
+                {/* ── Delivery Modal ── */}
+                {showDeliveryModal && (
+                    <DeliveryModal
+                        method={deliveryMethod}
+                        onMethodChange={setDeliveryMethod}
+                        onConfirm={handleRegisterDelivery}
+                        onCancel={() => setShowDeliveryModal(false)}
+                        loading={actionLoading === 'delivery'}
+                        D={D}
+                    />
                 )}
             </div>
         </AuthenticatedLayout>
@@ -227,9 +323,13 @@ function PhaseProgressPanel({ phases, D }) {
                     const meta = PHASE_STATUS_META[phase.status] ?? PHASE_STATUS_META.pending;
                     const Icon = meta.Icon;
                     const isLast = idx === phases.length - 1;
+
+                    const collabNames = phase.phase_collaborators?.length
+                        ? phase.phase_collaborators.map((pc) => pc.collaborator?.name).filter(Boolean).join(', ')
+                        : phase.collaborator?.name ?? null;
+
                     return (
                         <div key={phase.id} style={{ display: 'flex', gap: 12, padding: '10px 16px', borderBottom: isLast ? 'none' : `1px solid ${D.border}` }}>
-                            {/* Icon */}
                             <div style={{ width: 30, height: 30, borderRadius: '50%', border: `2px solid ${meta.color}`, background: `${meta.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                                 <Icon size={13} color={meta.color} />
                             </div>
@@ -242,20 +342,65 @@ function PhaseProgressPanel({ phases, D }) {
                                     )}
                                 </div>
                                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                                    {phase.collaborator && (
-                                        <span style={{ fontSize: 11, color: D.sub }}>Técnico: <strong style={{ color: D.text }}>{phase.collaborator.name}</strong></span>
+                                    {collabNames && (
+                                        <span style={{ fontSize: 11, color: D.sub }}>Técnico: <strong style={{ color: D.text }}>{collabNames}</strong></span>
                                     )}
                                     {phase.tariff_phase?.price > 0 && (
                                         <span style={{ fontSize: 11, color: D.sub }}>Importe: <strong style={{ color: '#397B9C' }}>${Number(phase.tariff_phase.price).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong></span>
                                     )}
                                 </div>
+                                {phase.proof_sent_at && !phase.proof_returned_at && (
+                                    <p style={{ fontSize: 10, color: '#F97316', marginTop: 3 }}>En prueba desde: {fmtDateTime(phase.proof_sent_at)}</p>
+                                )}
+                                {phase.proof_returned_at && (
+                                    <p style={{ fontSize: 10, color: D.sub, marginTop: 3 }}>Retornó de prueba: {fmtDateTime(phase.proof_returned_at)}</p>
+                                )}
                                 {phase.completed_at && (
-                                    <p style={{ fontSize: 10, color: D.sub, marginTop: 3 }}>Completado: {fmtDateTime(phase.completed_at)}</p>
+                                    <p style={{ fontSize: 10, color: D.sub, marginTop: 2 }}>Completado: {fmtDateTime(phase.completed_at)}</p>
                                 )}
                             </div>
                         </div>
                     );
                 })}
+            </div>
+        </div>
+    );
+}
+
+const DELIVERY_LABELS = {
+    retiro_dentista: 'Retiro en consultorio',
+    reparto: 'Reparto',
+    courier: 'Envío courier',
+    retiro_paciente: 'Retiro paciente',
+};
+
+function DeliveryModal({ method, onMethodChange, onConfirm, onCancel, loading, D }) {
+    return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
+            <div style={{ width: '100%', maxWidth: 360, background: D.card, border: `1.5px solid ${D.border}`, borderRadius: 20, padding: '28px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                    <Truck size={20} color={AD.green} />
+                    <span style={{ fontWeight: 800, fontSize: 16, color: D.text }}>Registrar entrega</span>
+                </div>
+                <p style={{ fontSize: 13, color: D.sub, marginBottom: 16 }}>Seleccioná la forma de entrega:</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                    {Object.entries(DELIVERY_LABELS).map(([val, label]) => (
+                        <button
+                            key={val}
+                            onClick={() => onMethodChange(val)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${method === val ? AD.teal : D.border}`, background: method === val ? `${AD.teal}18` : 'transparent', color: method === val ? AD.teal : D.text, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                        >
+                            <span style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${method === val ? AD.teal : D.border}`, background: method === val ? AD.teal : 'transparent', flexShrink: 0 }} />
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={onCancel} style={{ flex: 1, padding: '11px', borderRadius: 12, border: `1.5px solid ${D.border}`, background: 'transparent', color: D.sub, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                    <button onClick={onConfirm} disabled={loading} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg,${AD.green},${AD.teal})`, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        {loading ? <Loader2 size={14} className="animate-spin" /> : 'Confirmar'}
+                    </button>
+                </div>
             </div>
         </div>
     );

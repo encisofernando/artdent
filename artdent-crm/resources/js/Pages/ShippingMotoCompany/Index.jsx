@@ -3,11 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Bike, CheckCircle2, XCircle } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -31,9 +33,9 @@ export default function Index({ auth, items, filters }) {
     }, [debouncedSearch, status]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar esta empresa de moto mandados? Esta acción no se puede deshacer.')) {
+        confirmDialog('¿Eliminar esta empresa de moto mandados? Esta acción no se puede deshacer.', () => {
             router.delete(route('shipping-moto-companies.destroy', id), { preserveScroll: true });
-        }
+        });
     };
 
     const fmt = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;

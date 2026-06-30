@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Star, CheckCircle2, XCircle, Clock, Trash2, MessageSquare } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -44,6 +45,7 @@ const STATUS_TABS = [
 
 export default function Index({ auth, reviews, counts, status }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = reviews?.data || [];
 
     const handleStatus = (review, newStatus) => {
@@ -51,9 +53,9 @@ export default function Index({ auth, reviews, counts, status }) {
     };
 
     const handleDelete = (review) => {
-        if (confirm(`¿Eliminar la reseña de ${review.customer?.name ?? 'Anónimo'}? Esta acción no se puede deshacer.`)) {
+        confirmDialog(`¿Eliminar la reseña de ${review.customer?.name ?? 'Anónimo'}? Esta acción no se puede deshacer.`, () => {
             router.delete(route('reviews.destroy', review.id), { preserveScroll: true });
-        }
+        });
     };
 
     const filterTab = (key) => {

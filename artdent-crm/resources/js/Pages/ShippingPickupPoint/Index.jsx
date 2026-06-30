@@ -3,11 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, MapPin, CheckCircle2, XCircle } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -31,9 +33,9 @@ export default function Index({ auth, items, filters }) {
     }, [debouncedSearch, status]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar este punto de retiro? Esta acción no se puede deshacer.')) {
+        confirmDialog('¿Eliminar este punto de retiro? Esta acción no se puede deshacer.', () => {
             router.delete(route('shipping-pickup-points.destroy', id), { preserveScroll: true });
-        }
+        });
     };
 
     const card = `rounded-2xl border shadow-sm transition-colors ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`;

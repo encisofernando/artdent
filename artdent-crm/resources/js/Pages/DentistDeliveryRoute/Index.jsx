@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Plus, Edit, Trash2, Truck } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
@@ -20,6 +21,7 @@ const DAY_LABELS = {
 
 export default function Index({ auth, items, dentists, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
 
     const [dentistId, setDentistId] = useState(filters?.dentist_id || 'all');
     const [deliveryDay, setDeliveryDay] = useState(filters?.delivery_day || 'all');
@@ -38,9 +40,9 @@ export default function Index({ auth, items, dentists, filters }) {
     }, [dentistId, deliveryDay, activeOnly]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Estás seguro de que deseas eliminar esta ruta?')) {
-            router.delete(route('dentist-delivery-routes.destroy', id), { preserveScroll: true });
-        }
+        confirmDialog('¿Estás seguro de que deseas eliminar esta ruta?', () =>
+            router.delete(route('dentist-delivery-routes.destroy', id), { preserveScroll: true })
+        );
     };
 
     return (

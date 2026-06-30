@@ -5,6 +5,8 @@ import { createInertiaApp } from "@inertiajs/react";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./Contexts/ThemeContext";
+import { ConfirmProvider } from "./Contexts/ConfirmContext";
+import { ToastProvider } from "./Contexts/ToastContext";
 import { registerPwa } from "./lib/registerPwa";
 
 const appName = import.meta.env.VITE_APP_NAME || "Laravel";
@@ -32,7 +34,11 @@ createInertiaApp({
 
         root.render(
             <ThemeProvider>
-                <App {...props} />
+                <ConfirmProvider>
+                    <ToastProvider>
+                        <App {...props} />
+                    </ToastProvider>
+                </ConfirmProvider>
             </ThemeProvider>
         );
     },

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useToast } from '@/Contexts/ToastContext';
 import { ArrowLeft, Printer, Download, Eye } from 'lucide-react';
 import {
     buildPrintHtml,
@@ -275,6 +276,7 @@ const MODES = [
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function Ticket({ item }) {
     const { isDark } = useTheme();
+    const toast = useToast();
     const [mode, setMode] = useState(() => {
         const saved = getStoredTicketFormat('80mm');
         return ['57mm', '80mm'].includes(saved) ? saved : '80mm';
@@ -316,7 +318,7 @@ export default function Ticket({ item }) {
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            alert('⚠️ No se detectó el servidor ArtDent Print. Verifique que el icono aparezca junto al reloj de Windows.');
+            toast.warning('No se detectó el servidor ArtDent Print. Verifique que el icono aparezca junto al reloj de Windows.');
         }
     };
 

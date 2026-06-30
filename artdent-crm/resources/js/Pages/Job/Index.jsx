@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import {
     Plus, Search, Edit, Trash2, BriefcaseMedical,
     ChevronLeft, ChevronRight, SlidersHorizontal,
@@ -45,6 +46,7 @@ function StatusPill({ status, size = 'sm' }) {
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || 'all');
     const [showFilters, setShowFilters] = useState(false);
@@ -63,9 +65,9 @@ export default function Index({ auth, items, filters }) {
     }, [search, status]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar este trabajo? Esta acción no se puede deshacer.')) {
-            router.delete(route('jobs.destroy', id));
-        }
+        confirmDialog('¿Eliminar este trabajo? Esta acción no se puede deshacer.', () =>
+            router.delete(route('jobs.destroy', id))
+        );
     };
 
     const statusTabs = [

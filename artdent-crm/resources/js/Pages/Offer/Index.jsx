@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Plus, Edit, Trash2, Tag, CheckCircle2, XCircle, Clock, Package } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
@@ -58,12 +59,13 @@ function StatusBadge({ offer, isDark }) {
 
 export default function Index({ auth, items }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar esta oferta? Esta acción no se puede deshacer.')) {
+        confirmDialog('¿Eliminar esta oferta? Esta acción no se puede deshacer.', () => {
             router.delete(route('offers.destroy', id), { preserveScroll: true });
-        }
+        });
     };
 
     const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';

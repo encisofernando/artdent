@@ -3,11 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Edit, Trash2, Banknote, List } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, categories, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -32,9 +34,9 @@ export default function Index({ auth, items, categories, filters }) {
     }, [debouncedSearch, category, filters]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este arancel?')) {
+        confirmDialog('¿Estás seguro de que deseas eliminar este arancel?', () => {
             router.delete(route('tariffs.destroy', id), { preserveScroll: true });
-        }
+        });
     };
 
     const formatCurrency = (amount) => {

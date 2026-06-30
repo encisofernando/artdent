@@ -162,11 +162,12 @@ export default function Login({ status, canResetPassword }) {
         {/* Google (stub visual) */}
         <button
           type="button"
+          title="Próximamente disponible"
           className="w-full h-11 rounded-xl border border-white/15 bg-white/[0.02]
-                     text-white/70 font-semibold hover:bg-white/[0.06] hover:border-white/25 transition"
-          onClick={() => alert("Google OAuth pendiente de implementar.")}
+                     text-white/40 font-semibold cursor-not-allowed opacity-60 transition"
+          onClick={() => {}}
         >
-          Iniciar sesión con Google
+          Iniciar sesión con Google (próximamente)
         </button>
 
         {/* Register */}

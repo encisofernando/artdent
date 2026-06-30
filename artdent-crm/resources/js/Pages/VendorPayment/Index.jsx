@@ -3,11 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, Trash2, CreditCard } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
 export default function Index({ auth, items, vendors, filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const data = items?.data || [];
     const B = { blue: '#397B9C', teal: '#49949C' };
 
@@ -29,9 +31,9 @@ export default function Index({ auth, items, vendors, filters }) {
     }, [debouncedSearch, vendorId]);
 
     const handleDelete = (id) => {
-        if (confirm('¿Eliminar este pago? Se revertirá el movimiento en la cuenta corriente.')) {
+        confirmDialog('¿Eliminar este pago? Se revertirá el movimiento en la cuenta corriente.', () => {
             router.delete(route('proveedores.pagos.destroy', id), { preserveScroll: true });
-        }
+        });
     };
 
     const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n ?? 0);

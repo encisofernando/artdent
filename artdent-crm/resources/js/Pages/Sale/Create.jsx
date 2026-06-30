@@ -10,6 +10,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useToast } from '@/Contexts/ToastContext';
 import {
     ShoppingCart, User, Search, Plus, Minus, Trash2,
     CreditCard, X, Package, ReceiptText, Store,
@@ -182,6 +183,7 @@ const variantMatchesSelection = (variant, selection = {}) => {
 
 export default function Create({ auth, products, customers = [], company = null }) {
     const { isDark, sidebarCollapsed } = useTheme();
+    const toast = useToast();
     const D = useD(isDark);
 
     const TIPOS = getTipos(company?.iva_condition ?? '');
@@ -506,7 +508,7 @@ export default function Create({ auth, products, customers = [], company = null 
 
     const handleConfirmPayment = () => {
         if (hasCuentaCorrienteSplit && !customerId) {
-            alert('Seleccioná un cliente para usar Cuenta Corriente.');
+            toast.warning('Seleccioná un cliente para usar Cuenta Corriente.');
             return;
         }
 
@@ -570,7 +572,7 @@ export default function Create({ auth, products, customers = [], company = null 
             },
             onError: (errs) => {
                 setProcessing(false);
-                alert('Error: ' + (errs?.error || Object.values(errs).join(' | ')));
+                toast.error('Error: ' + (errs?.error || Object.values(errs).join(' | ')));
             },
         });
     };
@@ -609,7 +611,7 @@ export default function Create({ auth, products, customers = [], company = null 
             setPdfUrl(res.data.url);
             setWaStep('phone');
         } catch (e) {
-            alert('Error al generar PDF: ' + (e.response?.data?.message || e.message));
+            toast.error('Error al generar PDF: ' + (e.response?.data?.message || e.message));
         } finally {
             setWaLoading(false);
         }
@@ -673,7 +675,7 @@ export default function Create({ auth, products, customers = [], company = null 
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            alert('⚠️ El gestor de impresión ArtDent no está activo.');
+            toast.warning('El gestor de impresión ArtDent no está activo.');
         }
     };
 
