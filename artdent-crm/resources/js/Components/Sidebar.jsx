@@ -38,7 +38,7 @@ export default function Sidebar({ className = "" }) {
                     title: "Panel General",
                     icon: LayoutDashboard,
                     path: "/dashboard",
-                    permission: ['products.view', 'customers.view', 'orders.view', 'ecommerce.view', 'reports.view', 'settings.edit', 'staff.view'],
+                    permission: ['sales.view', 'products.view', 'customers.view', 'orders.view', 'ecommerce.view', 'reports.view', 'settings.edit', 'staff.view', 'inventory.view', 'purchases.view', 'accounting.view'],
                 },
             ],
         },
@@ -47,13 +47,13 @@ export default function Sidebar({ className = "" }) {
             items: [
                 {
                     title: "Ventas", icon: Banknote, key: "ventas",
-                    permission: 'products.view',
+                    permission: 'sales.view',
                     children: [
-                        { title: "Nueva Venta", path: "/sales/create", permission: 'products.create' },
+                        { title: "Nueva Venta", path: "/sales/create", permission: 'sales.create' },
                         { title: "Ventas", path: "/sales" },
                         { title: "Presupuestos", path: "/quotes" },
-                        { title: "Artículos", path: "/products" },
-                        { title: "Etiquetas / Códigos", path: "/barcode-labels" },
+                        { title: "Artículos", path: "/products", permission: 'products.view' },
+                        { title: "Etiquetas / Códigos", path: "/barcode-labels", permission: 'products.view' },
                     ],
                 },
                 {
@@ -66,7 +66,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Proveedores", icon: Building2, key: "proveedores",
-                    permission: 'customers.view',
+                    permission: 'purchases.view',
                     children: [
                         { title: "Proveedores", path: "/vendors" },
                         { title: "Comprobantes", path: "/proveedores/comprobantes" },

@@ -10,97 +10,104 @@ use Spatie\Permission\Models\Role;
 class RolePermissionSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Permission matrix.
+     * Format: 'module' => ['action', ...]
+     * Naming convention: module.action
      */
-    public function run(): void
+    private const PERMISSIONS = [
+        // ── Administración ────────────────────────────────────────────────────
+        'users' => ['view', 'create', 'edit', 'delete'],
+        'roles' => ['view', 'create', 'edit', 'delete'],
+        'settings' => ['view', 'edit'],
+        'branches' => ['view', 'create', 'edit', 'delete'],
+
+        // ── Comercial ─────────────────────────────────────────────────────────
+        'customers' => ['view', 'create', 'edit', 'delete'],
+        'sales' => ['view', 'create', 'edit', 'delete'],
+        'ecommerce' => ['view', 'create', 'edit', 'delete'],
+        'purchases' => ['view', 'create', 'edit', 'delete'],
+
+        // ── Producción ────────────────────────────────────────────────────────
+        'products' => ['view', 'create', 'edit', 'delete'],
+        'orders' => ['view', 'create', 'edit', 'delete'],
+
+        // ── Almacén / Inventario ──────────────────────────────────────────────
+        // manage: ajustes manuales, transferencias, retiros de insumos
+        'inventory' => ['view', 'create', 'edit', 'delete', 'manage'],
+
+        // ── Personal ──────────────────────────────────────────────────────────
+        'staff' => ['view', 'create', 'edit', 'delete'],
+
+        // ── Finanzas ──────────────────────────────────────────────────────────
+        'accounting' => ['view', 'create', 'edit', 'delete'],
+        'reports' => ['view'],
+    ];
+
+    /**
+     * Role definitions.
+     * permissions key accepts exact permission names (module.action).
+     */
+    private function roles(): array
     {
-        // Reset cached roles and permissions
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        $all = $this->allPermissionNames();
 
-        // 1. Define Modules and Actions
-        $modules = [
-            'users' => 'Usuarios',
-            'roles' => 'Roles y Permisos',
-            'settings' => 'Configuración',
-            'customers' => 'Clientes',
-            'products' => 'Productos e Inventario',
-            'orders' => 'Órdenes (Laboratorio)',
-            'ecommerce' => 'E-commerce / Ventas',
-            'reports' => 'Reportes y Estadísticas',
-            'branches' => 'Sucursales',
-            'staff' => 'Personal y RRHH',
-            'accounting' => 'Contable y Fiscal',
-        ];
-
-        $actions = [
-            'view' => 'Visualizar',
-            'create' => 'Crear',
-            'edit' => 'Editar',
-            'delete' => 'Eliminar',
-        ];
-
-        // 2. Create Permissions
-        $allPermissionNames = [];
-        foreach ($modules as $moduleKey => $moduleLabel) {
-            foreach ($actions as $actionKey => $actionLabel) {
-                $permissionName = "{$moduleKey}.{$actionKey}";
-                Permission::findOrCreate($permissionName, 'web');
-                $allPermissionNames[] = $permissionName;
-            }
-        }
-
-        // 2. Create Roles and Assign Permissions
-
-        $rolesData = [
+        return [
             [
                 'name' => 'Super Admin',
                 'display_name' => 'Super Administrador',
                 'description' => 'Acceso total e irrestricto a todos los módulos y configuraciones del sistema.',
-                'permissions' => $allPermissionNames,
+                'permissions' => $all,
             ],
             [
                 'name' => 'Admin',
                 'display_name' => 'Administrador',
                 'description' => 'Gestión operativa completa de la clínica, usuarios y reportes.',
-                'permissions' => array_merge(
-                    $allPermissionNames // For now, let's give Admin almost everything
-                ),
+                'permissions' => $all,
             ],
             [
                 'name' => 'Colaborador',
                 'display_name' => 'Técnico Colaborador',
-                'description' => 'Acceso a la gestión de productos, inventario y órdenes de trabajo.',
+                'description' => 'Acceso a la gestión de órdenes de trabajo, productos e inventario de lectura.',
                 'permissions' => [
-                    'products.view', 'products.edit',
                     'orders.view', 'orders.create', 'orders.edit',
+                    'products.view',
+                    'inventory.view',
                     'reports.view',
                 ],
             ],
             [
                 'name' => 'Vendedor',
                 'display_name' => 'Vendedor / Comercial',
-                'description' => 'Gestión de ventas e-commerce y catálogo de productos.',
+                'description' => 'Gestión de ventas, presupuestos, e-commerce y catálogo de productos.',
                 'permissions' => [
+                    'sales.view', 'sales.create', 'sales.edit',
                     'ecommerce.view', 'ecommerce.create', 'ecommerce.edit',
-                    'products.view', 'reports.view',
+                    'customers.view', 'customers.create', 'customers.edit',
+                    'products.view',
+                    'reports.view',
                 ],
             ],
             [
                 'name' => 'Logística',
                 'display_name' => 'Encargado de Logística',
-                'description' => 'Control de stock, sucursales y despacho de productos.',
+                'description' => 'Control de stock, almacén, retiros de insumos, compras y sucursales.',
                 'permissions' => [
+                    'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.manage',
                     'products.view', 'products.edit',
-                    'branches.view', 'ecommerce.view',
+                    'purchases.view', 'purchases.create',
+                    'branches.view',
+                    'ecommerce.view',
+                    'reports.view',
                 ],
             ],
             [
                 'name' => 'Recepción',
                 'display_name' => 'Receptoría / Turnos',
-                'description' => 'Atención al cliente y alta de órdenes básicas.',
+                'description' => 'Atención al cliente, alta de órdenes básicas y registro de ventas mostrador.',
                 'permissions' => [
                     'customers.view', 'customers.create', 'customers.edit',
                     'orders.view', 'orders.create',
+                    'sales.view', 'sales.create',
                 ],
             ],
             [
@@ -108,29 +115,55 @@ class RolePermissionSeeder extends Seeder
                 'display_name' => 'Contador / Estudio Contable',
                 'description' => 'Acceso al módulo contable, libros fiscales, facturación consolidada y reportes impositivos.',
                 'permissions' => [
-                    'accounting.view',
+                    'accounting.view', 'accounting.create', 'accounting.edit',
+                    'reports.view',
                 ],
             ],
         ];
+    }
 
-        foreach ($rolesData as $data) {
+    public function run(): void
+    {
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        // 1. Create all permissions (idempotent)
+        foreach (self::PERMISSIONS as $module => $actions) {
+            foreach ($actions as $action) {
+                Permission::findOrCreate("{$module}.{$action}", 'web');
+            }
+        }
+
+        // 2. Create / update roles and sync their permission sets
+        foreach ($this->roles() as $data) {
             $role = Role::updateOrCreate(
                 ['name' => $data['name'], 'guard_name' => 'web'],
                 [
                     'display_name' => $data['display_name'],
                     'description' => $data['description'],
-                ]
+                ],
             );
+
             $role->syncPermissions($data['permissions']);
         }
 
-        // 3. Assign Super Admin to the first user
+        // 3. Ensure the first user has Super Admin
         $firstUser = User::first();
-        if ($firstUser) {
-            if (! Role::where('name', 'Super Admin')->exists()) {
-                // Should not happen as we just created it
-            }
+        if ($firstUser && ! $firstUser->hasRole('Super Admin')) {
             $firstUser->assignRole('Super Admin');
         }
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+    }
+
+    private function allPermissionNames(): array
+    {
+        $names = [];
+        foreach (self::PERMISSIONS as $module => $actions) {
+            foreach ($actions as $action) {
+                $names[] = "{$module}.{$action}";
+            }
+        }
+
+        return $names;
     }
 }
