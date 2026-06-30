@@ -1,3 +1,6 @@
+# Necesario para que Apache siga el symlink public/storage → storage/app/public
+Options +FollowSymLinks
+
 # Service Worker nunca debe ser cacheado por proxies ni Cloudflare
 <IfModule mod_headers.c>
     <FilesMatch "^sw\.js$">
