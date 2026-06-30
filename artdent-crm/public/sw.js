@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026-06-27-v2';
+const CACHE_VERSION = '2026-06-30-v1';
 const CACHE_NAME = `artdent-crm-pwa-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const CORE_ASSETS = [
@@ -11,12 +11,14 @@ const CORE_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) =>
-        cache.addAll(CORE_ASSETS.map((asset) => new Request(asset, { cache: 'reload' })))
+    caches.open(CACHE_NAME).then((cache) =>
+      // allSettled: un recurso que falle no aborta toda la instalación
+      Promise.allSettled(
+        CORE_ASSETS.map((asset) =>
+          cache.add(new Request(asset, { cache: 'reload' }))
+        )
       )
-      .then(() => self.skipWaiting())
+    ).then(() => self.skipWaiting())
   );
 });
 
