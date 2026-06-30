@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Company;
 use App\Models\Customer;
 use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
@@ -16,12 +17,17 @@ class SendWhatsAppNotification implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 3;
+
     public $backoff = [10, 30, 60];
 
     protected int $customerId;
+
     protected int $companyId;
+
     protected string $templateName;
+
     protected array $components;
+
     protected string $languageCode;
 
     /**
@@ -42,18 +48,27 @@ class SendWhatsAppNotification implements ShouldQueue
     public function handle(): void
     {
         $customer = Customer::find($this->customerId);
-        
-        if (!$customer) {
+
+        if (! $customer) {
             Log::channel('whatsapp')->warning("Customer ID {$this->customerId} no encontrado al intentar enviar {$this->templateName}");
+
             return;
         }
 
-        $service = new WhatsAppService($this->companyId);
-        
+        $company = Company::find($this->companyId);
+
+        if (! $company) {
+            Log::channel('whatsapp')->warning("Company ID {$this->companyId} no encontrada.");
+
+            return;
+        }
+
+        $service = new WhatsAppService($company);
+
         $success = $service->sendTemplate($customer, $this->templateName, $this->languageCode, $this->components);
 
-        if (!$success) {
-            $this->fail(new \Exception("El servicio de WhatsApp indicó fallo al enviar el mensaje."));
+        if (! $success) {
+            $this->fail(new \Exception('El servicio de WhatsApp indicó fallo al enviar el mensaje.'));
         }
     }
 }

@@ -58,6 +58,11 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI', '/'),
     ],
 
+    'whatsapp' => [
+        'api_version' => env('WHATSAPP_API_VERSION', 'v21.0'),
+        'base_url' => 'https://graph.facebook.com',
+    ],
+
     'chatbot' => [
         'provider' => env('CHATBOT_PROVIDER', 'openai'),
         'openai_key' => env('CHATBOT_OPENAI_API_KEY', env('OPENAI_API_KEY')),

@@ -118,6 +118,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'whatsapp' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/whatsapp.log'),
+            'level' => 'debug',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
         'mercadopago' => [
             'driver' => 'single',
             'path' => storage_path('logs/mercadopago.log'),
