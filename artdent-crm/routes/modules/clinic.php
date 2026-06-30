@@ -9,6 +9,7 @@ use App\Http\Controllers\JobAttachmentController;
 use App\Http\Controllers\JobCollaboratorController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobItemController;
+use App\Http\Controllers\JobPhaseKioskController;
 use App\Http\Controllers\JobRemakeController;
 use App\Http\Controllers\JobStatusHistoryController;
 use App\Http\Controllers\JobTeethController;
@@ -35,6 +36,11 @@ Route::resource('job-status-historys', JobStatusHistoryController::class)->middl
 Route::resource('job-teeths', JobTeethController::class)->middleware('permission:orders.edit');
 Route::resource('job-types', JobTypeController::class)->middleware('permission:orders.edit');
 Route::resource('job-remakes', JobRemakeController::class)->middleware('permission:orders.edit');
+
+// Fases de Órdenes — CRM (requiere autenticación)
+Route::post('jobs/{job}/initialize-phases', [JobPhaseKioskController::class, 'initializePhases'])->name('jobs.initialize-phases')->middleware('permission:orders.edit');
+Route::post('jobs/{job}/return-from-proof', [JobPhaseKioskController::class, 'returnFromProof'])->name('jobs.return-from-proof')->middleware('permission:orders.edit');
+Route::post('jobs/{job}/register-delivery', [JobPhaseKioskController::class, 'registerDelivery'])->name('jobs.register-delivery')->middleware('permission:orders.edit');
 
 // Dentistas y Clientes
 Route::resource('dentists', DentistController::class)->middleware('permission:customers.view');

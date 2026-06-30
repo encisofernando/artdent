@@ -5,27 +5,24 @@ import {
     LayoutDashboard,
     Banknote,
     Users,
-    Store,
+    Building2,
     BadgeCheck,
-    Briefcase,
-    Beaker,
     BarChart3,
     Settings,
     ChevronDown,
     ChevronRight,
     Search,
     Receipt,
-    List,
-    AlignLeft,
     MessageSquare,
-    RefreshCcw,
-    Truck,
-    Key,
     ShoppingCart,
-    CreditCard,
     Bot,
     Landmark,
-    Printer,
+    Package,
+    UserCheck,
+    ClipboardList,
+    Stethoscope,
+    DollarSign,
+    TrendingUp,
 } from 'lucide-react';
 
 export default function Sidebar({ className = "" }) {
@@ -46,52 +43,61 @@ export default function Sidebar({ className = "" }) {
             ],
         },
         {
-            label: "Gestión",
+            label: "Ventas",
             items: [
                 {
                     title: "Ventas", icon: Banknote, key: "ventas",
                     permission: 'products.view',
                     children: [
                         { title: "Nueva Venta", path: "/sales/create", permission: 'products.create' },
-                        { title: "Lista de Ventas", path: "/sales" },
-                        { title: "Presupuesto", path: "/quotes" },
+                        { title: "Ventas", path: "/sales" },
+                        { title: "Presupuestos", path: "/quotes" },
                         { title: "Artículos", path: "/products" },
-                        { title: "Etiquetas / Códigos", path: "/barcode-labels", permission: 'products.view' },
+                        { title: "Etiquetas / Códigos", path: "/barcode-labels" },
                     ],
                 },
                 {
                     title: "Clientes", icon: Users, key: "clientes",
                     permission: 'customers.view',
                     children: [
-                        { title: "Lista de Clientes", path: "/customers" },
+                        { title: "Clientes", path: "/customers" },
                         { title: "Cuentas Corrientes", path: "/customers-accounts" },
                     ],
                 },
                 {
-                    title: "Proveedores", icon: Store, key: "proveedores",
+                    title: "Proveedores", icon: Building2, key: "proveedores",
                     permission: 'customers.view',
                     children: [
-                        { title: "Directorio", path: "/vendors" },
+                        { title: "Proveedores", path: "/vendors" },
                         { title: "Comprobantes", path: "/proveedores/comprobantes" },
                         { title: "Pagos", path: "/proveedores/pagos" },
-                        { title: "Cta. Cte.", path: "/proveedores/ctacte" },
+                        { title: "Cuenta Corriente", path: "/proveedores/ctacte" },
                     ],
                 },
-
+                {
+                    title: "Inventario", icon: Package, key: "inventario",
+                    permission: 'inventory.view',
+                    children: [
+                        { title: "Stock", path: "/stocks" },
+                        { title: "Depósitos", path: "/warehouses" },
+                        { title: "Movimientos", path: "/stock-movements" },
+                        { title: "Retiros de Insumos", path: "/lab-withdrawals", permission: 'inventory.manage' },
+                    ],
+                },
             ],
         },
-            {
-            label: "E-commerce",
+        {
+            label: "E-Commerce",
             items: [
                 {
-                    title: "E-commerce", icon: ShoppingCart, key: "ecommerce",
+                    title: "Tienda Online", icon: ShoppingCart, key: "ecommerce",
                     permission: 'ecommerce.view',
                     children: [
                         { title: "Pedidos", path: "/ecommerce-orders" },
                         { title: "Cupones", path: "/coupons", permission: 'ecommerce.edit' },
                         { title: "Ofertas", path: "/offers", permission: 'ecommerce.edit' },
                         { title: "Carrusel Hero", path: "/hero-slides", permission: 'ecommerce.edit' },
-                        { title: "Banners Sidebar", path: "/sidebar-banners", permission: 'ecommerce.edit' },
+                        { title: "Banners", path: "/sidebar-banners", permission: 'ecommerce.edit' },
                         { title: "Reseñas", path: "/reviews" },
                         { title: "Puntos de Retiro", path: "/shipping-pickup-points", permission: 'ecommerce.edit' },
                         { title: "Moto Mandados", path: "/shipping-moto-companies", permission: 'ecommerce.edit' },
@@ -105,7 +111,7 @@ export default function Sidebar({ className = "" }) {
             label: "Laboratorio",
             items: [
                 {
-                    title: "Órdenes", icon: AlignLeft, key: "lab-ordenes",
+                    title: "Órdenes", icon: ClipboardList, key: "lab-ordenes",
                     permission: 'orders.view',
                     children: [
                         { title: "Nueva Orden", path: "/jobs/create", permission: 'orders.create' },
@@ -114,42 +120,55 @@ export default function Sidebar({ className = "" }) {
                     ],
                 },
                 {
-                    title: "Clientes / Odont.", icon: Users, key: "lab-clientes",
+                    title: "Odontólogos", icon: Stethoscope, key: "lab-clientes",
                     permission: 'customers.view',
                     children: [
-                        { title: "Lista de Odontólogos", path: "/dentists" },
+                        { title: "Odontólogos", path: "/dentists" },
                         { title: "Pacientes", path: "/patients" },
                         { title: "Rutas de Entrega", path: "/dentist-delivery-routes", permission: 'customers.edit' },
-                        { title: "Cuentas Corrientes y Pagos", path: "/lab-account-moves", permission: 'orders.edit' },
+                        { title: "Cuentas Corrientes", path: "/lab-account-moves", permission: 'orders.edit' },
                         { title: "Ingresos y Egresos", path: "/lab-finance", permission: 'orders.view' },
                     ],
                 },
-                { title: "Aranceles y Costos", icon: Banknote, path: "/tariffs", permission: 'products.view' },
-                { title: "Analítica Lab", icon: BarChart3, path: "/analytics/lab", permission: 'reports.view' },
+                { title: "Aranceles y Costos", icon: DollarSign, path: "/tariffs", permission: 'products.view' },
+            ],
+        },
+        {
+            label: "Personal",
+            items: [
                 {
                     title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
                     permission: 'staff.view',
                     children: [
-                        { title: "Lista", path: "/collaborators" },
+                        { title: "Colaboradores", path: "/collaborators" },
                         { title: "Asistencias", path: "/collaborator-attendances" },
-                        { title: "Extras", path: "/collaborator-extras", permission: 'staff.view' },
-                        { title: "Descuentos", path: "/collaborator-discounts", permission: 'staff.view' },
+                        { title: "Extras", path: "/collaborator-extras" },
+                        { title: "Descuentos", path: "/collaborator-discounts" },
                         { title: "Recibos", path: "/collaborator-receipts", permission: 'staff.edit' },
                         { title: "Kiosk de Fichaje", path: "/attendance-kiosk", external: true },
-                        { title: "Portal Técnicos", path: "/colaboradores", external: true },
+                        { title: "Kiosk de Producción", path: "/job-kiosk", external: true },
+                    ],
+                },
+                {
+                    title: "Empleados", icon: UserCheck, key: "personal",
+                    permission: 'staff.view',
+                    children: [
+                        { title: "Empleados", path: "/employees" },
+                        { title: "Recibos", path: "/employee-receipts", permission: 'staff.edit' },
+                        { title: "Extras", path: "/employee-extras" },
+                        { title: "Descuentos", path: "/employee-discounts" },
                     ],
                 },
             ],
         },
-
         {
-            label: "Contable",
+            label: "Finanzas",
             items: [
                 {
                     title: "Contable", icon: Landmark, key: "contable",
                     permission: 'accounting.view',
                     children: [
-                        { title: "Panel contable", path: "/contable" },
+                        { title: "Panel", path: "/contable" },
                         { title: "Libro IVA Ventas", path: "/export/iva-ventas", external: true },
                         { title: "Libro IVA Compras", path: "/export/iva-compras", external: true },
                         { title: "Estado de Resultados", path: "/export/income-statement", external: true },
@@ -160,14 +179,15 @@ export default function Sidebar({ className = "" }) {
         {
             label: "CRM",
             items: [
-                { title: "Asistente Artie", icon: Bot, path: "/crm/chatbot", permission: 'customers.view' },
+                { title: "Artie", icon: Bot, path: "/crm/chatbot", permission: 'customers.view' },
                 { title: "Interacciones", icon: MessageSquare, path: "/crm-interactions", permission: 'customers.view' },
             ],
         },
         {
             label: "Análisis",
             items: [
-                { title: "Estadísticas", icon: BarChart3, path: "/estadisticas", permission: 'reports.view' },
+                { title: "Analítica Lab", icon: BarChart3, path: "/analytics/lab", permission: 'reports.view' },
+                { title: "Estadísticas", icon: TrendingUp, path: "/estadisticas", permission: 'reports.view' },
                 { title: "Reportes", icon: Receipt, path: "/reportes", permission: 'reports.view' },
                 { title: "Operaciones", icon: Search, path: "/operaciones", permission: 'reports.view' },
             ],
@@ -184,7 +204,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Roles y Permisos", path: "/roles", permission: 'roles.view' },
                         { title: "Empresa", path: "/settings", permission: 'settings.edit' },
                         { title: "Impresión", path: "/settings?tab=preferencias", permission: 'settings.edit' },
-                        { title: "API", path: "/admin/api-tokens", permission: 'settings.edit' },
+                        { title: "Acceso Kiosk", path: "/admin/kiosk-access", permission: 'settings.edit' },
                         ...(billingEnabled ? [{ title: "Suscripción", path: "/subscription", permission: 'settings.edit' }] : []),
                     ],
                 },

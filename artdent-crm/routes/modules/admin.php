@@ -116,13 +116,16 @@ Route::prefix('padron')->name('padron.')->group(function () {
 
 Route::resource('variant-attribute-values', VariantAttributeValueController::class);
 
-// Gestión de Tokens API (Sanctum) — Administración → API
-use App\Http\Controllers\ApiTokenController;
+// Acceso Kiosk — IPs permitidas + Tokens API
+use App\Http\Controllers\KioskAccessController;
 
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
-    Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
-    Route::delete('api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    Route::get('kiosk-access', [KioskAccessController::class, 'index'])->name('kiosk-access.index');
+    Route::post('kiosk-access/ips', [KioskAccessController::class, 'storeIp'])->name('kiosk-access.ips.store');
+    Route::patch('kiosk-access/ips/{ip}/toggle', [KioskAccessController::class, 'toggleIp'])->name('kiosk-access.ips.toggle');
+    Route::delete('kiosk-access/ips/{ip}', [KioskAccessController::class, 'destroyIp'])->name('kiosk-access.ips.destroy');
+    Route::post('kiosk-access/tokens', [KioskAccessController::class, 'storeToken'])->name('kiosk-access.tokens.store');
+    Route::delete('kiosk-access/tokens/{token}', [KioskAccessController::class, 'destroyToken'])->name('kiosk-access.tokens.destroy');
 
     // Crear symlink storage en producción
     Route::post('storage-link', function () {

@@ -28,8 +28,19 @@ Route::middleware('tenant.session')->get('/storage/{path}', function (string $pa
     ]);
 })->where('path', '.*');
 
-// Kiosk page — publicly accessible (anyone can see the UI)
+// Attendance kiosk — publicly accessible
 Route::get('/attendance-kiosk', [\App\Http\Controllers\AttendanceKioskController::class, 'index'])->name('attendance-kiosk');
+
+// Job-phase kiosk — publicly accessible (same pattern as attendance kiosk)
+Route::middleware('lab.network')->group(function () {
+    Route::get('/job-kiosk', [\App\Http\Controllers\JobPhaseKioskController::class, 'index'])->name('job-kiosk');
+    Route::get('/job-kiosk/available-jobs', [\App\Http\Controllers\JobPhaseKioskController::class, 'availableJobs'])->name('job-kiosk.available-jobs');
+    Route::get('/job-kiosk/in-progress', [\App\Http\Controllers\JobPhaseKioskController::class, 'inProgressPhases'])->name('job-kiosk.in-progress');
+    Route::post('/job-kiosk/take-phase', [\App\Http\Controllers\JobPhaseKioskController::class, 'takePhase'])->name('job-kiosk.take-phase');
+    Route::post('/job-kiosk/complete-phase', [\App\Http\Controllers\JobPhaseKioskController::class, 'completePhase'])->name('job-kiosk.complete-phase');
+    Route::post('/job-kiosk/send-to-proof', [\App\Http\Controllers\JobPhaseKioskController::class, 'sendToProof'])->name('job-kiosk.send-to-proof');
+    Route::post('/job-kiosk/return-from-proof/{job}', [\App\Http\Controllers\JobPhaseKioskController::class, 'returnFromProof'])->name('job-kiosk.return-from-proof');
+});
 
 // Clock-face POST — requires kiosk token or lab IP
 Route::middleware('lab.network')->post('/attendance-kiosk/clock-face', [\App\Http\Controllers\AttendanceKioskController::class, 'clockFace'])->name('attendance-kiosk.clock-face');

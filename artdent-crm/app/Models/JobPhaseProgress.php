@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class JobPhaseProgress extends Model
@@ -25,6 +26,8 @@ class JobPhaseProgress extends Model
         'status',
         'started_at',
         'completed_at',
+        'proof_sent_at',
+        'proof_returned_at',
         'lab_account_move_id',
         'notes',
     ];
@@ -34,6 +37,8 @@ class JobPhaseProgress extends Model
         return [
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'proof_sent_at' => 'datetime',
+            'proof_returned_at' => 'datetime',
         ];
     }
 
@@ -55,6 +60,11 @@ class JobPhaseProgress extends Model
     public function labAccountMove(): BelongsTo
     {
         return $this->belongsTo(LabAccountMove::class);
+    }
+
+    public function phaseCollaborators(): HasMany
+    {
+        return $this->hasMany(JobPhaseCollaborator::class);
     }
 
     public function ticket(): HasOne

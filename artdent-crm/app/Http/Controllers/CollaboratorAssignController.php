@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
 use App\Models\Job;
+use App\Models\JobPhaseProgress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -25,14 +26,15 @@ class CollaboratorAssignController extends Controller
 
     /**
      * GET /api/assign/jobs/unassigned
-     * Órdenes sin ningún colaborador asignado actualmente en pivot job_collaborators.
+     * Órdenes disponibles: ninguna de sus fases está actualmente en progreso.
      */
     public function unassignedJobs(Request $request)
     {
-        $jobs = Job::with(['dentist', 'patient', 'job_type', 'job_items', 'collaborators'])
+        $jobs = Job::with(['dentist', 'patient', 'job_type', 'job_items', 'collaborators',
+            'phaseProgress.tariffPhase', 'phaseProgress.phaseCollaborators.collaborator'])
             ->where('company_id', $this->companyId($request))
             ->whereIn('status', ['pending', 'received', 'in_progress', 'en_proceso', 'pendiente'])
-            ->whereDoesntHave('collaborators')
+            ->whereDoesntHave('phaseProgress', fn ($q) => $q->where('status', JobPhaseProgress::STATUS_IN_PROGRESS))
             ->orderBy('due_date')
             ->get()
             ->map(fn ($job) => $this->formatJob($job));
@@ -42,14 +44,15 @@ class CollaboratorAssignController extends Controller
 
     /**
      * GET /api/assign/jobs/assigned
-     * Órdenes que tienen al menos un colaborador asignado.
+     * Órdenes en proceso: al menos una fase tiene estado in_progress.
      */
     public function assignedJobs(Request $request)
     {
-        $jobs = Job::with(['dentist', 'patient', 'job_type', 'job_items', 'collaborators'])
+        $jobs = Job::with(['dentist', 'patient', 'job_type', 'job_items', 'collaborators',
+            'phaseProgress.tariffPhase', 'phaseProgress.phaseCollaborators.collaborator'])
             ->where('company_id', $this->companyId($request))
             ->whereIn('status', ['pending', 'received', 'in_progress', 'en_proceso', 'pendiente'])
-            ->whereHas('collaborators')
+            ->whereHas('phaseProgress', fn ($q) => $q->where('status', JobPhaseProgress::STATUS_IN_PROGRESS))
             ->orderBy('due_date')
             ->get()
             ->map(fn ($job) => $this->formatJob($job));
@@ -150,6 +153,19 @@ class CollaboratorAssignController extends Controller
 
     private function formatJob(Job $job): array
     {
+        $activePhases = $job->phaseProgress
+            ->filter(fn ($p) => $p->status === JobPhaseProgress::STATUS_IN_PROGRESS)
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'phase_name' => $p->tariffPhase?->name ?? 'Fase',
+                'started_at' => $p->started_at?->toDateTimeString(),
+                'collaborators' => $p->phaseCollaborators->map(fn ($pc) => [
+                    'id' => $pc->collaborator?->id,
+                    'name' => $pc->collaborator?->name ?? '—',
+                    'initials' => $this->initials($pc->collaborator?->name ?? '?'),
+                ])->values(),
+            ])->values();
+
         return [
             'id' => $job->id,
             'job_number' => $job->job_number,
@@ -179,6 +195,7 @@ class CollaboratorAssignController extends Controller
                 'specialty' => $c->specialty,
                 'initials' => $this->initials($c->name),
             ])->values(),
+            'active_phases' => $activePhases,
         ];
     }
 

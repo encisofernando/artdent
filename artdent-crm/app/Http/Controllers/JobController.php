@@ -250,8 +250,9 @@ class JobController extends Controller
 
     public function show(Job $job)
     {
-        $relations = ['company', 'dentist', 'patient', 'job_items', 'job_teeths', 'collaborators',
-            'phaseProgress.tariffPhase', 'phaseProgress.collaborator', 'phaseProgress.ticket'];
+        $relations = ['company', 'dentist', 'patient', 'job_items.tariff.phases', 'job_teeths', 'collaborators',
+            'phaseProgress.tariffPhase', 'phaseProgress.collaborator', 'phaseProgress.ticket',
+            'phaseProgress.phaseCollaborators.collaborator'];
 
         if ($this->hasJobTypesTable()) {
             $relations[] = 'job_type';

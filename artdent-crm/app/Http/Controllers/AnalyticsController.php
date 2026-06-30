@@ -95,11 +95,11 @@ class AnalyticsController extends Controller
             ->groupBy('collaborator_id')
             ->orderByDesc('job_count')
             ->limit(8)
-            ->with('collaborator:id,name,role')
+            ->with('collaborator:id,name,specialty')
             ->get()
             ->map(fn ($row) => [
                 'name' => $row->collaborator?->name ?? '—',
-                'role' => $row->collaborator?->role ?? '',
+                'role' => $row->collaborator?->specialty ?? '',
                 'job_count' => (int) $row->job_count,
             ])
             ->toArray();

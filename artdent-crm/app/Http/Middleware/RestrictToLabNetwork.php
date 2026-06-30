@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\KioskAllowedIp;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class RestrictToLabNetwork
@@ -16,11 +18,18 @@ class RestrictToLabNetwork
             return $next($request);
         }
 
-        // Allow access from configured IP ranges
-        $allowed = array_filter(array_map('trim', explode(',', config('app.lab_allowed_ips', '127.0.0.1,::1'))));
         $clientIp = $request->ip();
 
-        foreach ($allowed as $allowedIp) {
+        // IPs from .env (always checked as fallback)
+        $envIps = array_filter(array_map('trim', explode(',', config('app.lab_allowed_ips', '127.0.0.1,::1'))));
+
+        // IPs stored in the database (cached for 60 s)
+        $dbIps = Cache::remember('kiosk_allowed_ips', 60, fn () => KioskAllowedIp::where('is_active', true)
+            ->pluck('ip_address')
+            ->all()
+        );
+
+        foreach (array_merge($envIps, $dbIps) as $allowedIp) {
             if ($this->ipMatches($clientIp, $allowedIp)) {
                 return $next($request);
             }
