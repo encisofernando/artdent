@@ -46,7 +46,7 @@ export default function Show({ auth, purchase }) {
 
             <div className="flex flex-col gap-6 font-sans max-w-4xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                         <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                             {purchase.invoice_type && purchase.invoice_number

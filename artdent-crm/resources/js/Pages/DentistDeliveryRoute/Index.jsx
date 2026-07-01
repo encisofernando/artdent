@@ -51,14 +51,20 @@ export default function Index({ auth, items, dentists, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Rutas de Entrega
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Organización de rutas y días de entrega por odontólogo
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Truck size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Rutas de Entrega
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Organización de rutas y días de entrega por odontólogo
+                            </p>
+                        </div>
                     </div>
 
                     <Link href={route('dentist-delivery-routes.create')} className="w-full sm:w-auto">
@@ -144,7 +150,44 @@ export default function Index({ auth, items, dentists, filters }) {
                                 <h3 className={`text-sm font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     {DAY_LABELS[day] || 'Sin día asignado'}
                                 </h3>
-                                <div className={`rounded-2xl border overflow-hidden shadow-sm
+                                {/* Mobile cards */}
+                                <div className="sm:hidden flex flex-col gap-2">
+                                    {routes.sort((a, b) => (a.delivery_order || 0) - (b.delivery_order || 0)).map((item) => (
+                                        <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                            <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                            <div className="p-4">
+                                                <div className="flex items-start justify-between gap-3 mb-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className={`font-bold text-sm ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                            <span className={`mr-2 text-xs font-extrabold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>#{item.delivery_order || '?'}</span>
+                                                            {item.dentist?.name || '-'}
+                                                        </p>
+                                                        <p className={`text-xs mt-0.5 truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.route_name || item.address || '—'}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        {item.is_active ? (
+                                                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Activa</span>
+                                                        ) : (
+                                                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">Inactiva</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                                    <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.contact_name || item.contact_phone || item.address || '—'}</span>
+                                                    <div className="flex gap-1">
+                                                        <Link href={route('dentist-delivery-routes.edit', item.id)}>
+                                                            <button className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100'}`}><Edit size={14} /></button>
+                                                        </Link>
+                                                        <button onClick={() => handleDelete(item.id)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}`}><Trash2 size={14} /></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Desktop table */}
+                                <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-sm
                                     ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
                                 `}>
                                     <div className="overflow-x-auto">
@@ -165,66 +208,26 @@ export default function Index({ auth, items, dentists, filters }) {
                                             </thead>
                                             <tbody>
                                                 {routes.sort((a, b) => (a.delivery_order || 0) - (b.delivery_order || 0)).map((item) => (
-                                                    <tr key={item.id} className={`border-b transition-colors
-                                                        ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}
-                                                    `}>
-                                                        <td className="px-5 py-4">
-                                                            <span className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                                {item.delivery_order || '-'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-4">
-                                                            <span className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                                {item.dentist?.name || '-'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-4">
-                                                            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                                {item.route_name || '-'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-4">
-                                                            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                                {item.address || '-'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-4">
-                                                            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                                {item.contact_name || '-'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-4">
-                                                            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                                {item.contact_phone || '-'}
-                                                            </span>
-                                                        </td>
+                                                    <tr key={item.id} className={`border-b transition-colors ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}`}>
+                                                        <td className="px-5 py-4"><span className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{item.delivery_order || '-'}</span></td>
+                                                        <td className="px-5 py-4"><span className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.dentist?.name || '-'}</span></td>
+                                                        <td className="px-5 py-4"><span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{item.route_name || '-'}</span></td>
+                                                        <td className="px-5 py-4"><span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.address || '-'}</span></td>
+                                                        <td className="px-5 py-4"><span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.contact_name || '-'}</span></td>
+                                                        <td className="px-5 py-4"><span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.contact_phone || '-'}</span></td>
                                                         <td className="px-5 py-4">
                                                             {item.is_active ? (
-                                                                <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                                                                    Activa
-                                                                </span>
+                                                                <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Activa</span>
                                                             ) : (
-                                                                <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                                                    Inactiva
-                                                                </span>
+                                                                <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">Inactiva</span>
                                                             )}
                                                         </td>
                                                         <td className="px-5 py-4">
                                                             <div className="flex gap-2 justify-end">
                                                                 <Link href={route('dentist-delivery-routes.edit', item.id)}>
-                                                                    <button className={`p-2 rounded-lg transition-colors
-                                                                        ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
-                                                                    `}>
-                                                                        <Edit size={16} />
-                                                                    </button>
+                                                                    <button className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}><Edit size={16} /></button>
                                                                 </Link>
-                                                                <button
-                                                                    onClick={() => handleDelete(item.id)}
-                                                                    className={`p-2 rounded-lg transition-colors
-                                                                    ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
-                                                                `}>
-                                                                    <Trash2 size={16} />
-                                                                </button>
+                                                                <button onClick={() => handleDelete(item.id)} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}`}><Trash2 size={16} /></button>
                                                             </div>
                                                         </td>
                                                     </tr>

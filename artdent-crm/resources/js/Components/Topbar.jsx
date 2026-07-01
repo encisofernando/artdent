@@ -259,7 +259,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                         </button>
 
                         {dropdownOpen && (
-                            <div className={`absolute right-0 top-full mt-2 w-96 rounded-xl shadow-2xl border z-50 overflow-hidden
+                            <div className={`absolute right-0 top-full mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl shadow-2xl border z-50 overflow-hidden
                                 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-[#A8C8DC]'}
                             `}>
                                 {/* Header */}
@@ -338,7 +338,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                     {canInstall && (
                         <button
                             onClick={() => void promptInstall()}
-                            className={`inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
+                            className={`hidden sm:inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
                                 ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200'
                                 : 'border-white/25 text-white/80 hover:bg-white/15 hover:text-white'
                             }`}
@@ -351,7 +351,7 @@ export default function Topbar({ user, onSidebarToggle }) {
 
                     <a
                         href={printManagerDownloadUrl}
-                        className={`inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
+                        className={`hidden sm:inline-flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors ${isDark
                             ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white'
                             : 'border-white/25 text-white/80 hover:bg-white/15 hover:text-white'
                         }`}

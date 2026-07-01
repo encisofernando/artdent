@@ -330,14 +330,14 @@ export default function Show({ auth, account, dentist, company, moves = [], paym
                     </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <KpiCard isDark={isDark} label="Cargos" value={fmt(summary.total_charges)} hint={`${summary.moves_count} movimientos`} icon={ArrowUpRight} color={BRAND.amber} />
                     <KpiCard isDark={isDark} label="Pagos" value={fmt(summary.total_payments)} hint={`${payments.length} pago${payments.length === 1 ? '' : 's'}`} icon={CreditCard} color={BRAND.green} />
                     <KpiCard isDark={isDark} label="Trabajos adeudados" value={summary.owed_jobs_count} hint={fmt(summary.owed_jobs_total)} icon={ReceiptText} color={BRAND.red} />
                     <KpiCard isDark={isDark} label="Saldo" value={fmt(account.balance)} hint="Cuenta corriente actual" icon={WalletCards} color={balanceColor} />
                 </div>
 
-                <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
                     <section className={`rounded-3xl border overflow-hidden ${colors.card}`}>
                         <div className={`border-b px-5 py-4 ${isDark ? 'border-slate-700/60 bg-slate-800/40' : 'border-slate-100 bg-slate-50/80'}`}>
                             <h3 className={`font-extrabold ${colors.text}`}>Trabajos adeudados</h3>

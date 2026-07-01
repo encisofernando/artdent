@@ -170,7 +170,7 @@ export default function Assistant() {
                                     </div>
                                     <div className="message-bubble">
                                         <div className="message-role">
-                                            {msg.role === 'assistant' ? 'Artie AI' : 'Tú'}
+                                            {msg.role === 'assistant' ? 'Artie' : 'Tú'}
                                         </div>
                                         <div className="message-text">
                                             {formatMessage(msg.content)}

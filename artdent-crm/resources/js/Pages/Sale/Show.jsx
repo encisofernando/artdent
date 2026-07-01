@@ -441,10 +441,10 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                     </div>
                 </div>
 
-                <div className="flex flex-col xl:flex-row gap-6">
+                <div className="flex flex-col lg:flex-row gap-6">
 
                     {/* Panel izquierdo: selector */}
-                    <div className="xl:w-64 flex-shrink-0 space-y-2">
+                    <div className="lg:w-64 lg:shrink-0 space-y-2">
                         <h3 className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             Formato de salida
                         </h3>

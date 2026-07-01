@@ -144,7 +144,7 @@ export default function Index({ auth, items, warehouses, products, filters }) {
             <div className="flex flex-col gap-6 font-sans max-w-7xl mx-auto">
 
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
                             <Package size={20} className="text-white" />
@@ -156,11 +156,11 @@ export default function Index({ auth, items, warehouses, products, filters }) {
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={() => openTransfer()}
-                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border ${isDark ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap border ${isDark ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
                             <ArrowLeftRight size={15} /> Transferir
                         </button>
                         <button onClick={() => openAdjust()}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap text-white shadow-md"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <SlidersHorizontal size={15} /> Ajustar Stock
                         </button>
@@ -191,12 +191,12 @@ export default function Index({ auth, items, warehouses, products, filters }) {
                             Solo stock bajo / sin stock
                         </label>
                         <button onClick={applyFilters}
-                            className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+                            className="px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             Filtrar
                         </button>
                         <button onClick={clearFilters}
-                            className={`px-4 py-2 rounded-xl text-sm font-medium border ${isDark ? 'border-slate-700 text-slate-400 hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                            className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-medium border ${isDark ? 'border-slate-700 text-slate-400 hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                             Limpiar
                         </button>
                     </div>
@@ -210,41 +210,33 @@ export default function Index({ auth, items, warehouses, products, filters }) {
                             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No hay registros de stock</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
-                                        {['Producto', 'SKU', 'Variante', 'Depósito', 'Cantidad', 'Mínimo', 'Estado', ''].map(h => (
-                                            <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                    {items.data.map(item => (
-                                        <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
-                                            <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {item.product?.name ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 font-mono text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {item.product?.sku ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {item.product_variant ? (item.product_variant.sku || item.product_variant.barcode || `#${item.product_variant.id}`) : '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                {item.warehouse?.name ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 font-bold text-base ${parseFloat(item.quantity) <= 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-slate-100' : 'text-slate-900')}`}>
-                                                {fmt(item.quantity)}
-                                            </td>
-                                            <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                {item.product?.min_stock ? fmt(item.product.min_stock) : '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <StockBadge quantity={item.quantity} minStock={item.product?.min_stock} isDark={isDark} />
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1">
+                        <>
+                            {/* Mobile cards */}
+                            <div className="sm:hidden flex flex-col gap-3 p-3">
+                                {items.data.map(item => (
+                                    <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                        <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                        <div className="p-4">
+                                            <div className="flex items-start justify-between gap-3 mb-2">
+                                                <div className="min-w-0">
+                                                    <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                        {item.product?.name ?? '—'}
+                                                    </p>
+                                                    <p className={`text-xs font-mono mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {item.product?.sku ?? '—'}
+                                                        {item.product_variant ? ` · ${item.product_variant.sku || item.product_variant.barcode || `#${item.product_variant.id}`}` : ''}
+                                                    </p>
+                                                </div>
+                                                <span className={`text-2xl font-extrabold shrink-0 ${parseFloat(item.quantity) <= 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-slate-100' : 'text-slate-900')}`}>
+                                                    {fmt(item.quantity)}
+                                                </span>
+                                            </div>
+                                            <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.warehouse?.name ?? '—'}
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <StockBadge quantity={item.quantity} minStock={item.product?.min_stock} isDark={isDark} />
                                                     <button onClick={() => openAdjust(item)} title="Ajustar stock"
                                                         className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                                                         <SlidersHorizontal size={12} />
@@ -254,12 +246,69 @@ export default function Index({ auth, items, warehouses, products, filters }) {
                                                         <ArrowLeftRight size={12} />
                                                     </button>
                                                 </div>
-                                            </td>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Desktop table */}
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Producto</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>SKU</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Variante</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Depósito</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cantidad</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Mínimo</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Estado</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}></th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                        {items.data.map(item => (
+                                            <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
+                                                <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.product?.name ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 font-mono text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.product?.sku ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.product_variant ? (item.product_variant.sku || item.product_variant.barcode || `#${item.product_variant.id}`) : '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    {item.warehouse?.name ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 font-bold text-base ${parseFloat(item.quantity) <= 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-slate-100' : 'text-slate-900')}`}>
+                                                    {fmt(item.quantity)}
+                                                </td>
+                                                <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {item.product?.min_stock ? fmt(item.product.min_stock) : '—'}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <StockBadge quantity={item.quantity} minStock={item.product?.min_stock} isDark={isDark} />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => openAdjust(item)} title="Ajustar stock"
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                            <SlidersHorizontal size={12} />
+                                                        </button>
+                                                        <button onClick={() => openTransfer(item)} title="Transferir"
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                            <ArrowLeftRight size={12} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
 
                     <Pagination data={items} />
@@ -311,11 +360,11 @@ export default function Index({ auth, items, warehouses, products, filters }) {
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                         <button type="button" onClick={() => setAdjustModal(false)}
-                            className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                            className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
                             Cancelar
                         </button>
                         <button type="submit" disabled={adjusting}
-                            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Save size={14} /> Guardar Ajuste
                         </button>
@@ -383,11 +432,11 @@ export default function Index({ auth, items, warehouses, products, filters }) {
                     )}
                     <div className="flex justify-end gap-2 pt-2">
                         <button type="button" onClick={() => setTransferModal(false)}
-                            className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                            className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
                             Cancelar
                         </button>
                         <button type="submit" disabled={transferring}
-                            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <ArrowLeftRight size={14} /> Transferir
                         </button>

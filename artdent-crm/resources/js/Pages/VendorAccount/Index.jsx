@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, BookOpen, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, BookOpen, TrendingUp, TrendingDown, Building2 } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 
@@ -34,13 +34,21 @@ export default function Index({ auth, items, totalDebt, totalCredit, filters }) 
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header */}
-                <div>
-                    <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                        Cuentas Corrientes
-                    </h1>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Estado de deuda con cada proveedor
-                    </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Building2 size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Cuentas Corrientes
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Estado de deuda con cada proveedor
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Summary cards */}
@@ -97,39 +105,37 @@ export default function Index({ auth, items, totalDebt, totalCredit, filters }) 
                         </p>
                     </div>
                 ) : (
-                    <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}`}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                                        <th className="px-4 py-3 text-left">Proveedor</th>
-                                        <th className="px-4 py-3 text-right">Saldo</th>
-                                        <th className="px-4 py-3 text-center">Estado</th>
-                                        <th className="px-4 py-3 text-center">Detalle</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {data.map(account => {
-                                        const isDebt = account.balance > 0;
-                                        const isCredit = account.balance < 0;
-                                        return (
-                                            <tr key={account.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
-                                                <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                    {account.vendor?.name ?? '—'}
+                    <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3">
+                            {data.map(account => {
+                                const isDebt = account.balance > 0;
+                                const isCredit = account.balance < 0;
+                                return (
+                                    <div key={account.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                        <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                        <div className="p-4">
+                                            <div className="flex items-start justify-between gap-3 mb-3">
+                                                <div className="min-w-0">
+                                                    <p className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                        {account.vendor?.name ?? '—'}
+                                                    </p>
                                                     {account.vendor?.cuit && (
-                                                        <span className={`block text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                             CUIT: {account.vendor.cuit}
-                                                        </span>
+                                                        </p>
                                                     )}
-                                                </td>
-                                                <td className={`px-4 py-3 text-right text-lg font-extrabold ${
+                                                </div>
+                                                <span className={`text-lg font-extrabold shrink-0 ${
                                                     isDebt ? (isDark ? 'text-red-400' : 'text-red-600')
                                                     : isCredit ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
                                                     : (isDark ? 'text-slate-400' : 'text-slate-500')
                                                 }`}>
                                                     {fmt(Math.abs(account.balance))}
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
+                                                </span>
+                                            </div>
+                                            <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                                <div>
                                                     {account.balance === 0 ? (
                                                         <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
                                                             Al día
@@ -143,21 +149,82 @@ export default function Index({ auth, items, totalDebt, totalCredit, filters }) 
                                                             A favor
                                                         </span>
                                                     )}
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <Link href={route('proveedores.ctacte.show', account.vendor_id)}>
-                                                        <button className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                                                            Ver movimientos
-                                                        </button>
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                                </div>
+                                                <Link href={route('proveedores.ctacte.show', account.vendor_id)}>
+                                                    <button className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                        Ver movimientos
+                                                    </button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    </div>
+
+                        {/* Desktop table */}
+                        <div className={`hidden sm:block rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}`}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                                            <th className="px-4 py-3 text-left">Proveedor</th>
+                                            <th className="px-4 py-3 text-right">Saldo</th>
+                                            <th className="px-4 py-3 text-center">Estado</th>
+                                            <th className="px-4 py-3 text-center">Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {data.map(account => {
+                                            const isDebt = account.balance > 0;
+                                            const isCredit = account.balance < 0;
+                                            return (
+                                                <tr key={account.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                                                    <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                        {account.vendor?.name ?? '—'}
+                                                        {account.vendor?.cuit && (
+                                                            <span className={`block text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                                CUIT: {account.vendor.cuit}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className={`px-4 py-3 text-right text-lg font-extrabold ${
+                                                        isDebt ? (isDark ? 'text-red-400' : 'text-red-600')
+                                                        : isCredit ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                                                        : (isDark ? 'text-slate-400' : 'text-slate-500')
+                                                    }`}>
+                                                        {fmt(Math.abs(account.balance))}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        {account.balance === 0 ? (
+                                                            <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                                Al día
+                                                            </span>
+                                                        ) : isDebt ? (
+                                                            <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-red-900/30 text-red-400 border-red-800/50' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                                                                Deuda
+                                                            </span>
+                                                        ) : (
+                                                            <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
+                                                                A favor
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <Link href={route('proveedores.ctacte.show', account.vendor_id)}>
+                                                            <button className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                                Ver movimientos
+                                                            </button>
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
                 )}
 
                 <Pagination data={items} />

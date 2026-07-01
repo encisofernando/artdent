@@ -74,7 +74,7 @@ export default function Index({ auth, items, collaborators, filters }) {
 
             <div className="flex flex-col gap-6 font-sans max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                             style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
@@ -89,8 +89,8 @@ export default function Index({ auth, items, collaborators, filters }) {
                             </p>
                         </div>
                     </div>
-                    <Link href={route('lab-withdrawals.create')}>
-                        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md"
+                    <Link href={route('lab-withdrawals.create')} className="sm:shrink-0">
+                        <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap text-white shadow-md"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Plus size={16} /> Nuevo Retiro
                         </button>
@@ -120,24 +120,26 @@ export default function Index({ auth, items, collaborators, filters }) {
                         <DatePicker value={dateFrom} onChange={setDateFrom} className={inputCls} D={D} placeholder="Desde..." />
                         <DatePicker value={dateTo} onChange={setDateTo} className={inputCls} D={D} placeholder="Hasta..." />
                     </div>
-                    <div className="flex items-center gap-3 mt-3">
-                        <SearchableSelect
-                            options={[
-                                { value: 'all',       label: 'Todos los estados' },
-                                { value: 'confirmed', label: 'Confirmados' },
-                                { value: 'cancelled', label: 'Cancelados' },
-                            ]}
-                            value={status}
-                            onChange={setStatus}
-                            placeholder="Estado..."
-                        />
+                    <div className="flex flex-wrap items-center gap-3 mt-3">
+                        <div className="flex-1 min-w-[160px]">
+                            <SearchableSelect
+                                options={[
+                                    { value: 'all',       label: 'Todos los estados' },
+                                    { value: 'confirmed', label: 'Confirmados' },
+                                    { value: 'cancelled', label: 'Cancelados' },
+                                ]}
+                                value={status}
+                                onChange={setStatus}
+                                placeholder="Estado..."
+                            />
+                        </div>
                         <button onClick={applyFilters}
-                            className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+                            className="shrink-0 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap text-white"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             Filtrar
                         </button>
                         <button onClick={clearFilters}
-                            className={`px-4 py-2 rounded-xl text-sm font-medium border ${isDark ? 'border-slate-700 text-slate-400 hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                            className={`shrink-0 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-medium whitespace-nowrap border ${isDark ? 'border-slate-700 text-slate-400 hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                             Limpiar
                         </button>
                     </div>
@@ -151,37 +153,30 @@ export default function Index({ auth, items, collaborators, filters }) {
                             <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No hay retiros registrados</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
-                                        {['#', 'Fecha', 'Destinatario', 'Depósito', 'Total Costo', 'Estado', ''].map(h => (
-                                            <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                    {items.data.map(item => (
-                                        <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
-                                            <td className={`px-4 py-3 font-mono font-bold text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                #{String(item.id).padStart(4, '0')}
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                {new Date(item.withdrawn_at).toLocaleDateString('es-AR')}
-                                            </td>
-                                            <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {item.collaborator?.name ?? item.external_person ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {item.warehouse?.name ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {fmt(item.total_cost)}
-                                            </td>
-                                            <td className="px-4 py-3">
+                        <>
+                            {/* Mobile cards */}
+                            <div className="sm:hidden flex flex-col gap-3 p-3">
+                                {items.data.map(item => (
+                                    <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                        <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                        <div className="p-4">
+                                            <div className="flex items-start justify-between gap-3 mb-2">
+                                                <div className="min-w-0">
+                                                    <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                        {item.collaborator?.name ?? item.external_person ?? '—'}
+                                                    </p>
+                                                    <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {new Date(item.withdrawn_at).toLocaleDateString('es-AR')}
+                                                        {' · '}
+                                                        <span className="font-mono">#{String(item.id).padStart(4, '0')}</span>
+                                                    </p>
+                                                </div>
+                                                <span className={`font-bold text-sm shrink-0 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {fmt(item.total_cost)}
+                                                </span>
+                                            </div>
+                                            <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                                                 <StatusBadge status={item.status} isDark={isDark} />
-                                            </td>
-                                            <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2">
                                                     <Link href={route('lab-withdrawals.show', item.id)}
                                                         className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
@@ -194,12 +189,67 @@ export default function Index({ auth, items, collaborators, filters }) {
                                                         </button>
                                                     )}
                                                 </div>
-                                            </td>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Desktop table */}
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>#</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Fecha</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Destinatario</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Depósito</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Costo</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Estado</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}></th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                        {items.data.map(item => (
+                                            <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
+                                                <td className={`px-4 py-3 font-mono font-bold text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    #{String(item.id).padStart(4, '0')}
+                                                </td>
+                                                <td className={`px-4 py-3 whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                    {new Date(item.withdrawn_at).toLocaleDateString('es-AR')}
+                                                </td>
+                                                <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.collaborator?.name ?? item.external_person ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.warehouse?.name ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {fmt(item.total_cost)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <StatusBadge status={item.status} isDark={isDark} />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Link href={route('lab-withdrawals.show', item.id)}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                            <Eye size={13} />
+                                                        </Link>
+                                                        {item.status === 'confirmed' && (
+                                                            <button onClick={() => handleDelete(item.id)}
+                                                                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-400 hover:bg-red-100'}`}>
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
 
                     {/* Paginación */}

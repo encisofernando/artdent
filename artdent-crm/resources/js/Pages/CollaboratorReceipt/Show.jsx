@@ -254,7 +254,7 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
                     </div>
                 </div>
 
-                <div className="flex flex-col xl:flex-row gap-4">
+                <div className="flex flex-col lg:flex-row gap-4">
                     {/* Sidebar */}
                     <div style={{ width: '100%', maxWidth: 220 }} className="xl:flex-shrink-0">
                         <div style={{ background: D.card, border: `1.5px solid ${D.border}`, borderRadius: 14, padding: 14 }}>

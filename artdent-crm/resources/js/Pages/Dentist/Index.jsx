@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Trash2, UserCircle, BriefcaseMedical } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, UserCircle, BriefcaseMedical, Stethoscope } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -46,14 +46,20 @@ export default function Index({ auth, items, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header Section */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Odontólogos
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Gesión de clientes del laboratorio (Dentistas, Clínicas)
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Stethoscope size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Odontólogos
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Gesión de clientes del laboratorio (Dentistas, Clínicas)
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -109,8 +115,45 @@ export default function Index({ auth, items, filters }) {
                             </Link>
                         )}
                     </div>
-                ) : (
-                    <div className={`rounded-2xl border overflow-hidden shadow-sm
+                ) : (<>
+                    {/* Mobile cards */}
+                    <div className="sm:hidden flex flex-col gap-3">
+                        {data.map((item) => (
+                            <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                <div className="p-4">
+                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{item.name}</p>
+                                            {item.code && <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cod: {item.code}</p>}
+                                            <div className="flex items-center gap-1.5 mt-1.5">
+                                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${item.type === 'clinic' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'}`}>
+                                                    {item.type === 'clinic' ? 'Clínica' : 'Profesional'}
+                                                </span>
+                                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${item.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                                    {item.is_active ? 'Activo' : 'Inactivo'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1 shrink-0">
+                                            <Link href={route('dentists.edit', item.id)}>
+                                                <button className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}><Edit size={15} /></button>
+                                            </Link>
+                                            <button onClick={() => handleDelete(item.id)} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}`}><Trash2 size={15} /></button>
+                                        </div>
+                                    </div>
+                                    <div className={`text-xs pt-2 border-t ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                                        {item.contact_name && <p>{item.contact_name}</p>}
+                                        {item.email && <p>{item.email}</p>}
+                                        {item.phone && <p>{item.phone}</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-sm
                         ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
                     `}>
                         <div className="overflow-x-auto">
@@ -140,62 +183,34 @@ export default function Index({ auth, items, filters }) {
                                                         <UserCircle size={16} />
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                            {item.name}
-                                                        </span>
-                                                        {item.code && (
-                                                            <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                                Cod: {item.code}
-                                                            </span>
-                                                        )}
+                                                        <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.name}</span>
+                                                        {item.code && <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cod: {item.code}</span>}
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <span className={`px-2 py-1 text-[11px] font-bold rounded-lg
-                                                    ${item.type === 'clinic'
-                                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400'
-                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'}
-                                                `}>
+                                                <span className={`px-2 py-1 text-[11px] font-bold rounded-lg ${item.type === 'clinic' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'}`}>
                                                     {item.type === 'clinic' ? 'Clínica' : 'Profesional'}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-4 font-medium">
-                                                {item.contact_name || '-'}
-                                            </td>
+                                            <td className="px-5 py-4 font-medium">{item.contact_name || '-'}</td>
                                             <td className="px-5 py-4">
                                                 <div className="flex flex-col">
                                                     <span>{item.email || '-'}</span>
-                                                    <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                        {item.phone || '-'}
-                                                    </span>
+                                                    <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.phone || '-'}</span>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4 text-center">
-                                                <span className={`px-2 py-1 text-[11px] font-bold rounded-lg
-                                                    ${item.is_active
-                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}
-                                                `}>
+                                                <span className={`px-2 py-1 text-[11px] font-bold rounded-lg ${item.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
                                                     {item.is_active ? 'Activo' : 'Inactivo'}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4">
                                                 <div className="flex gap-2 justify-end">
                                                     <Link href={route('dentists.edit', item.id)}>
-                                                        <button className={`p-2 rounded-lg transition-colors
-                                                            ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
-                                                        `}>
-                                                            <Edit size={16} />
-                                                        </button>
+                                                        <button className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}><Edit size={16} /></button>
                                                     </Link>
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className={`p-2 rounded-lg transition-colors
-                                                        ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
-                                                    `}>
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    <button onClick={() => handleDelete(item.id)} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}`}><Trash2 size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -204,7 +219,7 @@ export default function Index({ auth, items, filters }) {
                             </table>
                         </div>
                     </div>
-                )}
+                </>)}
 
                 <Pagination data={items} />
             </div>

@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
-import { Plus, Edit2, Trash2, Search, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, CheckCircle2, XCircle, UserCog } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
@@ -55,14 +55,20 @@ export default function Index({ auth, users }) {
 
             <div className="flex flex-col gap-6">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Gestión de Usuarios
-                        </h1>
-                        <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Administrá las cuentas de usuario y sus roles de acceso.
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <UserCog size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Gestión de Usuarios
+                            </h1>
+                            <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Administrá las cuentas de usuario y sus roles de acceso.
+                            </p>
+                        </div>
                     </div>
                     <Link href={route('users.create')}>
                         <Button style={{ background: B.blue }} className="text-white gap-2">
@@ -99,8 +105,82 @@ export default function Index({ auth, users }) {
                     )}
                 </div>
 
-                {/* Table */}
-                <div className={`rounded-2xl border shadow-sm overflow-hidden ${card}`}>
+                {/* Mobile cards */}
+                <div className="sm:hidden flex flex-col gap-3">
+                    {filtered.length === 0 && (
+                        <p className={`text-center text-sm py-8 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            No se encontraron usuarios.
+                        </p>
+                    )}
+                    {filtered.map(user => (
+                        <div key={user.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                            <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                            <div className="p-4">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                                            style={{ background: B.teal }}>
+                                            {user.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className={`font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{user.name}</p>
+                                            <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <div className="shrink-0">
+                                        {user.is_active
+                                            ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-500">
+                                                <CheckCircle2 size={13} /> Activo
+                                            </span>
+                                            : <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-400">
+                                                <XCircle size={13} /> Inactivo
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-1 mb-3">
+                                    {user.roles.length === 0
+                                        ? <span className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>Sin roles</span>
+                                        : user.roles.map(r => <RoleBadge key={r.id} role={r} />)
+                                    }
+                                </div>
+                                <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                    <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                        Alta: {user.created_at}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        <Link href={route('users.edit', user.id)}>
+                                            <button
+                                                className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                                                title="Editar usuario"
+                                            >
+                                                <Edit2 size={15} />
+                                            </button>
+                                        </Link>
+                                        <button
+                                            onClick={() => destroy(user)}
+                                            disabled={user.roles.some(r => r.name === 'Super Admin')}
+                                            className={`p-1.5 rounded-lg transition-colors ${
+                                                user.roles.some(r => r.name === 'Super Admin')
+                                                    ? 'opacity-20 cursor-not-allowed'
+                                                    : 'hover:bg-red-500/10 text-red-400'
+                                            }`}
+                                            title={user.roles.some(r => r.name === 'Super Admin') ? "Este usuario está protegido" : "Eliminar usuario"}
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    <p className={`text-xs text-center ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                        {filtered.length} usuario{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+                    </p>
+                </div>
+
+                {/* Desktop table */}
+                <div className={`hidden sm:block rounded-2xl border shadow-sm overflow-hidden ${card}`}>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>

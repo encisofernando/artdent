@@ -14,10 +14,10 @@ import axios from 'axios';
 
 const CHATBOT_MODEL_OPTIONS = {
     openai: [
-        { value: 'gpt-5.4-nano', label: 'gpt-5.4-nano · cache + menor costo' },
-        { value: 'gpt-4o-mini', label: 'gpt-4o-mini · rápido y económico' },
-        { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini · razonamiento ligero' },
-        { value: 'gpt-4.1', label: 'gpt-4.1 · mayor calidad' },
+        { value: 'gpt-5.4-nano', label: 'Estándar · menor costo' },
+        { value: 'gpt-4o-mini', label: 'Rápido · equilibrado' },
+        { value: 'gpt-4.1-mini', label: 'Avanzado ligero' },
+        { value: 'gpt-4.1', label: 'Avanzado · mayor calidad' },
     ],
 };
 
@@ -396,7 +396,7 @@ export default function Settings({ company, accountingSettings }) {
                                 <div>
                                     <h3 className={`text-lg font-black tracking-tight mb-6 ${isDark ? 'text-white' : 'text-slate-800'}`}>Identidad Visual y Pública</h3>
 
-                                    <div className="mb-8 grid grid-cols-1 xl:grid-cols-2 gap-5">
+                                    <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-5">
                                         {logoUploadFields.map((logoField) => (
                                             <div
                                                 key={logoField.field}
@@ -1121,7 +1121,7 @@ export default function Settings({ company, accountingSettings }) {
                                                     <button
                                                         type="button"
                                                         onClick={handleDownloadCsr}
-                                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+                                                        className={`flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold transition-colors ${
                                                             isDark
                                                                 ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-600/30'
                                                                 : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200'
@@ -1333,7 +1333,7 @@ export default function Settings({ company, accountingSettings }) {
                         {activeTab === 'integraciones' && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div>
-                                    <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Artie AI / Chatbot</h3>
+                                    <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Asistente Artie</h3>
                                     <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                         Activá el asistente interno, elegí el proveedor de IA y el modelo que querés usar para la empresa actual.
                                     </p>
@@ -1346,8 +1346,8 @@ export default function Settings({ company, accountingSettings }) {
                                             <div className="flex-1">
                                                 <div className="flex flex-wrap gap-3">
                                                     {[
-                                                        { value: true, label: 'Chatbot activo', desc: 'Visible para los usuarios autenticados' },
-                                                        { value: false, label: 'Chatbot desactivado', desc: 'Oculta el widget en toda la empresa' },
+                                                        { value: true, label: 'Asistente activo', desc: 'Visible para los usuarios autenticados' },
+                                                        { value: false, label: 'Asistente desactivado', desc: 'Oculta el widget en toda la empresa' },
                                                     ].map(option => (
                                                         <button
                                                             key={String(option.value)}
@@ -1389,7 +1389,7 @@ export default function Settings({ company, accountingSettings }) {
                                                     error={errors.chatbot_provider}
                                                 />
                                                 <p className={`text-[11px] mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                    El chatbot quedo unificado en OpenAI para local y produccion.
+                                                    Potenciado por el motor de inteligencia artificial de última generación.
                                                 </p>
                                             </div>
 
@@ -1443,7 +1443,7 @@ export default function Settings({ company, accountingSettings }) {
                                             </h4>
                                             <div className="mb-4">
                                                 <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    OpenAI API Key
+                                                    Clave API
                                                 </label>
                                                 <input
                                                     type="password"

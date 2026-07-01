@@ -151,7 +151,7 @@ class CollaboratorReceiptController extends Controller
         ]);
 
         if ($validated['status'] === 'paid' && ! $collaboratorReceipt->paid_at) {
-            $validated['paid_at'] = $validated['paid_at'] ?? now()->toDateTimeString();
+            $validated['paid_at'] = $validated['paid_at'] ?? $collaboratorReceipt->created_at->toDateTimeString();
         }
 
         $collaboratorReceipt->update($validated);

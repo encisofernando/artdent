@@ -65,14 +65,20 @@ export default function Index({ auth, items, dentists, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Interacciones CRM
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Registro de llamadas, visitas, emails y reuniones
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <MessageSquare size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Interacciones CRM
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Registro de llamadas, visitas, emails y reuniones
+                            </p>
+                        </div>
                     </div>
 
                     <Link href={route('crm-interactions.create')} className="w-full sm:w-auto">
@@ -153,41 +159,26 @@ export default function Index({ auth, items, dentists, filters }) {
                         </Link>
                     </div>
                 ) : (
-                    <div className={`rounded-2xl border overflow-hidden shadow-sm
-                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
-                    `}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className={`text-xs uppercase font-bold
-                                    ${isDark ? 'bg-slate-800/50 text-slate-400 border-b border-slate-700/60' : 'bg-slate-50 text-slate-500 border-b border-slate-200'}
-                                `}>
-                                    <tr>
-                                        <th className="px-5 py-4">Fecha</th>
-                                        <th className="px-5 py-4">Tipo</th>
-                                        <th className="px-5 py-4">Dirección</th>
-                                        <th className="px-5 py-4">Odontólogo / Cliente</th>
-                                        <th className="px-5 py-4">Asunto</th>
-                                        <th className="px-5 py-4">Resultado</th>
-                                        <th className="px-5 py-4">Responsable</th>
-                                        <th className="px-5 py-4 text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {data.map((item) => (
-                                        <tr key={item.id} className={`border-b transition-colors
-                                            ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}
-                                        `}>
-                                            <td className="px-5 py-4">
-                                                <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3">
+                            {data.map((item) => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                            <div className="min-w-0">
+                                                <p className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.dentist?.name || item.crm_client?.name || '-'}
+                                                </p>
+                                                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                     {item.interaction_at ? new Date(item.interaction_at).toLocaleDateString('es-AR') : '-'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
                                                 <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${TYPE_COLORS[item.type] || TYPE_COLORS.otro}`}>
                                                     {TYPE_LABELS[item.type] || item.type}
                                                 </span>
-                                            </td>
-                                            <td className="px-5 py-4">
                                                 {item.direction === 'inbound' ? (
                                                     <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                                                         Entrante
@@ -197,51 +188,132 @@ export default function Index({ auth, items, dentists, filters }) {
                                                         Saliente
                                                     </span>
                                                 )}
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                    {item.dentist?.name || item.crm_client?.name || '-'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                    {item.subject || '-'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {item.outcome || '-'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {item.user?.name || '-'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="flex gap-2 justify-end">
-                                                    <Link href={route('crm-interactions.edit', item.id)}>
-                                                        <button className={`p-2 rounded-lg transition-colors
-                                                            ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
-                                                        `}>
-                                                            <Edit size={16} />
-                                                        </button>
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className={`p-2 rounded-lg transition-colors
-                                                        ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
-                                                    `}>
-                                                        <Trash2 size={16} />
+                                            </div>
+                                        </div>
+                                        {item.subject && (
+                                            <p className={`text-sm mb-1 truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                {item.subject}
+                                            </p>
+                                        )}
+                                        {item.outcome && (
+                                            <p className={`text-xs mb-3 line-clamp-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {item.outcome}
+                                            </p>
+                                        )}
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {item.user?.name || '-'}
+                                            </span>
+                                            <div className="flex gap-1">
+                                                <Link href={route('crm-interactions.edit', item.id)}>
+                                                    <button className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
+                                                        <Edit size={15} />
                                                     </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}`}
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+
+                        {/* Desktop table */}
+                        <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-sm
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
+                        `}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className={`text-xs uppercase font-bold
+                                        ${isDark ? 'bg-slate-800/50 text-slate-400 border-b border-slate-700/60' : 'bg-slate-50 text-slate-500 border-b border-slate-200'}
+                                    `}>
+                                        <tr>
+                                            <th className="px-5 py-4">Fecha</th>
+                                            <th className="px-5 py-4">Tipo</th>
+                                            <th className="px-5 py-4">Dirección</th>
+                                            <th className="px-5 py-4">Odontólogo / Cliente</th>
+                                            <th className="px-5 py-4">Asunto</th>
+                                            <th className="px-5 py-4">Resultado</th>
+                                            <th className="px-5 py-4">Responsable</th>
+                                            <th className="px-5 py-4 text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.map((item) => (
+                                            <tr key={item.id} className={`border-b transition-colors
+                                                ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}
+                                            `}>
+                                                <td className="px-5 py-4">
+                                                    <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                        {item.interaction_at ? new Date(item.interaction_at).toLocaleDateString('es-AR') : '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${TYPE_COLORS[item.type] || TYPE_COLORS.otro}`}>
+                                                        {TYPE_LABELS[item.type] || item.type}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    {item.direction === 'inbound' ? (
+                                                        <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                                            Entrante
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                            Saliente
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                        {item.dentist?.name || item.crm_client?.name || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                        {item.subject || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {item.outcome || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {item.user?.name || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Link href={route('crm-interactions.edit', item.id)}>
+                                                            <button className={`p-2 rounded-lg transition-colors
+                                                                ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
+                                                            `}>
+                                                                <Edit size={16} />
+                                                            </button>
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className={`p-2 rounded-lg transition-colors
+                                                            ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
+                                                        `}>
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
                 )}
 
                 <Pagination data={items} />

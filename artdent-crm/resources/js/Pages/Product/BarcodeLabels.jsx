@@ -521,13 +521,19 @@ export default function BarcodeLabels({ auth, company }) {
 
                 {/* ── Header ─────────────────────────────────────────── */}
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Etiquetas de Código de Barras
-                        </h1>
-                        <p className={`text-sm ${sub}`}>
-                            Imprimí etiquetas de góndola en papel adhesivo 57 mm, 55×44 mm, 80 mm o en hojas A4 Húsares
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #397B9C, #49949C)' }}>
+                            <Tag size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Etiquetas de Código de Barras
+                            </h1>
+                            <p className={`text-sm ${sub}`}>
+                                Imprimí etiquetas de góndola en papel adhesivo 57 mm, 55×44 mm, 80 mm o en hojas A4 Húsares
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
@@ -605,10 +611,10 @@ export default function BarcodeLabels({ auth, company }) {
                 )}
 
                 {/* ── Body ───────────────────────────────────────────── */}
-                <div className="flex gap-4 min-h-0" style={{ height: 'calc(100vh - 210px)' }}>
+                <div className="flex flex-col xl:flex-row gap-4 min-h-0 xl:h-[calc(100vh-210px)]">
 
                     {/* Left: product selector */}
-                    <div className={`w-72 shrink-0 flex flex-col rounded-2xl border shadow-sm overflow-hidden min-h-0 ${card}`}>
+                    <div className={`xl:w-72 xl:shrink-0 flex flex-col rounded-2xl border shadow-sm overflow-hidden min-h-0 xl:min-h-0 ${card}`}>
                         <div className={`px-4 pt-4 pb-3 border-b shrink-0 ${isDark ? 'border-slate-700/60' : 'border-slate-100'}`}>
                             <div className="flex items-center justify-between mb-3">
                                 <span className="font-bold text-sm">Productos</span>

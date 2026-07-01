@@ -103,7 +103,7 @@ export default function Show({ auth, employee, extras, discounts }) {
                         <h1 className={`text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{employee.user?.name}</h1>
                         <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{employee.position ?? 'Sin cargo asignado'} · {employee.user?.email}</p>
                     </div>
-                    <button onClick={() => setReceiptModal(true)} className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                    <button onClick={() => setReceiptModal(true)} className="ml-auto inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                         <FileText size={14} /> Generar Recibo
                     </button>
                 </div>
@@ -240,8 +240,8 @@ export default function Show({ auth, employee, extras, discounts }) {
                     <div><label className={labelCls}>Concepto *</label><input type="text" value={extraForm.concept} onChange={e => setExtraForm(f => ({ ...f, concept: e.target.value }))} className={inputCls} placeholder="Premio, Bono, Horas extra..." required /></div>
                     <div><label className={labelCls}>Importe *</label><input type="number" step="0.01" min="0.01" value={extraForm.amount} onChange={e => setExtraForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} placeholder="0.00" required /></div>
                     <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setExtraModal(false)} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
-                        <button type="submit" disabled={extraProcessing} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                        <button type="button" onClick={() => setExtraModal(false)} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
+                        <button type="submit" disabled={extraProcessing} className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Save size={14} /> Guardar
                         </button>
                     </div>
@@ -255,8 +255,8 @@ export default function Show({ auth, employee, extras, discounts }) {
                     <div><label className={labelCls}>Concepto *</label><input type="text" value={discountForm.concept} onChange={e => setDiscountForm(f => ({ ...f, concept: e.target.value }))} className={inputCls} placeholder="Adelanto, Falta, Descuento..." required /></div>
                     <div><label className={labelCls}>Importe *</label><input type="number" step="0.01" min="0.01" value={discountForm.amount} onChange={e => setDiscountForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} placeholder="0.00" required /></div>
                     <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setDiscountModal(false)} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
-                        <button type="submit" disabled={discountProcessing} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: 'linear-gradient(90deg, #9C3939, #9C6149)' }}>
+                        <button type="button" onClick={() => setDiscountModal(false)} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
+                        <button type="submit" disabled={discountProcessing} className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: 'linear-gradient(90deg, #9C3939, #9C6149)' }}>
                             <Save size={14} /> Guardar
                         </button>
                     </div>
@@ -275,8 +275,8 @@ export default function Show({ auth, employee, extras, discounts }) {
                         El sistema calculará automáticamente: sueldo base + comisiones sobre ventas del período + extras − descuentos.
                     </p>
                     <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setReceiptModal(false)} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
-                        <button type="submit" disabled={receiptProcessing} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                        <button type="button" onClick={() => setReceiptModal(false)} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
+                        <button type="submit" disabled={receiptProcessing} className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <FileText size={14} /> Generar
                         </button>
                     </div>

@@ -73,7 +73,7 @@ export default function AccountingIndex({
             <Head title="Contable" />
 
             <div className="space-y-6">
-                <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
+                <div className="flex flex-col lg:flex-row xl:items-end justify-between gap-4">
                     <div className="flex items-start gap-4">
                         <div className={`w-14 h-14 rounded-3xl flex items-center justify-center ${isDark ? 'bg-cyan-500/10 text-cyan-300' : 'bg-cyan-50 text-cyan-700'}`}>
                             <Landmark size={26} />
@@ -103,7 +103,7 @@ export default function AccountingIndex({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <SummaryCard title="Facturado" value={money(summary.total_invoices)} hint="Comprobantes emitidos en el período." icon={ReceiptText} accent="#397B9C" isDark={isDark} />
                     <SummaryCard title="IVA Neto" value={money(summary.vat_position)} hint={`IVA ventas ${money(summary.vat_sales)} vs compras ${money(summary.vat_purchases)}.`} icon={FileSpreadsheet} accent="#49949C" isDark={isDark} />
                     <SummaryCard title="Compras" value={money(summary.total_purchases)} hint={`${summary.pending_purchases} comprobantes pendientes o parciales.`} icon={ShoppingBag} accent="#F59E0B" isDark={isDark} />
@@ -112,7 +112,7 @@ export default function AccountingIndex({
                     <SummaryCard title="Resultado Operativo" value={money(summary.operating_result)} hint={`${summary.authorized_invoices} comprobantes con CAE en el período.`} icon={ArrowRight} accent="#6366F1" isDark={isDark} />
                 </div>
 
-                <div className="grid grid-cols-1 2xl:grid-cols-[1.15fr_0.85fr] gap-6">
+                <div className="grid grid-cols-1 2lg:grid-cols-[1.15fr_0.85fr] gap-6">
                     <div className={`rounded-3xl border p-6 ${panel}`}>
                         <div className="flex items-center justify-between gap-4 mb-5">
                             <div>
@@ -215,8 +215,8 @@ export default function AccountingIndex({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div className={`rounded-3xl border p-6 xl:col-span-1 ${panel}`}>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className={`rounded-3xl border p-6 ${panel}`}>
                         <h2 className={`text-lg font-black mb-4 ${strong}`}>Última facturación</h2>
                         <div className="space-y-3">
                             {recentInvoices.length === 0 && <p className={`text-sm ${muted}`}>No hay comprobantes en el período.</p>}
@@ -238,7 +238,7 @@ export default function AccountingIndex({
                         </div>
                     </div>
 
-                    <div className={`rounded-3xl border p-6 xl:col-span-1 ${panel}`}>
+                    <div className={`rounded-3xl border p-6 ${panel}`}>
                         <h2 className={`text-lg font-black mb-4 ${strong}`}>Últimas compras</h2>
                         <div className="space-y-3">
                             {recentPurchases.length === 0 && <p className={`text-sm ${muted}`}>No hay compras registradas en el período.</p>}
@@ -262,7 +262,7 @@ export default function AccountingIndex({
                         </div>
                     </div>
 
-                    <div className={`rounded-3xl border p-6 xl:col-span-1 ${panel}`}>
+                    <div className={`rounded-3xl border p-6 ${panel}`}>
                         <h2 className={`text-lg font-black mb-4 ${strong}`}>Ingresos y egresos recientes</h2>
                         <div className="space-y-3">
                             {recentMovements.length === 0 && <p className={`text-sm ${muted}`}>No hay movimientos para el período seleccionado.</p>}

@@ -1,7 +1,7 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Plus, Edit, Trash2, Tag, CheckCircle2, XCircle, Clock, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, CheckCircle2, XCircle, Clock, Package, Percent } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -79,14 +79,20 @@ export default function Index({ auth, items }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Ofertas
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Administrá las ofertas y promociones del e-commerce
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Percent size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Ofertas
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Administrá las ofertas y promociones del e-commerce
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3">

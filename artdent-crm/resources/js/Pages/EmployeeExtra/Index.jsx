@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
-import { Plus, Search, Trash2, Pencil, X, Save } from 'lucide-react';
+import { Plus, Search, Trash2, Pencil, X, Save, CirclePlus } from 'lucide-react';
 import SearchableSelect from '@/Components/SearchableSelect';
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
@@ -72,12 +72,18 @@ export default function Index({ auth, items, employees, filters, summary }) {
             <Head title="Extras de Personal" />
             <div className="flex flex-col gap-6 font-sans max-w-5xl mx-auto">
 
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Extras / Adicionales</h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{summary.records} registros · Total: ${fmt(summary.amount)}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <CirclePlus size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Extras / Adicionales</h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{summary.records} registros · Total: ${fmt(summary.amount)}</p>
+                        </div>
                     </div>
-                    <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                    <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                         <Plus size={15} /> Nuevo Extra
                     </button>
                 </div>
@@ -90,11 +96,39 @@ export default function Index({ auth, items, employees, filters, summary }) {
                     </div>
                     <input type="date" value={from} onChange={e => setFrom(e.target.value)} className={`${inputCls} w-36`} />
                     <input type="date" value={to} onChange={e => setTo(e.target.value)} className={`${inputCls} w-36`} />
-                    <button onClick={applyFilters} className="px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>Filtrar</button>
-                    <button onClick={clearFilters} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
+                    <button onClick={applyFilters} className="px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white whitespace-nowrap shrink-0" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>Filtrar</button>
+                    <button onClick={clearFilters} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
                 </div>
 
-                <div className={`${card} overflow-hidden`}>
+                {/* Mobile cards */}
+                <div className="sm:hidden flex flex-col gap-3">
+                    {items.data.length === 0 ? (
+                        <div className={`rounded-2xl border p-10 text-center text-sm ${isDark ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-400'}`}>Sin registros</div>
+                    ) : items.data.map(item => (
+                        <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                            <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                            <div className="p-4">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <div className="min-w-0 flex-1">
+                                        <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{item.employee?.user?.name ?? '—'}</p>
+                                        <p className={`text-xs mt-0.5 truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.concept}</p>
+                                    </div>
+                                    <p className={`font-extrabold text-base shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>+${fmt(item.amount)}</p>
+                                </div>
+                                <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                    <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{fmtDate(item.date)}</span>
+                                    <div className="flex gap-1">
+                                        <button onClick={() => openEdit(item)} className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Pencil size={12} /></button>
+                                        <button onClick={() => handleDelete(item.id)} className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-400 hover:bg-red-100'}`}><Trash2 size={12} /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Desktop table */}
+                <div className={`hidden sm:block ${card} overflow-hidden`}>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
@@ -136,8 +170,8 @@ export default function Index({ auth, items, employees, filters, summary }) {
                     </div>
                     <div><label className={labelCls}>Concepto *</label><input type="text" value={form.concept} onChange={e => setForm(f => ({ ...f, concept: e.target.value }))} className={inputCls} placeholder="Premio, Bono..." required /></div>
                     <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setModal(false)} className={`px-4 py-2 rounded-xl text-sm border ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
-                        <button type="submit" disabled={processing} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}><Save size={14} /> Guardar</button>
+                        <button type="button" onClick={() => setModal(false)} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
+                        <button type="submit" disabled={processing} className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}><Save size={14} /> Guardar</button>
                     </div>
                 </form>
             </Modal>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Search, Plus, Edit, Trash2, Calendar, X, Check, WalletCards } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Calendar, X, Check, WalletCards, BadgeMinus, BadgePlus } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -98,7 +98,7 @@ export default function AdjustmentIndex({
     const confirmDialog = useConfirm();
     const data = items?.data || [];
     const today = new Date().toISOString().split('T')[0];
-    const { routeBase, pageTitle, title, subtitle, createLabel, emptyTitle, emptyText, amountLabel, isDiscount } = config;
+    const { routeBase, pageTitle, title, subtitle, createLabel, emptyTitle, emptyText, amountLabel, isDiscount, icon: HeaderIcon } = config;
 
     const [search, setSearch] = useState(filters?.search || '');
     const [collaboratorFilter, setCollaboratorFilter] = useState(filters?.collaborator_id || '');
@@ -182,9 +182,17 @@ export default function AdjustmentIndex({
 
             <div className="flex flex-col gap-6 font-sans">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{title}</h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{subtitle}</p>
+                    <div className="flex items-center gap-3">
+                        {HeaderIcon && (
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                                <HeaderIcon size={20} className="text-white" />
+                            </div>
+                        )}
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{title}</h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{subtitle}</p>
+                        </div>
                     </div>
                     {canManage && (
                         <Button
@@ -198,7 +206,7 @@ export default function AdjustmentIndex({
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[
                         { label: isDiscount ? 'Descuentos' : 'Extras', value: summary?.records ?? 0 },
                         { label: 'Colaboradores', value: summary?.collaborators ?? 0 },
@@ -242,8 +250,8 @@ export default function AdjustmentIndex({
                         placeholder="Todos los colaboradores"
                         options={collaborators.map((collaborator) => ({ value: String(collaborator.id), label: collaborator.name }))}
                     />
-                    <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-slate-400" />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Calendar size={16} className="text-slate-400 shrink-0" />
                         <input type="date" className={inputClass} value={from} onChange={(event) => setFrom(event.target.value)} title="Desde" />
                         <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>—</span>
                         <input type="date" className={inputClass} value={to} onChange={(event) => setTo(event.target.value)} title="Hasta" />
@@ -324,10 +332,10 @@ export default function AdjustmentIndex({
                     <form onSubmit={submitCreate}>
                         <AdjustmentForm form={createForm} collaborators={collaborators} isDark={isDark} isDiscount={isDiscount} />
                         <div className="flex gap-3 mt-6">
-                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 Cancelar
                             </button>
-                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                                 <Check size={14} className="inline mr-1" />
                                 Guardar
                             </button>
@@ -338,16 +346,16 @@ export default function AdjustmentIndex({
 
             {editItem && canManage && (
                 <Modal title={`Editar ${isDiscount ? 'descuento' : 'extra'}`} onClose={() => setEditItem(null)}>
-                    <div className={`mb-4 px-3 py-2 rounded-xl text-sm font-semibold ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                    <div className={`mb-4 px-3 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
                         {editItem.collaborator?.name}
                     </div>
                     <form onSubmit={submitEdit}>
                         <AdjustmentForm form={editForm} collaborators={collaborators} isEdit isDark={isDark} isDiscount={isDiscount} />
                         <div className="flex gap-3 mt-6">
-                            <button type="button" onClick={() => setEditItem(null)} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <button type="button" onClick={() => setEditItem(null)} className={`flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 Cancelar
                             </button>
-                            <button type="submit" disabled={editForm.processing} className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                            <button type="submit" disabled={editForm.processing} className="flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                                 <Check size={14} className="inline mr-1" />
                                 Actualizar
                             </button>

@@ -12,6 +12,16 @@ Route::middleware('permission:inventory.view')->group(function () {
     Route::get('stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index');
     Route::get('warehouses', [WarehouseController::class, 'index'])->name('warehouses.index');
     Route::get('lab-withdrawals', [LabWithdrawalController::class, 'index'])->name('lab-withdrawals.index');
+});
+
+// ── Retiros de insumos ────────────────────────────────────────────────────────
+// create/store DEBEN ir antes del wildcard {labWithdrawal}
+Route::middleware('permission:inventory.create')->group(function () {
+    Route::get('lab-withdrawals/create', [LabWithdrawalController::class, 'create'])->name('lab-withdrawals.create');
+    Route::post('lab-withdrawals', [LabWithdrawalController::class, 'store'])->name('lab-withdrawals.store');
+});
+
+Route::middleware('permission:inventory.view')->group(function () {
     Route::get('lab-withdrawals/{labWithdrawal}', [LabWithdrawalController::class, 'show'])->name('lab-withdrawals.show');
 });
 
@@ -20,13 +30,6 @@ Route::middleware('permission:inventory.edit')->group(function () {
     Route::post('warehouses', [WarehouseController::class, 'store'])->name('warehouses.store');
     Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('warehouses.update');
     Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->name('warehouses.destroy');
-});
-
-// ── Retiros de insumos ────────────────────────────────────────────────────────
-// create DEBE ir antes del wildcard {labWithdrawal}
-Route::middleware('permission:inventory.create')->group(function () {
-    Route::get('lab-withdrawals/create', [LabWithdrawalController::class, 'create'])->name('lab-withdrawals.create');
-    Route::post('lab-withdrawals', [LabWithdrawalController::class, 'store'])->name('lab-withdrawals.store');
 });
 
 Route::delete('lab-withdrawals/{labWithdrawal}', [LabWithdrawalController::class, 'destroy'])

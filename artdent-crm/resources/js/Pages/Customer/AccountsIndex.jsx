@@ -98,10 +98,16 @@ export default function AccountsIndex({ auth, customers, filters, kpis, paymentM
 
             <div className="space-y-6 max-w-6xl">
                 {/* Header */}
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${text}`}>Cuentas Corrientes</h1>
-                        <p className={`text-sm mt-0.5 ${muted}`}>Estado financiero de clientes</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <CreditCard size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${text}`}>Cuentas Corrientes</h1>
+                            <p className={`text-sm mt-0.5 ${muted}`}>Estado financiero de clientes</p>
+                        </div>
                     </div>
                     <Link href={route('customers.index')}
                         className={`text-sm font-semibold px-3 py-2 rounded-xl border transition-colors ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>

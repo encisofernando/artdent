@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Search, Plus, Printer, Trash2, FileText, X, Check, CheckCircle } from 'lucide-react';
+import { Search, Plus, Printer, Trash2, FileText, X, Check, CheckCircle, Receipt } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -108,9 +108,15 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
 
             <div className="flex flex-col gap-6 font-sans">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Recibos</h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Recibos de sueldo de colaboradores</p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Receipt size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Recibos</h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Recibos de sueldo de colaboradores</p>
+                        </div>
                     </div>
                     {canManage && (
                         <Button
@@ -124,7 +130,7 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     {[
                         { label: 'Recibos', value: summary?.receipts ?? 0 },
                         { label: 'Neto total', value: `$${fmt(summary?.net)}` },
@@ -178,86 +184,141 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                     )}
                 </div>
 
-                <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    {data.length === 0 ? (
+                {data.length === 0 ? (
+                    <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className="flex flex-col items-center justify-center p-12 text-center">
                             <FileText size={40} className={`mb-4 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
                             <h3 className={`text-lg font-bold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Sin recibos</h3>
                             <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No hay recibos generados aún</p>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className={`border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                                    <tr>
-                                        {['Colaborador', 'Período', 'Días', 'Horas', 'Bruto', 'Extras', 'Descuentos', 'Neto', 'Estado', ...(showActions ? [''] : [])].map(h => (
-                                            <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                    {data.map(item => (
-                                        <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
-                                            <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {item.collaborator?.name || '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                <div>{fmtDate(item.period_from)}</div>
-                                                <div className={isDark ? 'text-slate-500' : 'text-slate-400'}>{fmtDate(item.period_to)}</div>
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                {item.days_worked ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {item.hours != null ? `${item.hours}h` : '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                ${fmt(item.gross)}
-                                            </td>
-                                            <td className={`px-4 py-3 ${item.extras_total > 0 ? 'text-green-500' : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>
-                                                {item.extras_total > 0 ? `+$${fmt(item.extras_total)}` : '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 ${item.discounts_total > 0 ? 'text-red-400' : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>
-                                                {item.discounts_total > 0 ? `-$${fmt(item.discounts_total)}` : '—'}
-                                            </td>
-                                            <td className="px-4 py-3 font-extrabold text-base" style={{ color: B.blue }}>
+                    </div>
+                ) : (
+                    <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3">
+                            {data.map(item => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                    {item.collaborator?.name || '—'}
+                                                </p>
+                                                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {fmtDate(item.period_from)} — {fmtDate(item.period_to)}
+                                                </p>
+                                            </div>
+                                            <p className="font-extrabold text-base shrink-0" style={{ color: B.blue }}>
                                                 ${fmt(item.net)}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${STATUS_COLORS[item.status] || 'bg-slate-500/10 text-slate-400'}`}>
-                                                    {STATUS_LABELS[item.status] || item.status}
-                                                </span>
-                                            </td>
+                                            </p>
+                                        </div>
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${STATUS_COLORS[item.status] || 'bg-slate-500/10 text-slate-400'}`}>
+                                                {STATUS_LABELS[item.status] || item.status}
+                                            </span>
                                             {showActions && (
-                                                <td className="px-4 py-3">
-                                                    <div className="flex gap-2 justify-end">
-                                                        {canManage && (
-                                                            <Link href={route('collaborator-receipts.show', item.id)}>
-                                                                <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`} title="Ver / Imprimir">
-                                                                    <Printer size={14} />
-                                                                </button>
-                                                            </Link>
-                                                        )}
-                                                        {canManage && item.status === 'draft' && (
-                                                            <button onClick={() => markPaid(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-green-900/20 text-green-400 hover:bg-green-900/40' : 'bg-green-50 text-green-600 hover:bg-green-100'}`} title="Marcar Pagado">
-                                                                <CheckCircle size={14} />
+                                                <div className="flex gap-2">
+                                                    {canManage && (
+                                                        <Link href={route('collaborator-receipts.show', item.id)}>
+                                                            <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`} title="Ver / Imprimir">
+                                                                <Printer size={14} />
                                                             </button>
-                                                        )}
-                                                        {canDelete && (
-                                                            <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`} title="Eliminar">
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
+                                                        </Link>
+                                                    )}
+                                                    {canManage && item.status === 'draft' && (
+                                                        <button onClick={() => markPaid(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-green-900/20 text-green-400 hover:bg-green-900/40' : 'bg-green-50 text-green-600 hover:bg-green-100'}`} title="Marcar Pagado">
+                                                            <CheckCircle size={14} />
+                                                        </button>
+                                                    )}
+                                                    {canDelete && (
+                                                        <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`} title="Eliminar">
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    )}
-                </div>
+
+                        {/* Desktop table */}
+                        <div className={`hidden sm:block rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className={`border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                        <tr>
+                                            {['Colaborador', 'Período', 'Días', 'Horas', 'Bruto', 'Extras', 'Descuentos', 'Neto', 'Estado', ...(showActions ? [''] : [])].map(h => (
+                                                <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                        {data.map(item => (
+                                            <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
+                                                <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.collaborator?.name || '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    <div>{fmtDate(item.period_from)}</div>
+                                                    <div className={isDark ? 'text-slate-500' : 'text-slate-400'}>{fmtDate(item.period_to)}</div>
+                                                </td>
+                                                <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                    {item.days_worked ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.hours != null ? `${item.hours}h` : '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                    ${fmt(item.gross)}
+                                                </td>
+                                                <td className={`px-4 py-3 ${item.extras_total > 0 ? 'text-green-500' : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>
+                                                    {item.extras_total > 0 ? `+$${fmt(item.extras_total)}` : '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 ${item.discounts_total > 0 ? 'text-red-400' : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>
+                                                    {item.discounts_total > 0 ? `-$${fmt(item.discounts_total)}` : '—'}
+                                                </td>
+                                                <td className="px-4 py-3 font-extrabold text-base" style={{ color: B.blue }}>
+                                                    ${fmt(item.net)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${STATUS_COLORS[item.status] || 'bg-slate-500/10 text-slate-400'}`}>
+                                                        {STATUS_LABELS[item.status] || item.status}
+                                                    </span>
+                                                </td>
+                                                {showActions && (
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex gap-2 justify-end">
+                                                            {canManage && (
+                                                                <Link href={route('collaborator-receipts.show', item.id)}>
+                                                                    <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`} title="Ver / Imprimir">
+                                                                        <Printer size={14} />
+                                                                    </button>
+                                                                </Link>
+                                                            )}
+                                                            {canManage && item.status === 'draft' && (
+                                                                <button onClick={() => markPaid(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-green-900/20 text-green-400 hover:bg-green-900/40' : 'bg-green-50 text-green-600 hover:bg-green-100'}`} title="Marcar Pagado">
+                                                                    <CheckCircle size={14} />
+                                                                </button>
+                                                            )}
+                                                            {canDelete && (
+                                                                <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`} title="Eliminar">
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 <Pagination data={items} />
             </div>
@@ -297,10 +358,10 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                             </p>
                         </div>
                         <div className="flex gap-3 mt-6">
-                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 Cancelar
                             </button>
-                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                                 <Check size={14} className="inline mr-1" />
                                 Generar
                             </button>

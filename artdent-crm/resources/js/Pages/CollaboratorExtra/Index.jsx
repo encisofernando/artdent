@@ -1,5 +1,6 @@
 import React from 'react';
 import AdjustmentIndex from '@/Pages/CollaboratorCompensation/AdjustmentIndex';
+import { BadgePlus } from 'lucide-react';
 
 export default function Index(props) {
     return (
@@ -15,6 +16,7 @@ export default function Index(props) {
                 emptyText: 'No hay extras registrados con los filtros aplicados.',
                 amountLabel: 'Total adicional',
                 isDiscount: false,
+                icon: BadgePlus,
             }}
         />
     );

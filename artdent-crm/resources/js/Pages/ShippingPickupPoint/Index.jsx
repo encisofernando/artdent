@@ -39,6 +39,8 @@ export default function Index({ auth, items, filters }) {
         });
     };
 
+    const B = { blue: '#397B9C', teal: '#49949C' };
+
     const card = `rounded-2xl border shadow-sm transition-colors ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`;
     const inp = `rounded-xl border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none
         ${isDark ? 'bg-slate-800 border-slate-700 text-white focus:border-teal-500 focus:ring-teal-500/20 placeholder-slate-500'
@@ -50,13 +52,19 @@ export default function Index({ auth, items, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Puntos de Retiro
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Gestioná los puntos de entrega disponibles para los clientes
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <MapPin size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Puntos de Retiro
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Gestioná los puntos de entrega disponibles para los clientes
+                            </p>
+                        </div>
                     </div>
                     <Link href={route('shipping-pickup-points.create')}>
                         <Button className="gap-2 bg-teal-600 hover:bg-teal-700 text-white">
@@ -88,22 +96,54 @@ export default function Index({ auth, items, filters }) {
                 </div>
 
                 {/* Table */}
-                <div className={`${card} overflow-hidden`}>
-                    {data.length === 0 ? (
-                        <div className="p-12 text-center">
-                            <MapPin size={40} className={`mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                            <p className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>No hay puntos de retiro</p>
-                            <p className={`text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Creá el primer punto de retiro.</p>
-                        </div>
-                    ) : (
+                {data.length === 0 ? (
+                    <div className={`${card} p-12 text-center`}>
+                        <MapPin size={40} className={`mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                        <p className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>No hay puntos de retiro</p>
+                        <p className={`text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Creá el primer punto de retiro.</p>
+                    </div>
+                ) : (<>
+                    {/* Mobile cards */}
+                    <div className="sm:hidden flex flex-col gap-3">
+                        {data.map(item => (
+                            <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                <div style={{ height: 3, background: 'linear-gradient(90deg, #397B9C, #49949C)' }} />
+                                <div className="p-4">
+                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{item.name}</p>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.address} · {item.city}</p>
+                                        </div>
+                                        {item.is_active ? (
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}><CheckCircle2 size={10} /> Activo</span>
+                                        ) : (
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'}`}><XCircle size={10} /> Inactivo</span>
+                                        )}
+                                    </div>
+                                    <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                        <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.schedule || '—'}</span>
+                                        <div className="flex gap-1.5">
+                                            <Link href={route('shipping-pickup-points.edit', item.id)}>
+                                                <Button size="sm" variant="outline" className={`gap-1 text-xs ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}`}><Edit size={12} /> Editar</Button>
+                                            </Link>
+                                            <Button size="sm" variant="outline" className="gap-1 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20" onClick={() => handleDelete(item.id)}><Trash2 size={12} /></Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className={`hidden sm:block ${card} overflow-hidden`}>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
                                         <th className="px-4 py-3 text-left">Nombre</th>
                                         <th className="px-4 py-3 text-left">Dirección</th>
-                                        <th className="px-4 py-3 text-left hidden md:table-cell">Horario</th>
-                                        <th className="px-4 py-3 text-left hidden md:table-cell">Coordenadas</th>
+                                        <th className="px-4 py-3 text-left">Horario</th>
+                                        <th className="px-4 py-3 text-left">Coordenadas</th>
                                         <th className="px-4 py-3 text-center">Estado</th>
                                         <th className="px-4 py-3 text-right">Acciones</th>
                                     </tr>
@@ -121,24 +161,15 @@ export default function Index({ auth, items, filters }) {
                                                 <div>{item.address}</div>
                                                 <div className="text-xs text-slate-500">{item.city}, {item.province}</div>
                                             </td>
-                                            <td className={`px-4 py-3 hidden md:table-cell ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                                {item.schedule || '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 hidden md:table-cell text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {item.latitude && item.longitude
-                                                    ? `${item.latitude}, ${item.longitude}`
-                                                    : <span className="text-slate-400">Sin coordenadas</span>
-                                                }
+                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{item.schedule || '—'}</td>
+                                            <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : <span className="text-slate-400">Sin coordenadas</span>}
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 {item.is_active ? (
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                        <CheckCircle2 size={10} /> Activo
-                                                    </span>
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}><CheckCircle2 size={10} /> Activo</span>
                                                 ) : (
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'}`}>
-                                                        <XCircle size={10} /> Inactivo
-                                                    </span>
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'}`}><XCircle size={10} /> Inactivo</span>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-right">
@@ -148,12 +179,7 @@ export default function Index({ auth, items, filters }) {
                                                             <Edit size={13} /> Editar
                                                         </Button>
                                                     </Link>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="gap-1 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                        onClick={() => handleDelete(item.id)}
-                                                    >
+                                                    <Button size="sm" variant="outline" className="gap-1 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20" onClick={() => handleDelete(item.id)}>
                                                         <Trash2 size={13} />
                                                     </Button>
                                                 </div>
@@ -163,10 +189,10 @@ export default function Index({ auth, items, filters }) {
                                 </tbody>
                             </table>
                         </div>
-                    )}
+                    </div>
+                </>)}
 
-                    <Pagination data={items} />
-                </div>
+                <Pagination data={items} />
             </div>
         </AuthenticatedLayout>
     );

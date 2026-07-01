@@ -170,9 +170,15 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
 
             <div className="flex flex-col gap-6 font-sans">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Asistencias</h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Registro de fichajes de colaboradores</p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Clock size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Asistencias</h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Registro de fichajes de colaboradores</p>
+                        </div>
                     </div>
                     {canCreate && (
                         <Button
@@ -186,7 +192,7 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     {[
                         { label: 'Registros', value: summary?.records ?? 0 },
                         { label: 'Colaboradores', value: summary?.collaborators ?? 0 },
@@ -217,8 +223,8 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                             placeholder="Todos los colaboradores"
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-slate-400" />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Calendar size={16} className="text-slate-400 shrink-0" />
                         <input type="date" className={inputClass} value={from} onChange={e => setFrom(e.target.value)} title="Desde" />
                         <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>—</span>
                         <input type="date" className={inputClass} value={to} onChange={e => setTo(e.target.value)} title="Hasta" />
@@ -235,72 +241,124 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                     )}
                 </div>
 
-                <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    {data.length === 0 ? (
+                {data.length === 0 ? (
+                    <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className="flex flex-col items-center justify-center p-12 text-center">
                             <Clock size={40} className={`mb-4 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
                             <h3 className={`text-lg font-bold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Sin registros</h3>
                             <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No hay asistencias con los filtros aplicados</p>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className={`border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                                    <tr>
-                                        {['Colaborador', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Importe', 'Método', ...(showActions ? [''] : [])].map(h => (
-                                            <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                    {data.map(item => (
-                                        <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
-                                            <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {item.collaborator?.name || '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                {fmtDate(item.work_date)}
-                                            </td>
-                                            <td className={`px-4 py-3 font-mono ${isDark ? 'text-green-400' : 'text-green-700'}`}>
+                    </div>
+                ) : (
+                    <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3">
+                            {data.map(item => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                    {item.collaborator?.name || '—'}
+                                                </p>
+                                                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {fmtDate(item.work_date)}
+                                                </p>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-lg text-xs font-bold shrink-0 ${METHOD_COLORS[item.method] || 'bg-slate-500/10 text-slate-400'}`}>
+                                                {METHOD_LABELS[item.method] || item.method || '—'}
+                                            </span>
+                                        </div>
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <span className={`text-sm font-mono ${isDark ? 'text-green-400' : 'text-green-700'}`}>
                                                 {(item.time_in || '').substring(0, 5) || '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 font-mono ${item.time_out ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-slate-600' : 'text-slate-300')}`}>
-                                                {(item.time_out || '').substring(0, 5) || '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {item.hours != null ? `${item.hours}h` : '—'}
-                                            </td>
-                                            <td className="px-4 py-3 font-bold" style={{ color: B.blue }}>
-                                                {item.amount != null ? `$${fmt(item.amount)}` : '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${METHOD_COLORS[item.method] || 'bg-slate-500/10 text-slate-400'}`}>
-                                                    {METHOD_LABELS[item.method] || item.method || '—'}
+                                                <span className={`mx-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→</span>
+                                                <span className={item.time_out ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-slate-600' : 'text-slate-400')}>
+                                                    {(item.time_out || '').substring(0, 5) || '—'}
                                                 </span>
-                                            </td>
+                                            </span>
                                             {showActions && (
-                                                <td className="px-4 py-3">
-                                                    <div className="flex gap-2 justify-end">
-                                                        {canEdit && (
-                                                            <button onClick={() => openEdit(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}>
-                                                                <Edit size={14} />
-                                                            </button>
-                                                        )}
-                                                        {canDelete && (
-                                                            <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}>
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
+                                                <div className="flex gap-2">
+                                                    {canEdit && (
+                                                        <button onClick={() => openEdit(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}>
+                                                            <Edit size={14} />
+                                                        </button>
+                                                    )}
+                                                    {canDelete && (
+                                                        <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}>
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    )}
-                </div>
+
+                        {/* Desktop table */}
+                        <div className={`hidden sm:block rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className={`border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                        <tr>
+                                            {['Colaborador', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Importe', 'Método', ...(showActions ? [''] : [])].map(h => (
+                                                <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                        {data.map(item => (
+                                            <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
+                                                <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.collaborator?.name || '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                    {fmtDate(item.work_date)}
+                                                </td>
+                                                <td className={`px-4 py-3 font-mono ${isDark ? 'text-green-400' : 'text-green-700'}`}>
+                                                    {(item.time_in || '').substring(0, 5) || '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 font-mono ${item.time_out ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-slate-600' : 'text-slate-300')}`}>
+                                                    {(item.time_out || '').substring(0, 5) || '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.hours != null ? `${item.hours}h` : '—'}
+                                                </td>
+                                                <td className="px-4 py-3 font-bold" style={{ color: B.blue }}>
+                                                    {item.amount != null ? `$${fmt(item.amount)}` : '—'}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${METHOD_COLORS[item.method] || 'bg-slate-500/10 text-slate-400'}`}>
+                                                        {METHOD_LABELS[item.method] || item.method || '—'}
+                                                    </span>
+                                                </td>
+                                                {showActions && (
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex gap-2 justify-end">
+                                                            {canEdit && (
+                                                                <button onClick={() => openEdit(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}>
+                                                                    <Edit size={14} />
+                                                                </button>
+                                                            )}
+                                                            {canDelete && (
+                                                                <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}>
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 <Pagination data={items} />
             </div>
@@ -310,10 +368,10 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                     <form onSubmit={submitCreate}>
                         <AttendanceForm form={createForm} collaborators={collaborators} isDark={isDark} />
                         <div className="flex gap-3 mt-6">
-                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 Cancelar
                             </button>
-                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                                 <Check size={14} className="inline mr-1" />
                                 Guardar
                             </button>
@@ -324,16 +382,16 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
 
             {editItem && canEdit && (
                 <Modal title="Editar Asistencia" onClose={() => setEditItem(null)}>
-                    <div className={`mb-4 px-3 py-2 rounded-xl text-sm font-semibold ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                    <div className={`mb-4 px-3 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
                         {editItem.collaborator?.name}
                     </div>
                     <form onSubmit={submitEdit}>
                         <AttendanceForm form={editForm} collaborators={collaborators} isEdit isDark={isDark} />
                         <div className="flex gap-3 mt-6">
-                            <button type="button" onClick={() => setEditItem(null)} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <button type="button" onClick={() => setEditItem(null)} className={`flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 Cancelar
                             </button>
-                            <button type="submit" disabled={editForm.processing} className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                            <button type="submit" disabled={editForm.processing} className="flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                                 <Check size={14} className="inline mr-1" />
                                 Actualizar
                             </button>

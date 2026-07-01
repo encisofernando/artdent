@@ -80,13 +80,21 @@ export default function Index({ auth, reviews, counts, status }) {
             <div className="flex flex-col gap-6 font-sans">
 
                 {/* Header */}
-                <div>
-                    <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                        Reseñas
-                    </h1>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Moderá las valoraciones de clientes del e-commerce
-                    </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Star size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Reseñas
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Moderá las valoraciones de clientes del e-commerce
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Stats */}

@@ -117,10 +117,10 @@ export default function Index({ auth, items, warehouses, types, filters }) {
                             <DatePicker value={dateTo} onChange={setDateTo} className={inputCls} D={D} placeholder="Hasta" />
                         </div>
                     </div>
-                    <div className="flex gap-2 mt-3">
-                        <button onClick={applyFilters} className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+                    <div className="flex flex-wrap gap-2 mt-3">
+                        <button onClick={applyFilters} className="px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>Filtrar</button>
-                        <button onClick={clearFilters} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
+                        <button onClick={clearFilters} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
                         <span className={`ml-auto text-xs self-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                             {items.total} movimientos totales
                         </span>
@@ -135,58 +135,101 @@ export default function Index({ auth, items, warehouses, types, filters }) {
                             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No hay movimientos en el período seleccionado</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
-                                        {['Fecha', 'Tipo', 'Producto', 'Variante', 'Depósito', 'Cantidad', 'Stock Ant.', 'Stock Post.', 'Usuario', 'Nota'].map(h => (
-                                            <th key={h} className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                    {items.data.map(item => {
-                                        const isOut = ['out', 'transfer_out', 'lab_withdrawal', 'purchase_reversal'].includes(item.type);
-                                        return (
-                                            <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
-                                                <td className={`px-3 py-2.5 text-xs whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {new Date(item.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                </td>
-                                                <td className="px-3 py-2.5">
-                                                    <TypeBadge type={item.type} isDark={isDark} />
-                                                </td>
-                                                <td className={`px-3 py-2.5 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                    <div>{item.product?.name ?? '—'}</div>
-                                                    {item.product?.sku && <div className={`text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.product.sku}</div>}
-                                                </td>
-                                                <td className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {item.product_variant ? (item.product_variant.sku || item.product_variant.barcode || `#${item.product_variant.id}`) : '—'}
-                                                </td>
-                                                <td className={`px-3 py-2.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                    {item.warehouse?.name ?? '—'}
-                                                </td>
-                                                <td className={`px-3 py-2.5 font-bold ${isOut ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
-                                                    {isOut ? '−' : '+'}{fmt(item.quantity)}
-                                                </td>
-                                                <td className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                    {fmt(item.stock_before)}
-                                                </td>
-                                                <td className={`px-3 py-2.5 text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                    {fmt(item.stock_after)}
-                                                </td>
-                                                <td className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {item.user?.name ?? '—'}
-                                                </td>
-                                                <td className={`px-3 py-2.5 text-xs max-w-40 truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
-                                                    title={item.note ?? ''}>
-                                                    {item.note ?? '—'}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        <>
+                            {/* Mobile cards */}
+                            <div className="sm:hidden flex flex-col gap-3 p-3">
+                                {items.data.map(item => {
+                                    const isOut = ['out', 'transfer_out', 'lab_withdrawal', 'purchase_reversal'].includes(item.type);
+                                    return (
+                                        <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                            <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                            <div className="p-4">
+                                                <div className="flex items-start justify-between gap-3 mb-2">
+                                                    <div className="min-w-0">
+                                                        <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                            {item.product?.name ?? '—'}
+                                                        </p>
+                                                        <div className="mt-1">
+                                                            <TypeBadge type={item.type} isDark={isDark} />
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-xl font-extrabold shrink-0 ${isOut ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
+                                                        {isOut ? '−' : '+'}{fmt(item.quantity)}
+                                                    </span>
+                                                </div>
+                                                <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                                    <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {new Date(item.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                        {item.warehouse?.name ? ` · ${item.warehouse.name}` : ''}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Desktop table */}
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Fecha</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tipo</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Producto</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Variante</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Depósito</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cantidad</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Stock Ant.</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Stock Post.</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Usuario</th>
+                                            <th className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Nota</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                        {items.data.map(item => {
+                                            const isOut = ['out', 'transfer_out', 'lab_withdrawal', 'purchase_reversal'].includes(item.type);
+                                            return (
+                                                <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
+                                                    <td className={`px-3 py-2.5 text-xs whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {new Date(item.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                    </td>
+                                                    <td className="px-3 py-2.5">
+                                                        <TypeBadge type={item.type} isDark={isDark} />
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                        <div>{item.product?.name ?? '—'}</div>
+                                                        {item.product?.sku && <div className={`text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.product.sku}</div>}
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {item.product_variant ? (item.product_variant.sku || item.product_variant.barcode || `#${item.product_variant.id}`) : '—'}
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                        {item.warehouse?.name ?? '—'}
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 font-bold ${isOut ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
+                                                        {isOut ? '−' : '+'}{fmt(item.quantity)}
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                        {fmt(item.stock_before)}
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                        {fmt(item.stock_after)}
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {item.user?.name ?? '—'}
+                                                    </td>
+                                                    <td className={`px-3 py-2.5 text-xs max-w-40 truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                                        title={item.note ?? ''}>
+                                                        {item.note ?? '—'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
 
                     <Pagination data={items} />

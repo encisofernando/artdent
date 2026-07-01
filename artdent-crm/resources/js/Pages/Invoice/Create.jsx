@@ -517,7 +517,7 @@ export default function Create({ auth, products = [], customers = [] }) {
                                 <p className="text-[12.5px]" style={{ color: D.muted }}>No se encontraron productos.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-[10px]">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-[10px]">
                                 {filtered.map(product => (
                                     <ProductCard
                                         key={product.id}

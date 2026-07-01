@@ -47,7 +47,7 @@ export default function Show({ auth, withdrawal }) {
 
             <div className="flex flex-col gap-6 font-sans max-w-4xl mx-auto">
                 {/* Header — no-print */}
-                <div className="no-print flex items-center justify-between gap-3">
+                <div className="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <Link href={route('lab-withdrawals.index')}>
                             <button className={`w-9 h-9 rounded-xl flex items-center justify-center border
@@ -66,13 +66,13 @@ export default function Show({ auth, withdrawal }) {
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={() => window.print()}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md"
+                            className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white shadow-md"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Printer size={15} /> Imprimir Ticket
                         </button>
                         {withdrawal.status === 'confirmed' && (
                             <button onClick={handleCancel}
-                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border
+                                className={`inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-medium border
                                     ${isDark ? 'bg-red-900/20 border-red-800/40 text-red-400 hover:bg-red-900/30' : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'}`}>
                                 <Trash2 size={15} /> Cancelar Retiro
                             </button>

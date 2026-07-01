@@ -9,6 +9,8 @@ import {
     Eye, EyeOff, Save, CheckCircle, AlertCircle,
 } from 'lucide-react';
 
+const B = { blue: '#397B9C', teal: '#49949C' };
+
 function NaveIcon({ className = 'h-5 w-5' }) {
     return (
         <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
@@ -381,13 +383,22 @@ export default function EcommercePaymentIndex({ auth, configs, pickupPoints }) {
             <Head title="Métodos de Pago" />
 
             <div className="flex flex-col gap-6 font-sans max-w-4xl mx-auto">
-                <div>
-                    <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                        Métodos de Pago
-                    </h1>
-                    <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Configurá los métodos de pago habilitados en el checkout del e-commerce.
-                    </p>
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <CreditCard size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Métodos de Pago
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Configurá los métodos de pago habilitados en el checkout del e-commerce.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="space-y-4">

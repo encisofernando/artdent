@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Trash2, CreditCard } from 'lucide-react';
+import { Search, Plus, Trash2, CreditCard, Banknote } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -48,14 +48,20 @@ export default function Index({ auth, items, vendors, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Pagos a Proveedores
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Registro de pagos y cancelaciones de deuda
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <Banknote size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Pagos a Proveedores
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Registro de pagos y cancelaciones de deuda
+                            </p>
+                        </div>
                     </div>
                     <Link href={route('proveedores.pagos.create')}>
                         <Button
@@ -116,57 +122,102 @@ export default function Index({ auth, items, vendors, filters }) {
                         </Link>
                     </div>
                 ) : (
-                    <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}`}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                                        <th className="px-4 py-3 text-left">Fecha</th>
-                                        <th className="px-4 py-3 text-left">Proveedor</th>
-                                        <th className="px-4 py-3 text-left">Método</th>
-                                        <th className="px-4 py-3 text-left">Referencia</th>
-                                        <th className="px-4 py-3 text-left">Usuario</th>
-                                        <th className="px-4 py-3 text-right">Monto</th>
-                                        <th className="px-4 py-3 text-center">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {data.map(item => (
-                                        <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
-                                            <td className={`px-4 py-3 whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                {fmtDate(item.payment_date)}
-                                            </td>
-                                            <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                {item.vendor?.name ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {item.payment_method?.name ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 font-mono text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {item.reference_no || '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {item.user?.name ?? '—'}
-                                            </td>
-                                            <td className={`px-4 py-3 text-right font-bold text-emerald-500`}>
+                    <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3">
+                            {data.map(item => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                            <div className="min-w-0">
+                                                <p className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.vendor?.name ?? '—'}
+                                                </p>
+                                                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {fmtDate(item.payment_date)}
+                                                </p>
+                                            </div>
+                                            <span className="text-lg font-extrabold shrink-0 text-emerald-500">
                                                 {fmt(item.amount)}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex justify-center">
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-400 hover:bg-red-100'}`}
-                                                    >
-                                                        <Trash2 size={13} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            </span>
+                                        </div>
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                                    {item.payment_method?.name ?? '—'}
+                                                </span>
+                                                {item.reference_no && (
+                                                    <span className={`text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                        Ref: {item.reference_no}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleDelete(item.id)}
+                                                className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-400 hover:bg-red-100'}`}
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+
+                        {/* Desktop table */}
+                        <div className={`hidden sm:block rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}`}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                                            <th className="px-4 py-3 text-left">Fecha</th>
+                                            <th className="px-4 py-3 text-left">Proveedor</th>
+                                            <th className="px-4 py-3 text-left">Método</th>
+                                            <th className="px-4 py-3 text-left">Referencia</th>
+                                            <th className="px-4 py-3 text-left">Usuario</th>
+                                            <th className="px-4 py-3 text-right">Monto</th>
+                                            <th className="px-4 py-3 text-center">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {data.map(item => (
+                                            <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                                                <td className={`px-4 py-3 whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    {fmtDate(item.payment_date)}
+                                                </td>
+                                                <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                    {item.vendor?.name ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.payment_method?.name ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 font-mono text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.reference_no || '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.user?.name ?? '—'}
+                                                </td>
+                                                <td className={`px-4 py-3 text-right font-bold text-emerald-500`}>
+                                                    {fmt(item.amount)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex justify-center">
+                                                        <button
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-400 hover:bg-red-100'}`}
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
                 )}
 
                 <Pagination data={items} />

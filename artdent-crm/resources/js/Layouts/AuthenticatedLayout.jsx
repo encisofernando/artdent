@@ -70,7 +70,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
           )}
 
           {/* Contenido de la página */}
-          <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 w-full max-w-[1600px] mx-auto [&>*]:mx-auto">
+          <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-20 lg:pb-8 w-full max-w-[1600px] mx-auto">
             {children}
           </div>
         </main>

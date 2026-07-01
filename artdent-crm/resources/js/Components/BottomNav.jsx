@@ -20,9 +20,9 @@ export default function BottomNav({ onMenuOpen }) {
         const active = isActive(path);
         const color = active ? activeColor : muted;
         return (
-            <Link href={path} className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 select-none">
+            <Link href={path} className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 select-none">
                 <Icon size={22} style={{ color }} strokeWidth={active ? 2.5 : 2} />
-                <span className="text-[10px] font-semibold" style={{ color }}>{label}</span>
+                <span className="text-[11px] font-semibold" style={{ color }}>{label}</span>
             </Link>
         );
     };
@@ -65,7 +65,7 @@ export default function BottomNav({ onMenuOpen }) {
                     className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 select-none"
                 >
                     <Menu size={22} style={{ color: muted }} strokeWidth={2} />
-                    <span className="text-[10px] font-semibold" style={{ color: muted }}>Menú</span>
+                    <span className="text-[11px] font-semibold" style={{ color: muted }}>Menú</span>
                 </button>
             </div>
         </nav>

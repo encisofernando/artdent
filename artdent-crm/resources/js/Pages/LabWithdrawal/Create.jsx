@@ -99,7 +99,7 @@ export default function Create({ auth, warehouses, collaborators, products }) {
 
             <div className="flex flex-col gap-6 font-sans max-w-5xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                         <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                             Nuevo Retiro de Insumos
@@ -109,7 +109,7 @@ export default function Create({ auth, warehouses, collaborators, products }) {
                         </p>
                     </div>
                     <Link href={route('lab-withdrawals.index')}>
-                        <button className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm border font-medium
+                        <button className={`inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium
                             ${isDark ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                             <ArrowLeft size={16} /> Volver
                         </button>
@@ -300,13 +300,13 @@ export default function Create({ auth, warehouses, collaborators, products }) {
                     <div className={`rounded-2xl border p-5 shadow-sm flex justify-end gap-3 ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
                         <Link href={route('lab-withdrawals.index')}>
                             <button type="button"
-                                className={`px-4 py-2 rounded-xl text-sm border font-medium
+                                className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0
                                     ${isDark ? 'bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 Cancelar
                             </button>
                         </Link>
                         <button type="submit" disabled={processing || items.length === 0}
-                            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white shadow-md disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white shadow-md disabled:opacity-50"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Save size={16} />
                             Registrar Retiro

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Trash2, Banknote, List } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Banknote, List, CircleDollarSign } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -55,14 +55,20 @@ export default function Index({ auth, items, categories, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header Section */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Aranceles Base
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Catálogo de trabajos de laboratorio y sus precios predeterminados
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <CircleDollarSign size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Aranceles Base
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Catálogo de trabajos de laboratorio y sus precios predeterminados
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -128,57 +134,36 @@ export default function Index({ auth, items, categories, filters }) {
                         )}
                     </div>
                 ) : (
-                    <div className={`rounded-2xl border overflow-hidden shadow-sm
-                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
-                    `}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className={`text-xs uppercase font-bold
-                                    ${isDark ? 'bg-slate-800/50 text-slate-400 border-b border-slate-700/60' : 'bg-slate-50 text-slate-500 border-b border-slate-200'}
-                                `}>
-                                    <tr>
-                                        <th className="px-5 py-4">Descripción / Trabajo</th>
-                                        <th className="px-5 py-4">Categoría</th>
-                                        <th className="px-5 py-4 text-right">Precio Base</th>
-                                        <th className="px-5 py-4 text-center">Estado</th>
-                                        <th className="px-5 py-4 text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {data.map((item) => (
-                                        <tr key={item.id} className={`border-b transition-colors
-                                            ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}
-                                        `}>
-                                            <td className="px-5 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                        {item.name}
-                                                    </span>
-                                                    {item.code && (
-                                                        <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                            Cod: {item.code}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
+                    <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3">
+                            {data.map((item) => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                            <div className="min-w-0">
+                                                <p className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.name}</p>
+                                                {item.code && (
+                                                    <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cod: {item.code}</p>
+                                                )}
+                                            </div>
+                                            <span className={`text-lg font-extrabold shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                                {formatCurrency(item.price)}
+                                            </span>
+                                        </div>
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <div className="flex items-center gap-2">
                                                 {item.category ? (
-                                                    <span className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-lg w-fit
+                                                    <span className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-lg
                                                         ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}
                                                     `}>
-                                                        <List size={14} />
+                                                        <List size={12} />
                                                         {item.category}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-slate-500">-</span>
+                                                    <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Sin categoría</span>
                                                 )}
-                                            </td>
-                                            <td className={`px-5 py-4 text-right font-bold
-                                                ${isDark ? 'text-emerald-400' : 'text-emerald-700'}
-                                            `}>
-                                                {formatCurrency(item.price)}
-                                            </td>
-                                            <td className="px-5 py-4 text-center">
                                                 <span className={`px-2 py-1 text-[11px] font-bold rounded-lg
                                                     ${item.is_active
                                                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
@@ -186,31 +171,111 @@ export default function Index({ auth, items, categories, filters }) {
                                                 `}>
                                                     {item.is_active ? 'Activo' : 'Inactivo'}
                                                 </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="flex gap-2 justify-end">
-                                                    <Link href={route('tariffs.edit', item.id)}>
-                                                        <button className={`p-2 rounded-lg transition-colors
-                                                            ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
-                                                        `}>
-                                                            <Edit size={16} />
-                                                        </button>
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className={`p-2 rounded-lg transition-colors
-                                                        ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
-                                                    `}>
-                                                        <Trash2 size={16} />
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <Link href={route('tariffs.edit', item.id)}>
+                                                    <button className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
+                                                        <Edit size={15} />
                                                     </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}`}
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+
+                        {/* Desktop table */}
+                        <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-sm
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
+                        `}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className={`text-xs uppercase font-bold
+                                        ${isDark ? 'bg-slate-800/50 text-slate-400 border-b border-slate-700/60' : 'bg-slate-50 text-slate-500 border-b border-slate-200'}
+                                    `}>
+                                        <tr>
+                                            <th className="px-5 py-4">Descripción / Trabajo</th>
+                                            <th className="px-5 py-4">Categoría</th>
+                                            <th className="px-5 py-4 text-right">Precio Base</th>
+                                            <th className="px-5 py-4 text-center">Estado</th>
+                                            <th className="px-5 py-4 text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.map((item) => (
+                                            <tr key={item.id} className={`border-b transition-colors
+                                                ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}
+                                            `}>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                            {item.name}
+                                                        </span>
+                                                        {item.code && (
+                                                            <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                                Cod: {item.code}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    {item.category ? (
+                                                        <span className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-lg w-fit
+                                                            ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}
+                                                        `}>
+                                                            <List size={14} />
+                                                            {item.category}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-500">-</span>
+                                                    )}
+                                                </td>
+                                                <td className={`px-5 py-4 text-right font-bold
+                                                    ${isDark ? 'text-emerald-400' : 'text-emerald-700'}
+                                                `}>
+                                                    {formatCurrency(item.price)}
+                                                </td>
+                                                <td className="px-5 py-4 text-center">
+                                                    <span className={`px-2 py-1 text-[11px] font-bold rounded-lg
+                                                        ${item.is_active
+                                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}
+                                                    `}>
+                                                        {item.is_active ? 'Activo' : 'Inactivo'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Link href={route('tariffs.edit', item.id)}>
+                                                            <button className={`p-2 rounded-lg transition-colors
+                                                                ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
+                                                            `}>
+                                                                <Edit size={16} />
+                                                            </button>
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className={`p-2 rounded-lg transition-colors
+                                                            ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
+                                                        `}>
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
                 )}
 
                 <Pagination data={items} />

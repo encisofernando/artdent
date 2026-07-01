@@ -1,5 +1,6 @@
 import React from 'react';
 import AdjustmentIndex from '@/Pages/CollaboratorCompensation/AdjustmentIndex';
+import { BadgeMinus } from 'lucide-react';
 
 export default function Index(props) {
     return (
@@ -15,6 +16,7 @@ export default function Index(props) {
                 emptyText: 'No hay descuentos registrados con los filtros aplicados.',
                 amountLabel: 'Total descontado',
                 isDiscount: true,
+                icon: BadgeMinus,
             }}
         />
     );

@@ -8,7 +8,7 @@ import {
     Plus, Search, Edit, Trash2, BriefcaseMedical,
     SlidersHorizontal,
     Clock, CheckCircle2, AlertCircle, Printer, Eye, X,
-    CalendarClock, Banknote
+    CalendarClock, Banknote, ClipboardList
 } from 'lucide-react';
 
 // ─── Brand ───────────────────────────────────────────────────────────────────
@@ -97,14 +97,20 @@ export default function Index({ auth, items, filters }) {
             <div style={{ fontFamily: "'Montserrat', sans-serif" }} className="flex flex-col gap-4 pb-20 sm:pb-6">
 
                 {/* ── Header ── */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 style={{ color: D.text, fontWeight: 900, fontSize: 22, letterSpacing: -0.5 }}>
-                            Órdenes de Trabajo
-                        </h1>
-                        <p style={{ color: D.sub, fontSize: 13, marginTop: 2 }}>
-                            {items.total} trabajos · Lab ArtDent
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})` }}>
+                            <ClipboardList size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 style={{ color: D.text, fontWeight: 900, fontSize: 22, letterSpacing: -0.5 }}>
+                                Órdenes de Trabajo
+                            </h1>
+                            <p style={{ color: D.sub, fontSize: 13, marginTop: 2 }}>
+                                {items.total} trabajos · Lab ArtDent
+                            </p>
+                        </div>
                     </div>
                     <Link href={route('jobs.create')}>
                         <button style={{ background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`, color: '#fff', border: 'none', borderRadius: 14, padding: '10px 18px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', boxShadow: `0 4px 14px rgba(57,123,156,0.3)` }}>

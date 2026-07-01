@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Trash2, Users, BriefcaseMedical } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Users, BriefcaseMedical, HeartPulse } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -48,14 +48,20 @@ export default function Index({ auth, items, dentists, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header Section */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Pacientes
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Gesión de pacientes de los odontólogos del laboratorio
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <HeartPulse size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Pacientes
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Gesión de pacientes de los odontólogos del laboratorio
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -121,77 +127,114 @@ export default function Index({ auth, items, dentists, filters }) {
                         )}
                     </div>
                 ) : (
-                    <div className={`rounded-2xl border overflow-hidden shadow-sm
-                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
-                    `}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className={`text-xs uppercase font-bold
-                                    ${isDark ? 'bg-slate-800/50 text-slate-400 border-b border-slate-700/60' : 'bg-slate-50 text-slate-500 border-b border-slate-200'}
-                                `}>
-                                    <tr>
-                                        <th className="px-5 py-4">Paciente</th>
-                                        <th className="px-5 py-4">Odontólogo Asociado</th>
-                                        <th className="px-5 py-4">Género</th>
-                                        <th className="px-5 py-4">Teléfono</th>
-                                        <th className="px-5 py-4 text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {data.map((item) => (
-                                        <tr key={item.id} className={`border-b transition-colors
-                                            ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}
-                                        `}>
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                                                        ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}
-                                                    `}>
-                                                        {item.name.charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                                        {item.name}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className={`flex items-center gap-2 text-xs font-medium px-2 py-1 rounded-lg w-fit
-                                                    ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}
+                    <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3">
+                            {data.map((item) => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                    {item.name}
+                                                </p>
+                                                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.birth_date ? new Date(item.birth_date + 'T00:00:00').toLocaleDateString('es-AR') : '—'}
+                                                    {item.dni ? ` · DNI ${item.dni}` : ''}
+                                                </p>
+                                            </div>
+                                            <Link href={route('patients.edit', item.id)}>
+                                                <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0
+                                                    ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}
                                                 `}>
-                                                    <BriefcaseMedical size={14} className={isDark ? 'text-teal-500' : 'text-teal-600'} />
-                                                    {item.dentist?.name || 'Desconocido'}
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                                                {item.gender || '-'}
-                                            </td>
-                                            <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                                                {item.phone || '-'}
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="flex gap-2 justify-end">
-                                                    <Link href={route('patients.edit', item.id)}>
-                                                        <button className={`p-2 rounded-lg transition-colors
-                                                            ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
-                                                        `}>
-                                                            <Edit size={16} />
-                                                        </button>
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className={`p-2 rounded-lg transition-colors
-                                                        ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
-                                                    `}>
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                    <Edit size={14} />
+                                                </button>
+                                            </Link>
+                                        </div>
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {item.phone || '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+
+                        {/* Desktop table */}
+                        <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-sm
+                            ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
+                        `}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className={`text-xs uppercase font-bold
+                                        ${isDark ? 'bg-slate-800/50 text-slate-400 border-b border-slate-700/60' : 'bg-slate-50 text-slate-500 border-b border-slate-200'}
+                                    `}>
+                                        <tr>
+                                            <th className="px-5 py-4">Paciente</th>
+                                            <th className="px-5 py-4">Odontólogo Asociado</th>
+                                            <th className="px-5 py-4">Género</th>
+                                            <th className="px-5 py-4">Teléfono</th>
+                                            <th className="px-5 py-4 text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.map((item) => (
+                                            <tr key={item.id} className={`border-b transition-colors
+                                                ${isDark ? 'border-slate-800 hover:bg-slate-800/30' : 'border-slate-100 hover:bg-slate-50/50'}
+                                            `}>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                                                            ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}
+                                                        `}>
+                                                            {item.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                            {item.name}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className={`flex items-center gap-2 text-xs font-medium px-2 py-1 rounded-lg w-fit
+                                                        ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}
+                                                    `}>
+                                                        <BriefcaseMedical size={14} className={isDark ? 'text-teal-500' : 'text-teal-600'} />
+                                                        {item.dentist?.name || 'Desconocido'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
+                                                    {item.gender || '-'}
+                                                </td>
+                                                <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
+                                                    {item.phone || '-'}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Link href={route('patients.edit', item.id)}>
+                                                            <button className={`p-2 rounded-lg transition-colors
+                                                                ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
+                                                            `}>
+                                                                <Edit size={16} />
+                                                            </button>
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className={`p-2 rounded-lg transition-colors
+                                                            ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}
+                                                        `}>
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
                 )}
 
                 <Pagination data={items} />

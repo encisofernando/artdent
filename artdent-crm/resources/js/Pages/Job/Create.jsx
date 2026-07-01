@@ -113,13 +113,19 @@ export default function Create({ auth, dentists, patients, jobTypes, collaborato
             <div className="flex flex-col gap-6 font-sans max-w-6xl mx-auto pb-12">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Nueva Orden de Trabajo
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Registra un nuevo trabajo enviado por un odontólogo.
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #397B9C, #49949C)' }}>
+                            <BriefcaseMedical size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Nueva Orden de Trabajo
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Registra un nuevo trabajo enviado por un odontólogo.
+                            </p>
+                        </div>
                     </div>
                     <Link href={route('jobs.index')}>
                         <Button variant="outline" className={isDark ? "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : ""}>
@@ -129,7 +135,7 @@ export default function Create({ auth, dentists, patients, jobTypes, collaborato
                     </Link>
                 </div>
 
-                <form onSubmit={submit} className="flex flex-col xl:flex-row gap-6">
+                <form onSubmit={submit} className="flex flex-col lg:flex-row gap-6">
 
                     {/* Left Column */}
                     <div className="flex-1 flex flex-col gap-6">
@@ -360,7 +366,7 @@ export default function Create({ auth, dentists, patients, jobTypes, collaborato
                     </div>
 
                     {/* Right Column */}
-                    <div className="w-full xl:w-96 flex flex-col gap-6">
+                    <div className="w-full lg:w-96 lg:shrink-0 flex flex-col gap-6">
 
                         {/* Estado y Tiempos */}
                         <div className={`rounded-2xl border shadow-sm transition-colors overflow-hidden

@@ -156,7 +156,7 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, collabo
                     </Link>
                 </div>
 
-                <form onSubmit={submit} className="flex flex-col xl:flex-row gap-6">
+                <form onSubmit={submit} className="flex flex-col lg:flex-row gap-6">
 
                     {/* Left Column */}
                     <div className="flex-1 flex flex-col gap-6">
@@ -391,7 +391,7 @@ export default function Edit({ auth, item, dentists, patients, jobTypes, collabo
                     </div>
 
                     {/* Right Column */}
-                    <div className="w-full xl:w-96 flex flex-col gap-6">
+                    <div className="w-full lg:w-96 lg:shrink-0 flex flex-col gap-6">
 
                         {/* Estado y Tiempos */}
                         <div className={`rounded-2xl border shadow-sm transition-colors overflow-hidden

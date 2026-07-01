@@ -67,14 +67,20 @@ export default function Index({ auth, items, filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Rehacimientos
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Registro de trabajos que requirieron rehacer
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <RefreshCcw size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Rehacimientos
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Registro de trabajos que requirieron rehacer
+                            </p>
+                        </div>
                     </div>
 
                     <Link href={route('job-remakes.create')} className="w-full sm:w-auto">
@@ -146,8 +152,48 @@ export default function Index({ auth, items, filters }) {
                             </Link>
                         )}
                     </div>
-                ) : (
-                    <div className={`rounded-2xl border overflow-hidden shadow-sm
+                ) : (<>
+                    {/* Mobile cards */}
+                    <div className="sm:hidden flex flex-col gap-3">
+                        {data.map((item) => (
+                            <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                <div className="p-4">
+                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`font-bold text-sm ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                Trabajo {item.job?.job_number || item.job_id}
+                                            </p>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {item.job?.dentist?.name || 'Sin odontólogo'}
+                                            </p>
+                                            <span className={`mt-1.5 inline-block text-xs font-semibold px-2 py-0.5 rounded-lg ${RESPONSIBILITY_COLORS[item.responsibility] || RESPONSIBILITY_COLORS.unknown}`}>
+                                                {RESPONSIBILITY_LABELS[item.responsibility] || item.responsibility}
+                                            </span>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{item.created_at ? new Date(item.created_at).toLocaleDateString('es-AR') : '-'}</p>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.reason_category || '—'}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                        <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            Mat: {formatCurrency(item.material_cost)} · Lab: {formatCurrency(item.labor_cost)}
+                                        </span>
+                                        <div className="flex gap-1">
+                                            <Link href={route('job-remakes.edit', item.id)}>
+                                                <button className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-slate-500 hover:bg-slate-100'}`}><Edit size={14} /></button>
+                                            </Link>
+                                            <button onClick={() => handleDelete(item.id)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-900/40' : 'text-red-500 hover:bg-red-50'}`}><Trash2 size={14} /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-sm
                         ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200'}
                     `}>
                         <div className="overflow-x-auto">
@@ -248,7 +294,7 @@ export default function Index({ auth, items, filters }) {
                             </table>
                         </div>
                     </div>
-                )}
+                </>)}
 
                 <Pagination data={items} />
             </div>

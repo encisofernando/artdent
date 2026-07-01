@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Search, Plus, Printer, Trash2, FileText, X, Check, CheckCircle } from 'lucide-react';
+import { Search, Plus, Printer, Trash2, FileText, X, Check, CheckCircle, FileCheck } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
@@ -110,9 +110,15 @@ export default function Index({ auth, items, employees, filters, summary }) {
 
             <div className="flex flex-col gap-6 font-sans">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Recibos de Personal</h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Liquidaciones de sueldos y comisiones</p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <FileCheck size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Recibos de Personal</h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Liquidaciones de sueldos y comisiones</p>
+                        </div>
                     </div>
                     {canManage && (
                         <Button
@@ -126,7 +132,7 @@ export default function Index({ auth, items, employees, filters, summary }) {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     {[
                         { label: 'Recibos', value: summary?.receipts ?? 0 },
                         { label: 'Neto total', value: `$${fmt(summary?.net)}` },
@@ -184,7 +190,59 @@ export default function Index({ auth, items, employees, filters, summary }) {
                             <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No hay recibos generados aún</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3 p-4">
+                            {data.map(item => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="min-w-0">
+                                                <p className={`font-bold truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                    {item.employee?.user?.name || `Empleado #${item.employee_id}`}
+                                                </p>
+                                                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {fmtDate(item.period_from)} — {fmtDate(item.period_to)}
+                                                </p>
+                                            </div>
+                                            <p className="font-extrabold text-base shrink-0" style={{ color: B.blue }}>
+                                                ${fmt(item.net)}
+                                            </p>
+                                        </div>
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${STATUS_COLORS[item.status] || 'bg-slate-500/10 text-slate-400'}`}>
+                                                {STATUS_LABELS[item.status] || item.status}
+                                            </span>
+                                            {showActions && (
+                                                <div className="flex gap-2">
+                                                    {canManage && (
+                                                        <Link href={route('employee-receipts.show', item.id)}>
+                                                            <button className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`} title="Ver / Imprimir">
+                                                                <Printer size={14} />
+                                                            </button>
+                                                        </Link>
+                                                    )}
+                                                    {canManage && item.status === 'draft' && (
+                                                        <button onClick={() => markPaid(item)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-green-900/20 text-green-400 hover:bg-green-900/40' : 'bg-green-50 text-green-600 hover:bg-green-100'}`} title="Marcar Pagado">
+                                                            <CheckCircle size={14} />
+                                                        </button>
+                                                    )}
+                                                    {canDelete && (
+                                                        <button onClick={() => handleDelete(item.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-500 hover:bg-red-100'}`} title="Eliminar">
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead className={`border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                                     <tr>
@@ -251,6 +309,7 @@ export default function Index({ auth, items, employees, filters, summary }) {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
 
@@ -292,10 +351,10 @@ export default function Index({ auth, items, employees, filters, summary }) {
             </p>
                         </div>
                         <div className="flex gap-3 mt-6">
-                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <button type="button" onClick={() => setShowCreate(false)} className={`flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 Cancelar
                             </button>
-                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                            <button type="submit" disabled={createForm.processing} className="flex-1 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-60" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                                 <Check size={14} className="inline mr-1" />
                                 Generar
                             </button>

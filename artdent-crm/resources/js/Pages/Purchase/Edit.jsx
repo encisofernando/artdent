@@ -191,7 +191,7 @@ export default function Edit({ auth, purchase, vendors, warehouses, products }) 
             <Head title="Editar Comprobante" />
 
             <div className="flex flex-col gap-6 font-sans max-w-5xl mx-auto">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                         <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                             Editar Comprobante

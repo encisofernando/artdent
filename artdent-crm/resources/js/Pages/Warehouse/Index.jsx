@@ -92,7 +92,7 @@ export default function Index({ auth, items, filters }) {
             <div className="flex flex-col gap-6 font-sans max-w-4xl mx-auto">
 
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
                             <WarehouseIcon size={20} className="text-white" />
@@ -103,14 +103,14 @@ export default function Index({ auth, items, filters }) {
                         </div>
                     </div>
                     <button onClick={openCreate}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white shadow-md"
                         style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                         <Plus size={16} /> Nuevo Depósito
                     </button>
                 </div>
 
                 {/* Filtros */}
-                <div className={`${card} p-4 flex gap-3`}>
+                <div className={`${card} p-4 flex flex-wrap gap-3`}>
                     <div className="relative flex-1">
                         <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                         <input type="text" placeholder="Buscar por nombre, código o dirección..."
@@ -118,9 +118,9 @@ export default function Index({ auth, items, filters }) {
                             onKeyDown={e => e.key === 'Enter' && applyFilters()}
                             className={`${inputCls} pl-9`} />
                     </div>
-                    <button onClick={applyFilters} className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+                    <button onClick={applyFilters} className="px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white"
                         style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>Filtrar</button>
-                    <button onClick={clearFilters} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
+                    <button onClick={clearFilters} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
                 </div>
 
                 {/* Tabla */}
@@ -134,30 +134,32 @@ export default function Index({ auth, items, filters }) {
                             </button>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
-                                        {['Nombre', 'Código', 'Dirección', 'Stock registros', 'Estado', ''].map(h => (
-                                            <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                    {items.data.map(item => (
-                                        <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
-                                            <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.name}</td>
-                                            <td className={`px-4 py-3 font-mono text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.code ?? '—'}</td>
-                                            <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.address ?? '—'}</td>
-                                            <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{item.stocks_count ?? 0}</td>
-                                            <td className="px-4 py-3">
+                        <>
+                            {/* Mobile cards */}
+                            <div className="sm:hidden flex flex-col gap-3 p-3">
+                                {items.data.map(item => (
+                                    <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                        <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                        <div className="p-4">
+                                            <div className="flex items-start justify-between gap-3 mb-2">
+                                                <div className="min-w-0">
+                                                    <p className={`font-bold text-sm truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                        {item.name}
+                                                    </p>
+                                                    <p className={`text-xs font-mono mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {item.code ?? '—'}
+                                                    </p>
+                                                </div>
                                                 {item.is_active
-                                                    ? <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}><CheckCircle size={10} /> Activo</span>
-                                                    : <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`}><XCircle size={10} /> Inactivo</span>
+                                                    ? <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border shrink-0 ${isDark ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}><CheckCircle size={10} /> Activo</span>
+                                                    : <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border shrink-0 ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`}><XCircle size={10} /> Inactivo</span>
                                                 }
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1">
+                                            </div>
+                                            <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                                <span className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {item.address ?? '—'}
+                                                </span>
+                                                <div className="flex items-center gap-1 shrink-0 ml-2">
                                                     <button onClick={() => openEdit(item)}
                                                         className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                                                         <Pencil size={12} />
@@ -167,12 +169,56 @@ export default function Index({ auth, items, filters }) {
                                                         <Trash2 size={12} />
                                                     </button>
                                                 </div>
-                                            </td>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Desktop table */}
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Nombre</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Código</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Dirección</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Stock registros</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Estado</th>
+                                            <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}></th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                        {items.data.map(item => (
+                                            <tr key={item.id} className={`transition-colors ${isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
+                                                <td className={`px-4 py-3 font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.name}</td>
+                                                <td className={`px-4 py-3 font-mono text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.code ?? '—'}</td>
+                                                <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.address ?? '—'}</td>
+                                                <td className={`px-4 py-3 font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{item.stocks_count ?? 0}</td>
+                                                <td className="px-4 py-3">
+                                                    {item.is_active
+                                                        ? <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}><CheckCircle size={10} /> Activo</span>
+                                                        : <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`}><XCircle size={10} /> Inactivo</span>
+                                                    }
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => openEdit(item)}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                            <Pencil size={12} />
+                                                        </button>
+                                                        <button onClick={() => handleDelete(item)}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-400 hover:bg-red-100'}`}>
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
 
                     <Pagination data={items} />
@@ -210,11 +256,11 @@ export default function Index({ auth, items, filters }) {
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                         <button type="button" onClick={closeModal}
-                            className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                            className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
                             Cancelar
                         </button>
                         <button type="submit" disabled={processing}
-                            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Save size={14} /> {editing ? 'Actualizar' : 'Crear Depósito'}
                         </button>

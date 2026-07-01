@@ -106,7 +106,7 @@ export default function Index({ auth, items, users, filters }) {
             <div className="flex flex-col gap-6 font-sans max-w-6xl mx-auto">
 
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
                             <Users size={20} className="text-white" />
@@ -117,10 +117,10 @@ export default function Index({ auth, items, users, filters }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Link href={route('employee-receipts.index')} className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border ${isDark ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                        <Link href={route('employee-receipts.index')} className={`inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold border ${isDark ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
                             Recibos
                         </Link>
-                        <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                        <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white shadow-md" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Plus size={16} /> Nuevo Empleado
                         </button>
                     </div>
@@ -140,8 +140,8 @@ export default function Index({ auth, items, users, filters }) {
                         <option value="1">Solo activos</option>
                         <option value="0">Solo inactivos</option>
                     </select>
-                    <button onClick={applyFilters} className="px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>Filtrar</button>
-                    <button onClick={clearFilters} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
+                    <button onClick={applyFilters} className="px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white whitespace-nowrap shrink-0" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>Filtrar</button>
+                    <button onClick={clearFilters} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>Limpiar</button>
                 </div>
 
                 {/* Tabla */}
@@ -153,7 +153,57 @@ export default function Index({ auth, items, users, filters }) {
                             <button onClick={openCreate} className="text-sm font-bold" style={{ color: B.teal }}>+ Agregar empleado</button>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3 p-4">
+                            {items.data.map(item => (
+                                <div key={item.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="min-w-0">
+                                                <p className={`font-bold truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{item.user?.name ?? '—'}</p>
+                                                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.position ?? '—'}</p>
+                                                {item.salary && (
+                                                    <p className={`text-xs mt-1 font-semibold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
+                                                        {fmt(item.salary)}
+                                                        {item.commission_pct > 0 && <span className={`ml-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>· {fmtPct(item.commission_pct)} comisión</span>}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="shrink-0">
+                                                {item.is_active
+                                                    ? <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}><CheckCircle size={10} /> Activo</span>
+                                                    : <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`}><XCircle size={10} /> Inactivo</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Desde: <span className="font-semibold">{fmtDate(item.hire_date)}</span>
+                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                <Link href={route('employees.show', item.id)}
+                                                    className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                    <Eye size={12} />
+                                                </Link>
+                                                <button onClick={() => openEdit(item)}
+                                                    className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                    <Pencil size={12} />
+                                                </button>
+                                                <button onClick={() => handleDelete(item)}
+                                                    className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-400 hover:bg-red-100'}`}>
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
@@ -213,6 +263,7 @@ export default function Index({ auth, items, users, filters }) {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
 
                     <Pagination data={items} />
@@ -274,8 +325,8 @@ export default function Index({ auth, items, users, filters }) {
                         Empleado activo
                     </label>
                     <div className="flex justify-end gap-2 pt-2">
-                        <button type="button" onClick={() => setModal(false)} className={`px-4 py-2 rounded-xl text-sm border font-medium ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
-                        <button type="submit" disabled={processing} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                        <button type="button" onClick={() => setModal(false)} className={`px-4 py-2.5 min-h-[40px] rounded-xl text-sm border font-medium whitespace-nowrap shrink-0 ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}>Cancelar</button>
+                        <button type="submit" disabled={processing} className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <Save size={14} /> {editing ? 'Actualizar' : 'Registrar'}
                         </button>
                     </div>

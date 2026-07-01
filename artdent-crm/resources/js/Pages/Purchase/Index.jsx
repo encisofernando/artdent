@@ -77,14 +77,20 @@ export default function Index({ auth, items, vendors, filters }) {
             <div className="flex flex-col gap-4 font-sans">
 
                 {/* ── Header ─────────────────────────────────── */}
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${textMain}`}>
-                            Comprobantes de Compra
-                        </h1>
-                        <p className={`text-xs sm:text-sm ${textSub}`}>
-                            Facturas, remitos y órdenes de compra a proveedores
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <FileText size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${textMain}`}>
+                                Comprobantes de Compra
+                            </h1>
+                            <p className={`text-xs sm:text-sm ${textSub}`}>
+                                Facturas, remitos y órdenes de compra a proveedores
+                            </p>
+                        </div>
                     </div>
                     <Link href={route('proveedores.comprobantes.create')}>
                         <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all active:scale-[0.97]"

@@ -353,7 +353,7 @@ export default function Ticket({ item }) {
                     </button>
                 </div>
 
-                <div className="flex flex-col xl:flex-row gap-4">
+                <div className="flex flex-col lg:flex-row gap-4">
 
                     {/* ── Sidebar ── */}
                     <div style={{ width: '100%', maxWidth: 220 }} className="xl:flex-shrink-0">

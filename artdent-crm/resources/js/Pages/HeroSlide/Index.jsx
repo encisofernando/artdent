@@ -902,6 +902,7 @@ export default function Index({ auth, slides }) {
         );
     };
 
+    const B = { blue: '#397B9C', teal: '#49949C' };
     const card = `rounded-2xl border shadow-sm transition-colors ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`;
 
     return (
@@ -910,13 +911,19 @@ export default function Index({ auth, slides }) {
 
             <div className="flex w-full flex-col gap-6 font-sans max-w-none">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Carrusel Hero
-                        </h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Organizá el hero del shop y definí el orden real de cada slide desde un solo lugar.
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <LayoutTemplate size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Carrusel Hero
+                            </h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Organizá el hero del shop y definí el orden real de cada slide desde un solo lugar.
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={() => {

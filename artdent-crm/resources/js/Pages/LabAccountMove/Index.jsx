@@ -12,7 +12,8 @@ import {
     Building2,
     CalendarDays,
     Calendar,
-    X
+    X,
+    BookOpen
 } from 'lucide-react';
 
 const PERIOD_OPTIONS = [
@@ -58,6 +59,8 @@ const getCurrentWeekRange = () => {
         to: toLocalDateInput(end),
     };
 };
+
+const B = { blue: '#397B9C', teal: '#49949C' };
 
 export default function Index({ auth, moves, debtors = [], filters }) {
     const { isDark } = useTheme();
@@ -145,14 +148,20 @@ export default function Index({ auth, moves, debtors = [], filters }) {
 
             <div className="flex flex-col gap-6 font-sans">
 
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h1 className={`text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                            Cuentas Corrientes y Pagos
-                        </h1>
-                        <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Historial de cargos y pagos.
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <BookOpen size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Cuentas Corrientes y Pagos
+                            </h1>
+                            <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Historial de cargos y pagos.
+                            </p>
+                        </div>
                     </div>
 
                     <Link href={route('lab-account-moves.create')}>
@@ -174,7 +183,7 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                     Saldos pendientes actuales, independientemente del período filtrado.
                                 </p>
                             </div>
-                            <div className={`px-3 py-2 rounded-xl text-sm font-bold ${isDark ? 'bg-amber-500/10 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                            <div className={`px-3 py-2.5 min-h-[40px] rounded-xl text-sm font-bold ${isDark ? 'bg-amber-500/10 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
                                 Total adeudado: {formatCurrency(debtors.reduce((sum, item) => sum + (item.balance || 0), 0))}
                             </div>
                         </div>
@@ -240,7 +249,7 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                     key={option.value}
                                     type="button"
                                     onClick={() => setPeriod(option.value)}
-                                    className={`px-3 py-2 rounded-xl text-sm font-bold border transition-colors ${
+                                    className={`px-3 py-2.5 min-h-[40px] rounded-xl text-sm font-bold border transition-colors ${
                                         active
                                             ? 'bg-sky-600 border-sky-600 text-white'
                                             : isDark
@@ -332,10 +341,63 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                             </p>
                         </div>
                     ) : (
-                        <table className="w-full text-sm">
+                        <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden flex flex-col gap-3 p-4">
+                            {moves.data.map((move) => {
+                                const isPayment = move.type === 'payment';
+                                const dentist = move.account?.dentist;
+                                return (
+                                    <div key={move.id} className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                        <div style={{ height: 3, background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }} />
+                                        <div className="p-4">
+                                            <div className="flex items-start justify-between gap-3 mb-2">
+                                                <div className="min-w-0">
+                                                    <p className={`font-bold truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                                        {dentist ? `${dentist.name} ${dentist.last_name || ''}`.trim() : 'N/A'}
+                                                    </p>
+                                                    <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {formatDate(move.move_date)}
+                                                    </p>
+                                                    {move.description && (
+                                                        <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{move.description}</p>
+                                                    )}
+                                                </div>
+                                                <div className="shrink-0 text-right">
+                                                    <p className={`font-extrabold text-base ${isPayment ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                        {isPayment ? '-' : '+'}{formatCurrency(move.amount)}
+                                                    </p>
+                                                    {isPayment ? (
+                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                                                            <ArrowDownRight size={11} /> Pago
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
+                                                            <ArrowUpRight size={11} /> Cargo
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className={`flex items-center justify-between pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    Saldo: <span className="font-bold">{formatCurrency(move.balance_after)}</span>
+                                                </span>
+                                                <Link href={route('lab-account-moves.show', move.id)} className={isDark ? 'text-sky-300' : 'text-sky-600'}>
+                                                    <Receipt size={16} />
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-sm min-w-[600px]">
                             <thead className={`${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-500'}`}>
                                 <tr>
-                                    <th className="px-6 py-4">Fecha</th>
+                                    <th className="px-6 py-4 whitespace-nowrap">Fecha</th>
                                     <th className="px-6 py-4">Odontólogo</th>
                                     <th className="px-6 py-4">Detalle</th>
                                     <th className="px-6 py-4">Tipo</th>
@@ -352,7 +414,7 @@ export default function Index({ auth, moves, debtors = [], filters }) {
 
                                     return (
                                         <tr key={move.id} className="border-b">
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 {formatDate(move.move_date)}
                                             </td>
 
@@ -408,6 +470,8 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                 })}
                             </tbody>
                         </table>
+                        </div>
+                        </>
                     )}
                 </div>
 

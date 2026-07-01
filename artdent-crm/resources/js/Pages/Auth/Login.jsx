@@ -2,10 +2,6 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import { useState } from "react"
 import GuestLayout from "@/Layouts/GuestLayout"
 import { Button } from "@/Components/ui/button"
-import { Input } from "@/Components/ui/input"
-
-// Si tenés lucide-react instalado, podés usar íconos.
-// Si no, el código funciona igual sin ellos.
 import { Mail, Lock, Eye, EyeOff } from "lucide-react"
 
 const C = {
@@ -69,7 +65,7 @@ export default function Login({ status, canResetPassword }) {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35">
               <Mail size={18} />
             </span>
-            <Input
+            <input
               id="email"
               type="email"
               name="email"
@@ -78,7 +74,7 @@ export default function Login({ status, canResetPassword }) {
               autoFocus
               placeholder="email@artdent.com.ar"
               onChange={(e) => setData("email", e.target.value)}
-              className="pl-10 bg-white/[0.04] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-2 focus-visible:ring-[rgba(172,214,206,0.7)]"
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.06] pl-10 pr-3 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-[rgba(172,214,206,0.6)] focus:border-transparent"
             />
           </div>
           <FieldError message={errors.email} />
@@ -92,7 +88,7 @@ export default function Login({ status, canResetPassword }) {
               <Lock size={18} />
             </span>
 
-            <Input
+            <input
               id="password"
               type={showPwd ? "text" : "password"}
               name="password"
@@ -100,7 +96,7 @@ export default function Login({ status, canResetPassword }) {
               autoComplete="current-password"
               placeholder="••••••••"
               onChange={(e) => setData("password", e.target.value)}
-              className="pl-10 pr-10 bg-white/[0.04] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-2 focus-visible:ring-[rgba(90,173,156,0.7)]"
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.06] pl-10 pr-10 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-[rgba(90,173,156,0.6)] focus:border-transparent"
             />
 
             <button
@@ -151,35 +147,6 @@ export default function Login({ status, canResetPassword }) {
         >
           {processing ? "Ingresando..." : "Iniciar sesión"}
         </Button>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 py-2">
-          <div className="h-px flex-1 bg-white/10" />
-          <div className="text-xs text-white/30">o continuá con</div>
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
-
-        {/* Google (stub visual) */}
-        <button
-          type="button"
-          title="Próximamente disponible"
-          className="w-full h-11 rounded-xl border border-white/15 bg-white/[0.02]
-                     text-white/40 font-semibold cursor-not-allowed opacity-60 transition"
-          onClick={() => {}}
-        >
-          Iniciar sesión con Google (próximamente)
-        </button>
-
-        {/* Register */}
-        <p className="pt-3 text-center text-sm text-white/40">
-          ¿No tenés cuenta?{" "}
-          <Link
-            href="/register"
-            className="font-semibold text-[rgba(172,214,206,0.95)] hover:text-[rgba(90,173,156,1)] transition"
-          >
-            Registrate
-          </Link>
-        </p>
       </form>
     </GuestLayout>
   )
