@@ -12,18 +12,13 @@ import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 import axios from 'axios';
 
-const CHATBOT_MODEL_OPTIONS = {
-    openai: [
-        { value: 'gpt-5.4-nano', label: 'Estándar · menor costo' },
-        { value: 'gpt-4o-mini', label: 'Rápido · equilibrado' },
-        { value: 'gpt-4.1-mini', label: 'Avanzado ligero' },
-        { value: 'gpt-4.1', label: 'Avanzado · mayor calidad' },
-    ],
-};
+const CHATBOT_MODEL_OPTIONS = [
+    { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 · rápido, menor costo (recomendado)' },
+    { value: 'claude-sonnet-5', label: 'Sonnet 5 · equilibrado, alta calidad' },
+    { value: 'claude-opus-4-8', label: 'Opus 4.8 · máxima inteligencia' },
+];
 
-const DEFAULT_CHATBOT_MODELS = {
-    openai: 'gpt-5.4-nano',
-};
+const DEFAULT_CHATBOT_MODEL = 'claude-haiku-4-5-20251001';
 
 export default function Settings({ company, accountingSettings }) {
     const { isDark } = useTheme();
@@ -93,9 +88,9 @@ export default function Settings({ company, accountingSettings }) {
         email_payment_subject: company.email_payment_subject || '',
         email_payment_body: company.email_payment_body || '',
         chatbot_enabled: company.chatbot_enabled ?? true,
-        chatbot_provider: 'openai',
-        chatbot_model: company.chatbot_model || DEFAULT_CHATBOT_MODELS.openai,
-        chatbot_openai_key: company.chatbot_openai_key || '',
+        chatbot_provider: 'claude',
+        chatbot_model: company.chatbot_model || DEFAULT_CHATBOT_MODEL,
+        chatbot_anthropic_key: company.chatbot_anthropic_key || '',
         accounting_settings: accountingSettings || {},
     });
 
@@ -279,7 +274,7 @@ export default function Settings({ company, accountingSettings }) {
     };
 
     const setChatbotProvider = () => {
-        setData('chatbot_provider', 'openai');
+        setData('chatbot_provider', 'claude');
     };
 
     const accounting = data.accounting_settings || {};
@@ -1335,7 +1330,7 @@ export default function Settings({ company, accountingSettings }) {
                                 <div>
                                     <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Asistente Artie</h3>
                                     <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        Activá el asistente interno, elegí el proveedor de IA y el modelo que querés usar para la empresa actual.
+                                        Activá el asistente interno, elegí el modelo Claude (Anthropic) y configurá la clave API por empresa. Las consultas frecuentes se responden desde la base de conocimiento local sin consumir tokens.
                                     </p>
 
                                     <div className={`rounded-2xl border p-6 space-y-6 ${isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50/70 border-blue-100'}`}>
@@ -1374,90 +1369,67 @@ export default function Settings({ company, accountingSettings }) {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    Proveedor de IA
-                                                </label>
-                                                <SearchableSelect
-                                                    value={data.chatbot_provider}
-                                                    onChange={setChatbotProvider}
-                                                    options={[
-                                                        { value: 'openai', label: 'OpenAI' },
-                                                    ]}
-                                                    placeholder="OpenAI"
-                                                    error={errors.chatbot_provider}
-                                                />
-                                                <p className={`text-[11px] mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                    Potenciado por el motor de inteligencia artificial de última generación.
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    Modelo
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.chatbot_model}
-                                                    onChange={e => setData('chatbot_model', e.target.value)}
-                                                    placeholder={DEFAULT_CHATBOT_MODELS[data.chatbot_provider] || ''}
-                                                    className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
-                                                        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
-                                                        : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
-                                                    }`}
-                                                />
-                                                {errors.chatbot_model && (
-                                                    <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_model}</div>
-                                                )}
-                                            </div>
-                                        </div>
-
                                         <div>
                                             <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                Modelos sugeridos
+                                                Modelo Claude (Anthropic)
                                             </label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {(CHATBOT_MODEL_OPTIONS[data.chatbot_provider] || []).map(option => (
+                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                {CHATBOT_MODEL_OPTIONS.map(option => (
                                                     <button
                                                         key={option.value}
                                                         type="button"
                                                         onClick={() => setData('chatbot_model', option.value)}
-                                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${data.chatbot_model === option.value
+                                                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors text-left ${data.chatbot_model === option.value
                                                             ? (isDark ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-blue-300 bg-white text-blue-700 shadow-sm')
                                                             : (isDark ? 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-500' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')
                                                         }`}
                                                     >
-                                                        {option.value}
+                                                        <div>{option.label}</div>
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className={`mt-3 text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                OpenAI usa <code>chatbot_openai_key</code>. Si no la cargas a nivel empresa, el sistema usa la clave global del servidor.
+                                            <input
+                                                type="text"
+                                                value={data.chatbot_model}
+                                                onChange={e => setData('chatbot_model', e.target.value)}
+                                                placeholder={DEFAULT_CHATBOT_MODEL}
+                                                className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                                    ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                                    : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                                }`}
+                                            />
+                                            {errors.chatbot_model && (
+                                                <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_model}</div>
+                                            )}
+                                            <div className={`mt-2 text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Haiku 4.5 es el más económico y rápido — ideal para consultas frecuentes. El sistema usa la base de conocimiento primero y solo llama a la IA cuando no puede responder localmente.
                                             </div>
                                         </div>
 
                                         <div className="pt-4 border-t border-blue-500/10">
                                             <h4 className={`text-sm font-black tracking-tight mb-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                                                Credenciales de API (Opcional)
+                                                Clave API de Anthropic (Opcional)
                                             </h4>
                                             <div className="mb-4">
                                                 <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    Clave API
+                                                    Anthropic API Key
                                                 </label>
                                                 <input
                                                     type="password"
-                                                    value={data.chatbot_openai_key}
-                                                    onChange={e => setData('chatbot_openai_key', e.target.value)}
-                                                    placeholder="sk-proj-..."
+                                                    value={data.chatbot_anthropic_key}
+                                                    onChange={e => setData('chatbot_anthropic_key', e.target.value)}
+                                                    placeholder="sk-ant-..."
                                                     className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
                                                         ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
                                                         : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
                                                     }`}
                                                 />
-                                                {errors.chatbot_openai_key && (
-                                                    <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_openai_key}</div>
+                                                {errors.chatbot_anthropic_key && (
+                                                    <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.chatbot_anthropic_key}</div>
                                                 )}
+                                                <p className={`text-[11px] mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    Si no ingresás una clave por empresa, se usa la clave global configurada en el servidor (<code>CHATBOT_ANTHROPIC_API_KEY</code>).
+                                                </p>
                                             </div>
                                         </div>
                                     </div>

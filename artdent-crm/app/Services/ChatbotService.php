@@ -4,38 +4,31 @@ namespace App\Services;
 
 use App\Models\CashSession;
 use App\Models\Company;
+use App\Models\Customer;
 use App\Models\Dentist;
+use App\Models\EcommerceOrder;
+use App\Models\Expense;
 use App\Models\Job;
 use App\Models\Patient;
+use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Stock;
 use App\Models\User;
-use App\Models\Customer;
-use App\Models\Purchase;
-use App\Models\Expense;
-use App\Models\EcommerceOrder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
 class ChatbotService
 {
-    protected const MAX_HISTORY_MESSAGES = 12;
-    protected const MAX_MESSAGE_LENGTH = 2000;
-    protected const REQUEST_TIMEOUT_SECONDS = 20;
-    protected const OPENAI_MODEL = 'gpt-5.4-nano';
-    protected const DEFAULT_PROVIDER = 'openai';
-    protected ?OpenAITenantAnalyticsService $openAITenantAnalyticsService = null;
+    protected const MAX_HISTORY_MESSAGES = 8;
 
-    public function __construct(OpenAITenantAnalyticsService $openAITenantAnalyticsService)
-    {
-        $this->openAITenantAnalyticsService = $openAITenantAnalyticsService;
-    }
+    protected const MAX_MESSAGE_LENGTH = 2000;
+
+    protected const DEFAULT_MODEL = ClaudeService::DEFAULT_MODEL;
 
     public function generateResponse(array $messages, string $userMessage = ''): string
     {
@@ -43,10 +36,6 @@ class ChatbotService
 
         if (! $settings['enabled']) {
             return 'El chatbot está deshabilitado para esta empresa.';
-        }
-
-        if (blank($settings['api_key'])) {
-            return 'No puedo responder todavía porque falta configurar la API Key de OpenAI para el chatbot.';
         }
 
         $normalizedMessages = $this->normalizeMessages($messages);
@@ -65,9 +54,19 @@ class ChatbotService
             ];
         }
 
-        $systemPrompt = $this->getSystemPrompt($latestUserMessage);
+        // ── Base de conocimiento: responde sin API key ni tokens ────────────
+        $kbAnswer = ChatbotKnowledgeBase::search($latestUserMessage);
 
-        return $this->generateOpenAIResponse($normalizedMessages, $systemPrompt, $settings);
+        if ($kbAnswer !== null) {
+            return $kbAnswer;
+        }
+
+        // ── Fallback a Claude: requiere API key ─────────────────────────────
+        if (blank($settings['api_key'])) {
+            return 'Para consultas sobre datos en tiempo real (ventas, stock, jobs, deudas) necesito configurar la API Key de Claude. Podés configurarla en **Ajustes → Integraciones**.';
+        }
+
+        return $this->generateClaudeResponse($normalizedMessages, $latestUserMessage, $settings);
     }
 
     public function isEnabled(): bool
@@ -81,7 +80,7 @@ class ChatbotService
 
         return [
             'enabled' => $settings['enabled'],
-            'provider' => $settings['provider'],
+            'provider' => 'claude',
             'model' => $settings['model'],
             'welcome_message' => $this->getWelcomeMessage(),
         ];
@@ -97,13 +96,13 @@ class ChatbotService
         $company = $this->resolveCompany();
         $model = trim((string) ($company?->chatbot_model ?? ''));
 
-        if ($model === '' || ! Str::startsWith(Str::lower($model), 'gpt-')) {
-            $model = (string) config('services.chatbot.openai_model', static::OPENAI_MODEL);
+        if ($model === '') {
+            $model = (string) config('services.chatbot.anthropic_model', static::DEFAULT_MODEL);
         }
 
         return [
             'enabled' => $company?->chatbot_enabled ?? true,
-            'provider' => 'openai',
+            'provider' => 'claude',
             'model' => $model,
             'api_key' => $this->resolveApiKey($company),
         ];
@@ -126,137 +125,23 @@ class ChatbotService
     {
         $company ??= $this->resolveCompany();
 
-        return $company?->chatbot_openai_key ?: config('services.chatbot.openai_key');
+        return $company?->chatbot_anthropic_key ?: config('services.chatbot.anthropic_key');
     }
 
-    protected function generateOpenAIResponse(array $messages, string $systemPrompt, array $settings): string
+    protected function generateClaudeResponse(array $messages, string $userMessage, array $settings): string
     {
-        $tenantId = $this->resolveCurrentTenantId();
+        $staticPrompt = $this->getStaticSystemPrompt();
+        $dynamicContext = $this->buildDynamicContext($userMessage);
 
-        if ($tenantId !== null && $this->openAITenantAnalyticsService instanceof OpenAITenantAnalyticsService) {
-            try {
-                return $this->formatStructuredOpenAIResponse(
-                    $this->openAITenantAnalyticsService->consultarIA(
-                        $tenantId,
-                        $this->extractLatestUserMessage($messages)
-                    )
-                );
-            } catch (Throwable $e) {
-                Log::warning('Fallo la capa estructurada de OpenAI; se usa fallback legacy.', [
-                    'tenant_id' => $tenantId,
-                    'model' => $settings['model'],
-                    'message' => $e->getMessage(),
-                ]);
-            }
-        }
+        $claude = new ClaudeService($settings['api_key'], $settings['model']);
 
-        $formattedMessages = array_merge(
-            [['role' => 'system', 'content' => $systemPrompt]],
-            $messages
-        );
-
-        try {
-            $response = Http::acceptJson()
-                ->withToken($settings['api_key'])
-                ->timeout(static::REQUEST_TIMEOUT_SECONDS)
-                ->retry(2, 400, throw: false)
-                ->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => $settings['model'],
-                    'messages' => $formattedMessages,
-                    'temperature' => 0.3,
-                    'max_tokens' => 1024,
-                ]);
-
-            if (! $response->successful()) {
-                $this->logProviderFailure('OpenAI', $settings, $response->status(), $response->body());
-
-                return 'No pude conectarme con OpenAI en este momento. Probá nuevamente en unos segundos.';
-            }
-
-            $content = data_get($response->json(), 'choices.0.message.content');
-
-            if (! is_string($content) || blank($content)) {
-                Log::warning('OpenAI devolvió una respuesta vacía.', [
-                    'provider' => $settings['provider'],
-                    'model' => $settings['model'],
-                    'payload' => $response->json(),
-                ]);
-
-                return 'Recibí una respuesta vacía del proveedor. Probá reformular la consulta.';
-            }
-
-            return trim($content);
-        } catch (Throwable $e) {
-            Log::error('Excepción al consultar OpenAI.', [
-                'provider' => $settings['provider'],
-                'model' => $settings['model'],
-                'message' => $e->getMessage(),
-            ]);
-
-            return 'Ocurrió un error inesperado al consultar OpenAI.';
-        }
+        return $claude->chat($staticPrompt, $dynamicContext, $messages);
     }
 
-    protected function resolveCurrentTenantId(): ?string
+    // ── System prompt estático (se cachea en Anthropic) ───────────────────────
+    protected function getStaticSystemPrompt(): string
     {
-        if (! function_exists('tenant') || ! tenancy()->initialized) {
-            return null;
-        }
-
-        $tenant = tenant();
-
-        if (! $tenant) {
-            return null;
-        }
-
-        return (string) $tenant->getTenantKey();
-    }
-
-    protected function formatStructuredOpenAIResponse(array $response): string
-    {
-        $answer = trim((string) ($response['respuesta'] ?? ''));
-
-        if ($answer === '') {
-            return 'No pude generar una respuesta válida desde OpenAI.';
-        }
-
-        $parts = [$answer];
-        $usedData = $this->normalizeListForDisplay($response['datos_utilizados'] ?? []);
-        $suggestedActions = $this->normalizeListForDisplay($response['acciones_sugeridas'] ?? []);
-
-        if ($usedData !== []) {
-            $parts[] = '**Datos utilizados:** '.implode(', ', $usedData).'.';
-        }
-
-        if ($suggestedActions !== []) {
-            $parts[] = "**Acciones sugeridas:**\n- ".implode("\n- ", $suggestedActions);
-        }
-
-        return implode("\n\n", $parts);
-    }
-
-    protected function normalizeListForDisplay(array $values): array
-    {
-        return array_values(array_filter(array_map(function ($value): string {
-            if (is_scalar($value)) {
-                return trim((string) $value);
-            }
-
-            $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-            return $json === false ? '' : trim($json);
-        }, $values)));
-    }
-
-    protected function getSystemPrompt(string $userMessage = ''): string
-    {
-        $stats = $this->getQuickStats();
-        $contextBlocks = $this->buildContextBlocks($userMessage);
-        $contextText = empty($contextBlocks)
-            ? ''
-            : "\n\nCONTEXTO EN TIEMPO REAL:\n".implode("\n\n", $contextBlocks);
-
-        return <<<PROMPT
+        return <<<'PROMPT'
 Eres "Artie", el asistente inteligente de Artdent CRM.
 
 PERSONALIDAD:
@@ -270,6 +155,8 @@ MÓDULOS QUE CONOCES:
 - Finanzas: ventas, caja, cuentas corrientes y facturación.
 - Inventario: stock, productos, variantes, compras y depósitos.
 - Ecommerce: pedidos, pagos y cupones.
+- RRHH: colaboradores, asistencia biométrica, recibos de pago.
+- Contabilidad: libros IVA, estado de resultados, cuentas corrientes.
 
 NAVEGACIÓN REAL DEL CRM:
 - Gestión > Ventas: Lista de Ventas (/sales), Nueva Venta (/sales/create), Presupuesto (/quotes), Artículos (/products).
@@ -282,20 +169,35 @@ NAVEGACIÓN REAL DEL CRM:
 - CRM > Interacciones (/crm-interactions).
 - Análisis > Reportes (/reportes).
 
-RESUMEN ACTUAL:
-- Pacientes registrados: {$stats['patients']}
-- Usuarios activos: {$stats['users']}
-- Ventas en los últimos 30 días: {$stats['sales_30d']}
-- Jobs activos: {$stats['pending_jobs']}{$contextText}
-
 REGLAS:
 1. Nunca inventes cifras, estados, clientes, trabajos ni acciones del sistema.
-2. Responde usando solo la información inyectada debajo del resumen, el contexto estructurado disponible y los datos reales del tenant.
+2. Responde usando solo la información inyectada en el CONTEXTO EN TIEMPO REAL y los datos reales del tenant.
 3. Si el usuario pregunta por una persona puntual, prioriza coincidencias por fragmentos del nombre y responde con nombres humanos, nunca con IDs crudos.
 4. Si falta un dato puntual o no tienes evidencia suficiente, dilo con honestidad y deriva al módulo real correspondiente del sidebar usando la navegación listada arriba.
 5. Cuando orientes navegación, nombra la sección exacta del menú y, si ayuda, incluye la ruta entre paréntesis.
 6. Usa Markdown simple: párrafos cortos, listas y negritas cuando ayuden.
 PROMPT;
+    }
+
+    // ── Contexto dinámico por cada request (NO se cachea) ────────────────────
+    protected function buildDynamicContext(string $userMessage): string
+    {
+        $stats = $this->getQuickStats();
+        $contextBlocks = $this->buildContextBlocks($userMessage);
+
+        $header = implode("\n", [
+            'RESUMEN ACTUAL:',
+            '- Pacientes registrados: '.$stats['patients'],
+            '- Usuarios activos: '.$stats['users'],
+            '- Ventas en los últimos 30 días: '.$stats['sales_30d'],
+            '- Jobs activos: '.$stats['pending_jobs'],
+        ]);
+
+        if (empty($contextBlocks)) {
+            return $header;
+        }
+
+        return $header."\n\nCONTEXTO EN TIEMPO REAL:\n".implode("\n\n", $contextBlocks);
     }
 
     protected function buildContextBlocks(string $userMessage): array
@@ -340,7 +242,6 @@ PROMPT;
             $contextBlocks[] = "ECOMMERCE:\n".$this->getEcommerceContext();
         }
 
-        // Búsqueda genérica si se solicita información de una persona
         if ($this->containsAny($normalizedMessage, ['paciente', 'pacientes', 'odontologo', 'odontologos', 'doctor', 'doctora', 'dr', 'dra', 'cliente', 'quien', 'informacion', 'historia', 'pago', 'pagos', 'pago de'])) {
             $peopleContext = $this->getPeopleSearchContext($userMessage);
             if ($peopleContext !== '') {
@@ -409,7 +310,8 @@ PROMPT;
     {
         try {
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            return \Illuminate\Support\Facades\Cache::remember('chatbot_quick_stats_' . $tenantId, 120, function () {
+
+            return \Illuminate\Support\Facades\Cache::remember('chatbot_quick_stats_'.$tenantId, 120, function () {
                 return [
                     'patients' => $this->formatInteger(Patient::count()),
                     'sales_30d' => $this->formatInteger(
@@ -442,7 +344,8 @@ PROMPT;
     {
         try {
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            return \Illuminate\Support\Facades\Cache::remember('chatbot_inventory_' . $tenantId, 120, function () {
+
+            return \Illuminate\Support\Facades\Cache::remember('chatbot_inventory_'.$tenantId, 120, function () {
                 $lowStock = Stock::with([
                     'product',
                     'warehouse',
@@ -499,18 +402,16 @@ PROMPT;
     {
         try {
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            return \Illuminate\Support\Facades\Cache::remember('chatbot_finance_' . $tenantId, 120, function () {
+
+            return \Illuminate\Support\Facades\Cache::remember('chatbot_finance_'.$tenantId, 120, function () {
                 $todayStart = now()->startOfDay();
                 $todayEnd = now()->endOfDay();
                 $monthStart = now()->startOfMonth();
                 $monthEnd = now()->endOfMonth();
 
-                $todaySalesQuery = $this->whereSaleDateBetween($this->salesQuery(), $todayStart, $todayEnd);
-                $monthSalesQuery = $this->whereSaleDateBetween($this->salesQuery(), $monthStart, $monthEnd);
-
-                $todaySales = $todaySalesQuery->sum('total');
+                $todaySales = $this->whereSaleDateBetween($this->salesQuery(), $todayStart, $todayEnd)->sum('total');
                 $todayOperations = $this->whereSaleDateBetween($this->salesQuery(), $todayStart, $todayEnd)->count();
-                $monthSales = $monthSalesQuery->sum('total');
+                $monthSales = $this->whereSaleDateBetween($this->salesQuery(), $monthStart, $monthEnd)->sum('total');
                 $activeSessions = CashSession::where('status', 'open')->count();
 
                 $lastSale = Sale::with(['customer', 'dentist'])
@@ -521,8 +422,8 @@ PROMPT;
                     ->latest('id')
                     ->first();
 
-                $lastSaleStr = $lastSale 
-                    ? 'Última venta: #'.$lastSale->id.' por '.$this->formatCurrency($lastSale->total).' ('.($lastSale->customer?->name ?? $lastSale->dentist?->name ?? 'Cons. Final').') el '.$this->formatDate($lastSale->created_at).'.' 
+                $lastSaleStr = $lastSale
+                    ? 'Última venta: #'.$lastSale->id.' por '.$this->formatCurrency($lastSale->total).' ('.($lastSale->customer?->name ?? $lastSale->dentist?->name ?? 'Cons. Final').') el '.$this->formatDate($lastSale->created_at).'.'
                     : 'Sin registros de ventas.';
 
                 return implode("\n", [
@@ -550,7 +451,7 @@ PROMPT;
                 || $this->containsAny($normalizedMessage, ['pendiente', 'pendientes', 'en proceso', 'entrega', 'listo', 'listos', 'hoy']);
 
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            $cacheKey = 'chatbot_jobs_' . $tenantId . '_' . md5($searchTerm . '_' . ($wantsActiveJobs ? '1' : '0'));
+            $cacheKey = 'chatbot_jobs_'.$tenantId.'_'.md5($searchTerm.'_'.($wantsActiveJobs ? '1' : '0'));
 
             return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($searchTerm, $wantsActiveJobs) {
                 $query = Job::with(['patient', 'dentist', 'job_type']);
@@ -629,7 +530,8 @@ PROMPT;
     {
         try {
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            return \Illuminate\Support\Facades\Cache::remember('chatbot_debt_' . $tenantId, 120, function () {
+
+            return \Illuminate\Support\Facades\Cache::remember('chatbot_debt_'.$tenantId, 120, function () {
                 $dentistsWithDebt = Dentist::whereHas('lab_account', function (Builder $query): void {
                     $query->where('balance', '>', 0);
                 })
@@ -651,9 +553,9 @@ PROMPT;
                 }
 
                 $lines = [];
-                
+
                 if ($dentistsWithDebt->isNotEmpty()) {
-                    $lines[] = "Saldos Lab Odontólogos:";
+                    $lines[] = 'Saldos Lab Odontólogos:';
                     $lines = array_merge($lines, $dentistsWithDebt
                         ->take(3)
                         ->map(fn (Dentist $dentist) => '* **'.$dentist->name.'**: '.$this->formatCurrency($dentist->lab_account?->balance))
@@ -661,7 +563,7 @@ PROMPT;
                 }
 
                 if ($customersWithDebt->isNotEmpty()) {
-                    $lines[] = "Saldos Clientes Generales:";
+                    $lines[] = 'Saldos Clientes Generales:';
                     $lines = array_merge($lines, $customersWithDebt
                         ->take(3)
                         ->map(fn (Customer $customer) => '* **'.$customer->name.'**: '.$this->formatCurrency($customer->customer_account?->balance))
@@ -683,21 +585,22 @@ PROMPT;
     {
         try {
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            return \Illuminate\Support\Facades\Cache::remember('chatbot_purchases_' . $tenantId, 120, function () {
+
+            return \Illuminate\Support\Facades\Cache::remember('chatbot_purchases_'.$tenantId, 120, function () {
                 $purchases = Purchase::with('vendor')->latest('id')->take(5)->get();
                 $expenses = Expense::with('category')->latest('id')->take(5)->get();
 
-                $lines = ["Últimos Movimientos de Egresos:"];
-                
+                $lines = ['Últimos Movimientos de Egresos:'];
+
                 if ($purchases->isNotEmpty()) {
-                    $lines[] = "COMPRAS A PROVEEDORES:";
+                    $lines[] = 'COMPRAS A PROVEEDORES:';
                     foreach ($purchases as $p) {
                         $lines[] = sprintf('* V/#%d - %s por %s (%s)', $p->id, $p->vendor?->name ?? 'SC', $this->formatCurrency($p->total), $this->formatDate($p->created_at));
                     }
                 }
 
                 if ($expenses->isNotEmpty()) {
-                    $lines[] = "GASTOS ASENTADOS:";
+                    $lines[] = 'GASTOS ASENTADOS:';
                     foreach ($expenses as $e) {
                         $lines[] = sprintf('* %s - %s por %s', $e->category?->name ?? 'Gasto', $e->reference, $this->formatCurrency($e->amount));
                     }
@@ -714,19 +617,24 @@ PROMPT;
     {
         try {
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            return \Illuminate\Support\Facades\Cache::remember('chatbot_ecommerce_' . $tenantId, 120, function () {
+
+            return \Illuminate\Support\Facades\Cache::remember('chatbot_ecommerce_'.$tenantId, 120, function () {
                 $orders = EcommerceOrder::with('customer')
                     ->whereNotIn('status', ['delivered', 'cancelled', 'completed'])
                     ->latest('id')
                     ->take(5)
                     ->get();
-                    
-                if ($orders->isEmpty()) return 'No hay pedidos de ecommerce pendientes de entrega en este momento.';
-                
-                $lines = ["PEDIDOS ECOMMERCE (Pendientes):"];
+
+                if ($orders->isEmpty()) {
+                    return 'No hay pedidos de ecommerce pendientes de entrega en este momento.';
+                }
+
+                $lines = ['PEDIDOS ECOMMERCE (Pendientes):'];
+
                 foreach ($orders as $o) {
                     $lines[] = sprintf('* Pedido #%d: Cliente **%s** (%s) - %s', $o->id, $o->customer?->name ?? 'SC', $o->status, $this->formatCurrency($o->total));
                 }
+
                 return implode("\n", $lines);
             });
         } catch (Throwable $e) {
@@ -738,56 +646,60 @@ PROMPT;
     {
         try {
             $term = $this->resolveSearchTerm($userMessage);
-            if ($term === '' || mb_strlen($term) < 3) return '';
+
+            if ($term === '' || mb_strlen($term) < 3) {
+                return '';
+            }
 
             $tenantId = $this->resolveCurrentTenantId() ?? '0';
-            $cacheKey = 'chatbot_people_' . $tenantId . '_' . md5($term);
+            $cacheKey = 'chatbot_people_'.$tenantId.'_'.md5($term);
 
             return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($term) {
                 $lines = [];
-
                 $termWords = array_filter(explode(' ', trim($term)));
-                $filterWords = function ($query) use ($termWords) {
+                $filterWords = function ($query) use ($termWords): void {
                     foreach ($termWords as $w) {
                         $query->where('name', 'like', "%{$w}%");
                     }
                 };
 
-                // Buscar Odontologos
-                $dentists = Dentist::with(['lab_account.moves' => fn($q) => $q->latest('id')->take(3)])->where($filterWords)->take(2)->get();
+                $dentists = Dentist::with(['lab_account.moves' => fn ($q) => $q->latest('id')->take(3)])->where($filterWords)->take(2)->get();
+
                 if ($dentists->isNotEmpty()) {
-                    $lines[] = "Dentistas hallados:";
+                    $lines[] = 'Dentistas hallados:';
                     foreach ($dentists as $d) {
                         $saldo = $d->lab_account ? $this->formatCurrency($d->lab_account->balance) : '$0';
                         $lines[] = "- {$d->name} (Tel: {$d->phone_number}) - Saldo actual: {$saldo}";
+
                         if ($d->lab_account?->moves?->isNotEmpty()) {
                             foreach ($d->lab_account->moves as $m) {
-                                $lines[] = sprintf("  * Movimiento: %s | %s el %s", $m->type, $this->formatCurrency($m->amount), $m->move_date ? $this->formatDate($m->move_date) : 'N/D');
+                                $lines[] = sprintf('  * Movimiento: %s | %s el %s', $m->type, $this->formatCurrency($m->amount), $m->move_date ? $this->formatDate($m->move_date) : 'N/D');
                             }
                         }
                     }
                 }
 
-                // Buscar Clientes
-                $customers = Customer::with(['customer_account.moves' => fn($q) => $q->latest('id')->take(3)])->where($filterWords)->take(2)->get();
+                $customers = Customer::with(['customer_account.moves' => fn ($q) => $q->latest('id')->take(3)])->where($filterWords)->take(2)->get();
+
                 if ($customers->isNotEmpty()) {
-                    $lines[] = "Clientes hallados:";
+                    $lines[] = 'Clientes hallados:';
                     foreach ($customers as $c) {
                         $saldo = $c->customer_account ? $this->formatCurrency($c->customer_account->balance) : '$0';
                         $lines[] = "- {$c->name} (Doc: {$c->document_number}) - Saldo actual: {$saldo}";
+
                         if ($c->customer_account?->moves?->isNotEmpty()) {
                             foreach ($c->customer_account->moves as $m) {
-                                $lines[] = sprintf("  * Movimiento: %s | %s el %s", $m->type, $this->formatCurrency($m->amount), $m->move_date ? $this->formatDate($m->move_date) : 'N/D');
+                                $lines[] = sprintf('  * Movimiento: %s | %s el %s', $m->type, $this->formatCurrency($m->amount), $m->move_date ? $this->formatDate($m->move_date) : 'N/D');
                             }
                         }
                     }
                 }
 
-                // Buscar Pacientes (si no se encontraron dentistas o clientes)
                 if (empty($lines)) {
                     $patients = Patient::where($filterWords)->take(2)->get();
+
                     if ($patients->isNotEmpty()) {
-                        $lines[] = "Pacientes hallados:";
+                        $lines[] = 'Pacientes hallados:';
                         foreach ($patients as $p) {
                             $lines[] = "- {$p->name} (Tel: {$p->phone_number}) - Historial disponible en sistema.";
                         }
@@ -943,6 +855,21 @@ PROMPT;
         }
     }
 
+    protected function resolveCurrentTenantId(): ?string
+    {
+        if (! function_exists('tenant') || ! tenancy()->initialized) {
+            return null;
+        }
+
+        $tenant = tenant();
+
+        if (! $tenant) {
+            return null;
+        }
+
+        return (string) $tenant->getTenantKey();
+    }
+
     protected function salesQuery(): Builder
     {
         return Sale::query()->where(function (Builder $query): void {
@@ -1011,11 +938,10 @@ PROMPT;
             return '';
         }
 
-        // Si el usuario especifica explicitamente #123 o orden ORD-123
         if (preg_match('/(?:job|orden)\s+([A-Z0-9-]{4,})/i', $cleanMessage, $matches) === 1) {
             return $matches[1];
         }
-        
+
         if (preg_match('/#([A-Z0-9-]{3,})/i', $cleanMessage, $matches) === 1) {
             return $matches[1];
         }
@@ -1033,7 +959,7 @@ PROMPT;
             'cliente', 'hizo', 'hace', 'detalle', 'detalles', 'ver', 'quiero', 'informacion',
             'dato', 'datos', 'este', 'esta', 'ese', 'esa', 'ayer', 'hoy', 'manana',
             'mes', 'semana', 'pasado', 'pasada', 'fue', 'pago', 'pagos', 'abono', 'abonos',
-            'realizado', 'realizados', 'hecho', 'hechos', 'recibo', 'su', 'sus', 'cuenta'
+            'realizado', 'realizados', 'hecho', 'hechos', 'recibo', 'su', 'sus', 'cuenta',
         ];
 
         $filteredTokens = array_values(array_filter($tokens, function (string $token) use ($stopWords): bool {
@@ -1089,15 +1015,5 @@ PROMPT;
     protected function formatDate(?Carbon $date): string
     {
         return $date?->format('d/m/Y') ?? 'Sin fecha';
-    }
-
-    protected function logProviderFailure(string $providerName, array $settings, int $status, string $body): void
-    {
-        Log::error("{$providerName} API error", [
-            'provider' => $settings['provider'],
-            'model' => $settings['model'],
-            'status' => $status,
-            'body' => Str::limit($body, 3000),
-        ]);
     }
 }

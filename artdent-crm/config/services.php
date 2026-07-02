@@ -64,11 +64,9 @@ return [
     ],
 
     'chatbot' => [
-        'provider' => env('CHATBOT_PROVIDER', 'openai'),
-        'openai_key' => env('CHATBOT_OPENAI_API_KEY', env('OPENAI_API_KEY')),
-        'openai_model' => env('CHATBOT_OPENAI_MODEL', 'gpt-5.4-nano'),
-        'openai_prompt_cache_key' => env('CHATBOT_OPENAI_PROMPT_CACHE_KEY', 'artdent:chatbot:erp:v1'),
-        'openai_prompt_cache_retention' => env('CHATBOT_OPENAI_PROMPT_CACHE_RETENTION', 'in_memory'),
+        'provider' => 'claude',
+        'anthropic_key' => env('CHATBOT_ANTHROPIC_API_KEY', env('ANTHROPIC_API_KEY')),
+        'anthropic_model' => env('CHATBOT_ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
     ],
 
 ];
