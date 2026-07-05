@@ -23,6 +23,12 @@ import {
     Stethoscope,
     DollarSign,
     TrendingUp,
+    CalendarCheck,
+    GraduationCap,
+    Fingerprint,
+    Factory,
+    Cpu,
+    History,
 } from 'lucide-react';
 
 export default function Sidebar({ className = "" }) {
@@ -39,11 +45,6 @@ export default function Sidebar({ className = "" }) {
                     icon: LayoutDashboard,
                     path: "/dashboard",
                     permission: ['sales.view', 'products.view', 'customers.view', 'orders.view', 'ecommerce.view', 'reports.view', 'settings.edit', 'staff.view', 'inventory.view', 'purchases.view', 'accounting.view'],
-                },
-                {
-                    title: "Mi Portal",
-                    icon: UserCheck,
-                    path: "/portal",
                 },
             ],
         },
@@ -87,6 +88,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Depósitos", path: "/warehouses" },
                         { title: "Movimientos", path: "/stock-movements" },
                         { title: "Retiros de Insumos", path: "/lab-withdrawals", permission: 'inventory.manage' },
+                        { title: "Categorías", path: "/categorys", permission: 'products.edit' },
                     ],
                 },
             ],
@@ -150,10 +152,6 @@ export default function Sidebar({ className = "" }) {
                         { title: "Extras", path: "/collaborator-extras" },
                         { title: "Descuentos", path: "/collaborator-discounts" },
                         { title: "Recibos", path: "/collaborator-receipts", permission: 'staff.edit' },
-                        { title: "Kiosk de Fichaje", path: "/attendance-kiosk", external: true },
-                        { title: "Kiosk de Producción", path: "/job-kiosk", external: true },
-                        { title: "Terminales HikVision", path: "/hikvision/devices", permission: 'staff.edit' },
-                        { title: "Eventos Biométricos", path: "/hikvision/events", permission: 'staff.view' },
                     ],
                 },
                 {
@@ -161,13 +159,14 @@ export default function Sidebar({ className = "" }) {
                     permission: 'staff.view',
                     children: [
                         { title: "Empleados", path: "/employees" },
-                        { title: "Asistencias", path: "/employee-attendances" },
-                        { title: "Vacaciones y Licencias", path: "/vacaciones" },
-                        { title: "Medicina Laboral", path: "/medicina-laboral" },
-                        { title: "Evaluaciones", path: "/evaluaciones" },
-                        { title: "Capacitaciones", path: "/capacitaciones" },
                         { title: "Organigrama", path: "/organigrama" },
                         { title: "Convenios Colectivos", path: "/convenios" },
+                    ],
+                },
+                {
+                    title: "Liquidación de Sueldos", icon: DollarSign, key: "liquidacion",
+                    permission: 'staff.view',
+                    children: [
                         { title: "Motor de Fórmulas", path: "/conceptos" },
                         { title: "Liquidaciones", path: "/payroll-runs", permission: 'staff.edit' },
                         { title: "Recibos", path: "/employee-receipts", permission: 'staff.edit' },
@@ -177,6 +176,33 @@ export default function Sidebar({ className = "" }) {
                         { title: "Libro de Sueldos Digital", path: "/libro-sueldos-digital", permission: 'rrhh.liquidaciones.approve' },
                     ],
                 },
+                {
+                    title: "Asistencia y Licencias", icon: CalendarCheck, key: "asistencia-empleados",
+                    permission: 'staff.view',
+                    children: [
+                        { title: "Asistencias", path: "/employee-attendances" },
+                        { title: "Vacaciones y Licencias", path: "/vacaciones" },
+                        { title: "Medicina Laboral", path: "/medicina-laboral" },
+                    ],
+                },
+                {
+                    title: "Desarrollo y Capacitación", icon: GraduationCap, key: "desarrollo",
+                    permission: 'staff.view',
+                    children: [
+                        { title: "Evaluaciones", path: "/evaluaciones" },
+                        { title: "Capacitaciones", path: "/capacitaciones" },
+                    ],
+                },
+            ],
+        },
+        {
+            label: "Accesos y Kiosks",
+            items: [
+                { title: "Mi Portal", icon: UserCheck, path: "/portal" },
+                { title: "Kiosk de Fichaje", icon: Fingerprint, path: "/attendance-kiosk", external: true },
+                { title: "Kiosk de Producción", icon: Factory, path: "/job-kiosk", external: true },
+                { title: "Terminales HikVision", icon: Cpu, path: "/hikvision/devices", permission: 'staff.edit' },
+                { title: "Eventos Biométricos", icon: History, path: "/hikvision/events", permission: 'staff.view' },
             ],
         },
         {
@@ -217,7 +243,6 @@ export default function Sidebar({ className = "" }) {
                     title: "Administración", icon: Settings, key: "administracion",
                     permission: 'settings.edit',
                     children: [
-                        { title: "Categorías", path: "/categorys", permission: 'products.edit' },
                         { title: "Usuarios", path: "/users", permission: 'users.view' },
                         { title: "Roles y Permisos", path: "/roles", permission: 'roles.view' },
                         { title: "Empresa", path: "/settings", permission: 'settings.edit' },
@@ -371,27 +396,50 @@ export default function Sidebar({ className = "" }) {
                                             )
                                         }
 
+                                        const flatItemClass = `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors relative
+                                            ${sidebarCollapsed ? 'justify-center' : ''}
+                                            ${isActive(item.path) ? (isDark ? 'bg-slate-800 text-white' : 'bg-white/20 text-white')
+                                                : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-white/15 hover:text-white')}`;
+                                        const flatItemContent = (
+                                            <>
+                                                {isActive(item.path) && (
+                                                    <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-emerald-500"></div>
+                                                )}
+                                                <item.icon className={`h-5 w-5 shrink-0 ${isActive(item.path) ? (isDark ? 'text-emerald-500' : 'text-[#ACD6CE]') : (isDark ? 'text-slate-400' : 'text-white/60')}`} />
+                                                {!sidebarCollapsed && <span className="truncate">{item.title}</span>}
+                                            </>
+                                        );
+                                        const flatItemHoverProps = {
+                                            onMouseEnter: sidebarCollapsed ? (e) => {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setFlyout({ key: item.path, top: rect.top, item, visibleChildren: null });
+                                            } : undefined,
+                                            onMouseLeave: sidebarCollapsed ? () => setFlyout(null) : undefined,
+                                        };
+
                                         return (
                                             <li key={item.path}>
-                                                <Link
-                                                    href={item.path}
-                                                    onMouseEnter={sidebarCollapsed ? (e) => {
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        setFlyout({ key: item.path, top: rect.top, item, visibleChildren: null });
-                                                    } : undefined}
-                                                    onMouseLeave={sidebarCollapsed ? () => setFlyout(null) : undefined}
-                                                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors relative
-                                                        ${sidebarCollapsed ? 'justify-center' : ''}
-                                                        ${isActive(item.path) ? (isDark ? 'bg-slate-800 text-white' : 'bg-white/20 text-white')
-                                                            : (isDark ? 'hover:bg-slate-800 hover:text-white' : 'hover:bg-white/15 hover:text-white')}`}
-                                                    title={sidebarCollapsed ? item.title : undefined}
-                                                >
-                                                    {isActive(item.path) && (
-                                                        <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-emerald-500"></div>
-                                                    )}
-                                                    <item.icon className={`h-5 w-5 shrink-0 ${isActive(item.path) ? (isDark ? 'text-emerald-500' : 'text-[#ACD6CE]') : (isDark ? 'text-slate-400' : 'text-white/60')}`} />
-                                                    {!sidebarCollapsed && <span className="truncate">{item.title}</span>}
-                                                </Link>
+                                                {item.external ? (
+                                                    <a
+                                                        href={item.path}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        {...flatItemHoverProps}
+                                                        className={flatItemClass}
+                                                        title={sidebarCollapsed ? item.title : undefined}
+                                                    >
+                                                        {flatItemContent}
+                                                    </a>
+                                                ) : (
+                                                    <Link
+                                                        href={item.path}
+                                                        {...flatItemHoverProps}
+                                                        className={flatItemClass}
+                                                        title={sidebarCollapsed ? item.title : undefined}
+                                                    >
+                                                        {flatItemContent}
+                                                    </Link>
+                                                )}
                                             </li>
                                         )
                                     })}
@@ -449,6 +497,17 @@ export default function Sidebar({ className = "" }) {
                                     </li>
                                 ))}
                             </ul>
+                        ) : flyout.item.external ? (
+                            <a
+                                href={flyout.item.path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setFlyout(null)}
+                                className={`block px-4 py-2 text-sm transition-colors
+                                    ${isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-white/80 hover:bg-white/15 hover:text-white'}`}
+                            >
+                                Ir a {flyout.item.title}
+                            </a>
                         ) : (
                             <Link
                                 href={flyout.item.path}
