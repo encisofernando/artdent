@@ -8,10 +8,12 @@ use App\Models\EmployeeDiscount;
 use App\Models\EmployeeExtra;
 use App\Models\EmployeeReceipt;
 use App\Services\EmployeePayrollService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as BaseResponse;
 
 class EmployeeReceiptController extends Controller
 {
@@ -102,7 +104,7 @@ class EmployeeReceiptController extends Controller
         abort_unless((int) $employeeReceipt->company_id === $companyId, 404);
 
         $employeeReceipt = $this->payrollService->syncReceipt($employeeReceipt);
-        $employeeReceipt->load('employee.user:id,name,email', 'creator:id,name');
+        $employeeReceipt->load(['employee.user:id,name,email', 'creator:id,name', 'lines' => fn ($q) => $q->orderBy('order')]);
 
         $extras = EmployeeExtra::query()
             ->where('employee_id', $employeeReceipt->employee_id)
@@ -124,6 +126,35 @@ class EmployeeReceiptController extends Controller
             'discounts' => $discounts,
             'company' => $company,
         ]);
+    }
+
+    public function pdf(Request $request, EmployeeReceipt $employeeReceipt): BaseResponse
+    {
+        $companyId = $request->user()->company_id ?? 1;
+        abort_unless((int) $employeeReceipt->company_id === $companyId, 404);
+
+        $employeeReceipt = $this->payrollService->syncReceipt($employeeReceipt);
+        $employeeReceipt->load([
+            'employee.user:id,name,email',
+            'employee.branch',
+            'employee.department',
+            'employee.jobPosition',
+            'employee.laborAgreementCategory.laborAgreement',
+            'payrollRun',
+            'lines' => fn ($q) => $q->orderBy('order')->with('concept:id,code,category,calculation_type'),
+        ]);
+
+        $company = Company::find($companyId);
+
+        $pdf = Pdf::loadView('pdf.payslip', [
+            'receipt' => $employeeReceipt,
+            'company' => $company,
+        ])->setPaper('a4', 'portrait');
+
+        $employeeName = str($employeeReceipt->employee->user->name ?? 'empleado')->slug();
+        $filename = "recibo-{$employeeName}-{$employeeReceipt->period_from->format('Y-m')}.pdf";
+
+        return $pdf->download($filename);
     }
 
     public function update(Request $request, EmployeeReceipt $employeeReceipt): RedirectResponse

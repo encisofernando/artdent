@@ -58,7 +58,7 @@ export default function UpdatePasswordForm() {
     );
 
     return (
-        <form onSubmit={updatePassword} className="space-y-5">
+        <form onSubmit={updatePassword} className="space-y-4">
             <div>
                 {label('Contraseña actual')}
                 <StyledInput
@@ -73,31 +73,33 @@ export default function UpdatePasswordForm() {
                 <InputError message={errors.current_password} className="mt-1.5" />
             </div>
 
-            <div>
-                {label('Nueva contraseña')}
-                <StyledInput
-                    id="password"
-                    ref={passwordInput}
-                    type="password"
-                    value={data.password}
-                    onChange={e => setData('password', e.target.value)}
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                />
-                <InputError message={errors.password} className="mt-1.5" />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    {label('Nueva contraseña')}
+                    <StyledInput
+                        id="password"
+                        ref={passwordInput}
+                        type="password"
+                        value={data.password}
+                        onChange={e => setData('password', e.target.value)}
+                        autoComplete="new-password"
+                        placeholder="••••••••"
+                    />
+                    <InputError message={errors.password} className="mt-1.5" />
+                </div>
 
-            <div>
-                {label('Confirmar contraseña')}
-                <StyledInput
-                    id="password_confirmation"
-                    type="password"
-                    value={data.password_confirmation}
-                    onChange={e => setData('password_confirmation', e.target.value)}
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                />
-                <InputError message={errors.password_confirmation} className="mt-1.5" />
+                <div>
+                    {label('Confirmar contraseña')}
+                    <StyledInput
+                        id="password_confirmation"
+                        type="password"
+                        value={data.password_confirmation}
+                        onChange={e => setData('password_confirmation', e.target.value)}
+                        autoComplete="new-password"
+                        placeholder="••••••••"
+                    />
+                    <InputError message={errors.password_confirmation} className="mt-1.5" />
+                </div>
             </div>
 
             <div className="flex items-center gap-4 pt-1">

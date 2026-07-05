@@ -66,7 +66,6 @@ class CollaboratorController extends Controller
             'birth_date' => 'nullable|date',
             'specialty' => 'nullable|string|max:255',
             'hourly_rate' => 'nullable|numeric|min:0',
-            'faceio_fid' => 'nullable|string|max:255|unique:collaborators,faceio_fid',
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
         ]);
@@ -113,7 +112,6 @@ class CollaboratorController extends Controller
             'birth_date' => 'nullable|date',
             'specialty' => 'nullable|string|max:255',
             'hourly_rate' => 'nullable|numeric|min:0',
-            'faceio_fid' => 'nullable|string|max:255|unique:collaborators,faceio_fid,'.$collaborator->id,
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
             'pin' => 'nullable|string|min:4|max:6|regex:/^\d+$/',

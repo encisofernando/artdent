@@ -22,6 +22,7 @@
         "spatie/browsershot": "^5.2",
         "spatie/laravel-permission": "^7.2",
         "stancl/tenancy": "^3.10",
+        "symfony/expression-language": "^7.4",
         "tightenco/ziggy": "^2.0",
         "web-auth/webauthn-lib": "^4.9"
     },

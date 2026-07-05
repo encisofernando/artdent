@@ -5,7 +5,7 @@ import { useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 
-export default function DeleteUserForm() {
+export default function DeleteUserForm({ compact = false }) {
     const { isDark } = useTheme();
     const [open, setOpen] = useState(false);
     const passwordInput = useRef();
@@ -31,17 +31,19 @@ export default function DeleteUserForm() {
     };
 
     return (
-        <div className="space-y-4">
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Una vez eliminada, toda la información de tu cuenta será borrada permanentemente.
-                Asegurate de descargar cualquier dato que quieras conservar antes de continuar.
-            </p>
+        <div className={compact ? '' : 'space-y-4'}>
+            {!compact && (
+                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Una vez eliminada, toda la información de tu cuenta será borrada permanentemente.
+                    Asegurate de descargar cualquier dato que quieras conservar antes de continuar.
+                </p>
+            )}
 
             <button
                 onClick={() => setOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition-all hover:brightness-110 bg-red-600 hover:bg-red-700"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition-all hover:brightness-110 bg-red-600 hover:bg-red-700 whitespace-nowrap shrink-0"
             >
-                <Trash2 size={14} />
+                <Trash2 size={13} />
                 Eliminar cuenta
             </button>
 

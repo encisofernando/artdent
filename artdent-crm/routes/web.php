@@ -42,9 +42,6 @@ Route::middleware('lab.network')->group(function () {
     Route::post('/job-kiosk/return-from-proof/{job}', [\App\Http\Controllers\JobPhaseKioskController::class, 'returnFromProof'])->name('job-kiosk.return-from-proof');
 });
 
-// Clock-face POST — requires kiosk token or lab IP
-Route::middleware('lab.network')->post('/attendance-kiosk/clock-face', [\App\Http\Controllers\AttendanceKioskController::class, 'clockFace'])->name('attendance-kiosk.clock-face');
-
 // WebAuthn kiosk authentication — requires kiosk token or lab IP
 Route::middleware('lab.network')->group(function () {
     Route::post('/attendance-kiosk/webauthn/authentication-options', [\App\Http\Controllers\WebAuthnKioskController::class, 'authenticationOptions'])->name('attendance-kiosk.webauthn.authentication-options');

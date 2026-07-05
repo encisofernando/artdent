@@ -126,24 +126,6 @@ export default function Welcome({ auth }) {
                     transform: translateY(-1px);
                     box-shadow: 0 6px 20px ${C.blue}40;
                 }
-                .btn-register {
-                    padding: 9px 22px;
-                    border-radius: 50px;
-                    font-family: 'Montserrat', sans-serif;
-                    font-weight: 700;
-                    font-size: 13px;
-                    cursor: pointer;
-                    text-decoration: none;
-                    transition: all 0.22s;
-                    background: linear-gradient(135deg, ${C.blue}, ${C.teal});
-                    color: #fff;
-                    border: none;
-                    box-shadow: 0 4px 16px ${C.blue}35;
-                }
-                .btn-register:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 28px ${C.blue}50;
-                }
                 .btn-dashboard {
                     padding: 9px 22px;
                     border-radius: 50px;
@@ -257,25 +239,6 @@ export default function Welcome({ auth }) {
                 .cta-primary:hover {
                     transform: translateY(-3px);
                     box-shadow: 0 12px 36px ${C.blue}55;
-                }
-                .cta-secondary {
-                    padding: 14px 36px;
-                    border-radius: 50px;
-                    font-family: 'Montserrat', sans-serif;
-                    font-weight: 700;
-                    font-size: 14px;
-                    cursor: pointer;
-                    text-decoration: none;
-                    transition: all 0.25s;
-                    background: transparent;
-                    color: ${C.blue};
-                    border: 2px solid ${C.blue};
-                }
-                .cta-secondary:hover {
-                    background: ${C.blue};
-                    color: #fff;
-                    transform: translateY(-3px);
-                    box-shadow: 0 8px 24px ${C.blue}35;
                 }
 
                 /* ── Stats strip ── */
@@ -539,10 +502,7 @@ export default function Welcome({ auth }) {
                                 Ir al Dashboard →
                             </a>
                         ) : (
-                            <>
-                                <a href={route('login')} className="btn-login">Iniciar sesión</a>
-                                <a href={route('register')} className="btn-register">Registrarse</a>
-                            </>
+                            <a href={route('login')} className="btn-login">Iniciar sesión</a>
                         )}
                     </div>
                 </nav>
@@ -577,14 +537,9 @@ export default function Welcome({ auth }) {
                                     Ir al Dashboard →
                                 </a>
                             ) : (
-                                <>
-                                    <a href={route('login')} className="cta-primary">
-                                        Iniciar sesión
-                                    </a>
-                                    <a href={route('register')} className="cta-secondary">
-                                        Crear cuenta
-                                    </a>
-                                </>
+                                <a href={route('login')} className="cta-primary">
+                                    Iniciar sesión
+                                </a>
                             )}
                         </div>
 

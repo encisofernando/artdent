@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
+use App\Models\Employee;
+use App\Models\EmployeeAttendance;
 use App\Models\HikVisionDevice;
 use App\Models\HikVisionEvent;
 use Carbon\Carbon;
@@ -23,6 +25,10 @@ use Illuminate\Support\Facades\Log;
  *   Puerto = 80 (o 443), URL = /hikvision/webhook
  *
  * También acepta heartbeats de ISUP 5.0 (keepalive).
+ *
+ * El terminal sirve tanto a Collaborators como a Employees (un mismo employeeNo se busca
+ * primero entre colaboradores y, si no aparece, entre empleados) — el fichaje resultante se
+ * guarda en la tabla de asistencia que corresponda a cada tipo de personal.
  */
 class HikVisionWebhookController extends Controller
 {
@@ -89,7 +95,7 @@ class HikVisionWebhookController extends Controller
             return response('OK', 200); // evento desconocido, logueado, ignorado
         }
 
-        // ── Resolver colaborador ──────────────────────────────────────────
+        // ── Resolver colaborador o empleado ────────────────────────────────
         $employeeNo = $acEvent['employeeNo'] ?? null;
 
         if (! $employeeNo) {
@@ -98,16 +104,18 @@ class HikVisionWebhookController extends Controller
             return response('OK', 200);
         }
 
-        $collaborator = $this->resolveCollaborator($employeeNo, $device?->company_id);
+        $person = $this->resolvePerson($employeeNo, $device?->company_id);
 
-        if (! $collaborator) {
-            $hikEvent->update(['error' => "Colaborador no encontrado para employeeNo={$employeeNo}"]);
-            Log::warning('HikVision webhook: colaborador no encontrado', ['employeeNo' => $employeeNo]);
+        if (! $person) {
+            $hikEvent->update(['error' => "No se encontró colaborador ni empleado para employeeNo={$employeeNo}"]);
+            Log::warning('HikVision webhook: persona no encontrada', ['employeeNo' => $employeeNo]);
 
             return response('OK', 200);
         }
 
-        $hikEvent->update(['collaborator_id' => $collaborator->id]);
+        $hikEvent->update($person['type'] === 'collaborator'
+            ? ['collaborator_id' => $person['model']->id]
+            : ['employee_id' => $person['model']->id]);
 
         // ── Registrar asistencia ──────────────────────────────────────────
         $attendanceStatus = $acEvent['attendanceStatus'] ?? 'checkIn';
@@ -116,20 +124,16 @@ class HikVisionWebhookController extends Controller
         $eventTime = $hikEvent->event_time ?? now();
 
         try {
-            $attendanceId = $this->recordAttendance(
-                $collaborator,
-                $attendanceStatus,
-                $method,
-                $eventTime,
-                $sourceIp,
-                "HikVision {$device?->name}",
-            );
+            $attendanceId = $person['type'] === 'collaborator'
+                ? $this->recordCollaboratorAttendance($person['model'], $attendanceStatus, $method, $eventTime, $sourceIp, "HikVision {$device?->name}")
+                : $this->recordEmployeeAttendance($person['model'], $attendanceStatus, $method, $eventTime, $sourceIp, "HikVision {$device?->name}");
 
             $hikEvent->update(['attendance_id' => $attendanceId, 'processed' => true]);
         } catch (\Throwable $e) {
             $hikEvent->update(['error' => $e->getMessage()]);
             Log::error('HikVision webhook: error al registrar asistencia', [
-                'collaborator' => $collaborator->id,
+                'person_type' => $person['type'],
+                'person_id' => $person['model']->id,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -173,34 +177,47 @@ class HikVisionWebhookController extends Controller
     }
 
     /**
-     * Busca el colaborador por su employeeNo en el dispositivo.
-     * Primero por hik_employee_no, luego por ID con padding.
+     * Busca la persona (colaborador o empleado) por su employeeNo en el dispositivo.
+     * Primero colaboradores (por hik_employee_no, luego por ID con padding), y si no
+     * aparece ninguno, empleados con el mismo criterio.
+     *
+     * @return array{type: 'collaborator'|'employee', model: Collaborator|Employee}|null
      */
-    private function resolveCollaborator(string $employeeNo, ?int $companyId): ?Collaborator
+    private function resolvePerson(string $employeeNo, ?int $companyId): ?array
     {
-        $query = Collaborator::where('is_active', true);
+        $numericId = (int) (ltrim($employeeNo, '0') ?: '0');
 
+        $collaboratorQuery = Collaborator::where('is_active', true);
         if ($companyId) {
-            $query->where('company_id', $companyId);
+            $collaboratorQuery->where('company_id', $companyId);
         }
 
-        // Buscar por campo explícito
-        $collaborator = (clone $query)->where('hik_employee_no', $employeeNo)->first();
+        $collaborator = (clone $collaboratorQuery)->where('hik_employee_no', $employeeNo)->first()
+            ?? (clone $collaboratorQuery)->where('id', $numericId)->first();
 
         if ($collaborator) {
-            return $collaborator;
+            return ['type' => 'collaborator', 'model' => $collaborator];
         }
 
-        // Buscar por ID numérico (employeeNo = ID con padding)
-        $numericId = ltrim($employeeNo, '0') ?: '0';
+        $employeeQuery = Employee::where('is_active', true);
+        if ($companyId) {
+            $employeeQuery->where('company_id', $companyId);
+        }
 
-        return $query->where('id', (int) $numericId)->first();
+        $employee = (clone $employeeQuery)->where('hik_employee_no', $employeeNo)->first()
+            ?? (clone $employeeQuery)->where('id', $numericId)->first();
+
+        if ($employee) {
+            return ['type' => 'employee', 'model' => $employee];
+        }
+
+        return null;
     }
 
     /**
-     * Registra entrada o salida según el estado del evento.
+     * Registra entrada o salida de un colaborador según el estado del evento.
      */
-    private function recordAttendance(
+    private function recordCollaboratorAttendance(
         Collaborator $collaborator,
         string $attendanceStatus,
         string $method,
@@ -215,9 +232,7 @@ class HikVisionWebhookController extends Controller
             ->where('work_date', $workDate)
             ->first();
 
-        // checkIn / breakIn → entrada
         $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
-        // checkOut / breakOut → salida
         $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
 
         if (! $attendance && $isEntry) {
@@ -244,6 +259,60 @@ class HikVisionWebhookController extends Controller
                 'time_out' => $timeStr,
                 'hours' => $hours,
                 'amount' => $amount,
+                'ip_address' => $sourceIp,
+                'device_info' => $deviceInfo,
+            ]);
+
+            return $attendance->id;
+        }
+
+        // Ya registró entrada y salida hoy — sin cambios
+        return $attendance?->id;
+    }
+
+    /**
+     * Registra entrada o salida de un empleado según el estado del evento. Sin monto
+     * (Employee no tiene tarifa horaria) — solo horas, disponibles para el motor de fórmulas.
+     */
+    private function recordEmployeeAttendance(
+        Employee $employee,
+        string $attendanceStatus,
+        string $method,
+        Carbon $eventTime,
+        string $sourceIp,
+        string $deviceInfo,
+    ): ?int {
+        $workDate = $eventTime->toDateString();
+        $timeStr = $eventTime->toTimeString();
+
+        $attendance = EmployeeAttendance::where('employee_id', $employee->id)
+            ->where('work_date', $workDate)
+            ->first();
+
+        $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
+        $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
+
+        if (! $attendance && $isEntry) {
+            $created = EmployeeAttendance::create([
+                'company_id' => $employee->company_id,
+                'employee_id' => $employee->id,
+                'work_date' => $workDate,
+                'time_in' => $timeStr,
+                'method' => $method,
+                'ip_address' => $sourceIp,
+                'device_info' => $deviceInfo,
+            ]);
+
+            return $created->id;
+        }
+
+        if ($attendance && ! $attendance->time_out && $isExit) {
+            $timeIn = Carbon::parse("{$workDate} {$attendance->getRawOriginal('time_in')}");
+            $hours = round($eventTime->diffInMinutes($timeIn) / 60, 2);
+
+            $attendance->update([
+                'time_out' => $timeStr,
+                'hours' => $hours,
                 'ip_address' => $sourceIp,
                 'device_info' => $deviceInfo,
             ]);

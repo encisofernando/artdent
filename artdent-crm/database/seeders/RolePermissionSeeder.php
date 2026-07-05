@@ -38,6 +38,11 @@ class RolePermissionSeeder extends Seeder
         // ── Personal ──────────────────────────────────────────────────────────
         'staff' => ['view', 'create', 'edit', 'delete'],
 
+        // ── RRHH ──────────────────────────────────────────────────────────────
+        // El resto de RRHH (legajo, recibos, extras, descuentos) reutiliza los
+        // permisos staff.* existentes por ser el mismo recurso Employee.
+        'rrhh' => ['organigrama.manage', 'convenios.manage', 'formulas.manage', 'liquidaciones.run', 'liquidaciones.approve', 'leaves.approve', 'medical.manage', 'evaluations.manage', 'trainings.manage'],
+
         // ── Finanzas ──────────────────────────────────────────────────────────
         'accounting' => ['view', 'create', 'edit', 'delete'],
         'reports' => ['view'],
@@ -116,6 +121,24 @@ class RolePermissionSeeder extends Seeder
                 'description' => 'Acceso al módulo contable, libros fiscales, facturación consolidada y reportes impositivos.',
                 'permissions' => [
                     'accounting.view', 'accounting.create', 'accounting.edit',
+                    'reports.view',
+                ],
+            ],
+            [
+                'name' => 'RRHH Admin',
+                'display_name' => 'Administrador de RRHH',
+                'description' => 'Gestión completa de legajos, organigrama y liquidación de personal.',
+                'permissions' => [
+                    'staff.view', 'staff.create', 'staff.edit', 'staff.delete',
+                    'rrhh.organigrama.manage',
+                    'rrhh.convenios.manage',
+                    'rrhh.formulas.manage',
+                    'rrhh.liquidaciones.run',
+                    'rrhh.liquidaciones.approve',
+                    'rrhh.leaves.approve',
+                    'rrhh.medical.manage',
+                    'rrhh.evaluations.manage',
+                    'rrhh.trainings.manage',
                     'reports.view',
                 ],
             ],

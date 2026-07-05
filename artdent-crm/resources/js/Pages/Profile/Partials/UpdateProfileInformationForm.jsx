@@ -49,29 +49,31 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status }) {
     };
 
     return (
-        <form onSubmit={submit} className="space-y-5">
-            <Field label="Nombre completo" error={errors.name}>
-                <StyledInput
-                    id="name"
-                    value={data.name}
-                    onChange={e => setData('name', e.target.value)}
-                    required
-                    autoComplete="name"
-                    placeholder="Tu nombre"
-                />
-            </Field>
+        <form onSubmit={submit} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+                <Field label="Nombre completo" error={errors.name}>
+                    <StyledInput
+                        id="name"
+                        value={data.name}
+                        onChange={e => setData('name', e.target.value)}
+                        required
+                        autoComplete="name"
+                        placeholder="Tu nombre"
+                    />
+                </Field>
 
-            <Field label="Correo electrónico" error={errors.email}>
-                <StyledInput
-                    id="email"
-                    type="email"
-                    value={data.email}
-                    onChange={e => setData('email', e.target.value)}
-                    required
-                    autoComplete="username"
-                    placeholder="tu@email.com"
-                />
-            </Field>
+                <Field label="Correo electrónico" error={errors.email}>
+                    <StyledInput
+                        id="email"
+                        type="email"
+                        value={data.email}
+                        onChange={e => setData('email', e.target.value)}
+                        required
+                        autoComplete="username"
+                        placeholder="tu@email.com"
+                    />
+                </Field>
+            </div>
 
             {mustVerifyEmail && user.email_verified_at === null && (
                 <div className={`text-xs rounded-xl px-4 py-3 border

@@ -1,189 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, UserRound, DollarSign, ScanFace, Camera, X, CheckCircle, AlertCircle, Fingerprint, Trash2 } from 'lucide-react';
-
-function EnrollFaceModal({ item, isDark, onClose }) {
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const [enrollState, setEnrollState] = useState('idle'); // idle | camera | capturing | success | error
-    const [enrollMsg, setEnrollMsg] = useState('');
-    const streamRef = useRef(null);
-
-    const stopCamera = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach((t) => t.stop());
-            streamRef.current = null;
-        }
-    }, []);
-
-    const startCamera = useCallback(async () => {
-        setEnrollState('camera');
-        setEnrollMsg('');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 640, height: 480, facingMode: 'user' },
-            });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                await videoRef.current.play();
-            }
-        } catch (e) {
-            setEnrollState('error');
-            setEnrollMsg('No se pudo acceder a la cámara. Verificá los permisos.');
-        }
-    }, []);
-
-    const captureAndEnroll = useCallback(async () => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        if (!video || !canvas) return;
-
-        // Resize to max 640px wide to keep payload small
-        const maxW = 640;
-        const scale = Math.min(1, maxW / video.videoWidth);
-        canvas.width = Math.round(video.videoWidth * scale);
-        canvas.height = Math.round(video.videoHeight * scale);
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageBase64 = canvas.toDataURL('image/jpeg', 0.75);
-
-        stopCamera();
-        setEnrollState('capturing');
-        setEnrollMsg('Registrando rostro...');
-
-        try {
-            const { data } = await axios.post(route('collaborators.enroll-face', item.id), { image: imageBase64 });
-            setEnrollState('success');
-            setEnrollMsg(`Rostro registrado correctamente. ID: ${data.subject}`);
-        } catch (e) {
-            const msg = e?.response?.data?.error ?? e?.message ?? 'Error desconocido';
-            setEnrollState('error');
-            setEnrollMsg(msg);
-        }
-    }, [item.id, stopCamera]);
-
-    const handleClose = useCallback(() => {
-        stopCamera();
-        onClose();
-    }, [stopCamera, onClose]);
-
-    useEffect(() => () => stopCamera(), [stopCamera]);
-
-    const overlayBg = isDark ? 'bg-slate-900/95' : 'bg-slate-800/95';
-    const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-
-    return (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`}>
-            <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-6 ${cardBg}`}>
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <ScanFace size={20} className="text-teal-500" />
-                        <h2 className={`font-bold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                            Registrar Rostro — {item.name}
-                        </h2>
-                    </div>
-                    <button
-                        onClick={handleClose}
-                        className={`p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-                    >
-                        <X size={18} />
-                    </button>
-                </div>
-
-                {/* Body */}
-                {enrollState === 'idle' && (
-                    <div className="text-center py-4">
-                        <p className={`text-sm mb-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                            Capturá una foto clara del colaborador para registrar su rostro en el sistema de fichaje biométrico.
-                            {item.faceio_fid && (
-                                <span className="block mt-2 text-amber-500 font-medium">
-                                    Ya tiene un rostro registrado. Al enrollar de nuevo lo reemplazará.
-                                </span>
-                            )}
-                        </p>
-                        <Button
-                            onClick={startCamera}
-                            className="bg-teal-600 hover:bg-teal-500 text-white"
-                        >
-                            <Camera className="mr-2" size={16} />
-                            Abrir Cámara
-                        </Button>
-                    </div>
-                )}
-
-                {enrollState === 'camera' && (
-                    <div>
-                        <div className="relative rounded-xl overflow-hidden bg-slate-800 aspect-[4/3] mb-4">
-                            <video
-                                ref={videoRef}
-                                className="w-full h-full object-cover"
-                                muted
-                                playsInline
-                                style={{ transform: 'scaleX(-1)' }}
-                            />
-                            <canvas ref={canvasRef} className="hidden" />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-40 h-52 rounded-full border-2 border-teal-400/60 border-dashed" />
-                            </div>
-                        </div>
-                        <p className={`text-xs text-center mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Asegurate de que el rostro esté centrado y bien iluminado
-                        </p>
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={handleClose} className="flex-1">
-                                Cancelar
-                            </Button>
-                            <Button onClick={captureAndEnroll} className="flex-1 bg-teal-600 hover:bg-teal-500 text-white">
-                                <Camera className="mr-2" size={16} />
-                                Capturar y Registrar
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {enrollState === 'capturing' && (
-                    <div className="flex flex-col items-center py-8 gap-4">
-                        <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{enrollMsg}</p>
-                    </div>
-                )}
-
-                {enrollState === 'success' && (
-                    <div className="flex flex-col items-center py-6 gap-3">
-                        <CheckCircle size={48} className="text-emerald-500" />
-                        <p className={`text-sm text-center font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                            {enrollMsg}
-                        </p>
-                        <p className={`text-xs text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            Recargá la página para ver el ID actualizado.
-                        </p>
-                        <Button onClick={handleClose} className="mt-2 bg-emerald-600 hover:bg-emerald-500 text-white">
-                            Cerrar
-                        </Button>
-                    </div>
-                )}
-
-                {enrollState === 'error' && (
-                    <div className="flex flex-col items-center py-6 gap-3">
-                        <AlertCircle size={48} className="text-red-500" />
-                        <p className={`text-sm text-center ${isDark ? 'text-red-300' : 'text-red-600'}`}>{enrollMsg}</p>
-                        <div className="flex gap-2 mt-2">
-                            <Button variant="outline" onClick={handleClose}>Cerrar</Button>
-                            <Button onClick={() => { setEnrollState('idle'); setEnrollMsg(''); }} className="bg-teal-600 hover:bg-teal-500 text-white">
-                                Reintentar
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
+import { ArrowLeft, Save, UserRound, DollarSign, CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';
 
 // ── WebAuthn helpers ──────────────────────────────────────────────────────────
 
@@ -351,7 +172,6 @@ function WebAuthnPanel({ item, isDark }) {
 
 export default function Edit({ auth, item }) {
     const { isDark } = useTheme();
-    const [showEnrollModal, setShowEnrollModal] = useState(false);
     const { data, setData, put, processing, errors } = useForm({
         name: item.name || '',
         document: item.document || '',
@@ -361,7 +181,6 @@ export default function Edit({ auth, item }) {
         birth_date: item.birth_date ? item.birth_date.substring(0, 10) : '',
         specialty: item.specialty || '',
         hourly_rate: item.hourly_rate || '',
-        faceio_fid: item.faceio_fid || '',
         is_active: item.is_active === false || item.is_active === 0 ? 0 : 1,
         notes: item.notes || '',
         pin: '',
@@ -593,55 +412,6 @@ export default function Edit({ auth, item }) {
                         </div>
                     </div>
 
-                    {/* FaceIO / Biometric */}
-                    <div className={`rounded-2xl border p-6 sm:p-8 shadow-sm transition-colors
-                        ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}
-                    `}>
-                        <div className={`flex items-center gap-2 mb-6 pb-2 border-b
-                            ${isDark ? 'border-slate-800' : 'border-slate-100'}
-                        `}>
-                            <ScanFace size={18} style={{ color: B.teal }} />
-                            <h2 className={`font-bold uppercase tracking-wider text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                Fichaje Biométrico
-                            </h2>
-                        </div>
-
-                        <div className="flex flex-col gap-4">
-                            <div>
-                                <label className={labelClasses}>CompreFace Subject ID</label>
-                                <input
-                                    type="text"
-                                    value={data.faceio_fid}
-                                    onChange={e => setData('faceio_fid', e.target.value)}
-                                    className={inputClasses}
-                                    placeholder="Se asigna al enrollar el rostro (ej: collab-5)"
-                                    readOnly
-                                />
-                                {errors.faceio_fid && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.faceio_fid}</div>}
-                                <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                    Se asigna automáticamente al registrar el rostro. Usá el botón de abajo para enrollar.
-                                </p>
-                            </div>
-
-                            <div>
-                                <Button
-                                    type="button"
-                                    onClick={() => setShowEnrollModal(true)}
-                                    className="gap-2 text-white"
-                                    style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
-                                >
-                                    <Camera size={16} />
-                                    {data.faceio_fid ? 'Re-enrollar Rostro' : 'Enrollar Rostro'}
-                                </Button>
-                                {data.faceio_fid && (
-                                    <span className={`ml-3 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                        ✓ Rostro registrado
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
                     {/* WebAuthn / Fingerprint */}
                     <WebAuthnPanel item={item} isDark={isDark} />
 
@@ -672,14 +442,6 @@ export default function Edit({ auth, item }) {
                 </form>
             </div>
         </AuthenticatedLayout>
-
-        {showEnrollModal && (
-            <EnrollFaceModal
-                item={item}
-                isDark={isDark}
-                onClose={() => setShowEnrollModal(false)}
-            />
-        )}
         </>
     );
 }

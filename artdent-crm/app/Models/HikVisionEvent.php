@@ -19,6 +19,7 @@ class HikVisionEvent extends Model
         'event_time',
         'raw_payload',
         'collaborator_id',
+        'employee_id',
         'attendance_id',
         'processed',
         'error',
@@ -41,6 +42,11 @@ class HikVisionEvent extends Model
     public function collaborator(): BelongsTo
     {
         return $this->belongsTo(Collaborator::class);
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
     }
 
     public function attendance(): BelongsTo

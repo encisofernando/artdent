@@ -51,6 +51,10 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        if ($user->hasRole('Super Admin')) {
+            abort(403, 'El Super Admin no puede eliminar su propia cuenta.');
+        }
+
         Auth::logout();
 
         $user->delete();

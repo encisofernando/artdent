@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
 use App\Models\CollaboratorWebAuthnCredential;
+use App\Models\Employee;
+use App\Models\EmployeeAttendance;
+use App\Models\EmployeeWebAuthnCredential;
 use Carbon\Carbon;
 use CBOR\Decoder;
 use CBOR\MapObject;
@@ -41,26 +44,103 @@ class WebAuthnKioskController extends Controller
 
     /**
      * GET /collaborators/{collaborator}/webauthn/registration-options
-     * Returns PublicKeyCredentialCreationOptions JSON.
      */
     public function registrationOptions(Request $request, Collaborator $collaborator): JsonResponse
+    {
+        return response()->json($this->buildRegistrationOptions(
+            'collab',
+            $collaborator->id,
+            $collaborator->email ?? "collab-{$collaborator->id}",
+            $collaborator->name,
+        ));
+    }
+
+    /**
+     * POST /collaborators/{collaborator}/webauthn/register
+     */
+    public function register(Request $request, Collaborator $collaborator): JsonResponse
+    {
+        $result = $this->verifyRegistration($request, 'collab', $collaborator->id);
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        CollaboratorWebAuthnCredential::updateOrCreate(
+            ['collaborator_id' => $collaborator->id, 'credential_id' => $result['credential_id']],
+            [
+                'public_key' => $result['public_key'],
+                'sign_count' => $result['sign_count'],
+                'device_label' => $request->input('device_label') ?: 'Dispositivo',
+                'user_handle' => $this->base64url("collab-{$collaborator->id}"),
+            ],
+        );
+
+        return response()->json(['success' => true, 'credential_id' => $result['credential_id'], 'collaborator' => $collaborator->name]);
+    }
+
+    /**
+     * GET /employees/{employee}/webauthn/registration-options
+     */
+    public function employeeRegistrationOptions(Request $request, Employee $employee): JsonResponse
+    {
+        $employee->loadMissing('user:id,name,email');
+
+        return response()->json($this->buildRegistrationOptions(
+            'emp',
+            $employee->id,
+            $employee->user->email ?? "emp-{$employee->id}",
+            $employee->user->name ?? "Empleado #{$employee->id}",
+        ));
+    }
+
+    /**
+     * POST /employees/{employee}/webauthn/register
+     */
+    public function registerEmployee(Request $request, Employee $employee): JsonResponse
+    {
+        $result = $this->verifyRegistration($request, 'emp', $employee->id);
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        $employee->loadMissing('user:id,name');
+
+        EmployeeWebAuthnCredential::updateOrCreate(
+            ['employee_id' => $employee->id, 'credential_id' => $result['credential_id']],
+            [
+                'public_key' => $result['public_key'],
+                'sign_count' => $result['sign_count'],
+                'device_label' => $request->input('device_label') ?: 'Dispositivo',
+                'user_handle' => $this->base64url("emp-{$employee->id}"),
+            ],
+        );
+
+        return response()->json(['success' => true, 'credential_id' => $result['credential_id'], 'employee' => $employee->user->name ?? null]);
+    }
+
+    /**
+     * Construye las opciones de registro (PublicKeyCredentialCreationOptions) y guarda el
+     * challenge en sesión. `$personType` es 'collab' o 'emp', usado como prefijo del user.id.
+     */
+    private function buildRegistrationOptions(string $personType, int $personId, string $userName, string $displayName): array
     {
         $challenge = random_bytes(32);
         session([
             'webauthn_reg_challenge' => base64_encode($challenge),
-            'webauthn_reg_collaborator' => $collaborator->id,
+            'webauthn_reg_person_type' => $personType,
+            'webauthn_reg_person_id' => $personId,
         ]);
 
-        return response()->json([
+        return [
             'challenge' => $this->base64url($challenge),
             'rp' => [
                 'name' => config('app.name'),
                 'id' => $this->rpId(),
             ],
             'user' => [
-                'id' => $this->base64url("collab-{$collaborator->id}"),
-                'name' => $collaborator->email ?? "collab-{$collaborator->id}",
-                'displayName' => $collaborator->name,
+                'id' => $this->base64url("{$personType}-{$personId}"),
+                'name' => $userName,
+                'displayName' => $displayName,
             ],
             'pubKeyCredParams' => [
                 ['type' => 'public-key', 'alg' => -7],   // ES256
@@ -73,14 +153,15 @@ class WebAuthnKioskController extends Controller
             ],
             'timeout' => 60000,
             'attestation' => 'none',
-        ]);
+        ];
     }
 
     /**
-     * POST /collaborators/{collaborator}/webauthn/register
-     * Verifies and stores a new WebAuthn credential.
+     * Verifica una attestation de registro (clientDataJSON + CBOR attestationObject) contra
+     * el challenge de sesión. Devuelve ['credential_id' => ..., 'public_key' => ..., 'sign_count' => ...]
+     * o un JsonResponse de error para devolver directamente.
      */
-    public function register(Request $request, Collaborator $collaborator): JsonResponse
+    private function verifyRegistration(Request $request, string $expectedPersonType, int $expectedPersonId): array|JsonResponse
     {
         $request->validate([
             'id' => 'required|string',
@@ -91,13 +172,13 @@ class WebAuthnKioskController extends Controller
         ]);
 
         $storedChallenge = session('webauthn_reg_challenge');
-        $storedCollaboratorId = session('webauthn_reg_collaborator');
+        $storedPersonType = session('webauthn_reg_person_type');
+        $storedPersonId = session('webauthn_reg_person_id');
 
-        if (! $storedChallenge || $storedCollaboratorId !== $collaborator->id) {
+        if (! $storedChallenge || $storedPersonType !== $expectedPersonType || $storedPersonId !== $expectedPersonId) {
             return response()->json(['error' => 'Sesión de registro inválida. Intentá de nuevo.'], 422);
         }
 
-        // Parse and verify clientDataJSON
         $clientDataJSON = $this->base64urlDecode($request->input('response.clientDataJSON'));
         $clientData = json_decode($clientDataJSON, true);
 
@@ -118,7 +199,6 @@ class WebAuthnKioskController extends Controller
             return response()->json(['error' => "Origen inválido: {$origin}"], 422);
         }
 
-        // Parse attestationObject (CBOR)
         $attestationObject = $this->base64urlDecode($request->input('response.attestationObject'));
         $decoder = Decoder::create();
         $stream = new \CBOR\StringStream($attestationObject);
@@ -135,11 +215,9 @@ class WebAuthnKioskController extends Controller
             return response()->json(['error' => 'authData ausente en attestation.'], 422);
         }
 
-        // Parse authData using the library
         $authDataLoader = AuthenticatorDataLoader::create();
         $authData = $authDataLoader->load($authDataBin);
 
-        // Verify rpIdHash
         $expectedRpIdHash = hash('sha256', $this->rpId(), true);
         if (! hash_equals($expectedRpIdHash, $authData->rpIdHash)) {
             return response()->json(['error' => 'RP ID hash inválido.'], 422);
@@ -154,30 +232,13 @@ class WebAuthnKioskController extends Controller
             return response()->json(['error' => 'No se encontraron datos de credencial.'], 422);
         }
 
-        $credentialId = $this->base64url($attestedData->credentialId);
-        $publicKeyCbor = $attestedData->credentialPublicKey;
+        session()->forget(['webauthn_reg_challenge', 'webauthn_reg_person_type', 'webauthn_reg_person_id']);
 
-        // Store the credential (one per collaborator per device, replace if same credential_id)
-        CollaboratorWebAuthnCredential::updateOrCreate(
-            [
-                'collaborator_id' => $collaborator->id,
-                'credential_id' => $credentialId,
-            ],
-            [
-                'public_key' => base64_encode($publicKeyCbor),
-                'sign_count' => $authData->signCount,
-                'device_label' => $request->input('device_label') ?: 'Dispositivo',
-                'user_handle' => $this->base64url("collab-{$collaborator->id}"),
-            ]
-        );
-
-        session()->forget(['webauthn_reg_challenge', 'webauthn_reg_collaborator']);
-
-        return response()->json([
-            'success' => true,
-            'credential_id' => $credentialId,
-            'collaborator' => $collaborator->name,
-        ]);
+        return [
+            'credential_id' => $this->base64url($attestedData->credentialId),
+            'public_key' => base64_encode($attestedData->credentialPublicKey),
+            'sign_count' => $authData->signCount,
+        ];
     }
 
     /**
@@ -200,7 +261,9 @@ class WebAuthnKioskController extends Controller
 
     /**
      * POST /attendance-kiosk/webauthn/verify
-     * Verifies an assertion and records attendance.
+     * Verifica una assertion y registra la asistencia — busca la credencial tanto entre
+     * colaboradores como entre empleados (kiosk unificado, un solo botón de huella para
+     * ambos tipos de personal).
      */
     public function verify(Request $request): JsonResponse
     {
@@ -216,7 +279,6 @@ class WebAuthnKioskController extends Controller
             return response()->json(['error' => 'No hay sesión de autenticación activa.'], 422);
         }
 
-        // Parse and verify clientDataJSON
         $clientDataJSON = $this->base64urlDecode($request->input('response.clientDataJSON'));
         $clientData = json_decode($clientDataJSON, true);
 
@@ -239,20 +301,15 @@ class WebAuthnKioskController extends Controller
 
         session()->forget('webauthn_auth_challenge');
 
-        // Find the credential
         $credentialId = $request->input('id');
-        $credential = CollaboratorWebAuthnCredential::where('credential_id', $credentialId)->first();
+
+        $collaboratorCredential = CollaboratorWebAuthnCredential::where('credential_id', $credentialId)->first();
+        $employeeCredential = $collaboratorCredential ? null : EmployeeWebAuthnCredential::where('credential_id', $credentialId)->first();
+
+        $credential = $collaboratorCredential ?? $employeeCredential;
 
         if (! $credential) {
             return response()->json(['error' => 'Huella no reconocida. Registrá el dispositivo primero.'], 422);
-        }
-
-        $collaborator = Collaborator::where('id', $credential->collaborator_id)
-            ->where('is_active', true)
-            ->first();
-
-        if (! $collaborator) {
-            return response()->json(['error' => 'Colaborador inactivo o no encontrado.'], 422);
         }
 
         // Parse authData
@@ -260,7 +317,6 @@ class WebAuthnKioskController extends Controller
         $authDataLoader = AuthenticatorDataLoader::create();
         $authData = $authDataLoader->load($authDataBin);
 
-        // Verify rpIdHash
         $expectedRpIdHash = hash('sha256', $this->rpId(), true);
         if (! hash_equals($expectedRpIdHash, $authData->rpIdHash)) {
             return response()->json(['error' => 'RP ID hash inválido.'], 422);
@@ -317,7 +373,21 @@ class WebAuthnKioskController extends Controller
 
         $credential->update(['sign_count' => $authData->signCount]);
 
-        return $this->recordAttendance($request, $collaborator);
+        if ($collaboratorCredential) {
+            $collaborator = Collaborator::where('id', $credential->collaborator_id)->where('is_active', true)->first();
+            if (! $collaborator) {
+                return response()->json(['error' => 'Colaborador inactivo o no encontrado.'], 422);
+            }
+
+            return $this->recordCollaboratorAttendance($request, $collaborator);
+        }
+
+        $employee = Employee::where('id', $credential->employee_id)->where('is_active', true)->first();
+        if (! $employee) {
+            return response()->json(['error' => 'Empleado inactivo o no encontrado.'], 422);
+        }
+
+        return $this->recordEmployeeAttendance($request, $employee);
     }
 
     /**
@@ -337,7 +407,7 @@ class WebAuthnKioskController extends Controller
         return $normalized;
     }
 
-    private function recordAttendance(Request $request, Collaborator $collaborator): JsonResponse
+    private function recordCollaboratorAttendance(Request $request, Collaborator $collaborator): JsonResponse
     {
         $today = Carbon::today()->toDateString();
         $now = Carbon::now()->toTimeString();
@@ -358,14 +428,9 @@ class WebAuthnKioskController extends Controller
                 'method' => 'webauthn',
                 'ip_address' => $ip,
                 'device_info' => substr($device ?? '', 0, 255),
-                'photo_path' => null,
             ]);
 
-            return response()->json([
-                'action' => 'in',
-                'collaborator' => $collaborator->name,
-                'time' => $now,
-            ]);
+            return response()->json(['action' => 'in', 'collaborator' => $collaborator->name, 'time' => $now]);
         }
 
         if (! $attendance->time_out) {
@@ -382,13 +447,53 @@ class WebAuthnKioskController extends Controller
                 'device_info' => substr($device ?? '', 0, 255),
             ]);
 
-            return response()->json([
-                'action' => 'out',
-                'collaborator' => $collaborator->name,
-                'time' => $now,
-                'hours' => $hours,
-                'amount' => $amount,
+            return response()->json(['action' => 'out', 'collaborator' => $collaborator->name, 'time' => $now, 'hours' => $hours, 'amount' => $amount]);
+        }
+
+        return response()->json(['error' => 'Ya registraste entrada y salida hoy.'], 422);
+    }
+
+    private function recordEmployeeAttendance(Request $request, Employee $employee): JsonResponse
+    {
+        $employee->loadMissing('user:id,name');
+        $employeeName = $employee->user->name ?? "Empleado #{$employee->id}";
+
+        $today = Carbon::today()->toDateString();
+        $now = Carbon::now()->toTimeString();
+        $ip = $request->ip();
+        $device = $request->userAgent();
+
+        $attendance = EmployeeAttendance::where('employee_id', $employee->id)
+            ->where('work_date', $today)
+            ->first();
+
+        if (! $attendance) {
+            EmployeeAttendance::create([
+                'company_id' => $employee->company_id,
+                'employee_id' => $employee->id,
+                'work_date' => $today,
+                'time_in' => $now,
+                'method' => 'webauthn',
+                'ip_address' => $ip,
+                'device_info' => substr($device ?? '', 0, 255),
             ]);
+
+            return response()->json(['action' => 'in', 'collaborator' => $employeeName, 'time' => $now]);
+        }
+
+        if (! $attendance->time_out) {
+            $timeIn = Carbon::parse("{$today} {$attendance->getRawOriginal('time_in')}");
+            $timeOut = Carbon::now();
+            $hours = round($timeOut->diffInMinutes($timeIn) / 60, 2);
+
+            $attendance->update([
+                'time_out' => $now,
+                'hours' => $hours,
+                'ip_address' => $ip,
+                'device_info' => substr($device ?? '', 0, 255),
+            ]);
+
+            return response()->json(['action' => 'out', 'collaborator' => $employeeName, 'time' => $now, 'hours' => $hours]);
         }
 
         return response()->json(['error' => 'Ya registraste entrada y salida hoy.'], 422);

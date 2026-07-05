@@ -67,6 +67,8 @@ class ProvisionTenant extends Command
                 $this->info('Ejecutando seeders del tenant...');
                 tenancy()->initialize($tenant);
                 $this->call('db:seed', ['--class' => 'RolePermissionSeeder']);
+                $this->call('db:seed', ['--class' => 'PayrollSystemVariablesSeeder']);
+                $this->call('db:seed', ['--class' => 'LeaveTypesSeeder']);
                 tenancy()->end();
             }
 

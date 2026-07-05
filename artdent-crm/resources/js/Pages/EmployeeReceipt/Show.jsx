@@ -4,7 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { useToast } from '@/Contexts/ToastContext';
-import { ArrowLeft, Printer, Eye, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Printer, Eye, CheckCircle, XCircle, FileDown } from 'lucide-react';
 import {
     getStoredTicketFormat,
     getThermalPrintZoom,
@@ -30,8 +30,11 @@ const STATUS_COLORS = {
     cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
+const LINE_SIGN = { remunerative: '+', non_remunerative: '+', deduction: '-', contribution: '-', employer_contribution: '' };
+
 // ─── Ticket Térmico ──────────────────────────────────────────────────────────
 function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
+    const conceptLines = (receipt.lines ?? []).filter(l => l.type !== 'employer_contribution');
     const employee = receipt.employee || {};
     const user = employee.user || {};
     const companyDisplayName = getCompanyDisplayName(company);
@@ -110,6 +113,12 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
                             <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 700 }}>+${fmt(commissionGross)}</td>
                         </tr>
                     )}
+                    {conceptLines.map((line) => (
+                        <tr key={line.id} style={{ borderBottom: '1px solid #ccc' }}>
+                            <td style={{ padding: '3px 2px', fontSize: 8 }}>{line.label}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight: 700 }}>{LINE_SIGN[line.type]}${fmt(Math.abs(line.amount))}</td>
+                        </tr>
+                    ))}
                     {parseFloat(receipt.extras_total) > 0 && (
                         <tr style={{ borderBottom: '1px solid #ccc' }}>
                             <td style={{ padding: '3px 2px', fontSize: 8 }}>Extras / adicionales</td>
@@ -297,6 +306,10 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
                                 </button>
                             ))}
                         </div>
+                        <a href={route('employee-receipts.pdf', receipt.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 11, border: `1.5px solid ${D.border}`, background: 'transparent', color: D.text, fontWeight: 700, fontSize: 13, textDecoration: 'none', fontFamily: 'inherit' }}>
+                            <FileDown size={15} />
+                            PDF
+                        </a>
                         <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 11, border: 'none', background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: `0 4px 14px rgba(57,123,156,0.3)` }}>
                             <Printer size={15} />
                             Imprimir
@@ -319,6 +332,7 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
                                 ['Período', `${fmtDate(receipt.period_from)} al ${fmtDate(receipt.period_to)}`],
                                 ['Sueldo base', `$${fmt(receipt.salary_gross)}`],
                                 ...(parseFloat(receipt.commission_gross) > 0 ? [['Comisión', `$${fmt(receipt.commission_gross)}`]] : []),
+                                ...(parseFloat(receipt.concepts_total) !== 0 ? [['Conceptos', `${receipt.concepts_total >= 0 ? '+' : '-'}$${fmt(Math.abs(receipt.concepts_total))}`]] : []),
                                 ...(parseFloat(receipt.extras_total) > 0 ? [['Extras', `+$${fmt(receipt.extras_total)}`]] : []),
                                 ...(parseFloat(receipt.discounts_total) > 0 ? [['Descuentos', `-$${fmt(receipt.discounts_total)}`]] : []),
                                 ['NETO', `$${fmt(receipt.net)}`],
