@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class DepartmentController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'parent_id' => ['nullable', 'integer', 'exists:departments,id'],
@@ -25,7 +26,7 @@ class DepartmentController extends Controller
 
     public function update(Request $request, Department $department): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $department->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -41,7 +42,7 @@ class DepartmentController extends Controller
 
     public function destroy(Department $department): RedirectResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $department->company_id === $companyId, 404);
 
         abort_if(

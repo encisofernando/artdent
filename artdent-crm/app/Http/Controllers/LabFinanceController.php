@@ -9,6 +9,7 @@ use App\Models\ExpenseCategory;
 use App\Models\IncomeRecord;
 use App\Models\LabAccountMove;
 use App\Models\PaymentMethod;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +22,7 @@ class LabFinanceController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $search = trim((string) $request->input('search', ''));
         $from = $request->input('from');
         $to = $request->input('to');
@@ -188,7 +189,7 @@ class LabFinanceController extends Controller
 
     public function storeIncome(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'description' => 'required|string|max:255',
@@ -215,7 +216,7 @@ class LabFinanceController extends Controller
 
     public function storeExpense(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'description' => 'required|string|max:255',
@@ -302,7 +303,7 @@ class LabFinanceController extends Controller
 
     private function authorizeLabRecord(Request $request, int $companyId): void
     {
-        if (($request->user()->company_id ?? 1) !== $companyId) {
+        if ((CompanyContext::id()) !== $companyId) {
             abort(403);
         }
     }

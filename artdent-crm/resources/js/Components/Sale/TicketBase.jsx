@@ -42,9 +42,13 @@ function TicketBase({ sale, widthMM = 80 }) {
     const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
 
     // ── Número de comprobante ─────────────────────────────────────────────────
+    // sale.sale_number ya viene formateado "PPPP-NNNNNNNN" y es la fuente de verdad
+    // (la misma que se muestra en el encabezado de la página) — el fallback a
+    // afipInvoice/company solo aplica si por algún motivo no llegara a estar seteado.
     const afipInvoice = sale.invoice;
-    const pvStr  = String(afipInvoice?.point_sale ?? company.afip_point_sale ?? 1).padStart(4, '0');
-    const nroStr = String(afipInvoice?.number ?? sale.id ?? 1).padStart(8, '0');
+    const [saleNumberPv, saleNumberNro] = sale.sale_number ? sale.sale_number.split('-') : [];
+    const pvStr  = saleNumberPv || String(afipInvoice?.point_sale ?? company.afip_point_sale ?? 1).padStart(4, '0');
+    const nroStr = saleNumberNro || String(afipInvoice?.number ?? sale.id ?? 1).padStart(8, '0');
 
     // ── IVA desglosado ───────────────────────────────────────────────────────
     const afipReq  = afipInvoice?.afip_request;
@@ -249,52 +253,35 @@ function TicketBase({ sale, widthMM = 80 }) {
             </div>
 
             {/* ── Tabla de ítems ────────────────────────────────────────────── */}
-            <table style={{
-                width: '100%', borderCollapse: 'collapse',
-                fontSize: F.sm, tableLayout: 'fixed', marginBottom: 4,
-            }}>
-                <colgroup>
-                    <col style={{ width: 'auto' }} />
-                    <col style={{ width: is57 ? '11%' : '9%' }} />
-                    <col style={{ width: is57 ? '27%' : '25%' }} />
-                    <col style={{ width: is57 ? '27%' : '25%' }} />
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th colSpan={4} style={{ padding: 0 }}>
-                            <div style={{
-                                display: 'flex', fontSize: F.xs,
-                                fontWeight: 700, color: C.muted,
-                                textTransform: 'uppercase', letterSpacing: '0.4px',
-                                borderBottom: `1.5px solid ${C.accent}`, paddingBottom: 2, marginBottom: 1,
-                            }}>
-                                <span style={{ flex: 1 }}>Descripción</span>
-                                <span style={{ width: is57 ? '11%' : '9%', textAlign: 'center' }}>Cant</span>
-                                <span style={{ width: is57 ? '27%' : '25%', textAlign: 'right' }}>Precio</span>
-                                <span style={{ width: is57 ? '27%' : '25%', textAlign: 'right' }}>Total</span>
-                            </div>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.map((item, i) => (
-                        <tr key={i} style={{ background: i % 2 === 1 ? C.bg : 'transparent' }}>
-                            <td style={{ padding: '2.5px 0', wordBreak: 'break-word', verticalAlign: 'top' }}>
-                                {item.product_name || item.name}
-                            </td>
-                            <td style={{ padding: '2.5px 2px', textAlign: 'center', verticalAlign: 'top' }}>
-                                {Number(item.quantity)}
-                            </td>
-                            <td style={{ padding: '2.5px 2px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', verticalAlign: 'top', color: C.muted }}>
-                                {fmt(item.unit_price)}
-                            </td>
-                            <td style={{ padding: '2.5px 0', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
-                                {fmt(item.total)}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            <div style={{ width: '100%', fontSize: F.sm, marginBottom: 4 }}>
+                <div style={{
+                    fontSize: F.xs, fontWeight: 700, color: C.muted,
+                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                    borderBottom: `1.5px solid ${C.accent}`, paddingBottom: 2, marginBottom: 1,
+                }}>
+                    <span style={{ display: 'inline-block', width: is57 ? '35%' : '41%', verticalAlign: 'top' }}>Descripción</span>
+                    <span style={{ display: 'inline-block', width: is57 ? '11%' : '9%', textAlign: 'center', verticalAlign: 'top' }}>Cant</span>
+                    <span style={{ display: 'inline-block', width: is57 ? '27%' : '25%', textAlign: 'right', verticalAlign: 'top' }}>Precio</span>
+                    <span style={{ display: 'inline-block', width: is57 ? '27%' : '25%', textAlign: 'right', verticalAlign: 'top' }}>Total</span>
+                </div>
+
+                {items.map((item, i) => (
+                    <div key={i} style={{ background: i % 2 === 1 ? C.bg : 'transparent', padding: '2.5px 0' }}>
+                        <span style={{ display: 'inline-block', width: is57 ? '35%' : '41%', wordBreak: 'break-word', verticalAlign: 'top' }}>
+                            {item.product_name || item.name}
+                        </span>
+                        <span style={{ display: 'inline-block', width: is57 ? '11%' : '9%', textAlign: 'center', verticalAlign: 'top' }}>
+                            {Number(item.quantity)}
+                        </span>
+                        <span style={{ display: 'inline-block', width: is57 ? '27%' : '25%', textAlign: 'right', fontVariantNumeric: 'tabular-nums', verticalAlign: 'top', color: C.muted }}>
+                            {fmt(item.unit_price)}
+                        </span>
+                        <span style={{ display: 'inline-block', width: is57 ? '27%' : '25%', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
+                            {fmt(item.total)}
+                        </span>
+                    </div>
+                ))}
+            </div>
 
             {/* ── Subtotales + IVA ─────────────────────────────────────────── */}
             <div style={{ padding: '0 6px', marginBottom: 4 }}>

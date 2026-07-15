@@ -7,6 +7,7 @@ use App\Models\Vendor;
 use App\Models\VendorAccount;
 use App\Models\VendorAccountMove;
 use App\Models\VendorPayment;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -17,7 +18,7 @@ class VendorPaymentController extends Controller
     {
         $search = $request->input('search');
         $vendorId = $request->input('vendor_id');
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $query = VendorPayment::query()
             ->with(['vendor', 'user', 'paymentMethod'])
@@ -56,7 +57,7 @@ class VendorPaymentController extends Controller
 
     public function create(): \Inertia\Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $vendors = Vendor::where('company_id', $companyId)
             ->where('is_active', 1)
@@ -82,7 +83,7 @@ class VendorPaymentController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         DB::transaction(function () use ($validated, $companyId) {
             $payment = VendorPayment::create([

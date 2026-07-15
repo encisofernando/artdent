@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CollaboratorReceipt;
+use App\Models\Expense;
+use App\Models\IncomeRecord;
 use App\Models\Job;
 use App\Models\JobCollaborator;
 use App\Models\JobItem;
 use App\Models\JobRemake;
+use App\Models\LabAccountMove;
+use App\Support\CompanyContext;
+use App\Support\PeriodRangeResolver;
 use Carbon\Carbon;
-use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -17,10 +22,11 @@ class AnalyticsController extends Controller
 {
     public function lab(Request $request): InertiaResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $period = $request->input('period', 'month');
+        $referenceDate = $request->input('reference_date');
 
-        [$start, $end, $prevStart, $prevEnd] = $this->periodRanges($period);
+        [$start, $end, $prevStart, $prevEnd] = PeriodRangeResolver::resolve($period, $referenceDate);
 
         $baseQuery = fn () => Job::where('company_id', $companyId)
             ->where('status', '!=', 'cancelled');
@@ -30,9 +36,9 @@ class AnalyticsController extends Controller
 
         $totalJobs = (clone $current)->count();
         $revenue = (float) (clone $current)->sum('total');
-        $pendingJobs = $baseQuery()
+        $pendingJobs = (clone $current)
+            ->whereIn('status', ['pending', 'in_progress'])
             ->whereNull('delivered_at')
-            ->whereNotIn('status', ['delivered', 'cancelled'])
             ->count();
 
         $remakeCount = JobRemake::whereHas(
@@ -52,6 +58,10 @@ class AnalyticsController extends Controller
 
         $avgJobValue = $totalJobs > 0 ? round($revenue / $totalJobs, 2) : 0.0;
 
+        $cashIncome = $this->labIncome($companyId, $start, $end);
+        $expenses = $this->labExpenses($companyId, $start, $end);
+        $net = $cashIncome - $expenses;
+
         // ── KPIs período anterior ─────────────────────────────────────────────
         $prevQuery = $baseQuery()->whereBetween('received_at', [$prevStart, $prevEnd]);
         $prevTotalJobs = (clone $prevQuery)->count();
@@ -69,6 +79,9 @@ class AnalyticsController extends Controller
             ->whereNotNull('received_at')
             ->selectRaw('AVG(DATEDIFF(delivered_at, received_at)) as avg_days')
             ->value('avg_days') ?? 0.0;
+        $prevCashIncome = $this->labIncome($companyId, $prevStart, $prevEnd);
+        $prevExpenses = $this->labExpenses($companyId, $prevStart, $prevEnd);
+        $prevNet = $prevCashIncome - $prevExpenses;
 
         // ── Distribución por estado ───────────────────────────────────────────
         $statusDistribution = Job::where('company_id', $companyId)
@@ -195,13 +208,12 @@ class AnalyticsController extends Controller
             ->groupBy('tariff_id')
             ->orderByDesc('revenue')
             ->limit(10)
-            ->with('tariff:id,name,category,lab_sector')
+            ->with('tariff:id,name,category')
             ->get()
             ->map(fn ($row) => [
                 'tariff_id' => $row->tariff_id,
                 'name' => $row->tariff?->name ?? '—',
                 'category' => $row->tariff?->category ?? '',
-                'lab_sector' => $row->tariff?->lab_sector ?? '',
                 'qty_used' => (float) $row->qty_used,
                 'job_count' => (int) $row->job_count,
                 'revenue' => (float) $row->revenue,
@@ -235,7 +247,10 @@ class AnalyticsController extends Controller
             'current' => [
                 'total_jobs' => $totalJobs,
                 'revenue' => $revenue,
+                'cash_income' => $cashIncome,
                 'pending_jobs' => $pendingJobs,
+                'expenses' => $expenses,
+                'net' => $net,
                 'remake_rate' => $remakeRate,
                 'avg_delivery_days' => round($avgDeliveryDays, 1),
                 'avg_job_value' => $avgJobValue,
@@ -243,6 +258,9 @@ class AnalyticsController extends Controller
             'trends' => [
                 'total_jobs' => $this->trendPct($totalJobs, $prevTotalJobs),
                 'revenue' => $this->trendPct($revenue, $prevRevenue),
+                'cash_income' => $this->trendPct($cashIncome, $prevCashIncome),
+                'expenses' => $this->trendPct($expenses, $prevExpenses),
+                'net' => $this->trendPct($net, $prevNet),
                 'remake_rate' => $this->trendPct($remakeRate, $prevRemakeRate),
                 'avg_delivery_days' => $this->trendPct($avgDeliveryDays, $prevAvgDeliveryDays),
                 'avg_job_value' => $this->trendPct($avgJobValue, $prevAvgJobValue),
@@ -262,41 +280,45 @@ class AnalyticsController extends Controller
             'timeSeriesRevenue' => $timeSeriesRevenue,
             'filters' => [
                 'period' => $period,
+                'reference_date' => $start->toDateString(),
+                'period_start' => $start->toDateString(),
+                'period_end' => $end->toDateString(),
             ],
         ]);
     }
 
-    /** @return array{Carbon, Carbon, Carbon, Carbon} */
-    private function periodRanges(string $period): array
+    private function labIncome(int $companyId, Carbon $start, Carbon $end): float
     {
-        $now = Carbon::now();
+        $manualIncomes = (float) IncomeRecord::where('company_id', $companyId)
+            ->where('scope', 'lab')
+            ->whereBetween('income_date', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->sum('amount');
 
-        return match ($period) {
-            'today' => [
-                $now->copy()->startOfDay(),
-                $now->copy()->endOfDay(),
-                $now->copy()->subDay()->startOfDay(),
-                $now->copy()->subDay()->endOfDay(),
-            ],
-            'week' => [
-                $now->copy()->startOfWeek(CarbonInterface::MONDAY),
-                $now->copy()->endOfWeek(CarbonInterface::SUNDAY),
-                $now->copy()->subWeek()->startOfWeek(CarbonInterface::MONDAY),
-                $now->copy()->subWeek()->endOfWeek(CarbonInterface::SUNDAY),
-            ],
-            'year' => [
-                $now->copy()->startOfYear(),
-                $now->copy()->endOfDay(),
-                $now->copy()->subYear()->startOfYear(),
-                $now->copy()->subYear()->endOfYear(),
-            ],
-            default => [
-                $now->copy()->startOfMonth(),
-                $now->copy()->endOfDay(),
-                $now->copy()->subMonth()->startOfMonth(),
-                $now->copy()->subMonth()->endOfMonth(),
-            ],
-        };
+        $jobPayments = (float) LabAccountMove::whereHas(
+            'account.dentist',
+            fn ($q) => $q->where('company_id', $companyId)
+        )
+            ->where('type', LabAccountMove::TYPE_PAYMENT)
+            ->whereBetween('move_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('amount');
+
+        return $manualIncomes + $jobPayments;
+    }
+
+    private function labExpenses(int $companyId, Carbon $start, Carbon $end): float
+    {
+        $manualExpenses = (float) Expense::where('company_id', $companyId)
+            ->where('scope', 'lab')
+            ->whereBetween('expense_date', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->sum('amount');
+
+        $collaboratorReceipts = (float) CollaboratorReceipt::where('company_id', $companyId)
+            ->where('status', 'paid')
+            ->whereNotNull('paid_at')
+            ->whereBetween('paid_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->sum('net');
+
+        return $manualExpenses + $collaboratorReceipts;
     }
 
     private function trendPct(float $current, float $previous): float

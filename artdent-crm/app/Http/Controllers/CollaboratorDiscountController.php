@@ -5,19 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Collaborator;
 use App\Models\CollaboratorDiscount;
 use App\Services\CollaboratorReceiptSyncService;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CollaboratorDiscountController extends Controller
 {
-    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService)
-    {
-    }
+    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService) {}
 
     public function index(Request $request): \Inertia\Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $collaboratorId = $request->input('collaborator_id');
         $search = trim((string) $request->input('search', ''));
         $from = $request->input('from');
@@ -74,7 +73,7 @@ class CollaboratorDiscountController extends Controller
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'collaborator_id' => [
@@ -107,7 +106,7 @@ class CollaboratorDiscountController extends Controller
 
     public function update(Request $request, CollaboratorDiscount $collaboratorDiscount): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorDiscount, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorDiscount, CompanyContext::id());
         $originalDate = $collaboratorDiscount->date->toDateString();
         $collaboratorId = (int) $collaboratorDiscount->collaborator_id;
         $companyId = (int) $collaboratorDiscount->company_id;
@@ -129,7 +128,7 @@ class CollaboratorDiscountController extends Controller
 
     public function destroy(CollaboratorDiscount $collaboratorDiscount): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorDiscount, auth()->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorDiscount, CompanyContext::id());
         $companyId = (int) $collaboratorDiscount->company_id;
         $collaboratorId = (int) $collaboratorDiscount->collaborator_id;
         $date = $collaboratorDiscount->date->toDateString();

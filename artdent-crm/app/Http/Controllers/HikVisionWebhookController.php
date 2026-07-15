@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AttendanceRecordedEvent;
 use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
 use App\Models\Employee;
@@ -124,11 +125,33 @@ class HikVisionWebhookController extends Controller
         $eventTime = $hikEvent->event_time ?? now();
 
         try {
-            $attendanceId = $person['type'] === 'collaborator'
+            $result = $person['type'] === 'collaborator'
                 ? $this->recordCollaboratorAttendance($person['model'], $attendanceStatus, $method, $eventTime, $sourceIp, "HikVision {$device?->name}")
                 : $this->recordEmployeeAttendance($person['model'], $attendanceStatus, $method, $eventTime, $sourceIp, "HikVision {$device?->name}");
 
-            $hikEvent->update(['attendance_id' => $attendanceId, 'processed' => true]);
+            $hikEvent->update(['attendance_id' => $result['id'], 'processed' => true]);
+
+            // Notifica en tiempo real al kiosk de producción (cartel de bienvenida) — solo si
+            // el evento efectivamente cambió el fichaje (entrada o salida nueva), no en el caso
+            // "ya registró entrada y salida hoy" (acción null). Se guarda en un try/catch propio:
+            // si Reverb no está corriendo, el fichaje ya quedó bien registrado arriba y no debe
+            // reportarse como error solo porque falló la notificación en tiempo real.
+            if ($result['action'] && $device?->company_id) {
+                try {
+                    AttendanceRecordedEvent::dispatch(
+                        $device->company_id,
+                        $person['model']->name ?? ($person['model']->user?->name ?? 'Empleado'),
+                        $person['type'],
+                        $result['action'],
+                        $eventTime->format('H:i'),
+                        $method,
+                    );
+                } catch (\Throwable $broadcastError) {
+                    Log::warning('HikVision webhook: no se pudo emitir la notificación en tiempo real (¿Reverb corriendo?)', [
+                        'error' => $broadcastError->getMessage(),
+                    ]);
+                }
+            }
         } catch (\Throwable $e) {
             $hikEvent->update(['error' => $e->getMessage()]);
             Log::error('HikVision webhook: error al registrar asistencia', [
@@ -216,6 +239,8 @@ class HikVisionWebhookController extends Controller
 
     /**
      * Registra entrada o salida de un colaborador según el estado del evento.
+     *
+     * @return array{id: ?int, action: 'in'|'out'|null}
      */
     private function recordCollaboratorAttendance(
         Collaborator $collaborator,
@@ -224,7 +249,7 @@ class HikVisionWebhookController extends Controller
         Carbon $eventTime,
         string $sourceIp,
         string $deviceInfo,
-    ): ?int {
+    ): array {
         $workDate = $eventTime->toDateString();
         $timeStr = $eventTime->toTimeString();
 
@@ -247,7 +272,7 @@ class HikVisionWebhookController extends Controller
                 'device_info' => $deviceInfo,
             ]);
 
-            return $created->id;
+            return ['id' => $created->id, 'action' => 'in'];
         }
 
         if ($attendance && ! $attendance->time_out && $isExit) {
@@ -263,16 +288,18 @@ class HikVisionWebhookController extends Controller
                 'device_info' => $deviceInfo,
             ]);
 
-            return $attendance->id;
+            return ['id' => $attendance->id, 'action' => 'out'];
         }
 
         // Ya registró entrada y salida hoy — sin cambios
-        return $attendance?->id;
+        return ['id' => $attendance?->id, 'action' => null];
     }
 
     /**
      * Registra entrada o salida de un empleado según el estado del evento. Sin monto
      * (Employee no tiene tarifa horaria) — solo horas, disponibles para el motor de fórmulas.
+     *
+     * @return array{id: ?int, action: 'in'|'out'|null}
      */
     private function recordEmployeeAttendance(
         Employee $employee,
@@ -281,7 +308,7 @@ class HikVisionWebhookController extends Controller
         Carbon $eventTime,
         string $sourceIp,
         string $deviceInfo,
-    ): ?int {
+    ): array {
         $workDate = $eventTime->toDateString();
         $timeStr = $eventTime->toTimeString();
 
@@ -303,7 +330,7 @@ class HikVisionWebhookController extends Controller
                 'device_info' => $deviceInfo,
             ]);
 
-            return $created->id;
+            return ['id' => $created->id, 'action' => 'in'];
         }
 
         if ($attendance && ! $attendance->time_out && $isExit) {
@@ -317,10 +344,10 @@ class HikVisionWebhookController extends Controller
                 'device_info' => $deviceInfo,
             ]);
 
-            return $attendance->id;
+            return ['id' => $attendance->id, 'action' => 'out'];
         }
 
         // Ya registró entrada y salida hoy — sin cambios
-        return $attendance?->id;
+        return ['id' => $attendance?->id, 'action' => null];
     }
 }

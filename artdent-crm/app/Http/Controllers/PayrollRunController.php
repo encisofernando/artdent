@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\PayrollRun;
 use App\Services\EmployeePayrollService;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,7 +17,7 @@ class PayrollRunController extends Controller
 
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $runs = PayrollRun::query()
             ->where('company_id', $companyId)
@@ -33,7 +34,7 @@ class PayrollRunController extends Controller
 
     public function create(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $employees = Employee::query()
             ->with('user:id,name')
@@ -48,7 +49,7 @@ class PayrollRunController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'period_from' => ['required', 'date'],
@@ -97,7 +98,7 @@ class PayrollRunController extends Controller
 
     public function show(Request $request, PayrollRun $payrollRun): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $payrollRun->company_id === $companyId, 404);
 
         if ($payrollRun->status === 'calculated') {
@@ -120,7 +121,7 @@ class PayrollRunController extends Controller
 
     public function update(Request $request, PayrollRun $payrollRun): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $payrollRun->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -155,7 +156,7 @@ class PayrollRunController extends Controller
 
     public function destroy(Request $request, PayrollRun $payrollRun): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $payrollRun->company_id === $companyId, 404);
 
         abort_if(

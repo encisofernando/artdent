@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EvaluationCycle;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class EvaluationCycleController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
@@ -27,7 +28,7 @@ class EvaluationCycleController extends Controller
 
     public function update(Request $request, EvaluationCycle $evaluationCycle): RedirectResponse
     {
-        $this->ensureCompanyOwned($evaluationCycle, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($evaluationCycle, CompanyContext::id());
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
@@ -44,7 +45,7 @@ class EvaluationCycleController extends Controller
 
     public function destroy(Request $request, EvaluationCycle $evaluationCycle): RedirectResponse
     {
-        $this->ensureCompanyOwned($evaluationCycle, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($evaluationCycle, CompanyContext::id());
 
         abort_if($evaluationCycle->evaluations()->exists(), 422, 'No se puede eliminar: tiene evaluaciones asociadas.');
 

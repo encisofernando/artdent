@@ -39,6 +39,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $photo_path
  * @property float|null $salary
  * @property float $commission_pct
+ * @property float $job_commission_pct
  * @property Carbon|null $hire_date
  * @property Carbon|null $end_date
  * @property bool $is_active
@@ -87,6 +88,7 @@ class Employee extends Model
         'birth_date' => 'date:Y-m-d',
         'salary' => 'float',
         'commission_pct' => 'float',
+        'job_commission_pct' => 'float',
         'hire_date' => 'date:Y-m-d',
         'end_date' => 'date:Y-m-d',
         'is_active' => 'bool',
@@ -121,6 +123,7 @@ class Employee extends Model
         'photo_path',
         'salary',
         'commission_pct',
+        'job_commission_pct',
         'hire_date',
         'end_date',
         'is_active',

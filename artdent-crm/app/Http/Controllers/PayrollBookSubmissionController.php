@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PayrollBookSubmission;
 use App\Models\PayrollRun;
 use App\Services\Payroll\LibroSueldosDigitalService;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,7 +21,7 @@ class PayrollBookSubmissionController extends Controller
 
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $submissions = PayrollBookSubmission::query()
             ->where('company_id', $companyId)
@@ -42,7 +43,7 @@ class PayrollBookSubmissionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'payroll_run_id' => ['required', 'integer', 'exists:payroll_runs,id'],

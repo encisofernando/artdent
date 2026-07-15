@@ -296,7 +296,7 @@ const genSku = (productName = '', attributes = {}) => {
     return [prefix, ...parts].join('-');
 };
 
-export default function Create({ auth, categories = [], vendors = [] }) {
+export default function Create({ auth, categories = [], vendors = [], usdExchangeRate = null }) {
     const { isDark } = useTheme();
     const { data, setData, post, processing, errors, transform } = useForm({
         name: '',
@@ -307,6 +307,8 @@ export default function Create({ auth, categories = [], vendors = [] }) {
         description: '',
         category_id: '',
         cost_price: '',
+        cost_currency: 'ARS',
+        cost_price_usd: '',
         price: '',
         is_active: 1,
         has_variants: 0,
@@ -381,6 +383,20 @@ export default function Create({ auth, categories = [], vendors = [] }) {
         if (!isNaN(cost) && cost > 0 && !isNaN(pct)) {
             setData('price', (cost * (1 + pct / 100)).toFixed(2));
         }
+    };
+
+    // ── costo en USD (insumos importados) ────────────────────────────────────
+    const handleUsdCostChange = (val) => {
+        setData('cost_price_usd', val);
+        const usd = parseFloat(val);
+        if (!isNaN(usd) && usd > 0 && usdExchangeRate) {
+            handleCostChange((usd * usdExchangeRate).toFixed(2));
+        }
+    };
+
+    const toggleUsdCost = (checked) => {
+        setData('cost_currency', checked ? 'USD' : 'ARS');
+        if (!checked) setData('cost_price_usd', '');
     };
 
     const handlePriceChange = (val) => {
@@ -712,13 +728,36 @@ export default function Create({ auth, categories = [], vendors = [] }) {
                             )}
 
                             {(!hasVariants || data.same_price_for_variants) && (
-                                <PriceBlock
-                                    isDark={isDark}
-                                    cost={data.cost_price}        onCostChange={handleCostChange}
-                                    price={data.price}            onPriceChange={handlePriceChange}
-                                    marginPct={marginPct}         onMarginChange={handleMarginChange}
-                                    errors={errors}
-                                />
+                                <>
+                                    <PriceBlock
+                                        isDark={isDark}
+                                        cost={data.cost_price}        onCostChange={handleCostChange}
+                                        price={data.price}            onPriceChange={handlePriceChange}
+                                        marginPct={marginPct}         onMarginChange={handleMarginChange}
+                                        errors={errors}
+                                    />
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <label className={`flex items-center gap-2 text-xs font-semibold cursor-pointer ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                            <input type="checkbox" checked={data.cost_currency === 'USD'}
+                                                onChange={e => toggleUsdCost(e.target.checked)}
+                                                className="rounded accent-teal-500" />
+                                            Costo cargado en USD (insumo importado)
+                                        </label>
+                                        {data.cost_currency === 'USD' && (
+                                            <div className="relative flex-1 max-w-[160px]">
+                                                <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>US$</span>
+                                                <Input isDark={isDark} type="number" step="0.01"
+                                                    value={data.cost_price_usd} onChange={e => handleUsdCostChange(e.target.value)}
+                                                    placeholder="0,00" className="pl-9 font-mono" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {data.cost_currency === 'USD' && !usdExchangeRate && (
+                                        <p className="text-xs text-amber-500 mt-1">
+                                            No hay una cotización de dólar configurada — cargá una desde Ventas → Precios para que el costo en pesos se calcule solo.
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
                     </SectionCard>

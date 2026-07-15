@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PayrollConcept;
 use App\Models\PayrollVariable;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,7 +13,7 @@ class ConceptosController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $variables = PayrollVariable::query()
             ->where(fn ($q) => $q->whereNull('company_id')->orWhere('company_id', $companyId))

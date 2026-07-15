@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Job;
 use App\Models\LabAccount;
 use App\Models\LabAccountMove;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -41,7 +42,7 @@ class LabAccountController extends Controller
      */
     public function show(LabAccount $labAccount)
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $dentistsHaveLastName = Schema::hasColumn('dentists', 'last_name');
 
         $labAccount->loadMissing(['dentist.company']);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PayrollConceptVersion;
 use App\Models\PayrollVariable;
 use App\Services\Payroll\FormulaEngine;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class PayrollConceptVersionController extends Controller
 {
     public function store(Request $request, FormulaEngine $engine): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'payroll_concept_id' => ['required', 'integer', 'exists:payroll_concepts,id'],

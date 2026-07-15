@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\ResetPasswordNotification;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -107,5 +108,14 @@ class User extends Authenticatable
     public function lab_account_moves()
     {
         return $this->hasMany(LabAccountMove::class);
+    }
+
+    /**
+     * Reemplaza la notificación default de Laravel (en inglés, sin estilo)
+     * por el email con marca ArtCode. Ver App\Notifications\ResetPasswordNotification.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

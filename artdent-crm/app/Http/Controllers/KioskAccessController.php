@@ -2,21 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\KioskAllowedIp;
+use App\Models\KioskNetwork;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class KioskAccessController extends Controller
 {
     /**
+     * ID de tenant a usar para las KioskNetwork de este request. En modo
+     * multi-tenant es el tenant real; en modo owner no hay tenancy()
+     * inicializada, así que se usa el mismo tenant "impostor" que
+     * RestrictToLabNetwork resuelve por defecto (KIOSK_DEFAULT_TENANT_ID),
+     * para que las IPs cargadas acá matcheen con lo que el middleware busca.
+     */
+    private function currentTenantId(): ?string
+    {
+        return tenant('id') ?? config('app.kiosk_default_tenant_id');
+    }
+
+    /**
      * GET /admin/kiosk-access
      */
     public function index(Request $request): InertiaResponse
     {
-        $ips = KioskAllowedIp::orderByDesc('created_at')->get();
+        $ips = KioskNetwork::where('tenant_id', $this->currentTenantId())
+            ->whereNotNull('ip_address')
+            ->orderByDesc('created_at')
+            ->get();
 
         $tokens = $request->user()
             ->tokens()
@@ -47,9 +61,11 @@ class KioskAccessController extends Controller
             'ip_address' => ['required', 'string', 'max:50'],
         ]);
 
-        KioskAllowedIp::create($request->only('label', 'ip_address'));
-
-        Cache::forget('kiosk_allowed_ips');
+        KioskNetwork::create([
+            'tenant_id' => $this->currentTenantId(),
+            'label' => $request->label,
+            'ip_address' => $request->ip_address,
+        ]);
 
         return back()->with('success', 'IP agregada correctamente.');
     }
@@ -57,11 +73,11 @@ class KioskAccessController extends Controller
     /**
      * PATCH /admin/kiosk-access/ips/{ip}/toggle
      */
-    public function toggleIp(KioskAllowedIp $ip): RedirectResponse
+    public function toggleIp(KioskNetwork $ip): RedirectResponse
     {
-        $ip->update(['is_active' => ! $ip->is_active]);
+        abort_unless($ip->tenant_id === $this->currentTenantId(), 404);
 
-        Cache::forget('kiosk_allowed_ips');
+        $ip->update(['is_active' => ! $ip->is_active]);
 
         return back()->with('success', $ip->is_active ? 'IP habilitada.' : 'IP deshabilitada.');
     }
@@ -69,11 +85,11 @@ class KioskAccessController extends Controller
     /**
      * DELETE /admin/kiosk-access/ips/{ip}
      */
-    public function destroyIp(KioskAllowedIp $ip): RedirectResponse
+    public function destroyIp(KioskNetwork $ip): RedirectResponse
     {
-        $ip->delete();
+        abort_unless($ip->tenant_id === $this->currentTenantId(), 404);
 
-        Cache::forget('kiosk_allowed_ips');
+        $ip->delete();
 
         return back()->with('success', 'IP eliminada.');
     }

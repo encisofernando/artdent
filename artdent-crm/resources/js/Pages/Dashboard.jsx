@@ -4,12 +4,14 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import {
     Banknote, DollarSign, UserPlus, TrendingUp, TrendingDown,
     ShoppingCart, Store, CreditCard, AlertTriangle, ReceiptText, Package,
+    ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import {
     ResponsiveContainer, ComposedChart, Bar, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
+import { shiftReferenceDate, isCurrentPeriod, formatPeriodRangeLabel } from "@/lib/periodNav";
 
 const B = {
     blue: "#397B9C", green: "#5AAD9C", mint: "#ACD6CE",
@@ -86,7 +88,47 @@ const CustomTooltip = ({ active, payload, label, isDark }) => {
     );
 };
 
-export default function DashboardIndex({ auth, stats, chartData = [], recentTransactions = [], topProducts = [], topCustomers = [], lowStock = [], period }) {
+function PlanUsageCard({ planUsage, isDark, card, muted, text }) {
+    if (!planUsage) { return null; }
+
+    return (
+        <div className={`rounded-2xl border p-5 shadow-sm ${card}`}>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className={`text-xs font-bold uppercase tracking-widest ${muted}`}>Uso del plan</h2>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+                    {planUsage.plan}
+                </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {planUsage.items.map((item, i) => {
+                    const unlimited = item.max === null || item.max === undefined;
+                    const pct = unlimited ? 0 : Math.min(100, Math.round((item.current / Math.max(item.max, 1)) * 100));
+                    const color = pct >= 90 ? B.red : pct >= 70 ? B.orange : B.teal;
+                    return (
+                        <div key={i}>
+                            <div className="flex justify-between items-center mb-1">
+                                <span className={`text-[12px] font-semibold ${text}`}>{item.label}</span>
+                                <span className={`text-[11px] ${muted}`}>
+                                    {fmt(item.current)} {unlimited ? "" : `/ ${fmt(item.max)}`}
+                                </span>
+                            </div>
+                            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "#1e293b" : "#f1f5f9" }}>
+                                {unlimited ? (
+                                    <div className="h-full rounded-full w-full opacity-30" style={{ background: B.teal }} />
+                                ) : (
+                                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                                )}
+                            </div>
+                            {unlimited && <p className={`text-[10px] mt-1 ${muted}`}>Ilimitado</p>}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+export default function DashboardIndex({ auth, stats, chartData = [], recentTransactions = [], topProducts = [], topCustomers = [], lowStock = [], planUsage = null, period, referenceDate, periodStart, periodEnd }) {
     const { isDark } = useTheme();
     const [loadingPeriod, setLoadingPeriod] = useState(false);
 
@@ -105,6 +147,17 @@ export default function DashboardIndex({ auth, stats, chartData = [], recentTran
         });
     };
 
+    const navigatePeriod = (direction) => {
+        setLoadingPeriod(true);
+        const nextReferenceDate = shiftReferenceDate(period, referenceDate, direction);
+        router.get(route("dashboard"), { period, reference_date: nextReferenceDate }, {
+            preserveState: true,
+            onFinish: () => setLoadingPeriod(false),
+        });
+    };
+
+    const atCurrentPeriod = isCurrentPeriod(period, referenceDate);
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title="Dashboard" />
@@ -116,22 +169,41 @@ export default function DashboardIndex({ auth, stats, chartData = [], recentTran
                         <h1 className={`text-2xl font-extrabold tracking-tight ${text}`}>Dashboard</h1>
                         <p className={`text-sm mt-0.5 ${muted}`}>Métricas del negocio en tiempo real</p>
                     </div>
-                    <div className="flex items-center gap-1 p-1 rounded-xl border"
-                        style={{ borderColor: isDark ? "#334155" : "#e2e8f0", background: isDark ? "#0f172a" : "#f8fafc" }}>
-                        {PERIODS.map((p) => (
-                            <button key={p.value} onClick={() => changePeriod(p.value)}
-                                disabled={loadingPeriod}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                    period === p.value
-                                        ? "text-white shadow-sm"
-                                        : (isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-700")
-                                }`}
-                                style={period === p.value ? { background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` } : {}}>
-                                {p.label}
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 p-1 rounded-xl border"
+                            style={{ borderColor: isDark ? "#334155" : "#e2e8f0", background: isDark ? "#0f172a" : "#f8fafc" }}>
+                            {PERIODS.map((p) => (
+                                <button key={p.value} onClick={() => changePeriod(p.value)}
+                                    disabled={loadingPeriod}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                        period === p.value
+                                            ? "text-white shadow-sm"
+                                            : (isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-700")
+                                    }`}
+                                    style={period === p.value ? { background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` } : {}}>
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-1 p-1 rounded-xl border"
+                            style={{ borderColor: isDark ? "#334155" : "#e2e8f0", background: isDark ? "#0f172a" : "#f8fafc" }}>
+                            <button onClick={() => navigatePeriod(-1)} disabled={loadingPeriod}
+                                className={`p-1.5 rounded-lg transition-all ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-700"}`}>
+                                <ChevronLeft size={15} />
                             </button>
-                        ))}
+                            <span className={`text-xs font-semibold px-1 whitespace-nowrap ${text}`}>
+                                {formatPeriodRangeLabel(period, periodStart, periodEnd)}
+                            </span>
+                            <button onClick={() => navigatePeriod(1)} disabled={loadingPeriod || atCurrentPeriod}
+                                className={`p-1.5 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-700"}`}>
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                {/* ── Uso del plan ── */}
+                <PlanUsageCard planUsage={planUsage} isDark={isDark} card={card} muted={muted} text={text} />
 
                 {/* ── Stat cards row 1 ── */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

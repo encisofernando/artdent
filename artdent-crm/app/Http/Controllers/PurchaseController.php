@@ -11,6 +11,7 @@ use App\Models\Vendor;
 use App\Models\VendorAccount;
 use App\Models\VendorAccountMove;
 use App\Models\Warehouse;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -22,7 +23,7 @@ class PurchaseController extends Controller
         $search = $request->input('search');
         $vendorId = $request->input('vendor_id');
         $status = $request->input('status', 'all');
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $query = Purchase::query()
             ->with(['vendor', 'user'])
@@ -68,7 +69,7 @@ class PurchaseController extends Controller
 
     public function create(): \Inertia\Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $vendors = Vendor::where('company_id', $companyId)
             ->where('is_active', 1)
@@ -118,7 +119,7 @@ class PurchaseController extends Controller
             'items.*.total' => 'required|numeric|min:0',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         DB::transaction(function () use ($validated, $companyId) {
             $purchase = Purchase::create([
@@ -163,7 +164,7 @@ class PurchaseController extends Controller
                 }
 
                 // Actualizar cost_price y price del producto si se proveyó nuevo precio
-                if (!empty($itemData['new_price']) && $itemData['new_price'] > 0) {
+                if (! empty($itemData['new_price']) && $itemData['new_price'] > 0) {
                     Product::where('id', $itemData['product_id'])->update([
                         'cost_price' => $itemData['unit_cost'],
                         'price' => $itemData['new_price'],
@@ -196,7 +197,7 @@ class PurchaseController extends Controller
 
     public function edit(Purchase $purchase): \Inertia\Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $purchase->load(['purchase_items.product', 'purchase_items.product.product_variants']);
 
@@ -239,7 +240,7 @@ class PurchaseController extends Controller
             'items.*.total' => 'required|numeric|min:0',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $previousStatus = $purchase->status;
 
         DB::transaction(function () use ($validated, $purchase, $previousStatus, $companyId) {
@@ -324,7 +325,7 @@ class PurchaseController extends Controller
 
     public function destroy(Purchase $purchase): \Illuminate\Http\RedirectResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         DB::transaction(function () use ($purchase) {
             // Revertir stock si estaba recibido

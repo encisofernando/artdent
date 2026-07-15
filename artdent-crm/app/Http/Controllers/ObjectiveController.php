@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\Objective;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -11,7 +12,7 @@ class ObjectiveController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
@@ -29,7 +30,7 @@ class ObjectiveController extends Controller
 
     public function update(Request $request, Objective $objective): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $objective->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -47,7 +48,7 @@ class ObjectiveController extends Controller
 
     public function destroy(Request $request, Objective $objective): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $objective->company_id === $companyId, 404);
 
         $objective->delete();

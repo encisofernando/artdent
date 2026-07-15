@@ -7,6 +7,7 @@
 namespace App\Models;
 
 use App\Mail\CustomerResetPassword;
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,6 +22,7 @@ use Laravel\Sanctum\HasApiTokens;
  * Class Customer
  *
  * @property int $id
+ * @property int $company_id
  * @property string $name
  * @property string $email
  * @property string|null $password
@@ -45,7 +47,7 @@ use Laravel\Sanctum\HasApiTokens;
  */
 class Customer extends Authenticatable
 {
-    use CanResetPassword, HasApiTokens, Notifiable, SoftDeletes;
+    use BelongsToCompany, CanResetPassword, HasApiTokens, Notifiable, SoftDeletes;
 
     public function sendPasswordResetNotification($token): void
     {
@@ -55,6 +57,7 @@ class Customer extends Authenticatable
     protected $table = 'customers';
 
     protected $casts = [
+        'company_id' => 'int',
         'email_verified_at' => 'datetime',
         'accepts_marketing' => 'bool',
         'is_active' => 'bool',
@@ -94,6 +97,11 @@ class Customer extends Authenticatable
                 $customer->portal_token = Str::random(48);
             }
         });
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function customer_account()

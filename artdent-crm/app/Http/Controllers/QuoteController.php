@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Services\EmailTemplateService;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,7 +23,7 @@ class QuoteController extends Controller
 
         $query = Invoice::with('invoice_items')
             ->where('reference_type', 'quote')
-            ->where('company_id', auth()->user()->company_id ?? 1);
+            ->where('company_id', CompanyContext::id());
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -88,7 +89,7 @@ class QuoteController extends Controller
             'status' => 'nullable|string|in:draft,sent,accepted,expired,cancelled',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         // Quote number sequence: PRES-00001
         $sequence = Invoice::where('company_id', $companyId)
@@ -200,7 +201,7 @@ class QuoteController extends Controller
 
         $request->validate(['email' => 'required|email']);
 
-        $company = Company::findOrFail(auth()->user()->company_id ?? 1);
+        $company = Company::findOrFail(CompanyContext::id());
         $shareUrl = route('quotes.public', $quote->public_token);
 
         $vars = [

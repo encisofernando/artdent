@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Module;
 use App\Models\Plan;
+use App\Models\SubscriptionInvoice;
 use App\Models\Tenant;
+use App\Models\TenantModule;
 use App\Models\TenantSubscription;
 use App\Support\CrmMode;
+use App\Support\TenantModuleResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -22,13 +26,16 @@ class SubscriptionController extends Controller
         $this->mpAccessToken = config('services.mercadopago.access_token', '');
     }
 
-    public function index(): Response
+    public function index(TenantModuleResolver $moduleResolver): Response
     {
         if (! CrmMode::billingEnabled()) {
             return Inertia::render('Admin/Subscription', [
                 'tenant' => CrmMode::tenantInfo() ?? CrmMode::ownerTenant(),
                 'subscription' => null,
                 'plans' => [],
+                'modules' => [],
+                'invoices' => [],
+                'payments' => [],
             ]);
         }
 
@@ -66,7 +73,70 @@ class SubscriptionController extends Controller
                 ] : null,
             ] : null,
             'plans' => $plans,
+            'modules' => $this->modulesState($tenant, $moduleResolver),
+            'invoices' => SubscriptionInvoice::where('tenant_id', $tenant->id)
+                ->orderByDesc('id')
+                ->get(['id', 'receipt_type', 'point_sale', 'number', 'cae', 'total', 'status', 'description', 'issued_at']),
+            'payments' => $subscription ? $this->fetchPaymentHistory($tenant->id) : [],
         ]);
+    }
+
+    /**
+     * Módulos contratados — sólo lectura (el tenant no puede tocar sus
+     * propios overrides). Mismo cálculo que TenantController::modulesStateFor()
+     * en artdent-admin, pero resuelto para el tenant actual automáticamente.
+     */
+    private function modulesState(Tenant $tenant, TenantModuleResolver $moduleResolver): array
+    {
+        $enabledSlugs = $moduleResolver->enabledSlugs();
+        $plan = $moduleResolver->currentPlan();
+        $planModuleSlugs = $plan ? $plan->modules()->pluck('slug')->all() : [];
+        $overrides = TenantModule::where('tenant_id', $tenant->id)->with('module')->get()->keyBy('module_id');
+
+        return Module::orderBy('name')->get()->map(function (Module $module) use ($enabledSlugs, $planModuleSlugs, $overrides) {
+            $inPlan = in_array($module->slug, $planModuleSlugs, true);
+            $override = $overrides->get($module->id);
+
+            return [
+                'id' => $module->id,
+                'name' => $module->name,
+                'in_plan' => $inPlan,
+                'has_override' => (bool) $override,
+                'effective' => in_array($module->slug, $enabledSlugs, true),
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Historial de pagos consultado en vivo a MercadoPago (no se guarda
+     * localmente — ver decisión en memoria del proyecto, Fase de facturación
+     * de suscripciones). Si MP falla, se degrada a lista vacía sin romper la
+     * página.
+     */
+    private function fetchPaymentHistory(string $tenantId): array
+    {
+        $response = Http::withToken($this->mpAccessToken)
+            ->get('https://api.mercadopago.com/v1/payments/search', [
+                'external_reference' => $tenantId,
+                'sort' => 'date_created',
+                'criteria' => 'desc',
+                'limit' => 20,
+            ]);
+
+        if ($response->failed()) {
+            return [];
+        }
+
+        return collect($response->json('results', []))
+            ->map(fn (array $p) => [
+                'id' => $p['id'],
+                'status' => $p['status'],
+                'amount' => $p['transaction_amount'],
+                'date' => $p['date_approved'] ?? $p['date_created'],
+                'payment_method' => $p['payment_method_id'] ?? null,
+            ])
+            ->values()
+            ->all();
     }
 
     public function checkout(Request $request): RedirectResponse
@@ -93,7 +163,11 @@ class SubscriptionController extends Controller
             ->post('https://api.mercadopago.com/preapproval', [
                 'preapproval_plan_id' => $plan->mp_plan_id,
                 'reason' => "Plan {$plan->name} — ArtDent",
-                'external_reference' => "tenant_{$tenant->id}_plan_{$plan->id}",
+                // external_reference = id del tenant a secas (no un string compuesto):
+                // es lo que usa artdent-admin para resolver el tenant en los webhooks
+                // de pago individual y así poder facturarle la suscripción (ver
+                // MercadoPagoService::processPaymentWebhook en artdent-admin).
+                'external_reference' => $tenant->id,
                 'payer_email' => auth()->user()->email,
                 'back_url' => route('subscription.index'),
                 'status' => 'pending',

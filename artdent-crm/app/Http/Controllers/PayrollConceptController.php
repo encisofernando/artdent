@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PayrollConcept;
 use App\Models\PayrollVariable;
 use App\Services\Payroll\FormulaEngine;
+use App\Support\CompanyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class PayrollConceptController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:10', 'regex:/^[0-9]{1,10}$/'],
@@ -60,7 +61,7 @@ class PayrollConceptController extends Controller
 
     public function simulate(Request $request, FormulaEngine $engine): JsonResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'formula' => ['required', 'string', 'max:2000'],

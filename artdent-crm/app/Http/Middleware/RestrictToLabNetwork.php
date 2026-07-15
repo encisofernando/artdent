@@ -2,47 +2,94 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\KioskAllowedIp;
+use App\Models\KioskNetwork;
+use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Gatea el acceso de terminales físicos (kiosco de fichaje, kiosco de
+ * producción) que pegan sin sesión/login, e inicializa la tenancy del
+ * tenant dueño de esa IP/token — sin esto, cualquier request a estas rutas
+ * cae en la conexión por defecto sin saber a qué tenant pertenece (fuga
+ * real entre tenants si más de uno usa kioscos). La resolución primaria es
+ * vía `KioskNetwork` (central, IP o token por tenant, autogestionado desde
+ * KioskAccessController); el fallback de `.env` (`LAB_ALLOWED_IPS`/
+ * `KIOSK_TOKEN`) sólo resuelve tenant si `KIOSK_DEFAULT_TENANT_ID` está
+ * configurado — evita que ese fallback (pensado para desarrollo local)
+ * inicialice "cualquier tenant" en un despliegue real con varios tenants.
+ */
 class RestrictToLabNetwork
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Allow access via secret kiosk token (query param or header)
-        $kioskToken = config('app.kiosk_token');
-        if ($kioskToken && $this->hasValidToken($request, $kioskToken)) {
+        $network = $this->resolveNetwork($request);
+
+        if ($network && ($tenant = Tenant::find($network->tenant_id)) && $tenant->isActive()) {
+            tenancy()->initialize($tenant);
+
             return $next($request);
         }
 
-        $clientIp = $request->ip();
+        if ($this->matchesDevFallback($request) && $defaultTenantId = config('app.kiosk_default_tenant_id')) {
+            $tenant = Tenant::find($defaultTenantId);
 
-        // IPs from .env (always checked as fallback)
-        $envIps = array_filter(array_map('trim', explode(',', config('app.lab_allowed_ips', '127.0.0.1,::1'))));
+            if ($tenant && $tenant->isActive()) {
+                tenancy()->initialize($tenant);
 
-        // IPs stored in the database (cached for 60 s)
-        $dbIps = Cache::remember('kiosk_allowed_ips', 60, fn () => KioskAllowedIp::where('is_active', true)
-            ->pluck('ip_address')
-            ->all()
-        );
-
-        foreach (array_merge($envIps, $dbIps) as $allowedIp) {
-            if ($this->ipMatches($clientIp, $allowedIp)) {
                 return $next($request);
             }
         }
 
-        return response()->json(['error' => 'Acceso solo permitido desde la red del laboratorio.'], 403);
+        return response()->json(['error' => 'Acceso solo permitido desde una red de kiosco autorizada.'], 403);
     }
 
-    private function hasValidToken(Request $request, string $kioskToken): bool
+    private function resolveNetwork(Request $request): ?KioskNetwork
     {
-        $token = $request->query('token') ?? $request->header('X-Kiosk-Token') ?? '';
+        $token = $request->query('token') ?? $request->header('X-Kiosk-Token');
 
-        return hash_equals($kioskToken, $token);
+        if ($token) {
+            $byToken = KioskNetwork::where('token', $token)->where('is_active', true)->first();
+
+            if ($byToken) {
+                return $byToken;
+            }
+        }
+
+        $clientIp = $request->ip();
+
+        return KioskNetwork::where('is_active', true)
+            ->whereNotNull('ip_address')
+            ->get()
+            ->first(fn (KioskNetwork $n) => $this->ipMatches($clientIp, $n->ip_address));
+    }
+
+    /**
+     * Fallback de desarrollo local: token/IPs globales de `.env`, sin
+     * asociación a ningún tenant en la BD. Sólo tiene efecto si además
+     * `KIOSK_DEFAULT_TENANT_ID` está configurado (ver handle()).
+     */
+    private function matchesDevFallback(Request $request): bool
+    {
+        $kioskToken = config('app.kiosk_token');
+        if ($kioskToken) {
+            $token = $request->query('token') ?? $request->header('X-Kiosk-Token') ?? '';
+            if (hash_equals($kioskToken, $token)) {
+                return true;
+            }
+        }
+
+        $clientIp = $request->ip();
+        $envIps = array_filter(array_map('trim', explode(',', config('app.lab_allowed_ips', '127.0.0.1,::1'))));
+
+        foreach ($envIps as $allowedIp) {
+            if ($this->ipMatches($clientIp, $allowedIp)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function ipMatches(string $clientIp, string $allowed): bool

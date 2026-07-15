@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\CrmInteractionController;
+use App\Http\Controllers\DeliveryNoteController;
 use App\Http\Controllers\DentistController;
 use App\Http\Controllers\DentistDeliveryRouteController;
 use App\Http\Controllers\DentistTariffPriceController;
@@ -15,46 +16,62 @@ use App\Http\Controllers\JobStatusHistoryController;
 use App\Http\Controllers\JobTeethController;
 use App\Http\Controllers\JobTypeController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\PhaseTemplateController;
 use App\Http\Controllers\TariffController;
 use Illuminate\Support\Facades\Route;
 
-// Trabajos Clínicos (Mismo flujo que órdenes de laboratorio en cuanto a permisos)
-Route::get('jobs', [JobController::class, 'index'])->name('jobs.index')->middleware('permission:orders.view');
-Route::get('jobs/create', [JobController::class, 'create'])->name('jobs.create')->middleware('permission:orders.create');
-Route::post('jobs', [JobController::class, 'store'])->name('jobs.store')->middleware('permission:orders.create');
-Route::get('jobs/{job}', [JobController::class, 'show'])->name('jobs.show')->middleware('permission:orders.view');
-Route::get('jobs/{job}/edit', [JobController::class, 'edit'])->name('jobs.edit')->middleware('permission:orders.edit');
-Route::put('jobs/{job}', [JobController::class, 'update'])->name('jobs.update')->middleware('permission:orders.edit');
-Route::delete('jobs/{job}', [JobController::class, 'destroy'])->name('jobs.destroy')->middleware('permission:orders.delete');
-Route::get('jobs/{job}/ticket', [JobController::class, 'ticket'])->name('jobs.ticket')->middleware('permission:orders.view');
+Route::middleware('module:laboratorio')->group(function () {
+    // Trabajos Clínicos (Mismo flujo que órdenes de laboratorio en cuanto a permisos)
+    Route::get('jobs', [JobController::class, 'index'])->name('jobs.index')->middleware('permission:orders.view');
+    Route::get('jobs/create', [JobController::class, 'create'])->name('jobs.create')->middleware('permission:orders.create');
+    Route::post('jobs', [JobController::class, 'store'])->name('jobs.store')->middleware('permission:orders.create');
+    Route::get('jobs/{job}', [JobController::class, 'show'])->name('jobs.show')->middleware('permission:orders.view');
+    Route::get('jobs/{job}/edit', [JobController::class, 'edit'])->name('jobs.edit')->middleware('permission:orders.edit');
+    Route::put('jobs/{job}', [JobController::class, 'update'])->name('jobs.update')->middleware('permission:orders.edit');
+    Route::delete('jobs/{job}', [JobController::class, 'destroy'])->name('jobs.destroy')->middleware('permission:orders.delete');
+    Route::get('jobs/{job}/ticket', [JobController::class, 'ticket'])->name('jobs.ticket')->middleware('permission:orders.view');
 
-// Sub-recursos de Trabajos
-Route::resource('job-attachments', JobAttachmentController::class)->middleware('permission:orders.edit');
-Route::resource('job-collaborators', JobCollaboratorController::class)->middleware('permission:orders.edit');
-Route::resource('job-items', JobItemController::class)->middleware('permission:orders.edit');
-Route::resource('job-status-historys', JobStatusHistoryController::class)->middleware('permission:orders.view');
-Route::resource('job-teeths', JobTeethController::class)->middleware('permission:orders.edit');
-Route::resource('job-types', JobTypeController::class)->middleware('permission:orders.edit');
-Route::resource('job-remakes', JobRemakeController::class)->middleware('permission:orders.edit');
+    // Sub-recursos de Trabajos
+    Route::resource('job-attachments', JobAttachmentController::class)->middleware('permission:orders.edit');
+    Route::resource('job-collaborators', JobCollaboratorController::class)->middleware('permission:orders.edit');
+    Route::resource('job-items', JobItemController::class)->middleware('permission:orders.edit');
+    Route::resource('job-status-historys', JobStatusHistoryController::class)->middleware('permission:orders.view');
+    Route::resource('job-teeths', JobTeethController::class)->middleware('permission:orders.edit');
+    Route::resource('job-types', JobTypeController::class)->middleware('permission:orders.edit');
+    Route::resource('job-remakes', JobRemakeController::class)->middleware('permission:orders.edit');
 
-// Fases de Órdenes — CRM (requiere autenticación)
-Route::post('jobs/{job}/initialize-phases', [JobPhaseKioskController::class, 'initializePhases'])->name('jobs.initialize-phases')->middleware('permission:orders.edit');
-Route::post('jobs/{job}/return-from-proof', [JobPhaseKioskController::class, 'returnFromProof'])->name('jobs.return-from-proof')->middleware('permission:orders.edit');
-Route::post('jobs/{job}/register-delivery', [JobPhaseKioskController::class, 'registerDelivery'])->name('jobs.register-delivery')->middleware('permission:orders.edit');
+    // Fases de Órdenes — CRM (requiere autenticación)
+    Route::post('jobs/{job}/initialize-phases', [JobPhaseKioskController::class, 'initializePhases'])->name('jobs.initialize-phases')->middleware('permission:orders.edit');
+    Route::post('jobs/{job}/return-from-proof', [JobPhaseKioskController::class, 'returnFromProof'])->name('jobs.return-from-proof')->middleware('permission:orders.edit');
+    Route::post('jobs/{job}/register-delivery', [JobPhaseKioskController::class, 'registerDelivery'])->name('jobs.register-delivery')->middleware('permission:orders.edit');
 
-// Dentistas y Clientes
-Route::resource('dentists', DentistController::class)->middleware('permission:customers.view');
-Route::resource('dentist-tariff-prices', DentistTariffPriceController::class)->middleware('permission:customers.edit');
-Route::resource('dentist-delivery-routes', DentistDeliveryRouteController::class)->middleware('permission:customers.edit');
-Route::resource('patients', PatientController::class)->middleware('permission:customers.view');
+    // Dentistas y Clientes
+    Route::resource('dentists', DentistController::class)->middleware('permission:customers.view');
+    Route::resource('dentist-tariff-prices', DentistTariffPriceController::class)->middleware('permission:customers.edit');
+    Route::resource('dentist-delivery-routes', DentistDeliveryRouteController::class)->middleware('permission:customers.edit');
 
-// Aranceles y CRM
-Route::resource('tariffs', TariffController::class)->middleware('permission:products.view');
-Route::get('crm/chatbot', function () {
-    return inertia('Crm/Chatbot/Assistant');
-})->name('crm.chatbot')->middleware('permission:customers.view');
+    // Remitos de entrega (comprobante no fiscal que acompaña la entrega de trabajos al odontólogo)
+    Route::get('remitos', [DeliveryNoteController::class, 'create'])->name('remitos.create')->middleware('permission:orders.edit');
+    Route::post('remitos', [DeliveryNoteController::class, 'store'])->name('remitos.store')->middleware('permission:orders.edit');
+    Route::get('remitos/pdf', [DeliveryNoteController::class, 'pdf'])->name('remitos.pdf')->middleware('permission:orders.edit');
 
-Route::resource('crm-interactions', CrmInteractionController::class)->middleware('permission:customers.view');
+    // Aranceles y CRM
+    Route::get('tariffs/pdf', [TariffController::class, 'pdf'])->name('tariffs.pdf')->middleware('permission:products.view');
+    Route::put('tariffs/notes', [TariffController::class, 'updateNotes'])->name('tariffs.notes.update')->middleware('permission:products.view');
+    Route::resource('tariffs', TariffController::class)->middleware('permission:products.view');
+    Route::resource('phase-templates', PhaseTemplateController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->middleware('permission:products.view');
+    Route::get('crm/chatbot', function () {
+        return inertia('Crm/Chatbot/Assistant');
+    })->name('crm.chatbot')->middleware('permission:customers.view');
 
-// Analítica de Laboratorio
-Route::get('analytics/lab', [AnalyticsController::class, 'lab'])->name('analytics.lab')->middleware('permission:reports.view');
+    Route::resource('crm-interactions', CrmInteractionController::class)->middleware('permission:customers.view');
+});
+
+// Pacientes — dominio de clínica/consultorio, independiente del laboratorio
+Route::resource('patients', PatientController::class)->middleware(['module:clinica', 'permission:customers.view']);
+
+// Analítica de Laboratorio — dato genuinamente de laboratorio (jobs/tarifas/
+// dentistas), no reportes genéricos; estaba mal gateada a 'reportes'.
+Route::get('analytics/lab', [AnalyticsController::class, 'lab'])->name('analytics.lab')->middleware(['module:laboratorio', 'permission:reports.view']);

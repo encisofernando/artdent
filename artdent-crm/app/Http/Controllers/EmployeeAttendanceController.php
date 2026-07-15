@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Services\EmployeePayrollService;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class EmployeeAttendanceController extends Controller
 
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $employeeId = $request->input('employee_id');
         $from = $request->input('from');
         $to = $request->input('to');
@@ -69,7 +70,7 @@ class EmployeeAttendanceController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = Validator::make($request->all(), [
             'employee_id' => [
@@ -112,7 +113,7 @@ class EmployeeAttendanceController extends Controller
 
     public function update(Request $request, EmployeeAttendance $employeeAttendance): RedirectResponse
     {
-        $this->ensureCompanyOwned($employeeAttendance, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($employeeAttendance, CompanyContext::id());
         $companyId = (int) $employeeAttendance->company_id;
         $employeeId = (int) $employeeAttendance->employee_id;
 
@@ -149,7 +150,7 @@ class EmployeeAttendanceController extends Controller
 
     public function destroy(Request $request, EmployeeAttendance $employeeAttendance): RedirectResponse
     {
-        $this->ensureCompanyOwned($employeeAttendance, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($employeeAttendance, CompanyContext::id());
         $companyId = (int) $employeeAttendance->company_id;
         $employeeId = (int) $employeeAttendance->employee_id;
 

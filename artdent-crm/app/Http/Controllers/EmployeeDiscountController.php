@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\EmployeeDiscount;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,7 +14,7 @@ class EmployeeDiscountController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $employeeId = $request->input('employee_id');
         $search = trim((string) $request->input('search', ''));
         $from = $request->input('from');
@@ -61,7 +62,7 @@ class EmployeeDiscountController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
@@ -77,7 +78,7 @@ class EmployeeDiscountController extends Controller
 
     public function update(Request $request, EmployeeDiscount $employeeDiscount): RedirectResponse
     {
-        abort_unless((int) $employeeDiscount->company_id === ($request->user()->company_id ?? 1), 404);
+        abort_unless((int) $employeeDiscount->company_id === (CompanyContext::id()), 404);
 
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
@@ -93,7 +94,7 @@ class EmployeeDiscountController extends Controller
 
     public function destroy(EmployeeDiscount $employeeDiscount): RedirectResponse
     {
-        abort_unless((int) $employeeDiscount->company_id === (auth()->user()->company_id ?? 1), 404);
+        abort_unless((int) $employeeDiscount->company_id === (CompanyContext::id()), 404);
 
         $employeeDiscount->delete();
 

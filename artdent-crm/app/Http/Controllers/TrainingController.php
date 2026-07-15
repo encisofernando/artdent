@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Training;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class TrainingController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
@@ -26,7 +27,7 @@ class TrainingController extends Controller
 
     public function update(Request $request, Training $training): RedirectResponse
     {
-        $this->ensureCompanyOwned($training, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($training, CompanyContext::id());
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
@@ -42,7 +43,7 @@ class TrainingController extends Controller
 
     public function destroy(Request $request, Training $training): RedirectResponse
     {
-        $this->ensureCompanyOwned($training, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($training, CompanyContext::id());
 
         abort_if($training->sessions()->exists(), 422, 'No se puede eliminar: tiene sesiones asociadas.');
 

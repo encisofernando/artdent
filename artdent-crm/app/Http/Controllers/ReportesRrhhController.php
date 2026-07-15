@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeeReceipt;
 use App\Models\LeaveRequest;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ class ReportesRrhhController extends Controller
 
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $months = $this->lastMonths(self::MONTHS_BACK);
 
         return Inertia::render('Rrhh/Reportes/Index', [

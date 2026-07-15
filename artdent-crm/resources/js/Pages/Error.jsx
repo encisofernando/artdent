@@ -1,10 +1,89 @@
-import { Link, Head } from '@inertiajs/react';
+import { Link, Head, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { ShieldAlert, Search, Server, Home, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, Search, Server, Home, ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 
-export default function Error({ status }) {
+const MODULE_NAMES = {
+    clientes: 'Gestión de Clientes',
+    laboratorio: 'Laboratorio Odontológico',
+    clinica: 'Clínicas / Consultorios',
+    insumos: 'Insumos e Inventario',
+    finanzas: 'Finanzas',
+    contabilidad: 'Contabilidad',
+    rrhh: 'Recursos Humanos',
+    ecommerce: 'Tienda Online / E-commerce',
+    chat_ia: 'Chat IA',
+    reportes: 'Reportes',
+};
+
+export default function Error({ status, reason, module }) {
     const { isDark } = useTheme();
+    const { props } = usePage();
+    const billingEnabled = props.app_context?.billing_enabled !== false;
+
+    if (reason === 'module_not_included') {
+        const moduleName = MODULE_NAMES[module] || module;
+
+        return (
+            <div className={`min-h-screen flex items-center justify-center p-6 transition-colors duration-500 ${
+                isDark ? 'bg-slate-950 text-slate-300' : 'bg-slate-50 text-slate-600'
+            }`}>
+                <Head title="Módulo no disponible en tu plan" />
+
+                <div className="max-w-md w-full text-center">
+                    <div className={`inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-8 shadow-2xl ${
+                        isDark ? 'bg-slate-900 shadow-black' : 'bg-white shadow-slate-200'
+                    }`}>
+                        <Sparkles size={48} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+                    </div>
+
+                    <h2 className={`text-xl font-bold mb-4 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                        {moduleName} no está incluido en tu plan
+                    </h2>
+
+                    <p className="text-sm leading-relaxed mb-10 opacity-70">
+                        {billingEnabled
+                            ? 'Mejorá tu plan para desbloquear este módulo y seguir creciendo con ArtDent.'
+                            : 'Contactá a tu administrador o a soporte de ArtDent para habilitar este módulo.'}
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Button
+                            variant="outline"
+                            onClick={() => window.history.back()}
+                            className={`font-bold rounded-xl gap-2 h-12 px-6 ${
+                                isDark ? 'border-slate-800 hover:bg-slate-900 text-slate-400' : 'border-slate-200 hover:bg-white text-slate-600'
+                            }`}
+                        >
+                            <ArrowLeft size={18} />
+                            Volver Atrás
+                        </Button>
+
+                        {billingEnabled ? (
+                            <Link href="/subscription">
+                                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl gap-2 h-12 px-8 shadow-lg shadow-emerald-500/20 w-full">
+                                    <Sparkles size={18} />
+                                    Mejorar mi plan
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Link href="/dashboard">
+                                <Button className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl gap-2 h-12 px-8 shadow-lg shadow-blue-500/20 w-full">
+                                    <Home size={18} />
+                                    Ir al Inicio
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
+
+                    <div className="mt-16 opacity-30 flex items-center justify-center gap-2">
+                        <img src="/assets/logo-artdent-icon.png" alt="ArtDent" className="h-4 w-4 grayscale" />
+                        <span className="text-[10px] uppercase font-black tracking-widest">ArtDent CRM</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const title = {
         503: 'Servicio No Disponible',

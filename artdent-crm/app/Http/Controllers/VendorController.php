@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vendor;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -17,8 +18,8 @@ class VendorController extends Controller
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('cuit', 'like', "%{$search}%")
-                  ->orWhere('contact_name', 'like', "%{$search}%");
+                ->orWhere('cuit', 'like', "%{$search}%")
+                ->orWhere('contact_name', 'like', "%{$search}%");
         }
 
         if ($status === 'active') {
@@ -34,7 +35,7 @@ class VendorController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status,
-            ]
+            ],
         ]);
     }
 
@@ -57,7 +58,7 @@ class VendorController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $validated['company_id'] = auth()->user()->company_id ?? 1;
+        $validated['company_id'] = CompanyContext::id();
 
         Vendor::create($validated);
 
@@ -72,7 +73,7 @@ class VendorController extends Controller
     public function edit(Vendor $vendor)
     {
         return Inertia::render('Vendor/Edit', [
-            'item' => $vendor
+            'item' => $vendor,
         ]);
     }
 
@@ -98,6 +99,7 @@ class VendorController extends Controller
     public function destroy(Vendor $vendor)
     {
         $vendor->delete();
+
         return redirect()->route('vendors.index')->with('success', 'Proveedor eliminado exitosamente.');
     }
 }

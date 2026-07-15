@@ -46,6 +46,13 @@ artdent-android/node_modules/
 /.codex
 /ArtDent*.pdf
 
+# --- Backups de .env con secretos reales (cualquier variante, no solo .env.backup) ---
+*.env.bak*
+**/.env.bak*
+
+# --- Storage de tenants (archivos subidos por negocios reales: logos, hero slides, etc.) ---
+artdent-crm/storage/tenant*/app/public/
+
 # --- Sistemas / IDE ---
 *.swp
 *.swo

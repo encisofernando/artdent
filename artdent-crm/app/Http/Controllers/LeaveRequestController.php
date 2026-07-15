@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use App\Services\LeaveService;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class LeaveRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
@@ -53,7 +54,7 @@ class LeaveRequestController extends Controller
 
     public function update(Request $request, LeaveRequest $leaveRequest): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $leaveRequest->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -87,7 +88,7 @@ class LeaveRequestController extends Controller
 
     public function destroy(Request $request, LeaveRequest $leaveRequest): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $leaveRequest->company_id === $companyId, 404);
 
         abort_if($leaveRequest->status === 'approved', 422, 'No se puede eliminar una solicitud aprobada: cancelala primero.');

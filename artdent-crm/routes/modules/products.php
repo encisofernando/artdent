@@ -3,9 +3,11 @@
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductAttributeController;
 use App\Http\Controllers\ProductAttributeValueController;
+use App\Http\Controllers\ProductBarcodeController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductVariantController;
+use App\Http\Controllers\UsdExchangeRateController;
 use Illuminate\Support\Facades\Route;
 
 // Etiquetas de código de barras
@@ -22,6 +24,18 @@ Route::delete('products/{product}', [ProductController::class, 'destroy'])->name
 // Importaciones
 Route::post('products/import-csv', [ProductController::class, 'importCsv'])->name('products.import-csv')->middleware('permission:products.create');
 Route::post('products/import-sql', [ProductController::class, 'importSql'])->name('products.import-sql')->middleware('permission:products.create');
+
+// Aumento masivo de precios
+Route::get('products/bulk-price', [ProductController::class, 'bulkPriceForm'])->name('products.bulk-price')->middleware('permission:products.edit');
+Route::post('products/bulk-price/preview', [ProductController::class, 'bulkPricePreview'])->name('products.bulk-price.preview')->middleware('permission:products.edit');
+Route::post('products/bulk-price/apply', [ProductController::class, 'bulkPriceApply'])->name('products.bulk-price.apply')->middleware('permission:products.edit');
+
+// Cotización del dólar (costos de insumos importados)
+Route::post('usd-exchange-rate', [UsdExchangeRateController::class, 'update'])->name('usd-exchange-rate.update')->middleware('permission:products.edit');
+
+// Códigos de barra adicionales por artículo
+Route::post('products/{product}/barcodes', [ProductBarcodeController::class, 'store'])->name('product-barcodes.store')->middleware('permission:products.edit');
+Route::delete('product-barcodes/{productBarcode}', [ProductBarcodeController::class, 'destroy'])->name('product-barcodes.destroy')->middleware('permission:products.edit');
 
 // Categorías
 Route::get('categorys', [CategoryController::class, 'index'])->name('categorys.index')->middleware('permission:products.view');

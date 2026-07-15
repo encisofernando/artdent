@@ -5,4 +5,4 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('contable', [AccountingController::class, 'index'])
     ->name('accounting.index')
-    ->middleware('permission:accounting.view');
+    ->middleware(['module:contabilidad', 'permission:accounting.view']);

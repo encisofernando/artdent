@@ -6,6 +6,7 @@ use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
 use App\Models\Job;
 use App\Models\JobPhaseProgress;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -21,7 +22,7 @@ class CollaboratorAssignController extends Controller
      */
     private function companyId(Request $request): int
     {
-        return $request->user()?->company_id ?? 1;
+        return CompanyContext::id();
     }
 
     /**

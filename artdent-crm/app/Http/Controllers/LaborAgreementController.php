@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LaborAgreement;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class LaborAgreementController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],

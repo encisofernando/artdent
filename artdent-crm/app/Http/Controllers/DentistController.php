@@ -115,6 +115,9 @@ class DentistController extends Controller
             'item' => $dentist,
             'tariffs' => $tariffs,
             'customPrices' => $customPrices,
+            'portalUrl' => $dentist->email
+                ? route('dentist-portal.login', ['email' => $dentist->email])
+                : route('dentist-portal.login'),
         ]);
     }
 

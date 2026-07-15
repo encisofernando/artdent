@@ -7,6 +7,8 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Models\Branch;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Auditor;
+use App\Support\PlanLimitService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
@@ -54,8 +56,10 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(StoreUserRequest $request): RedirectResponse
+    public function store(StoreUserRequest $request, PlanLimitService $limits): RedirectResponse
     {
+        $limits->assertCanAddUser();
+
         $validated = $request->validated();
 
         $user = User::create([
@@ -76,6 +80,8 @@ class UserController extends Controller
 
             $user->syncRoles($roles);
         }
+
+        Auditor::log('user.created', $user, ['email' => $user->email, 'roles' => $user->roles()->pluck('name')->all()]);
 
         return redirect()->route('users.index')
             ->with('success', "Usuario {$user->name} creado exitosamente.");
@@ -110,6 +116,7 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         $validated = $request->validated();
+        $rolesBefore = $user->roles()->pluck('name')->all();
 
         $data = [
             'name' => $validated['name'],
@@ -135,6 +142,15 @@ class UserController extends Controller
             $user->syncRoles($roles);
         }
 
+        $rolesAfter = $user->roles()->pluck('name')->all();
+
+        Auditor::log('user.updated', $user, [
+            'is_active' => $data['is_active'],
+            'password_changed' => ! empty($validated['password']),
+            'roles_before' => $rolesBefore,
+            'roles_after' => $rolesAfter,
+        ]);
+
         return redirect()->route('users.index')
             ->with('success', "Usuario {$user->name} actualizado correctamente.");
     }
@@ -144,6 +160,8 @@ class UserController extends Controller
         if ($user->hasRole('Super Admin')) {
             return back()->with('error', 'No se puede eliminar a un usuario con rol de Super Administrador.');
         }
+
+        Auditor::log('user.deleted', $user, ['email' => $user->email, 'roles' => $user->roles()->pluck('name')->all()]);
 
         $user->roles()->detach();
         $user->delete();

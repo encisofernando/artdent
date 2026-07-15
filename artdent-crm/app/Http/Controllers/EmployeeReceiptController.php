@@ -8,6 +8,7 @@ use App\Models\EmployeeDiscount;
 use App\Models\EmployeeExtra;
 use App\Models\EmployeeReceipt;
 use App\Services\EmployeePayrollService;
+use App\Support\CompanyContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class EmployeeReceiptController extends Controller
 
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $employeeId = $request->input('employee_id');
         $status = $request->input('status');
 
@@ -65,7 +66,7 @@ class EmployeeReceiptController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
@@ -100,7 +101,7 @@ class EmployeeReceiptController extends Controller
 
     public function show(Request $request, EmployeeReceipt $employeeReceipt): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employeeReceipt->company_id === $companyId, 404);
 
         $employeeReceipt = $this->payrollService->syncReceipt($employeeReceipt);
@@ -130,7 +131,7 @@ class EmployeeReceiptController extends Controller
 
     public function pdf(Request $request, EmployeeReceipt $employeeReceipt): BaseResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employeeReceipt->company_id === $companyId, 404);
 
         $employeeReceipt = $this->payrollService->syncReceipt($employeeReceipt);
@@ -159,7 +160,7 @@ class EmployeeReceiptController extends Controller
 
     public function update(Request $request, EmployeeReceipt $employeeReceipt): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employeeReceipt->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -190,7 +191,7 @@ class EmployeeReceiptController extends Controller
 
     public function destroy(Request $request, EmployeeReceipt $employeeReceipt): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employeeReceipt->company_id === $companyId, 404);
 
         $employeeReceipt->delete();

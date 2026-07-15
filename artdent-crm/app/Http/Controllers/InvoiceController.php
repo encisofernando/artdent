@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\InvoiceType;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -18,8 +19,8 @@ class InvoiceController extends Controller
 
         if ($search) {
             $query->where('recipient_name', 'like', "%{$search}%")
-                  ->orWhere('recipient_cuit', 'like', "%{$search}%")
-                  ->orWhere('number', 'like', "%{$search}%");
+                ->orWhere('recipient_cuit', 'like', "%{$search}%")
+                ->orWhere('number', 'like', "%{$search}%");
         }
 
         if ($status !== 'all') {
@@ -33,14 +34,14 @@ class InvoiceController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status,
-            ]
+            ],
         ]);
     }
 
     public function create()
     {
         return Inertia::render('Invoice/Create', [
-            'invoiceTypes' => InvoiceType::all()
+            'invoiceTypes' => InvoiceType::all(),
         ]);
     }
 
@@ -64,7 +65,7 @@ class InvoiceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $validated['company_id'] = auth()->user()->company_id ?? 1;
+        $validated['company_id'] = CompanyContext::id();
         $validated['user_id'] = auth()->id();
 
         Invoice::create($validated);
@@ -75,8 +76,9 @@ class InvoiceController extends Controller
     public function show(Invoice $invoice)
     {
         $invoice->load('invoice_items', 'invoice_type', 'company');
+
         return Inertia::render('Invoice/Show', [
-            'item' => $invoice
+            'item' => $invoice,
         ]);
     }
 
@@ -84,7 +86,7 @@ class InvoiceController extends Controller
     {
         return Inertia::render('Invoice/Edit', [
             'item' => $invoice,
-            'invoiceTypes' => InvoiceType::all()
+            'invoiceTypes' => InvoiceType::all(),
         ]);
     }
 
@@ -116,6 +118,7 @@ class InvoiceController extends Controller
     public function destroy(Invoice $invoice)
     {
         $invoice->delete();
+
         return redirect()->route('invoices.index')->with('success', 'Factura eliminada exitosamente.');
     }
 }

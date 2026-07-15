@@ -5,16 +5,18 @@ import {
     BarChart3,
     TrendingUp,
     TrendingDown,
-    Clock,
-    RefreshCcw,
+    Wallet,
     Users,
     DollarSign,
     Loader,
     Download,
     ChevronUp,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { shiftReferenceDate, isCurrentPeriod, formatPeriodRangeLabel } from "@/lib/periodNav";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const ARS = (v) =>
@@ -96,6 +98,9 @@ function KpiCard({ title, value, trend, icon: Icon, color, isDark, suffix = "" }
 
 // ─── Bar Chart (SVG) ─────────────────────────────────────────────────────────
 function BarChartRevenue({ data, isDark }) {
+    const containerRef = useRef(null);
+    const [hover, setHover] = useState(null); // { index, x, y }
+
     if (!data || data.length === 0) {
         return (
             <div className="h-52 flex items-center justify-center text-slate-500 text-sm">
@@ -111,8 +116,30 @@ function BarChartRevenue({ data, isDark }) {
     const muted = isDark ? "#64748b" : "#94a3b8";
     const gridColor = isDark ? "#1e293b" : "#f1f5f9";
 
+    const showTooltip = (e, i) => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        setHover({ index: i, x: e.clientX - rect.left, y: e.clientY - rect.top });
+    };
+
+    const hovered = hover !== null ? data[hover.index] : null;
+
     return (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto" ref={containerRef}>
+            {hovered && (
+                <div
+                    className={`pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg px-3 py-2 text-xs shadow-lg whitespace-nowrap ${
+                        isDark ? "bg-slate-800 text-slate-100 border border-slate-700" : "bg-white text-slate-800 border border-slate-200"
+                    }`}
+                    style={{ left: hover.x, top: hover.y - 10 }}
+                >
+                    <p className="font-bold">{hovered.label}</p>
+                    <p className={isDark ? "text-emerald-400" : "text-emerald-600"}>{ARS(hovered.revenue)}</p>
+                    <p style={{ color: muted }}>
+                        {N(hovered.jobs)} {hovered.jobs === 1 ? "trabajo" : "trabajos"}
+                    </p>
+                </div>
+            )}
             <svg
                 viewBox={`0 0 ${Math.max(totalW, 300)} ${chartH + 28}`}
                 className="w-full"
@@ -133,8 +160,20 @@ function BarChartRevenue({ data, isDark }) {
                     const h = Math.max(2, (d.revenue / maxRevenue) * chartH);
                     const x = i * (barW + gap);
                     const y = chartH - h;
+                    const isHovered = hover?.index === i;
                     return (
                         <g key={i}>
+                            <rect
+                                x={x}
+                                y={0}
+                                width={barW + gap}
+                                height={chartH}
+                                fill="transparent"
+                                onMouseEnter={(e) => showTooltip(e, i)}
+                                onMouseMove={(e) => showTooltip(e, i)}
+                                onMouseLeave={() => setHover(null)}
+                                style={{ cursor: "pointer" }}
+                            />
                             <rect
                                 x={x}
                                 y={y}
@@ -142,7 +181,10 @@ function BarChartRevenue({ data, isDark }) {
                                 height={h}
                                 rx={3}
                                 fill="url(#barGrad)"
-                                opacity={0.9}
+                                opacity={isHovered ? 1 : 0.9}
+                                stroke={isHovered ? "#10b981" : "none"}
+                                strokeWidth={isHovered ? 1.5 : 0}
+                                pointerEvents="none"
                             />
                             {data.length <= 14 && (
                                 <text
@@ -150,7 +192,9 @@ function BarChartRevenue({ data, isDark }) {
                                     y={chartH + 16}
                                     textAnchor="middle"
                                     fontSize={9}
-                                    fill={muted}
+                                    fill={isHovered ? "#10b981" : muted}
+                                    fontWeight={isHovered ? "bold" : "normal"}
+                                    pointerEvents="none"
                                 >
                                     {d.label}
                                 </text>
@@ -343,28 +387,19 @@ function JobTypeChart({ data, isDark }) {
 
 // ─── Weekday Activity Chart ────────────────────────────────────────────────────
 function WeekdayChart({ data, isDark }) {
-    const muted = isDark ? "#64748b" : "#94a3b8";
     const labelColor = isDark ? "#94a3b8" : "#64748b";
     if (!data || data.length === 0) {
         return <p className={`text-sm py-4 text-center ${isDark ? "text-slate-400" : "text-slate-500"}`}>Sin datos</p>;
     }
     const maxCount = Math.max(...data.map((d) => d.count), 1);
     const chartH = 100;
-    const barW = 28;
-    const gap = 12;
+    const barW = 72;
+    const gap = 28;
     const totalW = data.length * (barW + gap);
-
-    // Color scale: lighter for 0, vivid for max
-    const getColor = (count) => {
-        if (count === 0) return isDark ? "#1e293b" : "#f1f5f9";
-        const intensity = count / maxCount;
-        const alpha = Math.round(30 + intensity * 220);
-        return `rgba(16, 185, 129, ${alpha / 255})`;
-    };
 
     return (
         <div className="overflow-x-auto">
-            <svg viewBox={`0 0 ${totalW} ${chartH + 30}`} className="w-full" style={{ minWidth: totalW }}>
+            <svg viewBox={`0 0 ${totalW} ${chartH + 30}`} className="w-full" style={{ maxWidth: totalW }}>
                 {data.map((d, i) => {
                     const h = Math.max(d.count > 0 ? 6 : 2, (d.count / maxCount) * chartH);
                     const x = i * (barW + gap);
@@ -418,11 +453,21 @@ export default function AnalyticsLab({
     const [period, setPeriod] = useState(filters?.period ?? "month");
 
     const today = new Date().toISOString().slice(0, 10);
+    const [referenceDate, setReferenceDate] = useState(filters?.reference_date ?? today);
 
     const handlePeriod = (p) => {
         setPeriod(p);
+        setReferenceDate(today);
         router.get(route("analytics.lab"), { period: p }, { preserveScroll: true });
     };
+
+    const navigatePeriod = (direction) => {
+        const next = shiftReferenceDate(period, referenceDate, direction);
+        setReferenceDate(next);
+        router.get(route("analytics.lab"), { period, reference_date: next }, { preserveScroll: true });
+    };
+
+    const atCurrentPeriod = isCurrentPeriod(period, referenceDate);
 
     const c = kpis?.current ?? {};
     const t = kpis?.trends ?? {};
@@ -435,7 +480,7 @@ export default function AnalyticsLab({
         <AuthenticatedLayout user={auth.user}>
             <Head title="Analítica · Laboratorio" />
 
-            <div className="space-y-6 max-w-7xl">
+            <div className="space-y-6">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
@@ -446,23 +491,44 @@ export default function AnalyticsLab({
                             Métricas, rankings y reportes del laboratorio dental
                         </p>
                     </div>
-                    {/* Period selector */}
-                    <div className={`inline-flex rounded-xl p-0.5 ${isDark ? "bg-slate-800" : "bg-slate-100"}`}>
-                        {PERIODS.map((p) => (
+                    <div className="flex items-center gap-2">
+                        {/* Period selector */}
+                        <div className={`inline-flex rounded-xl p-0.5 ${isDark ? "bg-slate-800" : "bg-slate-100"}`}>
+                            {PERIODS.map((p) => (
+                                <button
+                                    key={p.key}
+                                    onClick={() => handlePeriod(p.key)}
+                                    className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all ${
+                                        period === p.key
+                                            ? "bg-emerald-500 text-white shadow"
+                                            : isDark
+                                            ? "text-slate-400 hover:text-slate-200"
+                                            : "text-slate-500 hover:text-slate-700"
+                                    }`}
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
+                        {/* Prev/next navigation */}
+                        <div className={`inline-flex items-center gap-1 rounded-xl p-0.5 ${isDark ? "bg-slate-800" : "bg-slate-100"}`}>
                             <button
-                                key={p.key}
-                                onClick={() => handlePeriod(p.key)}
-                                className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all ${
-                                    period === p.key
-                                        ? "bg-emerald-500 text-white shadow"
-                                        : isDark
-                                        ? "text-slate-400 hover:text-slate-200"
-                                        : "text-slate-500 hover:text-slate-700"
-                                }`}
+                                onClick={() => navigatePeriod(-1)}
+                                className={`p-1.5 rounded-lg transition-all ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-700"}`}
                             >
-                                {p.label}
+                                <ChevronLeft size={15} />
                             </button>
-                        ))}
+                            <span className={`text-xs font-semibold px-1 whitespace-nowrap ${text}`}>
+                                {formatPeriodRangeLabel(period, filters?.period_start, filters?.period_end)}
+                            </span>
+                            <button
+                                onClick={() => navigatePeriod(1)}
+                                disabled={atCurrentPeriod}
+                                className={`p-1.5 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-700"}`}
+                            >
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -477,14 +543,6 @@ export default function AnalyticsLab({
                         isDark={isDark}
                     />
                     <KpiCard
-                        title="Revenue"
-                        value={ARS(c.revenue)}
-                        trend={t.revenue}
-                        icon={DollarSign}
-                        color="#3b82f6"
-                        isDark={isDark}
-                    />
-                    <KpiCard
                         title="Pendientes"
                         value={N(c.pending_jobs)}
                         icon={Loader}
@@ -492,19 +550,26 @@ export default function AnalyticsLab({
                         isDark={isDark}
                     />
                     <KpiCard
-                        title="Tasa Remakes"
-                        value={N(c.remake_rate, 1)}
-                        suffix="%"
-                        trend={t.remake_rate ? -t.remake_rate : undefined}
-                        icon={RefreshCcw}
+                        title="Ingresos"
+                        value={ARS(c.cash_income)}
+                        trend={t.cash_income}
+                        icon={DollarSign}
+                        color="#3b82f6"
+                        isDark={isDark}
+                    />
+                    <KpiCard
+                        title="Egresos"
+                        value={ARS(c.expenses)}
+                        trend={t.expenses ? -t.expenses : undefined}
+                        icon={TrendingDown}
                         color="#ef4444"
                         isDark={isDark}
                     />
                     <KpiCard
-                        title="Días entrega"
-                        value={N(c.avg_delivery_days, 1)}
-                        trend={t.avg_delivery_days ? -t.avg_delivery_days : undefined}
-                        icon={Clock}
+                        title="Neto"
+                        value={ARS(c.net)}
+                        trend={t.net}
+                        icon={Wallet}
                         color="#8b5cf6"
                         isDark={isDark}
                     />
@@ -521,7 +586,10 @@ export default function AnalyticsLab({
                 {/* Revenue + Status Distribution + Top Colaboradores */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div className="lg:col-span-2">
-                        <Panel title="Revenue por período" isDark={isDark}>
+                        <Panel title="Facturación por período" isDark={isDark}>
+                            <p className={`text-xs mb-4 -mt-2 ${muted}`}>
+                                Valor de los trabajos recibidos por día (no es efectivo cobrado)
+                            </p>
                             <BarChartRevenue data={timeSeriesRevenue} isDark={isDark} />
                         </Panel>
                     </div>
@@ -568,7 +636,7 @@ export default function AnalyticsLab({
                         <div className="flex items-center gap-3">
                             <TabToggle
                                 tabs={[
-                                    { key: "revenue", label: "Por revenue" },
+                                    { key: "revenue", label: "Por ingresos" },
                                     { key: "jobs", label: "Por trabajos" },
                                 ]}
                                 active={dentistTab}
@@ -593,7 +661,7 @@ export default function AnalyticsLab({
                             },
                             {
                                 key: "revenue",
-                                label: "Revenue",
+                                label: "Ingresos",
                                 right: true,
                                 bold: true,
                                 format: (v) => ARS(v),
@@ -636,7 +704,7 @@ export default function AnalyticsLab({
                                 },
                                 {
                                     key: "revenue",
-                                    label: "Revenue",
+                                    label: "Ingresos",
                                     right: true,
                                     bold: true,
                                     format: (v) => ARS(v),

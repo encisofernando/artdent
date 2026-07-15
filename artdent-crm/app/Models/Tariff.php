@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property string|null $category
  * @property float $price
+ * @property float $margin_pct
  * @property string|null $unit
  * @property string|null $description
  * @property bool|null $is_active
@@ -35,6 +36,7 @@ class Tariff extends Model
     protected $casts = [
         'company_id' => 'int',
         'price' => 'float',
+        'margin_pct' => 'float',
         'is_active' => 'bool',
         'min_days' => 'int',
         'tooth_count' => 'int',
@@ -51,6 +53,7 @@ class Tariff extends Model
         'urgency_multiplier',
         'tooth_count',
         'price',
+        'margin_pct',
         'unit',
         'description',
         'is_active',

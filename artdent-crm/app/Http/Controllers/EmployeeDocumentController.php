@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\EmployeeDocument;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +13,7 @@ class EmployeeDocumentController extends Controller
 {
     public function store(Request $request, Employee $employee): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employee->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -39,7 +40,7 @@ class EmployeeDocumentController extends Controller
 
     public function destroy(EmployeeDocument $employeeDocument): RedirectResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employeeDocument->company_id === $companyId, 404);
 
         if (Storage::disk('public')->exists($employeeDocument->file_path)) {

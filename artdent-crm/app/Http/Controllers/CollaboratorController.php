@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Collaborator;
 use App\Models\CollaboratorWebAuthnCredential;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -11,7 +12,7 @@ class CollaboratorController extends Controller
 {
     public function index(Request $request)
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $search = $request->input('search');
         $status = $request->input('status', 'all');
 
@@ -70,7 +71,7 @@ class CollaboratorController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $validated['company_id'] = auth()->user()->company_id ?? 1;
+        $validated['company_id'] = CompanyContext::id();
 
         Collaborator::create($validated);
 
@@ -84,7 +85,7 @@ class CollaboratorController extends Controller
 
     public function edit(Collaborator $collaborator)
     {
-        $this->ensureCompanyOwned($collaborator, auth()->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaborator, CompanyContext::id());
 
         $credentials = CollaboratorWebAuthnCredential::where('collaborator_id', $collaborator->id)
             ->select(['id', 'credential_id', 'device_label', 'created_at'])
@@ -101,7 +102,7 @@ class CollaboratorController extends Controller
 
     public function update(Request $request, Collaborator $collaborator)
     {
-        $this->ensureCompanyOwned($collaborator, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaborator, CompanyContext::id());
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -130,7 +131,7 @@ class CollaboratorController extends Controller
 
     public function destroy(Collaborator $collaborator)
     {
-        $this->ensureCompanyOwned($collaborator, auth()->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaborator, CompanyContext::id());
 
         $collaborator->delete();
 

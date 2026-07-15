@@ -9,8 +9,8 @@ Route::post('hikvision/webhook', [HikVisionWebhookController::class, 'receive'])
     ->name('hikvision.webhook')
     ->withoutMiddleware(['auth', 'verified']);
 
-// Admin HikVision — requiere autenticación y permiso de staff
-Route::middleware(['auth', 'verified', 'permission:staff.edit'])->prefix('hikvision')->name('hikvision.')->group(function () {
+// Admin HikVision — requiere autenticación, permiso de staff y módulo rrhh
+Route::middleware(['auth', 'verified', 'permission:staff.edit', 'module:rrhh'])->prefix('hikvision')->name('hikvision.')->group(function () {
     // Dispositivos
     Route::get('devices', [HikVisionController::class, 'index'])->name('devices.index');
     Route::post('devices', [HikVisionController::class, 'store'])->name('devices.store');

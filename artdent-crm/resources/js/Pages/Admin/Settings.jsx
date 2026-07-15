@@ -11,6 +11,12 @@ import {
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 import axios from 'axios';
+import {
+    isNativePrintAvailable, getStoredPrinterConfig, setStoredPrinterConfig, printRawBytes,
+    getStoredPrinterTransport, setStoredPrinterTransport,
+    getStoredUsbPrinterConfig, setStoredUsbPrinterConfig, listUsbPrinters,
+} from '@/lib/nativePrinter';
+import { buildTestTicket } from '@/lib/escpos';
 
 const CHATBOT_MODEL_OPTIONS = [
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 · rápido, menor costo (recomendado)' },
@@ -47,6 +53,55 @@ export default function Settings({ company, accountingSettings }) {
         setPrintBackend(b);
         localStorage.setItem('artdent_print_backend', b);
     };
+    const [printerConfig, setPrinterConfig] = useState(() => getStoredPrinterConfig());
+    const [printerTestState, setPrinterTestState] = useState({ status: 'idle', message: '' });
+    const [printerTransport, setPrinterTransport] = useState(() => getStoredPrinterTransport());
+    const [usbPrinterConfig, setUsbPrinterConfig] = useState(() => getStoredUsbPrinterConfig());
+    const [usbDevices, setUsbDevices] = useState([]);
+    const [usbScanState, setUsbScanState] = useState({ status: 'idle', message: '' });
+
+    const savePrinterConfig = (next) => {
+        const saved = setStoredPrinterConfig(next);
+        setPrinterConfig(saved);
+        return saved;
+    };
+
+    const savePrinterTransport = (transport) => {
+        setPrinterTransport(setStoredPrinterTransport(transport));
+    };
+
+    const saveUsbPrinterConfig = (next) => {
+        const saved = setStoredUsbPrinterConfig(next);
+        setUsbPrinterConfig(saved);
+        return saved;
+    };
+
+    const handleScanUsb = async () => {
+        setUsbScanState({ status: 'loading', message: '' });
+        const result = await listUsbPrinters();
+
+        if (!result.ok) {
+            setUsbScanState({ status: 'error', message: result.error });
+            return;
+        }
+
+        setUsbDevices(result.devices);
+        setUsbScanState({
+            status: 'success',
+            message: result.devices.length ? `${result.devices.length} dispositivo(s) encontrado(s).` : 'No se encontró ningún dispositivo USB conectado.',
+        });
+    };
+
+    const handleTestPrint = async () => {
+        setPrinterTestState({ status: 'loading', message: '' });
+        const ticket = buildTestTicket({ companyName: company.fantasy_name || company.name || 'ArtDent CRM' });
+        const result = await printRawBytes(ticket, printerTransport === 'usb' ? usbPrinterConfig : printerConfig);
+
+        setPrinterTestState({
+            status: result.ok ? 'success' : 'error',
+            message: result.ok ? 'Ticket de prueba enviado correctamente.' : result.error,
+        });
+    };
     const [logoPreview, setLogoPreview] = useState(company.logo_url || null);
     const [labLogoPreview, setLabLogoPreview] = useState(company.lab_logo_url || null);
     const fileInputRef = useRef(null);
@@ -66,6 +121,9 @@ export default function Settings({ company, accountingSettings }) {
         email: company.email || '',
         phone: company.phone || '',
         website: company.website || '',
+        instagram_handle: company.instagram_handle || '',
+        tariff_notes: company.tariff_notes || '',
+        collaborator_commission_pct: company.collaborator_commission_pct ?? '',
         address: company.address || '',
         city: company.city || '',
         province: company.province || '',
@@ -494,8 +552,29 @@ export default function Settings({ company, accountingSettings }) {
                                         {renderInput('fantasy_name', 'Nombre Comercial (Fantasía)', 'text', 'Ej: ArtDent Insumos')}
                                         {renderInput('email', 'Correo Corporativo', 'email', 'contacto@empresa.com')}
                                         {renderInput('phone', 'Teléfono Principal', 'text', '+54 11 1234-5678')}
-                                        {renderInput('website', 'Sitio Web', 'url', 'https://www.empresa.com', 'md:col-span-2')}
+                                        {renderInput('website', 'Sitio Web', 'url', 'https://www.empresa.com')}
+                                        {renderInput('instagram_handle', 'Usuario de Instagram', 'text', 'artdentformosa')}
                                     </div>
+                                </div>
+
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-6 ${isDark ? 'text-white' : 'text-slate-800'}`}>Notas del Arancel (PDF)</h3>
+                                    <p className={`text-xs mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Este texto aparece en la última página del PDF de arancel (plazos de entrega, formas de pago, intereses, etc.).
+                                    </p>
+                                    <textarea
+                                        value={data.tariff_notes || ''}
+                                        onChange={e => setData('tariff_notes', e.target.value)}
+                                        rows={10}
+                                        placeholder="Ej: TIEMPO ESTIMADO DE TRABAJO, FORMAS DE PAGO, INTERESES, etc."
+                                        className={`w-full rounded-2xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
+                                            ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+                                            : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 placeholder:text-slate-400 shadow-sm'
+                                        }`}
+                                    />
+                                    {errors.tariff_notes && (
+                                        <div className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1">{errors.tariff_notes}</div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -740,6 +819,17 @@ export default function Settings({ company, accountingSettings }) {
                                     </div>
                                 </div>
 
+                                {/* Comisiones de Laboratorio */}
+                                <div>
+                                    <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Comisiones de Laboratorio</h3>
+                                    <p className={`text-xs mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Porcentaje del total de un trabajo que se reparte en partes iguales entre los colaboradores que completaron alguna fase. Se liquida automáticamente al finalizar cada trabajo.
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {renderInput('collaborator_commission_pct', 'Comisión colaboradores por trabajo %', 'number', '10')}
+                                    </div>
+                                </div>
+
                                 {/* Impresión de Tickets */}
                                 <div className={`rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-slate-50/60'}`}>
                                     <div className="flex items-center gap-3 mb-2">
@@ -839,6 +929,153 @@ export default function Settings({ company, accountingSettings }) {
                                         {printBackend === 'electron'
                                             ? 'Se usará el gestor ArtDent. Si no está instalado, caerá al diálogo del navegador automáticamente.'
                                             : 'Se usará siempre el diálogo de impresión del sistema, sin necesitar el Print Service instalado.'}
+                                    </p>
+                                </div>
+
+                                {/* Impresora Térmica (App Android) */}
+                                <div className={`rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-slate-50/60'}`}>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDark ? 'bg-sky-500/15' : 'bg-sky-50'}`}>
+                                            <Printer size={18} className="text-sky-500" />
+                                        </div>
+                                        <div>
+                                            <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Impresora Térmica (App Android)</h4>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Conexión directa por red (LAN) a la impresora, sin pasar por el sistema operativo
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {!isNativePrintAvailable() && (
+                                        <p className={`text-xs mt-4 rounded-lg px-3 py-2 ${isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
+                                            Esta función solo está disponible dentro de la app Android de ArtDent CRM. Desde el navegador podés dejar la configuración lista, pero la prueba de impresión no va a funcionar acá.
+                                        </p>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-3 mt-5">
+                                        {[
+                                            { id: 'lan', label: 'Red (WiFi)', desc: 'Impresora en la misma red', icon: '📶' },
+                                            { id: 'usb', label: 'USB-OTG', desc: 'Impresora conectada por cable', icon: '🔌' },
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => savePrinterTransport(opt.id)}
+                                                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 font-bold text-sm transition-all
+                                                    ${printerTransport === opt.id
+                                                        ? 'border-sky-500 bg-sky-500/10 text-sky-500'
+                                                        : isDark
+                                                            ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                                                            : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                                    }`}
+                                            >
+                                                <span className="text-2xl">{opt.icon}</span>
+                                                <span className="font-black">{opt.label}</span>
+                                                <span className={`text-[11px] font-medium ${printerTransport === opt.id ? 'text-sky-400' : isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {opt.desc}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {printerTransport === 'lan' ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+                                            <div className="md:col-span-2">
+                                                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>IP de la impresora</label>
+                                                <input
+                                                    type="text"
+                                                    value={printerConfig.ip}
+                                                    onChange={(e) => savePrinterConfig({ ...printerConfig, ip: e.target.value })}
+                                                    placeholder="192.168.1.50"
+                                                    className={`w-full rounded-xl border px-3 py-2 text-sm font-medium outline-none transition-colors focus:border-sky-500
+                                                        ${isDark ? 'border-slate-700 bg-slate-900/60 text-white placeholder:text-slate-600' : 'border-slate-200 bg-white text-slate-800 placeholder:text-slate-400'}`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Puerto</label>
+                                                <input
+                                                    type="number"
+                                                    value={printerConfig.port}
+                                                    onChange={(e) => savePrinterConfig({ ...printerConfig, port: e.target.value })}
+                                                    placeholder="9100"
+                                                    className={`w-full rounded-xl border px-3 py-2 text-sm font-medium outline-none transition-colors focus:border-sky-500
+                                                        ${isDark ? 'border-slate-700 bg-slate-900/60 text-white placeholder:text-slate-600' : 'border-slate-200 bg-white text-slate-800 placeholder:text-slate-400'}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-5">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className={`block text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Impresora USB conectada</label>
+                                                <Button type="button" size="sm" variant="outline" onClick={handleScanUsb} disabled={usbScanState.status === 'loading'}>
+                                                    {usbScanState.status === 'loading' ? (
+                                                        <span className="inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Buscando...</span>
+                                                    ) : 'Buscar dispositivos'}
+                                                </Button>
+                                            </div>
+
+                                            {usbScanState.message && (
+                                                <p className={`text-xs mb-2 ${usbScanState.status === 'error' ? 'text-red-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {usbScanState.message}
+                                                </p>
+                                            )}
+
+                                            {usbDevices.length > 0 && (
+                                                <div className="space-y-1.5">
+                                                    {usbDevices.map((device) => {
+                                                        const isSelected = usbPrinterConfig.vendorId === device.vendorId && usbPrinterConfig.productId === device.productId;
+                                                        return (
+                                                            <button
+                                                                key={`${device.vendorId}-${device.productId}`}
+                                                                type="button"
+                                                                onClick={() => saveUsbPrinterConfig(device)}
+                                                                className={`w-full text-left px-3 py-2 rounded-xl border-2 text-sm font-bold transition-all
+                                                                    ${isSelected
+                                                                        ? 'border-sky-500 bg-sky-500/10 text-sky-500'
+                                                                        : isDark
+                                                                            ? 'border-slate-700 text-slate-300 hover:border-slate-500'
+                                                                            : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                                                    }`}
+                                                            >
+                                                                {device.productName || 'Dispositivo USB'}
+                                                                <span className="block text-[11px] font-medium opacity-70">
+                                                                    Vendor {device.vendorId} · Product {device.productId}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {usbPrinterConfig.vendorId && (
+                                                <p className={`text-xs mt-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    Impresora seleccionada: {usbPrinterConfig.productName || `Vendor ${usbPrinterConfig.vendorId} · Product ${usbPrinterConfig.productId}`}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-3 mt-5">
+                                        <Button
+                                            type="button"
+                                            onClick={handleTestPrint}
+                                            disabled={printerTestState.status === 'loading' || (printerTransport === 'lan' ? !printerConfig.ip : !usbPrinterConfig.vendorId)}
+                                        >
+                                            {printerTestState.status === 'loading' ? (
+                                                <span className="inline-flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Imprimiendo...</span>
+                                            ) : 'Probar impresión'}
+                                        </Button>
+
+                                        {printerTestState.status === 'success' && (
+                                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-500"><CheckCircle2 size={14} /> {printerTestState.message}</span>
+                                        )}
+                                        {printerTestState.status === 'error' && (
+                                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-500"><CircleX size={14} /> {printerTestState.message}</span>
+                                        )}
+                                    </div>
+
+                                    <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                        Esta preferencia se guarda en este dispositivo. Configurá la IP local que la impresora tiene en la red WiFi del negocio.
                                     </p>
                                 </div>
                             </div>

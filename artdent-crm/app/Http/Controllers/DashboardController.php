@@ -2,16 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChatbotMessage;
 use App\Models\Customer;
 use App\Models\EcommerceOrder;
 use App\Models\Expense;
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Stock;
+use App\Models\User;
+use App\Support\CompanyContext;
+use App\Support\PeriodRangeResolver;
+use App\Support\TenantModuleResolver;
 use Carbon\Carbon;
-use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,9 +26,10 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $period = $request->input('period', 'month');
-        $companyId = auth()->user()->company_id ?? 1;
+        $referenceDate = $request->input('reference_date');
+        $companyId = CompanyContext::id();
 
-        [$start, $end, $prevStart, $prevEnd] = $this->periodRanges($period);
+        [$start, $end, $prevStart, $prevEnd] = PeriodRangeResolver::resolve($period, $referenceDate);
 
         // ── Revenue (POS + Ecommerce) ──────────────────────────────────────────
         $posRevenue = (float) Sale::where('company_id', $companyId)
@@ -181,40 +188,47 @@ class DashboardController extends Controller
             'topCustomers' => $topCustomers,
             'lowStock' => $lowStock,
             'period' => $period,
+            'referenceDate' => $start->toDateString(),
+            'periodStart' => $start->toDateString(),
+            'periodEnd' => $end->toDateString(),
+            'planUsage' => $this->buildPlanUsage(),
         ]);
     }
 
-    /** @return array{Carbon, Carbon, Carbon, Carbon} */
-    private function periodRanges(string $period): array
+    /** @return array{plan: string, items: array<int, array<string, mixed>>}|null */
+    private function buildPlanUsage(): ?array
     {
-        $now = Carbon::now();
+        $modules = app(TenantModuleResolver::class);
+        $plan = $modules->currentPlan();
 
-        return match ($period) {
-            'today' => [
-                $now->copy()->startOfDay(),
-                $now->copy()->endOfDay(),
-                $now->copy()->subDay()->startOfDay(),
-                $now->copy()->subDay()->endOfDay(),
+        if (! $plan) {
+            return null;
+        }
+
+        $items = [
+            ['label' => 'Usuarios', 'current' => User::count(), 'max' => $plan->max_users],
+            ['label' => 'Productos', 'current' => Product::count(), 'max' => $plan->max_products],
+            [
+                'label' => 'Ventas este mes',
+                'current' => Sale::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+                'max' => $plan->max_sales_per_month,
             ],
-            'week' => [
-                $now->copy()->startOfWeek(CarbonInterface::MONDAY),
-                $now->copy()->endOfWeek(CarbonInterface::SUNDAY),
-                $now->copy()->subWeek()->startOfWeek(CarbonInterface::MONDAY),
-                $now->copy()->subWeek()->endOfWeek(CarbonInterface::SUNDAY),
-            ],
-            'year' => [
-                $now->copy()->startOfYear(),
-                $now->copy()->endOfDay(),
-                $now->copy()->subYear()->startOfYear(),
-                $now->copy()->subYear()->endOfYear(),
-            ],
-            default => [
-                $now->copy()->startOfMonth(),
-                $now->copy()->endOfDay(),
-                $now->copy()->subMonth()->startOfMonth(),
-                $now->copy()->subMonth()->endOfMonth(),
-            ],
-        };
+        ];
+
+        if ($modules->has('chat_ia') && Schema::hasTable('chatbot_messages')) {
+            $items[] = [
+                'label' => 'Mensajes Chat IA este mes',
+                'current' => ChatbotMessage::where('role', 'user')
+                    ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+                    ->count(),
+                'max' => $plan->max_chat_messages_per_month,
+            ];
+        }
+
+        return [
+            'plan' => $plan->name,
+            'items' => $items,
+        ];
     }
 
     private function trendPct(float $current, float $previous): float

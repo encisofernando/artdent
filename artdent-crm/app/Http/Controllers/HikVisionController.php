@@ -141,7 +141,13 @@ class HikVisionController extends Controller
 
         $result = $this->isapi->syncCollaborators($hikVisionDevice);
 
-        return response()->json($result);
+        return response()->json([
+            'ok' => $result['error'] === 0,
+            'error' => $result['error'] > 0
+                ? "{$result['error']} colaborador(es) no se pudieron sincronizar (de {$result['ok']} + {$result['error']} totales)."
+                : null,
+            'details' => $result['details'],
+        ]);
     }
 
     /** Configura el terminal para hacer push de eventos a nuestro webhook. */
@@ -149,7 +155,7 @@ class HikVisionController extends Controller
     {
         $this->authorizeDevice($request, $hikVisionDevice);
 
-        $webhookUrl = route('hikvision.webhook');
+        $webhookUrl = config('app.hikvision_webhook_url') ?: route('hikvision.webhook');
         $result = $this->isapi->subscribeEventPush($hikVisionDevice, $webhookUrl);
 
         return response()->json($result);

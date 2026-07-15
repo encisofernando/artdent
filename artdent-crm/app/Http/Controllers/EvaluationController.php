@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Evaluation;
 use App\Models\EvaluationCycle;
 use App\Models\EvaluationScore;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -13,7 +14,7 @@ class EvaluationController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'evaluation_cycle_id' => ['required', 'integer', 'exists:evaluation_cycles,id'],
@@ -41,7 +42,7 @@ class EvaluationController extends Controller
      */
     public function update(Request $request, Evaluation $evaluation): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $evaluation->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -70,7 +71,7 @@ class EvaluationController extends Controller
 
     public function destroy(Request $request, Evaluation $evaluation): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $evaluation->company_id === $companyId, 404);
 
         $evaluation->delete();

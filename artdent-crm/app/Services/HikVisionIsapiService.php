@@ -36,12 +36,103 @@ class HikVisionIsapiService
 
     // ── ISAPI endpoints ───────────────────────────────────────────────────────
 
+    /**
+     * El DS-K1T320MX es inconsistente entre familias de endpoints:
+     * - System/* y Event/* (deviceInfo, time, notification/httpHosts,
+     *   triggers/...) sólo aceptan XML, ignorando el Content-Type.
+     * - AccessControl/UserInfo/* sí aceptan JSON, pero únicamente si se pide
+     *   explícitamente con `?format=json` en la URL (no alcanza con el
+     *   Content-Type del request).
+     */
+    private const XML_NAMESPACE = 'http://www.hikvision.com/ver10/XMLSchema';
+
     private function client(HikVisionDevice $device, int $timeoutSeconds = 10): PendingRequest
     {
         return Http::withDigestAuth($device->username, $device->password)
             ->timeout($timeoutSeconds)
-            ->baseUrl($device->baseUrl())
-            ->withHeaders(['Content-Type' => 'application/json']);
+            ->baseUrl($device->baseUrl());
+    }
+
+    /**
+     * Convierte un array PHP (con una única clave raíz, ej. ['Time' => [...]])
+     * al XML que espera el ISAPI de este dispositivo.
+     */
+    private function buildXml(array $payload): string
+    {
+        $rootTag = array_key_first($payload);
+        $root = new \SimpleXMLElement(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><{$rootTag} version=\"1.0\" xmlns=\"".self::XML_NAMESPACE.'"/>'
+        );
+
+        $this->fillXml($root, $payload[$rootTag]);
+
+        return $root->asXML();
+    }
+
+    private function fillXml(\SimpleXMLElement $node, array $data): void
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                if (array_is_list($value)) {
+                    foreach ($value as $item) {
+                        $child = $node->addChild($key);
+                        $this->fillXml($child, $item);
+                    }
+                } else {
+                    $child = $node->addChild($key);
+                    $this->fillXml($child, $value);
+                }
+
+                continue;
+            }
+
+            if (is_bool($value)) {
+                $value = $value ? 'true' : 'false';
+            }
+
+            $node->addChild($key, htmlspecialchars((string) $value, ENT_XML1));
+        }
+    }
+
+    /**
+     * Parsea una respuesta XML del ISAPI a un array asociativo simple.
+     */
+    private function parseXml(string $body): array
+    {
+        $previous = libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($body);
+        libxml_use_internal_errors($previous);
+
+        if ($xml === false) {
+            return [];
+        }
+
+        $json = json_encode($xml);
+
+        return $json ? (json_decode($json, true) ?? []) : [];
+    }
+
+    private function sendXml(HikVisionDevice $device, string $method, string $uri, array $payload, int $timeoutSeconds = 10): array
+    {
+        $response = $this->client($device, $timeoutSeconds)
+            ->withBody($this->buildXml($payload), 'application/xml')
+            ->send($method, $uri);
+
+        return ['response' => $response, 'data' => $this->parseXml($response->body())];
+    }
+
+    /**
+     * Envía JSON a un endpoint AccessControl/UserInfo/*. Requiere `?format=json`
+     * en la URL además del body JSON (ver nota de clase).
+     */
+    private function sendJson(HikVisionDevice $device, string $method, string $uri, array $payload, int $timeoutSeconds = 10): array
+    {
+        $separator = str_contains($uri, '?') ? '&' : '?';
+
+        $response = $this->client($device, $timeoutSeconds)
+            ->send($method, $uri.$separator.'format=json', ['json' => $payload]);
+
+        return ['response' => $response, 'data' => $response->json() ?? []];
     }
 
     // ── Conexión y diagnóstico ─────────────────────────────────────────────
@@ -61,13 +152,13 @@ class HikVisionIsapiService
                 return ['ok' => false, 'error' => "HTTP {$response->status()}: {$response->body()}"];
             }
 
-            $data = $response->json() ?? [];
+            $data = $this->parseXml($response->body());
 
             return [
                 'ok' => true,
-                'model' => $data['DeviceInfo']['model'] ?? null,
-                'serial' => $data['DeviceInfo']['serialNumber'] ?? null,
-                'firmware' => $data['DeviceInfo']['firmwareVersion'] ?? null,
+                'model' => $data['model'] ?? null,
+                'serial' => $data['serialNumber'] ?? null,
+                'firmware' => $data['firmwareVersion'] ?? null,
                 'error' => null,
             ];
         } catch (\Throwable $e) {
@@ -103,7 +194,9 @@ class HikVisionIsapiService
                 'Valid' => [
                     'enable' => (bool) $collaborator->is_active,
                     'beginTime' => '2000-01-01T00:00:00',
-                    'endTime' => '2038-01-01T00:00:00',
+                    // Evitar fechas cercanas al límite de 32 bits (~2038):
+                    // el firmware las rechaza con badJsonContent/endTime.
+                    'endTime' => '2035-12-31T23:59:59',
                 ],
                 'doorRight' => '1',
                 'RightPlan' => [
@@ -113,16 +206,17 @@ class HikVisionIsapiService
         ];
 
         try {
-            $response = $this->client($device)
-                ->put('/ISAPI/AccessControl/UserInfo/Record', $payload);
+            // POST agrega una persona nueva; PUT (methodNotAllowed en este
+            // firmware) sería para editar una ya existente.
+            ['response' => $response, 'data' => $data] = $this->sendJson(
+                $device, 'POST', '/ISAPI/AccessControl/UserInfo/Record', $payload
+            );
 
             if ($response->successful()) {
                 return ['ok' => true, 'employeeNo' => $employeeNo];
             }
 
-            $error = $response->json('statusString') ?? $response->body();
-
-            return ['ok' => false, 'error' => $error];
+            return ['ok' => false, 'error' => $data['statusString'] ?? $response->body()];
         } catch (\Throwable $e) {
             return ['ok' => false, 'error' => $e->getMessage()];
         }
@@ -140,12 +234,13 @@ class HikVisionIsapiService
         ];
 
         try {
-            $response = $this->client($device)
-                ->put('/ISAPI/AccessControl/UserInfo/Delete', $payload);
+            ['response' => $response, 'data' => $data] = $this->sendJson(
+                $device, 'PUT', '/ISAPI/AccessControl/UserInfo/Delete', $payload
+            );
 
             return [
                 'ok' => $response->successful(),
-                'error' => $response->successful() ? null : $response->body(),
+                'error' => $response->successful() ? null : ($data['statusString'] ?? $response->body()),
             ];
         } catch (\Throwable $e) {
             return ['ok' => false, 'error' => $e->getMessage()];
@@ -166,19 +261,20 @@ class HikVisionIsapiService
         ];
 
         try {
-            $response = $this->client($device)
-                ->post('/ISAPI/AccessControl/UserInfo/Search', $payload);
+            ['response' => $response, 'data' => $data] = $this->sendJson(
+                $device, 'POST', '/ISAPI/AccessControl/UserInfo/Search', $payload
+            );
 
             if (! $response->successful()) {
                 return ['ok' => false, 'users' => [], 'error' => $response->body()];
             }
 
-            $data = $response->json('UserInfoSearch', []);
+            $search = $data['UserInfoSearch'] ?? [];
 
             return [
                 'ok' => true,
-                'total' => $data['totalMatches'] ?? 0,
-                'users' => $data['UserInfo'] ?? [],
+                'total' => $search['totalMatches'] ?? 0,
+                'users' => $search['UserInfo'] ?? [],
                 'error' => null,
             ];
         } catch (\Throwable $e) {
@@ -239,14 +335,13 @@ class HikVisionIsapiService
         ];
 
         try {
-            $response = $this->client($device, 30)
-                ->post('/ISAPI/AccessControl/AcsEvent', $payload);
+            ['response' => $response, 'data' => $data] = $this->sendJson(
+                $device, 'POST', '/ISAPI/AccessControl/AcsEvent', $payload, 30
+            );
 
             if (! $response->successful()) {
                 return ['ok' => false, 'records' => [], 'error' => $response->body()];
             }
-
-            $data = $response->json('AcsEvent', []);
 
             return [
                 'ok' => true,
@@ -276,24 +371,36 @@ class HikVisionIsapiService
         $port = $parsed['port'] ?? ($parsed['scheme'] === 'https' ? 443 : 80);
         $path = $parsed['path'] ?? '/hikvision/webhook';
 
+        $notification = [
+            'id' => '1',
+            'url' => $path,
+            'protocolType' => 'HTTP',
+            'parameterFormatType' => 'JSON',
+            'portNo' => $port,
+            'httpAuthenticationMethod' => 'none',
+        ];
+
+        // Algunos firmwares intentan resolver por DNS cualquier valor pasado
+        // como hostName, incluso si es una IP literal — evitar ambigüedad
+        // usando addressingFormatType=ipaddress cuando corresponda.
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $notification['addressingFormatType'] = 'ipaddress';
+            $notification['ipAddress'] = $host;
+        } else {
+            $notification['addressingFormatType'] = 'hostname';
+            $notification['hostName'] = $host;
+        }
+
         $payload = [
             'HttpHostNotificationList' => [
-                'HttpHostNotification' => [
-                    'id' => '1',
-                    'url' => $path,
-                    'protocolType' => 'HTTP',
-                    'parameterFormatType' => 'JSON',
-                    'addressingFormatType' => 'ipaddress',
-                    'ipAddress' => $host,
-                    'portNo' => $port,
-                    'httpAuthenticationMethod' => 'none',
-                ],
+                'HttpHostNotification' => $notification,
             ],
         ];
 
         try {
-            $response = $this->client($device)
-                ->put('/ISAPI/Event/notification/httpHosts', $payload);
+            ['response' => $response] = $this->sendXml(
+                $device, 'PUT', '/ISAPI/Event/notification/httpHosts', $payload
+            );
 
             if (! $response->successful()) {
                 return ['ok' => false, 'error' => $response->body()];
@@ -314,7 +421,7 @@ class HikVisionIsapiService
     private function enableAccessControlEvents(HikVisionDevice $device): void
     {
         try {
-            $this->client($device)->put('/ISAPI/Event/triggers/AccessControllerEvent-1', [
+            $this->sendXml($device, 'PUT', '/ISAPI/Event/triggers/AccessControllerEvent-1', [
                 'EventTrigger' => [
                     'id' => 'AccessControllerEvent-1',
                     'eventType' => 'AccessControllerEvent',
@@ -340,10 +447,11 @@ class HikVisionIsapiService
     {
         try {
             $response = $this->client($device)->get('/ISAPI/AccessControl/AttendanceStatus/AccessMode');
+            $data = $this->parseXml($response->body());
 
             return [
                 'ok' => $response->successful(),
-                'mode' => $response->json('AccessMode.mode') ?? null,
+                'mode' => $data['mode'] ?? null,
                 'error' => $response->successful() ? null : $response->body(),
             ];
         } catch (\Throwable $e) {
@@ -367,7 +475,7 @@ class HikVisionIsapiService
         ];
 
         try {
-            $response = $this->client($device)->put('/ISAPI/System/time', $payload);
+            ['response' => $response] = $this->sendXml($device, 'PUT', '/ISAPI/System/time', $payload);
 
             return [
                 'ok' => $response->successful(),

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Services\Afip\PadronService;
 use App\Services\Afip\WsaaService;
+use App\Support\CompanyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,7 +17,7 @@ class PadronController extends Controller
      */
     public function lookup(Request $request, string $cuit): JsonResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $company = Company::findOrFail($companyId);
 
         if (empty($company->cuit) || empty($company->afip_key_path)) {
@@ -52,7 +53,7 @@ class PadronController extends Controller
      */
     public function invalidate(string $cuit): JsonResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $company = Company::findOrFail($companyId);
 
         $service = new PadronService(

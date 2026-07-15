@@ -6,6 +6,7 @@ use App\Jobs\GenerateAfipInvoiceJob;
 use App\Models\Company;
 use App\Models\Sale;
 use App\Services\Afip\AfipService;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -80,7 +81,7 @@ class AfipController extends Controller
             'file' => 'required|file|extensions:crt,pem,key,txt|max:64',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $type = $request->type;
         $env = $request->env ?? 'prod';
         $dir = "afip_certs/{$companyId}";
@@ -111,7 +112,7 @@ class AfipController extends Controller
      */
     public function testConnection(Request $request): \Illuminate\Http\JsonResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $company = Company::findOrFail($companyId);
 
         // El entorno a probar puede sobreescribirse con ?env=homo|prod
@@ -223,7 +224,7 @@ class AfipController extends Controller
             'alias' => ['required', 'string', 'max:40', 'regex:/^[a-zA-Z0-9_-]+$/'],
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $company = Company::findOrFail($companyId);
 
         if (empty($company->cuit)) {
@@ -288,7 +289,7 @@ class AfipController extends Controller
             'afip_point_sale' => 'required|integer|min:1|max:99999',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         Company::findOrFail($companyId)->update($validated);
 
         return response()->json(['success' => true, 'message' => 'Configuración AFIP guardada.']);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Power, Box as BoxIcon, FileText, Loader2, Trash2, Tag, Package } from 'lucide-react';
+import { Search, Plus, Edit, Power, Box as BoxIcon, FileText, Loader2, Trash2, Tag, Package, TrendingUp } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
@@ -218,6 +218,15 @@ export default function Index({ auth, items, filters }) {
                                 <span className="hidden sm:inline">Etiquetas</span>
                                 <span className="sm:hidden text-xs">Etiquetas</span>
                             </button>
+                            <Link href={route('products.bulk-price')}
+                                className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-all
+                                    ${isDark ? 'border-amber-700/60 bg-amber-900/20 text-amber-300 hover:bg-amber-900/40' : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'}
+                                `}
+                            >
+                                <TrendingUp size={16} />
+                                <span className="hidden sm:inline">Precios</span>
+                                <span className="sm:hidden text-xs">Precios</span>
+                            </Link>
                             <button
                                 onClick={() => setIsImportModalOpen(true)}
                                 className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-all

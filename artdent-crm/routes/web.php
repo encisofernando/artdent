@@ -31,8 +31,11 @@ Route::middleware('tenant.session')->get('/storage/{path}', function (string $pa
 // Attendance kiosk — publicly accessible
 Route::get('/attendance-kiosk', [\App\Http\Controllers\AttendanceKioskController::class, 'index'])->name('attendance-kiosk');
 
-// Job-phase kiosk — publicly accessible (same pattern as attendance kiosk)
-Route::middleware('lab.network')->group(function () {
+// Job-phase kiosk — publicly accessible (same pattern as attendance kiosk).
+// lab.network ahora también inicializa la tenancy del dueño de la IP/token
+// (ver App\Http\Middleware\RestrictToLabNetwork) — module: recién puede
+// evaluarse después de eso, por eso va en ese orden.
+Route::middleware(['lab.network', 'module:laboratorio'])->group(function () {
     Route::get('/job-kiosk', [\App\Http\Controllers\JobPhaseKioskController::class, 'index'])->name('job-kiosk');
     Route::get('/job-kiosk/available-jobs', [\App\Http\Controllers\JobPhaseKioskController::class, 'availableJobs'])->name('job-kiosk.available-jobs');
     Route::get('/job-kiosk/in-progress', [\App\Http\Controllers\JobPhaseKioskController::class, 'inProgressPhases'])->name('job-kiosk.in-progress');
@@ -43,7 +46,7 @@ Route::middleware('lab.network')->group(function () {
 });
 
 // WebAuthn kiosk authentication — requires kiosk token or lab IP
-Route::middleware('lab.network')->group(function () {
+Route::middleware(['lab.network', 'module:rrhh'])->group(function () {
     Route::post('/attendance-kiosk/webauthn/authentication-options', [\App\Http\Controllers\WebAuthnKioskController::class, 'authenticationOptions'])->name('attendance-kiosk.webauthn.authentication-options');
     Route::post('/attendance-kiosk/webauthn/verify', [\App\Http\Controllers\WebAuthnKioskController::class, 'verify'])->name('attendance-kiosk.webauthn.verify');
 });
@@ -51,6 +54,10 @@ Route::middleware('lab.network')->group(function () {
 Route::middleware(['tenant.session', 'auth'])->group(function () {
 
     require __DIR__.'/modules/dashboard.php';
+
+    Route::get('/ayuda', [\App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
+
+    require __DIR__.'/modules/support.php';
 
     require __DIR__.'/modules/products.php';
     require __DIR__.'/modules/inventory.php';
@@ -79,10 +86,12 @@ Route::middleware(['tenant.session', 'auth'])->group(function () {
     });
 
     // Chatbot API
-    Route::get('/api/chatbot/conversations', [\App\Http\Controllers\ChatbotController::class, 'index'])->name('api.chatbot.index');
-    Route::get('/api/chatbot/history/{id?}', [\App\Http\Controllers\ChatbotController::class, 'history'])->name('api.chatbot.history');
-    Route::post('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'handle'])->name('api.chatbot');
-    Route::delete('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'reset'])->name('api.chatbot.reset');
+    Route::middleware('module:chat_ia')->group(function (): void {
+        Route::get('/api/chatbot/conversations', [\App\Http\Controllers\ChatbotController::class, 'index'])->name('api.chatbot.index');
+        Route::get('/api/chatbot/history/{id?}', [\App\Http\Controllers\ChatbotController::class, 'history'])->name('api.chatbot.history');
+        Route::post('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'handle'])->name('api.chatbot');
+        Route::delete('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'reset'])->name('api.chatbot.reset');
+    });
 
 });
 
@@ -94,6 +103,9 @@ Route::get('/portal/{token}', [\App\Http\Controllers\CustomerPortalController::c
 
 // Portal de colaboradores — autenticación independiente por PIN
 require __DIR__.'/modules/colaborador_portal.php';
+
+// Portal del odontólogo — login por email + código de un solo uso
+require __DIR__.'/modules/dentist_portal.php';
 
 // Panel de asignación — usa auth:sanctum (Bearer token) fuera del grupo de sesión
 require __DIR__.'/modules/assign-panel.php';

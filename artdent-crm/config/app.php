@@ -129,4 +129,21 @@ return [
 
     'kiosk_token' => env('KIOSK_TOKEN'),
 
+    // Sólo para desarrollo local: a qué tenant resuelve el fallback de
+    // lab_allowed_ips/kiosk_token cuando ninguna KioskNetwork de la BD
+    // matchea. Ver App\Http\Middleware\RestrictToLabNetwork.
+    'kiosk_default_tenant_id' => env('KIOSK_DEFAULT_TENANT_ID'),
+
+    // URL alternativa para la suscripción de eventos push de terminales
+    // HikVision: algunos firmwares no siguen el redirect 301 a HTTPS del
+    // sitio público, así que el terminal necesita golpear Apache directo
+    // (sin pasar por el redirect forzado de nginx). Si no está seteada, se
+    // usa la URL pública normal (route('hikvision.webhook')).
+    'hikvision_webhook_url' => env('HIKVISION_WEBHOOK_URL'),
+
+    // Panel de artdent-admin donde el staff de ArtCode gestiona los tickets
+    // de soporte (Ticket/TicketMessage viven en la BD central, compartida
+    // con esa app — ver App\Models\Ticket).
+    'support_admin_url' => env('SUPPORT_ADMIN_URL', 'https://app.artcode.com.ar'),
+
 ];

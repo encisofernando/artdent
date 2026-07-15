@@ -2,8 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Company;
 use App\Services\ChatbotService;
+use App\Support\CompanyContext;
 use App\Support\CrmMode;
+use App\Support\TenantModuleResolver;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -45,6 +48,13 @@ class HandleInertiaRequests extends Middleware
                 'billing_enabled' => CrmMode::billingEnabled(),
             ],
             'tenant_info' => fn () => CrmMode::tenantInfo(),
+            'company' => fn () => $request->user() ? [
+                'active' => Company::find(CompanyContext::id(), ['id', 'name', 'fantasy_name']),
+                'available' => CompanyContext::availableFor($request->user()),
+            ] : null,
+            'enabled_modules' => fn () => $request->user()
+                ? app(TenantModuleResolver::class)->enabledSlugs()
+                : [],
             // Flash data para todos los componentes Inertia
             'flash' => [
                 'success' => $request->session()->get('success'),

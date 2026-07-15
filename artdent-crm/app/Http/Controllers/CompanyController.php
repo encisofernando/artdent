@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Support\AccountingSettings;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,7 +20,7 @@ class CompanyController extends Controller
 
     public function edit()
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $company = Company::findOrFail($companyId);
 
         return \Inertia\Inertia::render('Admin/Settings', [
@@ -28,9 +29,23 @@ class CompanyController extends Controller
         ]);
     }
 
+    /**
+     * Cambia la company activa en sesión (sólo usuarios con companies.switch).
+     */
+    public function setActive(Request $request)
+    {
+        $validated = $request->validate([
+            'company_id' => ['required', 'integer'],
+        ]);
+
+        CompanyContext::set($validated['company_id']);
+
+        return redirect()->back()->with('success', 'Compañía activa actualizada.');
+    }
+
     public function update(Request $request)
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $company = Company::findOrFail($companyId);
 
         $validated = $request->validate([
@@ -44,6 +59,9 @@ class CompanyController extends Controller
             'email' => 'nullable|email|max:150',
             'phone' => 'nullable|string|max:50',
             'website' => 'nullable|string|max:150',
+            'instagram_handle' => 'nullable|string|max:100',
+            'tariff_notes' => 'nullable|string|max:4000',
+            'collaborator_commission_pct' => 'nullable|numeric|min:0|max:100',
             'address' => 'nullable|string|max:150',
             'city' => 'nullable|string|max:100',
             'province' => 'nullable|string|max:100',

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import {
     Plus,
     Search,
@@ -13,8 +14,12 @@ import {
     CalendarDays,
     Calendar,
     X,
-    BookOpen
+    BookOpen,
+    ChevronLeft,
+    ChevronRight,
+    Trash2,
 } from 'lucide-react';
+import { shiftReferenceDate, isCurrentPeriod, formatPeriodRangeLabel } from '@/lib/periodNav';
 
 const PERIOD_OPTIONS = [
     { value: 'today', label: 'Hoy' },
@@ -64,10 +69,13 @@ const B = { blue: '#397B9C', teal: '#49949C' };
 
 export default function Index({ auth, moves, debtors = [], filters }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
+    const today = toLocalDateInput(new Date());
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [period, setPeriod] = useState(filters.period || 'week');
     const [from, setFrom] = useState(filters.from || '');
     const [to, setTo] = useState(filters.to || '');
+    const [referenceDate, setReferenceDate] = useState(filters.reference_date || today);
     const firstRender = useRef(true);
 
     useEffect(() => {
@@ -75,7 +83,8 @@ export default function Index({ auth, moves, debtors = [], filters }) {
         setPeriod(filters.period || 'week');
         setFrom(filters.from || '');
         setTo(filters.to || '');
-    }, [filters.search, filters.period, filters.from, filters.to]);
+        setReferenceDate(filters.reference_date || today);
+    }, [filters.search, filters.period, filters.from, filters.to, filters.reference_date]);
 
     const activeFilterCount = useMemo(() => {
         let count = searchTerm ? 1 : 0;
@@ -91,6 +100,7 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                 period: period || 'week',
                 from: from || undefined,
                 to: to || undefined,
+                reference_date: period !== 'range' ? referenceDate : undefined,
             };
 
             const currentFilters = {
@@ -98,6 +108,7 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                 period: filters.period || 'week',
                 from: filters.from || undefined,
                 to: filters.to || undefined,
+                reference_date: filters.period !== 'range' ? (filters.reference_date || undefined) : undefined,
             };
 
             if (firstRender.current) {
@@ -114,7 +125,13 @@ export default function Index({ auth, moves, debtors = [], filters }) {
         }, 500);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm, period, from, to, filters.search, filters.period, filters.from, filters.to]);
+    }, [searchTerm, period, from, to, referenceDate, filters.search, filters.period, filters.from, filters.to, filters.reference_date]);
+
+    const navigatePeriod = (direction) => {
+        setReferenceDate((current) => shiftReferenceDate(period, current, direction));
+    };
+
+    const atCurrentPeriod = isCurrentPeriod(period, referenceDate);
 
     const resetFilters = () => {
         const week = getCurrentWeekRange();
@@ -122,6 +139,7 @@ export default function Index({ auth, moves, debtors = [], filters }) {
         setPeriod('week');
         setFrom(week.from);
         setTo(week.to);
+        setReferenceDate(today);
     };
 
     const formatCurrency = (amount) => {
@@ -130,6 +148,13 @@ export default function Index({ auth, moves, debtors = [], filters }) {
             style: 'currency',
             currency: 'ARS',
         }).format(amount);
+    };
+
+    const handleDeletePayment = (move) => {
+        confirmDialog(
+            `¿Eliminar este pago de ${formatCurrency(move.amount)}? El saldo de la cuenta corriente se va a actualizar.`,
+            () => router.delete(route('lab-account-moves.destroy', move.id))
+        );
     };
 
     const formatDate = (dateString) => {
@@ -248,7 +273,10 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                 <button
                                     key={option.value}
                                     type="button"
-                                    onClick={() => setPeriod(option.value)}
+                                    onClick={() => {
+                                        setPeriod(option.value);
+                                        setReferenceDate(today);
+                                    }}
                                     className={`px-3 py-2.5 min-h-[40px] rounded-xl text-sm font-bold border transition-colors ${
                                         active
                                             ? 'bg-sky-600 border-sky-600 text-white'
@@ -261,6 +289,28 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                 </button>
                             );
                         })}
+                        {period !== 'range' && (
+                            <div className={`inline-flex items-center gap-1 rounded-xl border px-1 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                                <button
+                                    type="button"
+                                    onClick={() => navigatePeriod(-1)}
+                                    className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <span className={`text-xs font-bold px-1 whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                    {formatPeriodRangeLabel(period, filters.from, filters.to)}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => navigatePeriod(1)}
+                                    disabled={atCurrentPeriod}
+                                    className={`p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -382,9 +432,21 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                                 <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                     Saldo: <span className="font-bold">{formatCurrency(move.balance_after)}</span>
                                                 </span>
-                                                <Link href={route('lab-account-moves.show', move.id)} className={isDark ? 'text-sky-300' : 'text-sky-600'}>
-                                                    <Receipt size={16} />
-                                                </Link>
+                                                <div className="flex items-center gap-3">
+                                                    <Link href={route('lab-account-moves.show', move.id)} className={isDark ? 'text-sky-300' : 'text-sky-600'}>
+                                                        <Receipt size={16} />
+                                                    </Link>
+                                                    {isPayment && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeletePayment(move)}
+                                                            className={isDark ? 'text-red-400' : 'text-red-600'}
+                                                            title="Eliminar pago"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -460,10 +522,22 @@ export default function Index({ auth, moves, debtors = [], filters }) {
                                                 {formatCurrency(move.balance_after)}
                                             </td>
 
-                                            <td className="px-6 py-4 text-center">
-                                                <Link href={route('lab-account-moves.show', move.id)}>
-                                                    <Receipt size={16} />
-                                                </Link>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <Link href={route('lab-account-moves.show', move.id)} title="Ver comprobante">
+                                                        <Receipt size={16} />
+                                                    </Link>
+                                                    {isPayment && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeletePayment(move)}
+                                                            className={isDark ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'}
+                                                            title="Eliminar pago"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );

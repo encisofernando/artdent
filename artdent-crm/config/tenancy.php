@@ -14,13 +14,15 @@ return [
     /**
      * The list of domains hosting your central app.
      * Requests to these domains will NOT trigger tenancy initialization.
-     * The admin panel (artdent-admin) runs on admin.artdent.com.ar.
+     * artdent-crm doesn't have a central-only domain of its own — the
+     * central backoffice (artdent-admin) is a separate app/deployment
+     * entirely, so it never belongs in this list. Tenancy here is resolved
+     * by email/session (see LoginRequest::authenticate()), not by domain,
+     * so this list only matters for local/dev bypass.
      */
     'central_domains' => [
         '127.0.0.1',
         'localhost',
-        'artdent.com.ar',
-        'admin.artdent.com.ar',
     ],
 
     /**

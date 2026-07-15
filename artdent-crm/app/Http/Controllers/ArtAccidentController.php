@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ArtAccident;
 use App\Models\Employee;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -11,7 +12,7 @@ class ArtAccidentController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
@@ -31,7 +32,7 @@ class ArtAccidentController extends Controller
 
     public function update(Request $request, ArtAccident $artAccident): RedirectResponse
     {
-        $this->ensureCompanyOwned($artAccident, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($artAccident, CompanyContext::id());
 
         $validated = $request->validate([
             'occurred_at' => ['required', 'date'],
@@ -48,7 +49,7 @@ class ArtAccidentController extends Controller
 
     public function destroy(Request $request, ArtAccident $artAccident): RedirectResponse
     {
-        $this->ensureCompanyOwned($artAccident, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($artAccident, CompanyContext::id());
 
         $artAccident->delete();
 

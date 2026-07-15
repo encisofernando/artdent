@@ -5,6 +5,7 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import {
     Infinity, Star, CreditCard, AlertCircle, CheckCircle2,
     Clock, XCircle, RefreshCcw, Zap, Shield, ChevronRight,
+    Layers, Receipt, Wallet, Lock,
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 
@@ -92,7 +93,7 @@ function PlanCard({ plan, current, onSelect, disabled }) {
     );
 }
 
-export default function Subscription({ tenant, subscription, plans }) {
+export default function Subscription({ tenant, subscription, plans, modules = [], invoices = [], payments = [] }) {
     const { isDark } = useTheme();
     const { flash } = usePage().props;
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -260,6 +261,91 @@ export default function Subscription({ tenant, subscription, plans }) {
                         </div>
                     </div>
                 )}
+
+                {/* Módulos contratados */}
+                {modules.length > 0 && (
+                    <div className={`rounded-xl p-6 ${card}`}>
+                        <h2 className={`text-base font-semibold mb-4 flex items-center gap-2 ${text}`}>
+                            <Layers size={16} /> Módulos contratados
+                        </h2>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {modules.map((m) => (
+                                <div
+                                    key={m.id}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${
+                                        m.effective
+                                            ? (isDark ? 'bg-emerald-900/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700')
+                                            : (isDark ? 'bg-slate-700/50 text-slate-500' : 'bg-slate-50 text-slate-400')
+                                    }`}
+                                >
+                                    {m.effective ? <CheckCircle2 size={14} className="shrink-0" /> : <Lock size={14} className="shrink-0" />}
+                                    <span className="truncate font-medium">{m.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Historial de pagos + Facturas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className={`rounded-xl p-6 ${card}`}>
+                        <h2 className={`text-base font-semibold mb-4 flex items-center gap-2 ${text}`}>
+                            <Wallet size={16} /> Historial de pagos
+                        </h2>
+                        {payments.length === 0 ? (
+                            <p className={`text-sm text-center py-6 ${muted}`}>Sin pagos registrados todavía.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {payments.map((p) => (
+                                    <div key={p.id} className={`flex items-center justify-between py-2 border-b last:border-0 ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                                        <div>
+                                            <p className={`text-sm font-medium ${text}`}>${Number(p.amount).toLocaleString('es-AR')}</p>
+                                            <p className={`text-xs ${muted}`}>{p.date ? new Date(p.date).toLocaleDateString('es-AR') : '—'}</p>
+                                        </div>
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                            p.status === 'approved'
+                                                ? (isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+                                                : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500')
+                                        }`}>
+                                            {p.status}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={`rounded-xl p-6 ${card}`}>
+                        <h2 className={`text-base font-semibold mb-4 flex items-center gap-2 ${text}`}>
+                            <Receipt size={16} /> Facturas
+                        </h2>
+                        {invoices.length === 0 ? (
+                            <p className={`text-sm text-center py-6 ${muted}`}>Sin facturas emitidas todavía.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {invoices.map((inv) => (
+                                    <div key={inv.id} className={`flex items-center justify-between py-2 border-b last:border-0 ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                                        <div>
+                                            <p className={`text-sm font-mono font-medium ${text}`}>
+                                                {inv.receipt_type} {String(inv.point_sale).padStart(5, '0')}-{String(inv.number ?? 0).padStart(8, '0')}
+                                            </p>
+                                            <p className={`text-xs ${muted}`}>{inv.issued_at ? new Date(inv.issued_at).toLocaleDateString('es-AR') : '—'} · ${Number(inv.total).toLocaleString('es-AR')}</p>
+                                        </div>
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                            inv.status === 'authorized'
+                                                ? (isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+                                                : inv.status === 'failed'
+                                                    ? (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-700')
+                                                    : (isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-700')
+                                        }`}>
+                                            {inv.status === 'authorized' ? 'CAE' : inv.status === 'failed' ? 'Falló' : 'Pendiente'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Planes disponibles */}
                 <div>

@@ -24,6 +24,11 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         return $this->hasMany(TenantSubscription::class, 'tenant_id');
     }
 
+    public function activeSubscription(): ?TenantSubscription
+    {
+        return $this->subscriptions()->where('status', 'authorized')->latest()->first();
+    }
+
     /**
      * Columns stored directly in the tenants table (not in the data JSON).
      */

@@ -15,6 +15,8 @@ import {
     setStoredTicketFormat,
 } from '@/lib/print';
 import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
+import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
+import { buildJobOrderTicket } from '@/lib/escpos/buildJobOrderTicket';
 
 // ─── Brand ───────────────────────────────────────────────────────────────────
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE', light: '#DAE6F0' };
@@ -22,10 +24,13 @@ const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE'
 const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
 const fmtToday = () => new Date().toLocaleDateString('es-AR');
+// El número ya viene precedido por la palabra "Orden" en el encabezado, así que
+// el prefijo "ORD-" es redundante ahí (se ve como una palabra repetida/cortada).
+const stripOrdPrefix = (value) => String(value ?? '').replace(/^ORD-/i, '');
 
-// ─── Ticket térmico (80mm / 54mm) ────────────────────────────────────────────
+// ─── Ticket térmico (80mm / 57mm) ────────────────────────────────────────────
 function TicketBase({ job, widthMM = 80 }) {
-    const is54 = widthMM === 54;
+    const is57 = widthMM === 57;
     const items = job.job_items || [];
     const total = Number(job.total || 0);
     const company = job.company || {};
@@ -39,16 +44,16 @@ function TicketBase({ job, widthMM = 80 }) {
     const notes = job.description || job.notes || job.observations || '';
 
     const F = {
-        logo: is54 ? 54 : 62,
-        caption: is54 ? 7.2 : 8.1,
-        label: is54 ? 7.6 : 8.4,
-        body: is54 ? 8.2 : 9.2,
-        total: is54 ? 11.2 : 13.8,
-        number: is54 ? 13 : 16,
-        small: is54 ? 6.8 : 7.6,
+        logo: is57 ? 54 : 62,
+        caption: is57 ? 7.2 : 8.1,
+        label: is57 ? 7.6 : 8.4,
+        body: is57 ? 8.2 : 9.2,
+        total: is57 ? 11.2 : 13.8,
+        number: is57 ? 13 : 16,
+        small: is57 ? 6.8 : 7.6,
     };
 
-    const ticketWidth = getThermalZoneWidth(is54 ? '54mm' : '80mm');
+    const ticketWidth = getThermalZoneWidth(is57 ? '57mm' : '80mm');
 
     const InfoRow = ({ label, value }) => (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt`, lineHeight: 1.3, marginBottom: 3 }}>
@@ -58,26 +63,26 @@ function TicketBase({ job, widthMM = 80 }) {
     );
 
     return (
-        <div id="print-zone" style={{ width: ticketWidth, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: `${F.body}pt`, color: '#000', padding: is54 ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm', background: '#fff', lineHeight: 1.35, boxSizing: 'border-box' }}>
-            <div style={{ borderTop: '3px solid #000', marginBottom: is54 ? 5 : 7 }} />
+        <div id="print-zone" style={{ width: ticketWidth, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: `${F.body}pt`, color: '#000', padding: is57 ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm', background: '#fff', lineHeight: 1.35, boxSizing: 'border-box' }}>
+            <div style={{ borderTop: '3px solid #000', marginBottom: is57 ? 5 : 7 }} />
 
-            <div style={{ textAlign: 'center', marginBottom: is54 ? 6 : 8 }}>
+            <div style={{ textAlign: 'center', marginBottom: is57 ? 6 : 8 }}>
                 <CompanyLogo
                     company={company}
                     scope="lab"
                     thermal
                     height={F.logo}
-                    maxWidth={is54 ? 140 : 180}
+                    maxWidth={is57 ? 140 : 180}
                     style={{ margin: '0 auto' }}
                 />
                 <div style={{ fontSize: `${F.small}pt`, marginTop: 4 }}>Documento interno. No válido como factura.</div>
             </div>
 
-            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
-                <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>Orden N° {ticketNum}</div>
+            <div style={{ border: '2px solid #000', padding: is57 ? '5px 6px' : '6px 8px', marginBottom: is57 ? 6 : 8, textAlign: 'center' }}>
+                <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>Orden N° {stripOrdPrefix(ticketNum)}</div>
             </div>
 
-            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
+            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is57 ? 6 : 8 }}>
                 <InfoRow label="Fecha" value={fmtDate(job.received_at)} />
                 <InfoRow label="Paciente" value={patientName} />
                 <InfoRow label="Profesional" value={dentistName} />
@@ -85,7 +90,7 @@ function TicketBase({ job, widthMM = 80 }) {
             </div>
 
             {notes && (
-                <div style={{ border: '1px solid #000', padding: is54 ? '4px 5px' : '5px 6px', marginBottom: is54 ? 6 : 8 }}>
+                <div style={{ border: '1px solid #000', padding: is57 ? '4px 5px' : '5px 6px', marginBottom: is57 ? 6 : 8 }}>
                     <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 }}>Indicaciones</div>
                     <div style={{ fontSize: `${F.label}pt`, lineHeight: 1.35 }}>{notes}</div>
                 </div>
@@ -95,7 +100,7 @@ function TicketBase({ job, widthMM = 80 }) {
                 Detalle del trabajo
             </div>
 
-            <div style={{ marginBottom: is54 ? 6 : 8 }}>
+            <div style={{ marginBottom: is57 ? 6 : 8 }}>
                 {items.length > 0 ? items.map((it, index) => (
                     <div key={index} style={{ borderBottom: '1px dotted #000', padding: '4px 0' }}>
                         <div style={{ fontSize: `${F.body}pt`, fontWeight: 700, marginBottom: 2 }}>{it.description}</div>
@@ -115,7 +120,7 @@ function TicketBase({ job, widthMM = 80 }) {
                 )}
             </div>
 
-            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8 }}>
+            <div style={{ border: '2px solid #000', padding: is57 ? '5px 6px' : '6px 8px', marginBottom: is57 ? 6 : 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                     <span style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>Total orden</span>
                     <span style={{ fontSize: `${F.total}pt`, fontWeight: 900 }}>${fmt(total)}</span>
@@ -126,7 +131,7 @@ function TicketBase({ job, widthMM = 80 }) {
                 <div style={{ marginTop: 2 }}>Tu sonrisa, es nuestra prioridad.</div>
             </div>
 
-            <div style={{ borderTop: '3px solid #000', marginTop: is54 ? 5 : 7 }} />
+            <div style={{ borderTop: '3px solid #000', marginTop: is57 ? 5 : 7 }} />
         </div>
     );
 }
@@ -269,7 +274,7 @@ function OrdenA4({ job }) {
 // ─── Modos ────────────────────────────────────────────────────────────────────
 const MODES = [
     { id: '80mm', label: 'Ticket 80mm', desc: 'Impresora térmica estándar', icon: '🖨️' },
-    { id: '54mm', label: 'Ticket 54mm', desc: 'Impresora térmica compacta', icon: '🧾' },
+    { id: '57mm', label: 'Ticket 57mm', desc: 'Impresora térmica compacta', icon: '🧾' },
     { id: 'a4', label: 'PDF A4', desc: 'Comprobante institucional', icon: '📄' },
 ];
 
@@ -282,6 +287,7 @@ export default function Ticket({ item }) {
         return ['57mm', '80mm'].includes(saved) ? saved : '80mm';
     });
     const job = item;
+    const [printingNative, setPrintingNative] = useState(false);
 
     const D = isDark
         ? { bg: '#0f1623', card: '#161f2e', border: 'rgba(255,255,255,0.07)', text: '#e2e8f0', sub: '#94a3b8' }
@@ -300,6 +306,23 @@ export default function Ticket({ item }) {
                 extraHead: MONTSERRAT_PRINT_HEAD,
             });
             openBrowserPrint(html, { delay: 500 });
+            return;
+        }
+
+        if (isNativePrintAvailable()) {
+            setPrintingNative(true);
+
+            try {
+                const ticket = await buildJobOrderTicket(job, { widthMM: mode === '57mm' ? 57 : 80 });
+                const result = await printRawBytes(ticket);
+
+                if (!result.ok) {
+                    toast.warning(result.error || 'No se pudo imprimir en la impresora configurada.');
+                }
+            } finally {
+                setPrintingNative(false);
+            }
+
             return;
         }
 
@@ -325,7 +348,7 @@ export default function Ticket({ item }) {
     const handleModeChange = (nextMode) => {
         setMode(nextMode);
         if (nextMode === '80mm') setStoredTicketFormat('80mm');
-        if (nextMode === '54mm') setStoredTicketFormat('57mm');
+        if (nextMode === '57mm') setStoredTicketFormat('57mm');
     };
 
     return (
@@ -414,7 +437,7 @@ export default function Ticket({ item }) {
                                 <div style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'inline-block', transform: mode === 'a4' ? 'scale(0.70)' : 'scale(1)', transformOrigin: 'top center' }}>
                                     {mode === 'a4' && <OrdenA4 job={job} />}
                                     {mode === '80mm' && <TicketBase job={job} widthMM={80} />}
-                                    {mode === '54mm' && <TicketBase job={job} widthMM={54} />}
+                                    {mode === '57mm' && <TicketBase job={job} widthMM={57} />}
                                 </div>
                             </div>
                         </div>

@@ -11,6 +11,7 @@ use App\Models\Job;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Support\AccountingSettings;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,7 +21,7 @@ class AccountingController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $company = Company::findOrFail($companyId);
         $settings = $company->normalizedAccountingSettings();
 

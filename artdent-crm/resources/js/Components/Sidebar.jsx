@@ -18,6 +18,7 @@ import {
     Bot,
     Landmark,
     Package,
+    Wallet,
     UserCheck,
     ClipboardList,
     Stethoscope,
@@ -29,12 +30,15 @@ import {
     Factory,
     Cpu,
     History,
+    LifeBuoy,
+    Layers,
 } from 'lucide-react';
 
 export default function Sidebar({ className = "" }) {
     const { url, props } = usePage();
     const auth = props.auth;
     const billingEnabled = props.app_context?.billing_enabled !== false;
+    const enabledModules = props.enabled_modules || [];
 
     const NAV_SECTIONS = [
         {
@@ -64,7 +68,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Clientes", icon: Users, key: "clientes",
-                    permission: 'customers.view',
+                    permission: 'customers.view', module: 'clientes',
                     children: [
                         { title: "Clientes", path: "/customers" },
                         { title: "Cuentas Corrientes", path: "/customers-accounts" },
@@ -82,7 +86,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Inventario", icon: Package, key: "inventario",
-                    permission: 'inventory.view',
+                    permission: 'inventory.view', module: 'insumos',
                     children: [
                         { title: "Stock", path: "/stocks" },
                         { title: "Depósitos", path: "/warehouses" },
@@ -98,7 +102,7 @@ export default function Sidebar({ className = "" }) {
             items: [
                 {
                     title: "Tienda Online", icon: ShoppingCart, key: "ecommerce",
-                    permission: 'ecommerce.view',
+                    permission: 'ecommerce.view', module: 'ecommerce',
                     children: [
                         { title: "Pedidos", path: "/ecommerce-orders" },
                         { title: "Cupones", path: "/coupons", permission: 'ecommerce.edit' },
@@ -119,7 +123,7 @@ export default function Sidebar({ className = "" }) {
             items: [
                 {
                     title: "Órdenes", icon: ClipboardList, key: "lab-ordenes",
-                    permission: 'orders.view',
+                    permission: 'orders.view', module: 'laboratorio',
                     children: [
                         { title: "Nueva Orden", path: "/jobs/create", permission: 'orders.create' },
                         { title: "Consultar", path: "/jobs" },
@@ -128,16 +132,18 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Odontólogos", icon: Stethoscope, key: "lab-clientes",
-                    permission: 'customers.view',
+                    permission: 'customers.view', module: ['laboratorio', 'clinica'],
                     children: [
-                        { title: "Odontólogos", path: "/dentists" },
-                        { title: "Pacientes", path: "/patients" },
-                        { title: "Rutas de Entrega", path: "/dentist-delivery-routes", permission: 'customers.edit' },
-                        { title: "Cuentas Corrientes", path: "/lab-account-moves", permission: 'orders.edit' },
-                        { title: "Ingresos y Egresos", path: "/lab-finance", permission: 'orders.view' },
+                        { title: "Odontólogos", path: "/dentists", module: 'laboratorio' },
+                        { title: "Pacientes", path: "/patients", module: 'clinica' },
+                        { title: "Rutas de Entrega", path: "/dentist-delivery-routes", permission: 'customers.edit', module: 'laboratorio' },
+                        { title: "Remitos de Entrega", path: "/remitos", permission: 'orders.edit', module: 'laboratorio' },
+                        { title: "Cuentas Corrientes", path: "/lab-account-moves", permission: 'orders.edit', module: 'laboratorio' },
+                        { title: "Ingresos y Egresos", path: "/lab-finance", permission: 'orders.view', module: 'laboratorio' },
                     ],
                 },
-                { title: "Aranceles y Costos", icon: DollarSign, path: "/tariffs", permission: 'products.view' },
+                { title: "Aranceles y Costos", icon: DollarSign, path: "/tariffs", permission: 'products.view', module: 'laboratorio' },
+                { title: "Catálogo de Fases", icon: Layers, path: "/phase-templates", permission: 'products.view', module: 'laboratorio' },
             ],
         },
         {
@@ -145,7 +151,7 @@ export default function Sidebar({ className = "" }) {
             items: [
                 {
                     title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
-                    permission: 'staff.view',
+                    permission: 'staff.view', module: 'rrhh',
                     children: [
                         { title: "Colaboradores", path: "/collaborators" },
                         { title: "Asistencias", path: "/collaborator-attendances" },
@@ -156,7 +162,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Empleados", icon: UserCheck, key: "personal",
-                    permission: 'staff.view',
+                    permission: 'staff.view', module: 'rrhh',
                     children: [
                         { title: "Empleados", path: "/employees" },
                         { title: "Organigrama", path: "/organigrama" },
@@ -165,7 +171,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Liquidación de Sueldos", icon: DollarSign, key: "liquidacion",
-                    permission: 'staff.view',
+                    permission: 'staff.view', module: 'rrhh',
                     children: [
                         { title: "Motor de Fórmulas", path: "/conceptos" },
                         { title: "Liquidaciones", path: "/payroll-runs", permission: 'staff.edit' },
@@ -178,7 +184,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Asistencia y Licencias", icon: CalendarCheck, key: "asistencia-empleados",
-                    permission: 'staff.view',
+                    permission: 'staff.view', module: 'rrhh',
                     children: [
                         { title: "Asistencias", path: "/employee-attendances" },
                         { title: "Vacaciones y Licencias", path: "/vacaciones" },
@@ -187,7 +193,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Desarrollo y Capacitación", icon: GraduationCap, key: "desarrollo",
-                    permission: 'staff.view',
+                    permission: 'staff.view', module: 'rrhh',
                     children: [
                         { title: "Evaluaciones", path: "/evaluaciones" },
                         { title: "Capacitaciones", path: "/capacitaciones" },
@@ -198,11 +204,13 @@ export default function Sidebar({ className = "" }) {
         {
             label: "Accesos y Kiosks",
             items: [
-                { title: "Mi Portal", icon: UserCheck, path: "/portal" },
-                { title: "Kiosk de Fichaje", icon: Fingerprint, path: "/attendance-kiosk", external: true },
-                { title: "Kiosk de Producción", icon: Factory, path: "/job-kiosk", external: true },
-                { title: "Terminales HikVision", icon: Cpu, path: "/hikvision/devices", permission: 'staff.edit' },
-                { title: "Eventos Biométricos", icon: History, path: "/hikvision/events", permission: 'staff.view' },
+                { title: "Mi Portal", icon: UserCheck, path: "/portal", module: 'rrhh' },
+                { title: "Kiosk de Fichaje", icon: Fingerprint, path: "/attendance-kiosk", module: 'rrhh', external: true },
+                { title: "Kiosk de Producción", icon: Factory, path: "/job-kiosk", module: 'laboratorio', external: true },
+                { title: "Terminales HikVision", icon: Cpu, path: "/hikvision/devices", permission: 'staff.edit', module: 'rrhh' },
+                { title: "Eventos Biométricos", icon: History, path: "/hikvision/events", permission: 'staff.edit', module: 'rrhh' },
+                { title: "Ayuda", icon: LifeBuoy, path: "/ayuda" },
+                { title: "Soporte", icon: MessageSquare, path: "/soporte" },
             ],
         },
         {
@@ -210,7 +218,7 @@ export default function Sidebar({ className = "" }) {
             items: [
                 {
                     title: "Contable", icon: Landmark, key: "contable",
-                    permission: 'accounting.view',
+                    permission: 'accounting.view', module: 'contabilidad',
                     children: [
                         { title: "Panel", path: "/contable" },
                         { title: "Libro IVA Ventas", path: "/export/iva-ventas", external: true },
@@ -218,21 +226,30 @@ export default function Sidebar({ className = "" }) {
                         { title: "Estado de Resultados", path: "/export/income-statement", external: true },
                     ],
                 },
+                {
+                    title: "Caja", icon: Wallet, key: "caja",
+                    permission: 'reports.view', module: 'finanzas',
+                    children: [
+                        { title: "Caja", path: "/cash-sessions" },
+                        { title: "Administrar Cajas", path: "/cash-drawers", permission: 'reports.create' },
+                    ],
+                },
             ],
         },
         {
             label: "CRM",
             items: [
-                { title: "Artie", icon: Bot, path: "/crm/chatbot", permission: 'customers.view' },
-                { title: "Interacciones", icon: MessageSquare, path: "/crm-interactions", permission: 'customers.view' },
+                { title: "Artie", icon: Bot, path: "/crm/chatbot", permission: 'customers.view', module: 'laboratorio' },
+                { title: "Interacciones", icon: MessageSquare, path: "/crm-interactions", permission: 'customers.view', module: 'laboratorio' },
             ],
         },
         {
             label: "Análisis",
             items: [
-                { title: "Analítica Lab", icon: BarChart3, path: "/analytics/lab", permission: 'reports.view' },
+                { title: "Analítica Lab", icon: BarChart3, path: "/analytics/lab", permission: 'reports.view', module: 'laboratorio' },
                 { title: "Estadísticas", icon: TrendingUp, path: "/estadisticas", permission: 'reports.view' },
-                { title: "Reportes", icon: Receipt, path: "/reportes", permission: 'reports.view' },
+                { title: "Reportes", icon: Receipt, path: "/reportes", permission: 'reports.view', module: 'reportes' },
+                { title: "Costos y Ganancias", icon: DollarSign, path: "/reportes/costos-ganancias", permission: 'reports.view', module: 'reportes' },
                 { title: "Operaciones", icon: Search, path: "/operaciones", permission: 'reports.view' },
             ],
         },
@@ -245,9 +262,10 @@ export default function Sidebar({ className = "" }) {
                     children: [
                         { title: "Usuarios", path: "/users", permission: 'users.view' },
                         { title: "Roles y Permisos", path: "/roles", permission: 'roles.view' },
+                        { title: "Auditoría", path: "/audit-logs", permission: 'settings.edit' },
                         { title: "Empresa", path: "/settings", permission: 'settings.edit' },
                         { title: "Impresión", path: "/settings?tab=preferencias", permission: 'settings.edit' },
-                        { title: "Acceso Kiosk", path: "/admin/kiosk-access", permission: 'settings.edit' },
+                        { title: "Acceso Kiosk", path: "/admin/kiosk-access", permission: 'settings.edit', module: ['laboratorio', 'rrhh'] },
                         ...(billingEnabled ? [{ title: "Suscripción", path: "/subscription", permission: 'settings.edit' }] : []),
                     ],
                 },
@@ -268,6 +286,18 @@ export default function Sidebar({ className = "" }) {
         }
         return auth.user.permissions?.includes(permission);
     };
+
+    // Backend (TenantModuleResolver) es la única fuente de verdad de qué
+    // módulos tiene el tenant — esto sólo refleja esa lista en el menú.
+    const hasModule = (module) => {
+        if (!module) return true;
+        if (Array.isArray(module)) {
+            return module.some(m => enabledModules.includes(m));
+        }
+        return enabledModules.includes(module);
+    };
+
+    const isVisible = (node) => hasPermission(node.permission) && hasModule(node.module);
 
     const toggleMenu = (key) => {
         if (sidebarCollapsed) return;
@@ -321,8 +351,8 @@ export default function Sidebar({ className = "" }) {
             <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-thin scrollbar-thumb-slate-700">
                 <nav className="space-y-6">
                     {NAV_SECTIONS.map((section, idx) => {
-                        // Filter items based on permissions
-                        const visibleItems = section.items.filter(item => hasPermission(item.permission));
+                        // Filter items based on permissions and contracted modules
+                        const visibleItems = section.items.filter(isVisible);
                         
                         if (visibleItems.length === 0) return null;
 
@@ -339,7 +369,7 @@ export default function Sidebar({ className = "" }) {
                                         const activeNode = isActive(item.path) || isAnyChildActive(item.children);
 
                                         if (item.children) {
-                                            const visibleChildren = item.children.filter(child => hasPermission(child.permission));
+                                            const visibleChildren = item.children.filter(isVisible);
                                             
                                             if (visibleChildren.length === 0 && !item.path) return null;
 

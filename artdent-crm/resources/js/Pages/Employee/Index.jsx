@@ -16,7 +16,7 @@ const fmtDate = (d) => {
 };
 
 const EMPTY_FORM = {
-    user_id: '', dni: '', position: '', salary: '', commission_pct: '',
+    user_id: '', dni: '', position: '', salary: '', commission_pct: '', job_commission_pct: '',
     hire_date: '', end_date: '', is_active: true, notes: '',
 };
 
@@ -68,6 +68,7 @@ export default function Index({ auth, items, users, filters }) {
             position: item.position ?? '',
             salary: item.salary ?? '',
             commission_pct: item.commission_pct ?? '',
+            job_commission_pct: item.job_commission_pct ?? '',
             hire_date: item.hire_date ? String(item.hire_date).split('T')[0] : '',
             end_date: item.end_date ? String(item.end_date).split('T')[0] : '',
             is_active: item.is_active ?? true,
@@ -304,6 +305,14 @@ export default function Index({ auth, items, users, filters }) {
                             <label className={labelCls}>Comisión sobre ventas %</label>
                             <input type="number" step="0.01" min="0" max="100" value={form.commission_pct} onChange={e => setForm(f => ({ ...f, commission_pct: e.target.value }))} className={inputCls} placeholder="0" />
                             {errors.commission_pct && <p className={errCls}>{errors.commission_pct}</p>}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelCls}>Comisión por trabajos %</label>
+                            <input type="number" step="0.01" min="0" max="100" value={form.job_commission_pct} onChange={e => setForm(f => ({ ...f, job_commission_pct: e.target.value }))} className={inputCls} placeholder="0" />
+                            {errors.job_commission_pct && <p className={errCls}>{errors.job_commission_pct}</p>}
+                            <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Se aplica cuando este usuario da de alta la orden de un trabajo de laboratorio.</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">

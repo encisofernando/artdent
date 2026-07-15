@@ -6,7 +6,6 @@
 
 namespace App\Models;
 
-use App\Models\Offer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -66,6 +65,7 @@ class Product extends Model
         'category_id' => 'int',
         'tax_id' => 'int',
         'cost_price' => 'float',
+        'cost_price_usd' => 'float',
         'price' => 'float',
         'compare_price' => 'float',
         'has_variants' => 'bool',
@@ -93,6 +93,8 @@ class Product extends Model
         'short_description',
         'description',
         'cost_price',
+        'cost_currency',
+        'cost_price_usd',
         'price',
         'compare_price',
         'has_variants',
@@ -174,5 +176,10 @@ class Product extends Model
     public function offers()
     {
         return $this->belongsToMany(Offer::class, 'offer_products');
+    }
+
+    public function barcodes()
+    {
+        return $this->hasMany(ProductBarcode::class);
     }
 }

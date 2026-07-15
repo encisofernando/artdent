@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Company;
 use App\Models\Product;
 use App\Models\Vendor;
 use App\Services\ImageResizeService;
+use App\Support\Auditor;
+use App\Support\CompanyContext;
+use App\Support\PlanLimitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -48,7 +52,8 @@ class ProductController extends Controller
                             ->where('sku', 'like', "%{$search}%")
                             ->orWhere('barcode', 'like', "%{$search}%")
                         )
-                    );
+                    )
+                    ->orWhereHas('barcodes', fn ($qb) => $qb->where('barcode', 'like', "%{$search}%"));
             });
         }
 
@@ -127,15 +132,18 @@ class ProductController extends Controller
     {
         $categories = $this->categoriesTree();
         $vendors = $this->vendorsList();
+        $usdExchangeRate = Company::find(auth()->user()->company_id)?->usd_exchange_rate;
 
-        return Inertia::render('Product/Create', compact('categories', 'vendors'));
+        return Inertia::render('Product/Create', compact('categories', 'vendors', 'usdExchangeRate'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, PlanLimitService $limits)
     {
+        $limits->assertCanAddProduct();
+
         $validated = $request->validate([
             'company_id' => 'nullable',
             'vendor_id' => 'nullable|integer',
@@ -148,6 +156,8 @@ class ProductController extends Controller
             'barcode' => 'nullable|string|max:100',
             'description' => 'nullable|string',
             'cost_price' => 'nullable|numeric',
+            'cost_currency' => 'nullable|in:ARS,USD',
+            'cost_price_usd' => 'nullable|numeric',
             'price' => 'required|numeric',
             'compare_price' => 'nullable|numeric',
             'has_variants' => 'nullable|boolean',
@@ -177,6 +187,7 @@ class ProductController extends Controller
         }
 
         $validated['min_stock'] = $validated['min_stock'] ?? 0;
+        $validated = $this->applyUsdCost($validated, (int) $validated['company_id']);
 
         $warehouseId = ! empty($validated['track_stock'])
             ? $this->resolveWarehouseId((int) $validated['company_id'])
@@ -320,13 +331,15 @@ class ProductController extends Controller
             'product_images',
             'stocks',
             'product_variants.stocks',
-            'product_variants.variant_attribute_values.product_attribute_value.product_attribute'
+            'product_variants.variant_attribute_values.product_attribute_value.product_attribute',
+            'barcodes'
         );
 
         return Inertia::render('Product/Edit', [
             'item' => $product,
             'categories' => $this->categoriesTree(),
             'vendors' => $this->vendorsList(),
+            'usdExchangeRate' => Company::find($product->company_id)?->usd_exchange_rate,
         ]);
     }
 
@@ -347,6 +360,8 @@ class ProductController extends Controller
             'barcode' => 'nullable|string|max:100',
             'description' => 'nullable|string',
             'cost_price' => 'nullable|numeric',
+            'cost_currency' => 'nullable|in:ARS,USD',
+            'cost_price_usd' => 'nullable|numeric',
             'price' => 'required|numeric',
             'compare_price' => 'nullable|numeric',
             'has_variants' => 'nullable|boolean',
@@ -373,6 +388,7 @@ class ProductController extends Controller
         ]);
 
         $validated['min_stock'] = $validated['min_stock'] ?? 0;
+        $validated = $this->applyUsdCost($validated, (int) $product->company_id);
 
         $warehouseId = ! empty($validated['track_stock'])
             ? $this->resolveWarehouseId((int) $product->company_id)
@@ -820,6 +836,150 @@ class ProductController extends Controller
         return (int) $warehouseId;
     }
 
+    // ── aumento masivo de precios ──────────────────────────────────────────────
+
+    public function bulkPriceForm(): \Inertia\Response
+    {
+        $categories = Category::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $vendors = $this->vendorsList();
+        $usdExchangeRate = Company::find(auth()->user()->company_id)?->usd_exchange_rate;
+        $usdProductsCount = Product::where('company_id', CompanyContext::id())
+            ->where('cost_currency', 'USD')
+            ->whereNotNull('cost_price_usd')
+            ->count();
+
+        return Inertia::render('Product/BulkPrice', [
+            'categories' => $categories,
+            'vendors' => $vendors,
+            'usdExchangeRate' => $usdExchangeRate,
+            'usdProductsCount' => $usdProductsCount,
+        ]);
+    }
+
+    public function bulkPricePreview(Request $request)
+    {
+        $validated = $this->validateBulkPriceRequest($request);
+
+        $products = $this->bulkPriceQuery($validated)->orderBy('name')->limit(20)->get(['id', 'name', 'sku', 'price', 'cost_price']);
+        $count = $this->bulkPriceQuery($validated)->count();
+
+        $sample = $products->map(fn (Product $product) => [
+            'id' => $product->id,
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'current_price' => (float) $product->price,
+            'new_price' => $validated['target'] !== 'cost_price'
+                ? $this->calculateAdjustedAmount((float) $product->price, $validated)
+                : (float) $product->price,
+            'current_cost_price' => (float) $product->cost_price,
+            'new_cost_price' => $validated['target'] !== 'price'
+                ? $this->calculateAdjustedAmount((float) $product->cost_price, $validated)
+                : (float) $product->cost_price,
+        ]);
+
+        return response()->json([
+            'count' => $count,
+            'sample' => $sample,
+        ]);
+    }
+
+    public function bulkPriceApply(Request $request)
+    {
+        $validated = $this->validateBulkPriceRequest($request);
+
+        $count = DB::transaction(function () use ($validated) {
+            $products = $this->bulkPriceQuery($validated)->get(['id', 'price', 'cost_price']);
+
+            foreach ($products as $product) {
+                $update = [];
+
+                if ($validated['target'] !== 'cost_price') {
+                    $update['price'] = $this->calculateAdjustedAmount((float) $product->price, $validated);
+                }
+
+                if ($validated['target'] !== 'price') {
+                    $update['cost_price'] = $this->calculateAdjustedAmount((float) $product->cost_price, $validated);
+                }
+
+                Product::whereKey($product->id)->update($update);
+            }
+
+            return $products->count();
+        });
+
+        Auditor::log('product.bulk_price_applied', null, [
+            'affected_count' => $count,
+            'target' => $validated['target'],
+            'adjustment_type' => $validated['adjustment_type'],
+            'direction' => $validated['direction'],
+            'value' => $validated['value'],
+            'category_id' => $validated['category_id'] ?? null,
+            'vendor_id' => $validated['vendor_id'] ?? null,
+        ]);
+
+        return redirect()->route('products.bulk-price')->with('success', "Se actualizó el precio de {$count} artículo(s).");
+    }
+
+    /** @return array{category_id: ?int, vendor_id: ?int, active_only: bool, adjustment_type: string, direction: string, value: float, target: string} */
+    private function validateBulkPriceRequest(Request $request): array
+    {
+        return $request->validate([
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'vendor_id' => ['nullable', 'integer', 'exists:vendors,id'],
+            'active_only' => ['boolean'],
+            'adjustment_type' => ['required', 'in:percentage,fixed'],
+            'direction' => ['required', 'in:increase,decrease'],
+            'value' => ['required', 'numeric', 'min:0.01'],
+            'target' => ['required', 'in:price,cost_price,both'],
+        ]);
+    }
+
+    private function bulkPriceQuery(array $filters): \Illuminate\Database\Eloquent\Builder
+    {
+        return Product::query()
+            ->where('company_id', CompanyContext::id())
+            ->when($filters['category_id'] ?? null, fn ($q, $categoryId) => $q->where('category_id', $categoryId))
+            ->when($filters['vendor_id'] ?? null, fn ($q, $vendorId) => $q->where('vendor_id', $vendorId))
+            ->when($filters['active_only'] ?? false, fn ($q) => $q->where('is_active', true));
+    }
+
+    private function calculateAdjustedAmount(float $current, array $filters): float
+    {
+        $sign = $filters['direction'] === 'increase' ? 1 : -1;
+
+        if ($filters['adjustment_type'] === 'percentage') {
+            $new = $current + ($sign * $current * $filters['value'] / 100);
+        } else {
+            $new = $current + ($sign * $filters['value']);
+        }
+
+        return round(max(0, $new), 2);
+    }
+
+    /**
+     * Si el costo se carga en USD, el costo en pesos (`cost_price`, usado en todos los
+     * cálculos de margen/reportes) se recalcula automáticamente contra la cotización
+     * vigente de la empresa. Si se carga en ARS, no se toca nada.
+     */
+    private function applyUsdCost(array $validated, int $companyId): array
+    {
+        if (($validated['cost_currency'] ?? 'ARS') !== 'USD' || empty($validated['cost_price_usd'])) {
+            return $validated;
+        }
+
+        $rate = (float) (Company::find($companyId)?->usd_exchange_rate ?? 0);
+
+        if ($rate > 0) {
+            $validated['cost_price'] = round((float) $validated['cost_price_usd'] * $rate, 2);
+        }
+
+        return $validated;
+    }
+
     // ── import / export (sin cambios) ─────────────────────────────────────────
 
     /**
@@ -922,7 +1082,12 @@ class ProductController extends Controller
                 ->when($excludeProductId, fn ($q) => $q->where('product_id', '!=', $excludeProductId))
                 ->exists();
 
-            if ($inProducts || $inVariants) {
+            // Buscar en códigos de barra adicionales (excluyendo los del producto actual)
+            $inExtraBarcodes = \App\Models\ProductBarcode::where('barcode', $bc)
+                ->when($excludeProductId, fn ($q) => $q->where('product_id', '!=', $excludeProductId))
+                ->exists();
+
+            if ($inProducts || $inVariants || $inExtraBarcodes) {
                 throw ValidationException::withMessages([
                     'barcode' => "El código de barras «{$bc}» ya está asignado a otro producto o variante.",
                 ]);

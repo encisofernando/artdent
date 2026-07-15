@@ -7,6 +7,7 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\StockAlertService;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class StockController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $search = $request->input('search');
         $warehouseId = $request->input('warehouse_id');
         $lowStock = $request->boolean('low_stock');

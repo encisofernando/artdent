@@ -9,6 +9,7 @@ use App\Models\LabSupplyWithdrawalItem;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Services\LabWithdrawalService;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class LabWithdrawalController extends Controller
 
     public function index(Request $request): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $search = $request->input('search');
         $collaboratorId = $request->input('collaborator_id');
         $dateFrom = $request->input('date_from');
@@ -81,7 +82,7 @@ class LabWithdrawalController extends Controller
 
     public function create(): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $warehouses = Warehouse::where('company_id', $companyId)
             ->orderBy('name')
@@ -107,7 +108,7 @@ class LabWithdrawalController extends Controller
 
     public function store(StoreLabWithdrawalRequest $request): RedirectResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $validated = $request->validated();
 
         DB::transaction(function () use ($validated, $companyId) {

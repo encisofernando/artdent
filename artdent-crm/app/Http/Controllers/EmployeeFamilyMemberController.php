@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\EmployeeFamilyMember;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -11,7 +12,7 @@ class EmployeeFamilyMemberController extends Controller
 {
     public function store(Request $request, Employee $employee): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employee->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -29,7 +30,7 @@ class EmployeeFamilyMemberController extends Controller
 
     public function update(Request $request, EmployeeFamilyMember $employeeFamilyMember): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employeeFamilyMember->employee->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -47,7 +48,7 @@ class EmployeeFamilyMemberController extends Controller
 
     public function destroy(EmployeeFamilyMember $employeeFamilyMember): RedirectResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employeeFamilyMember->employee->company_id === $companyId, 404);
 
         $employeeFamilyMember->delete();

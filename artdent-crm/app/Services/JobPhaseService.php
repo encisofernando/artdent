@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 class JobPhaseService
 {
+    public function __construct(private readonly JobCommissionService $commissionService) {}
+
     /**
      * Create pending JobPhaseProgress rows for each tariff phase on the job.
      * Safe to call multiple times — skips already-existing rows.
@@ -70,6 +72,9 @@ class JobPhaseService
 
     /**
      * Mark the current in_progress phase as "en prueba" (sent to dentist for trial).
+     * The work has left the lab at this point, so this is when the phase gets billed
+     * to the dentist's cuenta corriente — not at completion (completePhase() won't bill
+     * it again; see billPhaseIfNeeded()).
      */
     public function sendToProof(JobPhaseProgress $phase): void
     {
@@ -79,13 +84,16 @@ class JobPhaseService
                 'proof_sent_at' => now(),
             ]);
 
+            $this->billPhaseIfNeeded($phase);
             $this->updateJobStatus($phase->job, 'quality_check');
         });
     }
 
     /**
-     * Register that the dentist returned the work from proof.
-     * Completes the prueba phase and triggers billing + finalization/next-phase.
+     * Register that the dentist returned the work from proof. This does NOT complete
+     * the phase — it puts it back "in progress" so the lab can resume/finish the actual
+     * work. It only gets billed/ticketed later, when a technician explicitly completes
+     * it via completePhase() and selects who worked on it.
      */
     public function returnFromProof(Job $job): void
     {
@@ -98,15 +106,20 @@ class JobPhaseService
             return;
         }
 
-        $prueba->update(['proof_returned_at' => now()]);
+        DB::transaction(function () use ($prueba, $job) {
+            $prueba->update([
+                'status' => JobPhaseProgress::STATUS_IN_PROGRESS,
+                'proof_returned_at' => now(),
+            ]);
 
-        $existingCollabIds = $prueba->phaseCollaborators()->pluck('collaborator_id')->all();
-
-        $this->completePhase($prueba, $existingCollabIds);
+            $this->updateJobStatus($job, 'in_progress');
+        });
     }
 
     /**
      * Mark a phase as completed, assign collaborators, generate ticket and billing move.
+     * The billing move is skipped here if the phase was already billed when it was sent
+     * to proof (see sendToProof()/billPhaseIfNeeded()), so debt is never duplicated.
      *
      * @param  array<int>  $collaboratorIds
      */
@@ -116,6 +129,7 @@ class JobPhaseService
             $phase->update([
                 'status' => JobPhaseProgress::STATUS_COMPLETED,
                 'completed_at' => now(),
+                'collaborator_id' => $collaboratorIds[0] ?? null,
             ]);
 
             foreach ($collaboratorIds as $collaboratorId) {
@@ -126,7 +140,7 @@ class JobPhaseService
             }
 
             $this->issuePhaseTicket($phase);
-            $this->createPhaseAccountMove($phase);
+            $this->billPhaseIfNeeded($phase);
 
             $job = $phase->job()->with('phaseProgress')->first();
 
@@ -139,11 +153,38 @@ class JobPhaseService
     }
 
     /**
-     * Finalize the job: set status to "ready" and create the final billing move.
+     * Itemized summary of every completed phase ticket for a job, with a grand total.
+     * Used to print a consolidated "orden completa" ticket once the last phase finishes.
+     *
+     * @return array{phases: array<int, array{phase_name: string, amount: float}>, total: float}
+     */
+    public function buildJobTicketSummary(Job $job): array
+    {
+        $tickets = JobPhaseTicket::where('job_id', $job->id)
+            ->with('phaseProgress.tariffPhase')
+            ->get()
+            ->sortBy(fn (JobPhaseTicket $t) => $t->phaseProgress?->tariffPhase?->sort_order ?? 0)
+            ->values();
+
+        $phases = $tickets->map(fn (JobPhaseTicket $t) => [
+            'phase_name' => $t->phase_name,
+            'amount' => (float) $t->amount,
+        ])->all();
+
+        return [
+            'phases' => $phases,
+            'total' => round($tickets->sum('amount'), 2),
+        ];
+    }
+
+    /**
+     * Finalize the job: set status to "ready" and liquidar la comisión por trabajo
+     * (usuario que dio de alta la orden + colaboradores que completaron fases).
      */
     public function finalizeJob(Job $job): void
     {
         $this->updateJobStatus($job, 'ready');
+        $this->commissionService->processCommission($job);
     }
 
     /**
@@ -196,8 +237,23 @@ class JobPhaseService
         ]);
     }
 
-    private function createPhaseAccountMove(JobPhaseProgress $phase): void
+    /**
+     * Bill a phase to the dentist's cuenta corriente exactly once — whichever transition
+     * hits first (sendToProof or completePhase). Idempotent via `lab_account_move_id`:
+     * a phase that was already billed when sent to proof is never billed again when it's
+     * later completed, no matter how many proof/return cycles it goes through.
+     *
+     * If this is the last unbilled phase of the job (including the "no tariff phases
+     * configured" fallback, which is always a single phase), the amount is reconciled
+     * against the job's total instead of the phase's own tariff price, so rounding or
+     * manual discounts on the job never leave a mismatched cuenta corriente.
+     */
+    private function billPhaseIfNeeded(JobPhaseProgress $phase): void
     {
+        if ($phase->lab_account_move_id) {
+            return;
+        }
+
         $phase->loadMissing(['job', 'tariffPhase']);
 
         $job = $phase->job;
@@ -209,11 +265,12 @@ class JobPhaseService
         $account = LabAccount::firstOrCreate(['dentist_id' => $job->dentist_id]);
         $userId = auth()->id() ?? 1;
 
-        $remainingCount = JobPhaseProgress::where('job_id', $job->id)
-            ->where('status', '!=', JobPhaseProgress::STATUS_COMPLETED)
+        $unbilledSiblings = JobPhaseProgress::where('job_id', $job->id)
+            ->where('id', '!=', $phase->id)
+            ->whereNull('lab_account_move_id')
             ->count();
 
-        if ($remainingCount === 0) {
+        if ($unbilledSiblings === 0) {
             $alreadyBilled = (float) LabAccountMove::where('reference_type', JobPhaseProgress::class)
                 ->whereIn('reference_id', $job->phaseProgress()->pluck('id'))
                 ->sum('amount');

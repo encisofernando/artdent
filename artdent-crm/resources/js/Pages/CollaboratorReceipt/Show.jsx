@@ -12,6 +12,8 @@ import {
     setStoredTicketFormat,
 } from '@/lib/print';
 import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
+import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
+import { buildCollaboratorReceiptTicket } from '@/lib/escpos/buildReceiptTicket';
 
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE', light: '#DAE6F0' };
 
@@ -120,12 +122,14 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
                 <>
                     <div style={{ fontSize: 7.2, fontWeight: 800, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Detalle extras</div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 7.5, marginBottom: 6 }}>
-                        {extras.map((e, i) => (
-                            <tr key={i} style={{ borderBottom: '1px dotted #000' }}>
-                                <td style={{ padding: '1px 2px' }}>{fmtDate(e.date)} {e.concept}</td>
-                                <td style={{ padding: '1px 2px', textAlign: 'right', fontWeight: 700 }}>+${fmt(e.amount)}</td>
-                            </tr>
-                        ))}
+                        <tbody>
+                            {extras.map((e, i) => (
+                                <tr key={i} style={{ borderBottom: '1px dotted #000' }}>
+                                    <td style={{ padding: '1px 2px' }}>{fmtDate(e.date)} {e.concept}</td>
+                                    <td style={{ padding: '1px 2px', textAlign: 'right', fontWeight: 700 }}>+${fmt(e.amount)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
                     </table>
                 </>
             )}
@@ -134,12 +138,14 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
                 <>
                     <div style={{ fontSize: 7.2, fontWeight: 800, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Detalle descuentos</div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 7.5, marginBottom: 6 }}>
-                        {discounts.map((d, i) => (
-                            <tr key={i} style={{ borderBottom: '1px dotted #000' }}>
-                                <td style={{ padding: '1px 2px' }}>{fmtDate(d.date)} {d.concept}</td>
-                                <td style={{ padding: '1px 2px', textAlign: 'right', fontWeight: 700 }}>-${fmt(d.amount)}</td>
-                            </tr>
-                        ))}
+                        <tbody>
+                            {discounts.map((d, i) => (
+                                <tr key={i} style={{ borderBottom: '1px dotted #000' }}>
+                                    <td style={{ padding: '1px 2px' }}>{fmtDate(d.date)} {d.concept}</td>
+                                    <td style={{ padding: '1px 2px', textAlign: 'right', fontWeight: 700 }}>-${fmt(d.amount)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
                     </table>
                 </>
             )}
@@ -182,6 +188,18 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
         : { bg: '#f4f7fb', card: '#ffffff', border: '#e8eef5', text: '#1e293b', sub: '#64748b' };
 
     const handlePrint = async () => {
+        if (isNativePrintAvailable()) {
+            const widthMM = mode === '57mm' ? 57 : 80;
+            const bytes = await buildCollaboratorReceiptTicket({ receipt, extras, discounts, company }, { widthMM });
+            const result = await printRawBytes(bytes);
+
+            if (!result.ok) {
+                toast.error('Error de impresión: ' + result.error);
+            }
+
+            return;
+        }
+
         const printElement = document.getElementById('print-zone');
         if (!printElement) { return; }
 

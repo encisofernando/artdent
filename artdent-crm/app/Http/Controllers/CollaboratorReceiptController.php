@@ -7,19 +7,18 @@ use App\Models\CollaboratorDiscount;
 use App\Models\CollaboratorExtra;
 use App\Models\CollaboratorReceipt;
 use App\Services\CollaboratorReceiptSyncService;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CollaboratorReceiptController extends Controller
 {
-    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService)
-    {
-    }
+    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService) {}
 
     public function index(Request $request): \Inertia\Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $collaboratorId = $request->input('collaborator_id');
         $status = $request->input('status');
 
@@ -65,7 +64,7 @@ class CollaboratorReceiptController extends Controller
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'collaborator_id' => [
@@ -111,7 +110,7 @@ class CollaboratorReceiptController extends Controller
 
     public function show(CollaboratorReceipt $collaboratorReceipt): \Inertia\Response
     {
-        $this->ensureCompanyOwned($collaboratorReceipt, auth()->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorReceipt, CompanyContext::id());
         $collaboratorReceipt = $this->receiptSyncService->syncReceipt($collaboratorReceipt);
 
         $collaboratorReceipt->load('collaborator.company');
@@ -141,7 +140,7 @@ class CollaboratorReceiptController extends Controller
 
     public function update(Request $request, CollaboratorReceipt $collaboratorReceipt): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorReceipt, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorReceipt, CompanyContext::id());
         $collaboratorReceipt = $this->receiptSyncService->syncReceipt($collaboratorReceipt);
 
         $validated = $request->validate([
@@ -161,7 +160,7 @@ class CollaboratorReceiptController extends Controller
 
     public function destroy(CollaboratorReceipt $collaboratorReceipt): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorReceipt, auth()->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorReceipt, CompanyContext::id());
 
         $collaboratorReceipt->delete();
 

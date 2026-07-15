@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CashMovement;
+use App\Models\CashSession;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
@@ -17,6 +19,9 @@ use App\Models\Warehouse;
 use App\Services\CustomerAccountSaleAllocator;
 use App\Services\EmailTemplateService;
 use App\Services\StockAlertService;
+use App\Support\Auditor;
+use App\Support\CompanyContext;
+use App\Support\PlanLimitService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +45,7 @@ class SaleController extends Controller
         $status = $request->input('status', 'all');
 
         $query = Sale::with(['sale_items', 'customer:id,name'])
-            ->where('company_id', auth()->user()->company_id ?? 1);
+            ->where('company_id', CompanyContext::id());
 
         if ($search) {
             $query->where('sale_number', 'like', "%{$search}%");
@@ -62,7 +67,7 @@ class SaleController extends Controller
 
         if ($customerIds->isNotEmpty()) {
             DB::transaction(function () use ($allocator, $customerIds) {
-                $companyId = auth()->user()->company_id ?? 1;
+                $companyId = CompanyContext::id();
 
                 foreach ($customerIds as $customerId) {
                     $allocator->reconcileUnlinkedPaymentsForCustomer((int) $customerId, $companyId);
@@ -105,14 +110,17 @@ class SaleController extends Controller
             'product_variants' => fn ($q) => $q->where('is_active', 1)->orderBy('id'),
             'product_variants.stocks',
             'product_variants.variant_attribute_values.product_attribute_value.product_attribute',
+            'barcodes',
         ])
             ->where('is_active', 1)
-            ->get(['id', 'name', 'sku', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
+            ->get(['id', 'name', 'sku', 'barcode', 'price', 'cost_price', 'tax_rate', 'track_stock', 'has_variants'])
             ->map(function ($p) {
                 $arr = $p->toArray();
                 $coverImg = $p->product_images->firstWhere('is_cover', true) ?? $p->product_images->first();
                 $arr['image'] = $coverImg?->thumb_url ?? $coverImg?->url ?? null;
-                $variantsMapped = $p->product_variants->map(function ($v) {
+                $arr['extra_barcodes'] = $p->barcodes->whereNull('variant_id')->pluck('barcode')->values()->all();
+                $barcodesByVariant = $p->barcodes->whereNotNull('variant_id')->groupBy('variant_id');
+                $variantsMapped = $p->product_variants->map(function ($v) use ($barcodesByVariant) {
                     $attributes = $v->variant_attribute_values
                         ->map(function ($vav) {
                             $value = $vav->product_attribute_value;
@@ -138,6 +146,7 @@ class SaleController extends Controller
                         'id' => $v->id,
                         'sku' => $v->sku,
                         'barcode' => $v->barcode,
+                        'extra_barcodes' => ($barcodesByVariant->get($v->id) ?? collect())->pluck('barcode')->values()->all(),
                         'price' => (float) $v->price,
                         'is_active' => $v->is_active,
                         'label' => $label,
@@ -155,7 +164,7 @@ class SaleController extends Controller
                 return $arr;
             });
 
-        $company = \App\Models\Company::where('id', auth()->user()->company_id ?? 1)
+        $company = \App\Models\Company::where('id', CompanyContext::id())
             ->first(['id', 'iva_condition', 'afip_point_sale', 'cuit', 'name', 'fantasy_name',
                 'address', 'city', 'province', 'phone', 'email', 'iibb', 'start_date', 'logo_url',
                 'whatsapp_message_template']);
@@ -167,8 +176,10 @@ class SaleController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PlanLimitService $limits)
     {
+        $limits->assertCanRecordSale();
+
         $request->validate([
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|integer|exists:products,id',
@@ -194,7 +205,7 @@ class SaleController extends Controller
             'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $userId = auth()->id();
 
         $warehouse = Warehouse::firstOrCreate(
@@ -299,6 +310,8 @@ class SaleController extends Controller
                     'paid_at' => $soldAt,
                 ]);
             }
+
+            $this->linkSaleToOpenCashSession($sale, $companyId, $payments);
 
             // Crear ítems y descontar stock
             foreach ($request->items as $item) {
@@ -513,7 +526,14 @@ class SaleController extends Controller
             'user',
             'customer',
             'invoice.invoice_type',
+            'sale_returns.items',
+            'sale_returns.user:id,name',
         ]);
+
+        $returnedQtyByItem = $sale->sale_returns
+            ->flatMap(fn ($return) => $return->items)
+            ->groupBy('sale_item_id')
+            ->map(fn ($items) => $items->sum('quantity'));
 
         $accountData = null;
         if ($sale->customer_id) {
@@ -531,6 +551,9 @@ class SaleController extends Controller
 
         return Inertia::render('Sale/Show', [
             'sale' => array_merge($sale->toArray(), [
+                'sale_items' => $sale->sale_items->map(fn ($item) => array_merge($item->toArray(), [
+                    'returned_quantity' => (float) ($returnedQtyByItem[$item->id] ?? 0),
+                ])),
                 'sale_payments' => $sale->sale_payments->map(fn ($p) => [
                     'amount' => $p->amount,
                     'payment_method' => $p->paymentMethod
@@ -541,6 +564,7 @@ class SaleController extends Controller
                 'customer' => $sale->customer
                     ? $sale->customer->only('id', 'name', 'phone', 'dni', 'cuit', 'email')
                     : null,
+                'sale_returns' => $sale->sale_returns,
             ]),
             'account' => $accountData,
             'paymentMethods' => $paymentMethods,
@@ -640,7 +664,7 @@ class SaleController extends Controller
             return back()->withErrors(['error' => 'Los comprobantes fiscales no pueden eliminarse. Emití una Nota de Crédito o Débito.']);
         }
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $warehouse = Warehouse::where('company_id', $companyId)->first();
 
         DB::beginTransaction();
@@ -681,6 +705,8 @@ class SaleController extends Controller
 
             $sale->update(['status' => 'cancelled']);
             DB::commit();
+
+            Auditor::log('sale.cancelled', $sale, ['total' => (float) $sale->total, 'sale_number' => $sale->sale_number]);
 
             return redirect()
                 ->route('sales.index')
@@ -768,6 +794,46 @@ class SaleController extends Controller
             ->first();
     }
 
+    /**
+     * Si hay exactamente una caja abierta para la empresa, adjunta la venta a esa sesión
+     * y registra el ingreso en efectivo como un movimiento de caja. Con más de una sesión
+     * abierta simultánea no se puede saber a qué caja pertenece esta venta (todavía no hay
+     * un selector de caja en el punto de venta), así que en ese caso no se vincula nada y
+     * la venta sigue su curso normal sin afectar ninguna caja.
+     *
+     * @param  array<int, array{method: string, amount: float}>  $payments
+     */
+    private function linkSaleToOpenCashSession(Sale $sale, int $companyId, array $payments): void
+    {
+        $cashAmount = round(collect($payments)->where('method', 'cash')->sum('amount'), 2);
+
+        if ($cashAmount <= 0) {
+            return;
+        }
+
+        $openSessions = CashSession::query()
+            ->where('status', 'open')
+            ->whereHas('cash_drawer', fn ($query) => $query->where('company_id', $companyId))
+            ->get();
+
+        if ($openSessions->count() !== 1) {
+            return;
+        }
+
+        $session = $openSessions->first();
+        $sale->update(['cash_session_id' => $session->id]);
+
+        CashMovement::create([
+            'cash_session_id' => $session->id,
+            'payment_method_id' => $this->resolveSalePaymentMethod('cash')?->id,
+            'type' => 'in',
+            'amount' => $cashAmount,
+            'concept' => "Venta {$sale->sale_number}",
+            'reference_type' => 'sale',
+            'reference_id' => $sale->id,
+        ]);
+    }
+
     private function buildPaymentBreakdown(Sale $sale): array
     {
         $breakdown = $sale->sale_payments->map(function (SalePayment $payment) {
@@ -814,7 +880,7 @@ class SaleController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
-        $company = Company::findOrFail(auth()->user()->company_id ?? 1);
+        $company = Company::findOrFail(CompanyContext::id());
         $customer = $sale->customer;
         $saleUrl = route('quotes.public', ['token' => $sale->public_token ?? ''])
                     ?: url("/sales/{$sale->id}");

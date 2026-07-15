@@ -7,7 +7,7 @@ import {
     ArrowLeft, Edit, Printer,
     User, Calendar, Layers, FileText,
     CheckCircle2, AlertCircle, BriefcaseMedical, SlidersHorizontal, Clock,
-    GitBranch, Loader2, FlaskConical, Truck, Play
+    GitBranch, Loader2, FlaskConical, Truck, Play, Percent
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -109,6 +109,22 @@ export default function Show({ auth, item }) {
     const items = item.job_items || [];
     const subtotal = items.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0);
     const discount = Number(item.discount_amount || 0);
+
+    // ── Comisiones (creador de la orden + colaboradores que completaron fases) ──
+    const creatorPct = Number(item.received_by?.employee?.job_commission_pct || 0);
+    const creatorAmount = creatorPct > 0 ? Number(item.total) * creatorPct / 100 : 0;
+    const collabPct = Number(item.company?.collaborator_commission_pct || 0);
+    const uniqueCollaborators = Array.from(
+        new Map(
+            (item.phase_progress || [])
+                .flatMap((p) => p.phase_collaborators || [])
+                .filter((pc) => pc.collaborator)
+                .map((pc) => [pc.collaborator.id, pc.collaborator])
+        ).values()
+    );
+    const collabPool = collabPct > 0 ? Number(item.total) * collabPct / 100 : 0;
+    const collabShare = uniqueCollaborators.length > 0 ? collabPool / uniqueCollaborators.length : 0;
+    const showCommissions = creatorAmount > 0 || (collabPool > 0 && uniqueCollaborators.length > 0);
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -240,6 +256,39 @@ export default function Show({ auth, item }) {
                         </>
                     )}
                 </Card>
+
+                {/* ── Comisiones ── */}
+                {showCommissions && (
+                    <Card title="Comisiones" icon={Percent} D={D}>
+                        {creatorAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: uniqueCollaborators.length > 0 ? 10 : 0, paddingBottom: uniqueCollaborators.length > 0 ? 10 : 0, borderBottom: uniqueCollaborators.length > 0 ? `1px solid ${D.border}` : 'none' }}>
+                                <div>
+                                    <p style={{ fontSize: 13, fontWeight: 700, color: D.text }}>{item.received_by?.name ?? 'Usuario que dio de alta'}</p>
+                                    <p style={{ fontSize: 11, color: D.sub }}>Comisión por dar de alta la orden · {creatorPct}%</p>
+                                </div>
+                                <span style={{ fontSize: 14, fontWeight: 800, color: AD.blue }}>{fmtARS(creatorAmount)}</span>
+                            </div>
+                        )}
+                        {uniqueCollaborators.length > 0 && collabPool > 0 && (
+                            <>
+                                <p style={{ fontSize: 11, color: D.sub, marginBottom: 6 }}>
+                                    Reparto entre colaboradores · {collabPct}% del total (${uniqueCollaborators.length} c/u)
+                                </p>
+                                {uniqueCollaborators.map((c) => (
+                                    <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                                        <span style={{ fontSize: 13, color: D.text }}>{c.name}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: AD.teal }}>{fmtARS(collabShare)}</span>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        <p style={{ fontSize: 10, color: D.sub, marginTop: 10 }}>
+                            {item.commission_processed_at
+                                ? 'Comisión liquidada — se cargó como extra al empleado y a los colaboradores.'
+                                : 'Vista previa: se liquidará automáticamente al finalizar el trabajo.'}
+                        </p>
+                    </Card>
+                )}
 
                 {/* ── CRM Phase Actions ── */}
                 {(() => {

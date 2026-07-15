@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\LaborAgreementCategory;
 use App\Models\Position;
 use App\Models\User;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,7 +17,7 @@ class EmployeeController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $search = $request->input('search');
         $active = $request->input('active');
 
@@ -55,7 +56,7 @@ class EmployeeController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
@@ -63,6 +64,7 @@ class EmployeeController extends Controller
             'position' => ['nullable', 'string', 'max:100'],
             'salary' => ['nullable', 'numeric', 'min:0'],
             'commission_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'job_commission_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'hire_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:hire_date'],
             'is_active' => ['boolean'],
@@ -76,7 +78,7 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employee->company_id === $companyId, 404);
 
         $employee->load([
@@ -132,7 +134,7 @@ class EmployeeController extends Controller
 
     public function legajo(Request $request, Employee $employee): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employee->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -164,7 +166,7 @@ class EmployeeController extends Controller
 
     public function update(Request $request, Employee $employee): RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employee->company_id === $companyId, 404);
 
         $validated = $request->validate([
@@ -173,6 +175,7 @@ class EmployeeController extends Controller
             'position' => ['nullable', 'string', 'max:100'],
             'salary' => ['nullable', 'numeric', 'min:0'],
             'commission_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'job_commission_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'hire_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:hire_date'],
             'is_active' => ['boolean'],
@@ -186,7 +189,7 @@ class EmployeeController extends Controller
 
     public function destroy(Employee $employee): RedirectResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         abort_unless((int) $employee->company_id === $companyId, 404);
 
         abort_if(

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Warehouse;
+use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,7 +13,7 @@ class WarehouseController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $search = $request->input('search');
 
         $query = Warehouse::query()
@@ -37,7 +38,7 @@ class WarehouseController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],

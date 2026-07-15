@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
 use App\Http\Controllers\SalePaymentController;
+use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\VentasController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +28,13 @@ Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->name('sales.d
 Route::post('sales/{sale}/pay', [SaleController::class, 'pay'])->name('sales.pay')->middleware('permission:sales.edit');
 Route::post('sales/{sale}/generate-pdf', [SaleController::class, 'generatePdf'])->name('sales.generate-pdf')->middleware('permission:sales.view');
 Route::post('sales/{sale}/send-email', [SaleController::class, 'sendEmail'])->name('sales.send-email')->middleware('permission:sales.view');
+Route::post('sales/{sale}/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store')->middleware('permission:sales.edit');
+
+// Ventas en espera (carritos guardados sin confirmar)
+Route::get('held-sales', [HeldSaleController::class, 'index'])->name('held-sales.index')->middleware('permission:sales.create');
+Route::post('held-sales', [HeldSaleController::class, 'store'])->name('held-sales.store')->middleware('permission:sales.create');
+Route::get('held-sales/{heldSale}', [HeldSaleController::class, 'show'])->name('held-sales.show')->middleware('permission:sales.create');
+Route::delete('held-sales/{heldSale}', [HeldSaleController::class, 'destroy'])->name('held-sales.destroy')->middleware('permission:sales.create');
 
 // Sub-recursos de venta (items y pagos)
 Route::resource('sale-items', SaleItemController::class)->middleware('permission:sales.edit');

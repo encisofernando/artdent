@@ -20,6 +20,8 @@ class RolePermissionSeeder extends Seeder
         'roles' => ['view', 'create', 'edit', 'delete'],
         'settings' => ['view', 'edit'],
         'branches' => ['view', 'create', 'edit', 'delete'],
+        // switch: permite cambiar la company activa (ver App\Support\CompanyContext)
+        'companies' => ['switch'],
 
         // ── Comercial ─────────────────────────────────────────────────────────
         'customers' => ['view', 'create', 'edit', 'delete'],

@@ -3,6 +3,7 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
+import CompanySwitcher from '@/Components/CompanySwitcher';
 import {
     Menu,
     Moon,
@@ -224,6 +225,8 @@ export default function Topbar({ user, onSidebarToggle }) {
                         <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
                         Sistema Activo
                     </div>
+
+                    <CompanySwitcher />
                 </div>
 
                 {/* Right side */}

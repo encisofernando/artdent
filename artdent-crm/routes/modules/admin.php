@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
@@ -35,6 +36,10 @@ Route::post('roles', [RoleController::class, 'store'])->name('roles.store')->mid
 Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update')->middleware('permission:roles.edit');
 Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->middleware('permission:roles.delete');
 
+// Auditoría (registro de acciones sensibles: ventas canceladas, cambios de
+// precio masivos, altas/bajas de usuarios y roles)
+Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('permission:settings.edit');
+
 // Suscripción SaaS
 Route::get('subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
 Route::post('subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
@@ -42,6 +47,9 @@ Route::post('subscription/cancel', [SubscriptionController::class, 'cancel'])->n
 
 Route::get('settings', [CompanyController::class, 'edit'])->name('settings.edit');
 Route::put('settings', [CompanyController::class, 'update'])->name('settings.update');
+
+// Selector de compañía activa (usuarios con permiso companies.switch)
+Route::post('companies/active', [CompanyController::class, 'setActive'])->name('companies.set-active');
 
 Route::resource('branchs', BranchController::class);
 
@@ -120,12 +128,14 @@ Route::resource('variant-attribute-values', VariantAttributeValueController::cla
 use App\Http\Controllers\KioskAccessController;
 
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('kiosk-access', [KioskAccessController::class, 'index'])->name('kiosk-access.index');
-    Route::post('kiosk-access/ips', [KioskAccessController::class, 'storeIp'])->name('kiosk-access.ips.store');
-    Route::patch('kiosk-access/ips/{ip}/toggle', [KioskAccessController::class, 'toggleIp'])->name('kiosk-access.ips.toggle');
-    Route::delete('kiosk-access/ips/{ip}', [KioskAccessController::class, 'destroyIp'])->name('kiosk-access.ips.destroy');
-    Route::post('kiosk-access/tokens', [KioskAccessController::class, 'storeToken'])->name('kiosk-access.tokens.store');
-    Route::delete('kiosk-access/tokens/{token}', [KioskAccessController::class, 'destroyToken'])->name('kiosk-access.tokens.destroy');
+    Route::middleware('module:laboratorio|rrhh')->group(function () {
+        Route::get('kiosk-access', [KioskAccessController::class, 'index'])->name('kiosk-access.index');
+        Route::post('kiosk-access/ips', [KioskAccessController::class, 'storeIp'])->name('kiosk-access.ips.store');
+        Route::patch('kiosk-access/ips/{ip}/toggle', [KioskAccessController::class, 'toggleIp'])->name('kiosk-access.ips.toggle');
+        Route::delete('kiosk-access/ips/{ip}', [KioskAccessController::class, 'destroyIp'])->name('kiosk-access.ips.destroy');
+        Route::post('kiosk-access/tokens', [KioskAccessController::class, 'storeToken'])->name('kiosk-access.tokens.store');
+        Route::delete('kiosk-access/tokens/{token}', [KioskAccessController::class, 'destroyToken'])->name('kiosk-access.tokens.destroy');
+    });
 
     // Crear symlink storage en producción
     Route::post('storage-link', function () {

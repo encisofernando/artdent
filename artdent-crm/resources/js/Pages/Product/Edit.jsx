@@ -300,9 +300,25 @@ const genSku = (productName = '', attributes = {}) => {
     return [prefix, ...parts].join('-');
 };
 
-export default function Edit({ auth, item, categories = [], vendors = [] }) {
+export default function Edit({ auth, item, categories = [], vendors = [], usdExchangeRate = null }) {
     const { isDark } = useTheme();
     const confirmDialog = useConfirm();
+
+    // ── códigos de barra adicionales ─────────────────────────────────────────
+    const [newBarcode, setNewBarcode] = useState('');
+    const [newBarcodeLabel, setNewBarcodeLabel] = useState('');
+    const addBarcode = () => {
+        if (!newBarcode.trim()) return;
+        router.post(route('product-barcodes.store', item.id), { barcode: newBarcode.trim(), label: newBarcodeLabel.trim() || null }, {
+            preserveScroll: true,
+            onSuccess: () => { setNewBarcode(''); setNewBarcodeLabel(''); },
+        });
+    };
+    const removeBarcode = (barcode) => {
+        confirmDialog(`¿Eliminar el código de barras "${barcode.barcode}"?`, () => {
+            router.delete(route('product-barcodes.destroy', barcode.id), { preserveScroll: true });
+        });
+    };
 
     // ── categoría: inicializar raíz correctamente según category_id del item ──
     const initRootCatId = () => {
@@ -339,6 +355,8 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
         description: item.description || '',
         category_id: item.category_id ? String(item.category_id) : '',
         cost_price: item.cost_price || '',
+        cost_currency: item.cost_currency || 'ARS',
+        cost_price_usd: item.cost_price_usd || '',
         price: item.price || '',
         is_active: item.is_active !== undefined ? item.is_active : 1,
         has_variants: item.has_variants || 0,
@@ -425,6 +443,20 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
         if (!isNaN(cost) && cost > 0 && !isNaN(pct)) {
             setData('price', (cost * (1 + pct / 100)).toFixed(2));
         }
+    };
+
+    // ── costo en USD (insumos importados) ────────────────────────────────────
+    const handleUsdCostChange = (val) => {
+        setData('cost_price_usd', val);
+        const usd = parseFloat(val);
+        if (!isNaN(usd) && usd > 0 && usdExchangeRate) {
+            handleCostChange((usd * usdExchangeRate).toFixed(2));
+        }
+    };
+
+    const toggleUsdCost = (checked) => {
+        setData('cost_currency', checked ? 'USD' : 'ARS');
+        if (!checked) setData('cost_price_usd', '');
     };
 
     const handlePriceChange = (val) => {
@@ -745,6 +777,33 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
                                 </Field>
                             </div>
 
+                            <div className={`flex flex-col gap-2 px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
+                                <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Códigos de barra adicionales</p>
+                                {(item.barcodes || []).length > 0 && (
+                                    <div className="flex flex-col gap-1.5">
+                                        {item.barcodes.map(bc => (
+                                            <div key={bc.id} className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-sm ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+                                                <span className="font-mono">{bc.barcode}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {bc.label && <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{bc.label}</span>}
+                                                    <button type="button" onClick={() => removeBarcode(bc)} className="text-red-500 hover:text-red-600 text-xs font-bold">Quitar</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="flex gap-2">
+                                    <Input isDark={isDark} type="text" value={newBarcode} onChange={e => setNewBarcode(e.target.value)}
+                                        placeholder="Nuevo código (ej: código del proveedor)" className="font-mono flex-1" />
+                                    <Input isDark={isDark} type="text" value={newBarcodeLabel} onChange={e => setNewBarcodeLabel(e.target.value)}
+                                        placeholder="Etiqueta (opcional)" className="w-40" />
+                                    <button type="button" onClick={addBarcode}
+                                        className={`shrink-0 px-3 rounded-xl border text-xs font-bold transition-colors ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-teal-500' : 'bg-white border-slate-200 text-slate-600 hover:border-teal-500'}`}>
+                                        Agregar
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className={`flex flex-col gap-3 px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
                                 <Toggle isDark={isDark} label="Llevar control de stock"
                                     color="blue" checked={trackStock}
@@ -807,13 +866,36 @@ export default function Edit({ auth, item, categories = [], vendors = [] }) {
                             )}
 
                             {(!hasVariants || data.same_price_for_variants) && (
-                                <PriceBlock
-                                    isDark={isDark}
-                                    cost={data.cost_price}    onCostChange={handleCostChange}
-                                    price={data.price}        onPriceChange={handlePriceChange}
-                                    marginPct={marginPct}     onMarginChange={handleMarginChange}
-                                    errors={errors}
-                                />
+                                <>
+                                    <PriceBlock
+                                        isDark={isDark}
+                                        cost={data.cost_price}    onCostChange={handleCostChange}
+                                        price={data.price}        onPriceChange={handlePriceChange}
+                                        marginPct={marginPct}     onMarginChange={handleMarginChange}
+                                        errors={errors}
+                                    />
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <label className={`flex items-center gap-2 text-xs font-semibold cursor-pointer ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                            <input type="checkbox" checked={data.cost_currency === 'USD'}
+                                                onChange={e => toggleUsdCost(e.target.checked)}
+                                                className="rounded accent-teal-500" />
+                                            Costo cargado en USD (insumo importado)
+                                        </label>
+                                        {data.cost_currency === 'USD' && (
+                                            <div className="relative flex-1 max-w-[160px]">
+                                                <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>US$</span>
+                                                <Input isDark={isDark} type="number" step="0.01"
+                                                    value={data.cost_price_usd} onChange={e => handleUsdCostChange(e.target.value)}
+                                                    placeholder="0,00" className="pl-9 font-mono" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {data.cost_currency === 'USD' && !usdExchangeRate && (
+                                        <p className="text-xs text-amber-500 mt-1">
+                                            No hay una cotización de dólar configurada — cargá una desde Ventas → Precios para que el costo en pesos se calcule solo.
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
                     </SectionCard>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Permission;
 use App\Models\Role;
+use App\Support\Auditor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -51,6 +52,8 @@ class RoleController extends Controller
             $role->syncPermissions($validated['permissions']);
         }
 
+        Auditor::log('role.created', $role, ['name' => $role->name, 'permissions' => $role->permissions()->pluck('name')->all()]);
+
         return redirect()->route('roles.index')
             ->with('success', "Rol '{$role->display_name}' creado correctamente.");
     }
@@ -70,6 +73,8 @@ class RoleController extends Controller
             'permissions' => 'nullable|array',
         ]);
 
+        $permissionsBefore = $role->permissions()->pluck('name')->all();
+
         // We don't allow renaming the 'name' (identifier) easily to avoid breaking syncs
         $role->update([
             'display_name' => $validated['display_name'] ?? $role->display_name,
@@ -77,6 +82,11 @@ class RoleController extends Controller
         ]);
 
         $role->syncPermissions($validated['permissions'] ?? []);
+
+        Auditor::log('role.updated', $role, [
+            'permissions_before' => $permissionsBefore,
+            'permissions_after' => $role->permissions()->pluck('name')->all(),
+        ]);
 
         return redirect()->route('roles.index')
             ->with('success', "Rol '{$role->display_name}' actualizado.");
@@ -90,6 +100,8 @@ class RoleController extends Controller
         if ($role->name === 'Super Admin') {
             return back()->with('error', 'El rol de Super Administrador no puede ser eliminado.');
         }
+
+        Auditor::log('role.deleted', $role, ['name' => $role->name]);
 
         $role->delete();
 

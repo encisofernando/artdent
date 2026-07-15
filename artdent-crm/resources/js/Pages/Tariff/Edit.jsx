@@ -1,41 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, Banknote, FileText, Calculator, Layers, Plus, Trash2, GripVertical } from 'lucide-react';
+import { ArrowLeft, Save, Banknote, FileText, Calculator, Layers, Plus, Trash2 } from 'lucide-react';
 import TariffCostBuilder from '@/Components/TariffCostBuilder';
+import SearchableSelect from '@/Components/SearchableSelect';
 
-function PhasesManager({ tariffId, initialPhases, isDark }) {
+function PhasesManager({ tariffId, phases, setPhases, phaseTemplates, margin, onMarginChange, isDark }) {
     const confirmDialog = useConfirm();
-    const [phases, setPhases] = useState(initialPhases || []);
-    const [newPhase, setNewPhase] = useState({ name: '', price: '' });
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [saving, setSaving] = useState(false);
 
     const B = { blue: '#397B9C', teal: '#5AAD9C' };
     const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200';
     const input = isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900';
 
+    const templateOptions = phaseTemplates.map((t) => ({ value: t.id, label: `${t.name} — $ ${Number(t.price).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }));
+
     const handleAdd = () => {
-        if (!newPhase.name || !newPhase.price) return;
+        if (!selectedTemplateId) return;
         setSaving(true);
         router.post(route('tariff-phases.store', tariffId), {
-            name: newPhase.name,
-            price: parseFloat(newPhase.price),
+            phase_template_id: selectedTemplateId,
             sort_order: phases.length,
         }, {
             preserveState: true,
             onSuccess: (page) => {
                 setPhases(page.props.item?.phases || phases);
-                setNewPhase({ name: '', price: '' });
+                setSelectedTemplateId('');
             },
             onFinish: () => setSaving(false),
         });
     };
 
     const handleDelete = (phaseId) => {
-        confirmDialog('¿Eliminar esta fase?', () => {
+        confirmDialog('¿Eliminar esta fase del arancel?', () => {
             router.delete(route('tariff-phases.destroy', { tariff: tariffId, phase: phaseId }), {
                 preserveState: true,
                 onSuccess: (page) => setPhases(page.props.item?.phases || phases.filter(p => p.id !== phaseId)),
@@ -44,6 +45,9 @@ function PhasesManager({ tariffId, initialPhases, isDark }) {
     };
 
     const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    const phasesTotal = phases.reduce((s, p) => s + Number(p.price), 0);
+    const marginNum = parseFloat(margin) || 0;
+    const finalPrice = round2(phasesTotal * (1 + marginNum / 100));
 
     return (
         <div className={`rounded-2xl border p-6 shadow-sm ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
@@ -55,7 +59,7 @@ function PhasesManager({ tariffId, initialPhases, isDark }) {
                 </span>
             </div>
             <p className={`text-xs mb-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                Definí las etapas de producción de este arancel. El cargo al odontólogo se generará al completar cada fase.
+                Asigná fases del catálogo. El precio final del arancel se calcula solo: suma de fases + margen. El cargo al odontólogo se genera al enviar cada fase a prueba (o al completarla, si nunca pasa por prueba).
             </p>
 
             {/* Lista de fases existentes */}
@@ -74,59 +78,83 @@ function PhasesManager({ tariffId, initialPhases, isDark }) {
                             </button>
                         </div>
                     ))}
-                    <div className={`flex justify-between items-center pt-2 px-1 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        <span>Total fases</span>
-                        <span style={{ color: B.blue }}>$ {fmt(phases.reduce((s, p) => s + Number(p.price), 0))}</span>
-                    </div>
                 </div>
             )}
 
-            {/* Agregar nueva fase */}
-            <div className={`flex gap-2 items-end p-3 rounded-xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+            {/* Agregar fase del catálogo */}
+            <div className={`flex gap-2 items-end p-3 rounded-xl border mb-4 ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex-1">
-                    <label className={`text-[11px] font-semibold uppercase tracking-wider mb-1 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Nombre</label>
-                    <input
-                        type="text"
-                        placeholder="Ej: RODETE"
-                        value={newPhase.name}
-                        onChange={e => setNewPhase(p => ({ ...p, name: e.target.value.toUpperCase() }))}
-                        className={`w-full text-sm px-3 py-2 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${input}`}
+                    <label className={`text-[11px] font-semibold uppercase tracking-wider mb-1 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Fase del catálogo</label>
+                    <SearchableSelect
+                        options={templateOptions}
+                        value={selectedTemplateId}
+                        onChange={setSelectedTemplateId}
+                        placeholder="Buscar fase..."
                     />
                 </div>
-                <div className="w-28">
-                    <label className={`text-[11px] font-semibold uppercase tracking-wider mb-1 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Precio</label>
-                    <input
-                        type="number"
-                        placeholder="0.00"
-                        value={newPhase.price}
-                        onChange={e => setNewPhase(p => ({ ...p, price: e.target.value }))}
-                        className={`w-full text-sm px-3 py-2 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${input}`}
-                    />
-                </div>
-                <button onClick={handleAdd} disabled={saving || !newPhase.name || !newPhase.price}
+                <button onClick={handleAdd} disabled={saving || !selectedTemplateId}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-40 transition-all"
                     style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
                     <Plus size={14} />
                     Agregar
                 </button>
             </div>
+            {phaseTemplates.length === 0 && (
+                <p className={`text-xs mb-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                    No hay fases en el catálogo todavía. Cargalas desde Laboratorio → Catálogo de Fases.
+                </p>
+            )}
+
+            {/* Total + margen + precio final */}
+            {phases.length > 0 && (
+                <div className={`rounded-xl border p-4 ${card}`}>
+                    <div className="flex justify-between items-center text-xs font-semibold mb-3">
+                        <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Total fases</span>
+                        <span style={{ color: B.blue }}>$ {fmt(phasesTotal)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <label className={`text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Margen de rentabilidad</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={margin}
+                            onChange={(e) => onMarginChange(e.target.value)}
+                            className={`w-24 text-sm px-3 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${input}`}
+                        />
+                        <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>%</span>
+                    </div>
+                    <div className={`flex justify-between items-center pt-3 border-t text-sm font-bold ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>Precio final del arancel</span>
+                        <span style={{ color: B.teal }}>$ {fmt(finalPrice)}</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-export default function Edit({ auth, item }) {
+function round2(v) {
+    return Math.round(v * 100) / 100;
+}
+
+export default function Edit({ auth, item, phaseTemplates = [] }) {
     const { isDark } = useTheme();
     const { data, setData, put, processing, errors } = useForm({
         code: item.code || '',
         name: item.name || '',
         category: item.category || '',
         price: item.price !== undefined ? item.price : '',
+        margin_pct: item.margin_pct ?? 0,
         unit: item.unit || 'Unidad',
         description: item.description || '',
         is_active: item.is_active !== undefined ? item.is_active : 1,
         // The controller sends relations if loaded with `->with('costs')`
         costs: item.costs || []
     });
+
+    const [phases, setPhases] = useState(item.phases || []);
+    const hasPhases = phases.length > 0;
 
     const calculateTotalCosts = (costsArr) => {
         let finalPrice = 0;
@@ -145,6 +173,16 @@ export default function Edit({ auth, item }) {
             price: newCosts.length > 0 ? calculateTotalCosts(newCosts) : prev.price
         }));
     };
+
+    // El precio final manda de las fases (si hay) por sobre la fórmula de costos o el
+    // valor manual — se recalcula solo (el servidor hace lo mismo al guardar).
+    useEffect(() => {
+        if (!hasPhases) return;
+        const phasesTotal = phases.reduce((s, p) => s + Number(p.price), 0);
+        const margin = parseFloat(data.margin_pct) || 0;
+        const finalPrice = Math.round(phasesTotal * (1 + margin / 100) * 100) / 100;
+        setData(prev => ({ ...prev, price: finalPrice }));
+    }, [phases, data.margin_pct]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -247,10 +285,10 @@ export default function Edit({ auth, item }) {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClasses}>
-                                        Precio Final (Manual o Auto-Calculado) *
+                                        {hasPhases ? 'Precio Final (Fases + Margen)' : 'Precio Final (Manual o Auto-Calculado)'} *
                                     </label>
                                     <div className="relative">
-                                        <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none 
+                                        <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none
                                             ${isDark ? 'text-teal-400' : 'text-teal-600'}`}
                                         >
                                             $
@@ -260,13 +298,18 @@ export default function Edit({ auth, item }) {
                                             step="0.01"
                                             value={data.price}
                                             onChange={e => setData('price', e.target.value)}
-                                            readOnly={data.costs.length > 0}
-                                            className={`${inputClasses} pl-8 ${data.costs.length > 0 ? (isDark ? 'bg-slate-800/80 text-teal-400 font-bold border-teal-500/30' : 'bg-teal-50 text-teal-700 font-bold border-teal-200') : ''}`}
+                                            readOnly={hasPhases || data.costs.length > 0}
+                                            className={`${inputClasses} pl-8 ${(hasPhases || data.costs.length > 0) ? (isDark ? 'bg-slate-800/80 text-teal-400 font-bold border-teal-500/30' : 'bg-teal-50 text-teal-700 font-bold border-teal-200') : ''}`}
                                             placeholder="0.00"
                                             required
                                         />
                                     </div>
                                     {errors.price && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.price}</div>}
+                                    {hasPhases && (
+                                        <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            Se calcula solo a partir de las fases asignadas más abajo. Para cambiarlo, ajustá el margen o las fases.
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className={labelClasses}>Unidad de Medida</label>
@@ -356,7 +399,15 @@ export default function Edit({ auth, item }) {
 
 
                     {/* Fases de trabajo */}
-                    <PhasesManager tariffId={item.id} initialPhases={item.phases || []} isDark={isDark} />
+                    <PhasesManager
+                        tariffId={item.id}
+                        phases={phases}
+                        setPhases={setPhases}
+                        phaseTemplates={phaseTemplates}
+                        margin={data.margin_pct}
+                        onMarginChange={(v) => setData('margin_pct', v)}
+                        isDark={isDark}
+                    />
 
                     <div className={`rounded-2xl border p-6 shadow-sm transition-colors flex justify-end gap-3
                         ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}

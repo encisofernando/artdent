@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Dentist;
 use App\Models\LabAccount;
 use App\Models\LabAccountMove;
-use App\Models\Dentist;
 use App\Models\PaymentMethod;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Inertia\Inertia;
 
 class LabAccountMoveController extends Controller
 {
@@ -20,15 +21,16 @@ class LabAccountMoveController extends Controller
      */
     public function index(Request $request)
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $search = $request->input('search');
         $period = $request->input('period', 'week');
         $from = $request->input('from');
         $to = $request->input('to');
+        $referenceDate = $request->input('reference_date');
         $dentistsHaveLastName = Schema::hasColumn('dentists', 'last_name');
 
-        [$resolvedFrom, $resolvedTo] = $this->resolveDateRange($period, $from, $to);
+        [$resolvedFrom, $resolvedTo] = $this->resolveDateRange($period, $from, $to, $referenceDate);
 
         $query = LabAccountMove::with(['account.dentist', 'paymentMethod', 'user'])
             ->whereHas('account.dentist', function ($q) use ($companyId) {
@@ -46,7 +48,7 @@ class LabAccountMoveController extends Controller
                         }
                     });
                 })
-                ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -97,13 +99,14 @@ class LabAccountMoveController extends Controller
                 'period' => $period,
                 'from' => $resolvedFrom->toDateString(),
                 'to' => $resolvedTo->toDateString(),
+                'reference_date' => $resolvedFrom->toDateString(),
             ],
         ]);
     }
 
-    private function resolveDateRange(string $period, ?string $from, ?string $to): array
+    private function resolveDateRange(string $period, ?string $from, ?string $to, ?string $referenceDate = null): array
     {
-        $today = Carbon::today();
+        $today = $referenceDate ? Carbon::parse($referenceDate) : Carbon::today();
 
         [$start, $end] = match ($period) {
             'today' => [$today->copy(), $today->copy()],
@@ -141,7 +144,7 @@ class LabAccountMoveController extends Controller
      */
     public function create(Request $request)
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         return Inertia::render('LabAccountMove/Create', [
             'dentists' => Dentist::with('labAccount')
@@ -164,10 +167,10 @@ class LabAccountMoveController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'payment_method_id' => 'required|exists:payment_methods,id',
             'description' => 'required|string|max:255',
-            'move_date' => 'required|date'
+            'move_date' => 'required|date',
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $dentist = Dentist::where('id', $validated['dentist_id'])
             ->where('company_id', $companyId)
@@ -197,7 +200,7 @@ class LabAccountMoveController extends Controller
             $move->save();
 
             $account->update([
-                'balance' => $newBalance
+                'balance' => $newBalance,
             ]);
         });
 
@@ -215,12 +218,44 @@ class LabAccountMoveController extends Controller
 
         $dentist = $labAccountMove->account?->dentist;
 
-        if (! $dentist || $dentist->company_id !== (auth()->user()->company_id ?? 1)) {
+        if (! $dentist || $dentist->company_id !== (CompanyContext::id())) {
             abort(403);
         }
 
         return Inertia::render('LabAccountMove/Show', [
-            'move' => $labAccountMove
+            'move' => $labAccountMove,
         ]);
+    }
+
+    /**
+     * Delete a payment and reverse its effect on the account balance.
+     * Scoped to payments only: charges are tied to job creation/lifecycle
+     * (see JobController) and deleting them here would desync that state.
+     */
+    public function destroy(LabAccountMove $labAccountMove)
+    {
+        $labAccountMove->loadMissing('account.dentist');
+
+        $dentist = $labAccountMove->account?->dentist;
+
+        if (! $dentist || $dentist->company_id !== CompanyContext::id()) {
+            abort(403);
+        }
+
+        if ($labAccountMove->type !== LabAccountMove::TYPE_PAYMENT) {
+            return back()->with('error', 'Solo se pueden eliminar pagos. Los cargos están vinculados a órdenes de trabajo.');
+        }
+
+        DB::transaction(function () use ($labAccountMove) {
+            $account = LabAccount::lockForUpdate()->findOrFail($labAccountMove->lab_account_id);
+
+            $account->update([
+                'balance' => $account->balance - $labAccountMove->signed_amount,
+            ]);
+
+            $labAccountMove->delete();
+        });
+
+        return back()->with('success', 'Pago eliminado y saldo de la cuenta corriente actualizado.');
     }
 }

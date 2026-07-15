@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Collaborator;
 use App\Models\CollaboratorAttendance;
 use App\Services\CollaboratorReceiptSyncService;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -13,13 +14,11 @@ use Inertia\Inertia;
 
 class CollaboratorAttendanceController extends Controller
 {
-    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService)
-    {
-    }
+    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService) {}
 
     public function index(Request $request): \Inertia\Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $collaboratorId = $request->input('collaborator_id');
         $from = $request->input('from');
         $to = $request->input('to');
@@ -67,7 +66,7 @@ class CollaboratorAttendanceController extends Controller
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = Validator::make($request->all(), [
             'collaborator_id' => [
@@ -120,7 +119,7 @@ class CollaboratorAttendanceController extends Controller
 
     public function update(Request $request, CollaboratorAttendance $collaboratorAttendance): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorAttendance, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorAttendance, CompanyContext::id());
         $originalDate = $collaboratorAttendance->work_date->toDateString();
         $collaboratorId = (int) $collaboratorAttendance->collaborator_id;
         $companyId = (int) $collaboratorAttendance->company_id;
@@ -162,7 +161,7 @@ class CollaboratorAttendanceController extends Controller
 
     public function destroy(CollaboratorAttendance $collaboratorAttendance): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorAttendance, auth()->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorAttendance, CompanyContext::id());
         $companyId = (int) $collaboratorAttendance->company_id;
         $collaboratorId = (int) $collaboratorAttendance->collaborator_id;
         $workDate = $collaboratorAttendance->work_date->toDateString();

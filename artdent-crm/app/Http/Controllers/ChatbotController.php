@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PlanLimitExceededException;
 use App\Models\ChatbotConversation;
 use App\Models\User;
 use App\Services\ChatbotService;
+use App\Support\PlanLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,9 +16,7 @@ use Throwable;
 
 class ChatbotController extends Controller
 {
-    public function __construct(protected ChatbotService $chatbotService)
-    {
-    }
+    public function __construct(protected ChatbotService $chatbotService, protected PlanLimitService $planLimits) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -44,7 +44,7 @@ class ChatbotController extends Controller
             ]);
         }
 
-        $conversation = $id 
+        $conversation = $id
             ? ChatbotConversation::where('company_id', $request->user()->company_id)
                 ->where('user_id', $request->user()->id)
                 ->find($id)
@@ -99,10 +99,16 @@ class ChatbotController extends Controller
         }
 
         try {
+            $this->planLimits->assertCanSendChatMessage();
+        } catch (PlanLimitExceededException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        try {
             /** @var User $user */
             $user = $request->user();
             $conversationId = $request->input('conversation_id');
-            
+
             if ($conversationId) {
                 $conversation = ChatbotConversation::where('company_id', $user->company_id)
                     ->where('user_id', $user->id)
@@ -139,9 +145,9 @@ class ChatbotController extends Controller
                 ]);
 
                 $updateData = ['last_message_at' => now()];
-                
+
                 // Generar titulo si es el primer mensaje
-                if (!$conversation->title || $conversation->title === 'Nueva Conversación') {
+                if (! $conversation->title || $conversation->title === 'Nueva Conversación') {
                     $updateData['title'] = mb_strimwidth($userMessage, 0, 40, '...');
                 }
 

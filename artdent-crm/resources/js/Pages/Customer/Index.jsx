@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, CreditCard, Download, UserCheck } from 'lucide-react';
+import { Search, Plus, Edit, CreditCard, Download, Upload, UserCheck } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { Button } from '@/Components/ui/button';
+import ImportCsvModal from './ImportCsvModal';
 
 export default function Index({ auth, items, filters }) {
     const { isDark } = useTheme();
     const data = items?.data || [];
+    const [isImportOpen, setIsImportOpen] = useState(false);
 
     const [search, setSearch] = useState(filters?.search || '');
     const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -82,6 +84,11 @@ export default function Index({ auth, items, filters }) {
                                 CSV
                             </Button>
                         </a>
+
+                        <Button variant="outline" className="rounded-xl gap-2" onClick={() => setIsImportOpen(true)}>
+                            <Upload size={15} />
+                            <span className="hidden sm:inline">Importar</span>
+                        </Button>
 
                         <Link href={route('customers.create')}>
                             <Button
@@ -250,6 +257,8 @@ export default function Index({ auth, items, filters }) {
                     <Pagination data={items} />
                 </div>
             </div>
+
+            <ImportCsvModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
         </AuthenticatedLayout>
     );
 }

@@ -66,6 +66,8 @@ class Company extends Model
         'afip_point_sale' => 'int',
         'chatbot_enabled' => 'bool',
         'accounting_settings' => 'array',
+        'usd_exchange_rate' => 'float',
+        'collaborator_commission_pct' => 'float',
     ];
 
     protected $fillable = [
@@ -87,12 +89,16 @@ class Company extends Model
         'email',
         'phone',
         'website',
+        'instagram_handle',
+        'tariff_notes',
+        'collaborator_commission_pct',
         'address',
         'city',
         'province',
         'postal_code',
         'country',
         'currency',
+        'usd_exchange_rate',
         'timezone',
         'whatsapp_phone_number_id',
         'whatsapp_access_token',

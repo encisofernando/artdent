@@ -9,6 +9,7 @@ use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Stock;
+use App\Support\CompanyContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -28,7 +29,7 @@ class ReportesController extends Controller
     public function exportPdf(Request $request): Response
     {
         $period = $request->input('period', 'month');
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         [$start, $end, $prevStart, $prevEnd] = $this->periodRanges($period);
 

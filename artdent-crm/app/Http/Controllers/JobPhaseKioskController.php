@@ -160,6 +160,7 @@ class JobPhaseKioskController extends Controller
         $fresh = $phase->fresh()->load(['job.dentist', 'job.patient', 'job.company', 'ticket']);
         $ticket = $fresh->ticket;
         $job = $fresh->job;
+        $jobComplete = $job->status === 'ready';
 
         return response()->json([
             'success' => true,
@@ -178,6 +179,8 @@ class JobPhaseKioskController extends Controller
                 'city' => $job->company->city,
                 'province' => $job->company->province,
             ] : null,
+            'job_complete' => $jobComplete,
+            'final_ticket' => $jobComplete ? $this->phaseService->buildJobTicketSummary($job) : null,
         ]);
     }
 

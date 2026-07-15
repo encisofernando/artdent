@@ -13,6 +13,8 @@ import {
     setStoredTicketFormat,
 } from '@/lib/print';
 import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
+import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
+import { buildEmployeeReceiptTicket } from '@/lib/escpos/buildReceiptTicket';
 
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -218,6 +220,18 @@ export default function Show({ auth, receipt, extras, discounts, company }) {
         : { bg: '#f4f7fb', card: '#ffffff', border: '#e8eef5', text: '#1e293b', sub: '#64748b' };
 
     const handlePrint = async () => {
+        if (isNativePrintAvailable()) {
+            const widthMM = mode === '57mm' ? 57 : 80;
+            const bytes = await buildEmployeeReceiptTicket({ receipt, extras, discounts, company }, { widthMM });
+            const result = await printRawBytes(bytes);
+
+            if (!result.ok) {
+                toast.error('Error de impresión: ' + result.error);
+            }
+
+            return;
+        }
+
         const printElement = document.getElementById('print-zone');
         if (!printElement) { return; }
 

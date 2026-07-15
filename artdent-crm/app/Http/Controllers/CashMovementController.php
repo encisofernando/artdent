@@ -3,63 +3,56 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashMovement;
+use App\Models\CashSession;
+use App\Support\CompanyContext;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class CashMovementController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function store(Request $request): RedirectResponse
     {
-        //
+        $companyId = CompanyContext::id();
+
+        $validated = $request->validate([
+            'cash_session_id' => ['required', 'integer', 'exists:cash_sessions,id'],
+            'type' => ['required', 'in:in,out'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'concept' => ['required', 'string', 'max:255'],
+            'payment_method_id' => ['nullable', 'integer', 'exists:payment_methods,id'],
+        ]);
+
+        $session = CashSession::with('cash_drawer')->findOrFail($validated['cash_session_id']);
+        abort_unless($session->cash_drawer->company_id === $companyId, 404);
+
+        if ($session->status !== 'open') {
+            return back()->with('error', 'No se pueden registrar movimientos en una caja cerrada.');
+        }
+
+        CashMovement::create([
+            'cash_session_id' => $session->id,
+            'payment_method_id' => $validated['payment_method_id'] ?? null,
+            'type' => $validated['type'],
+            'amount' => $validated['amount'],
+            'concept' => $validated['concept'],
+            'reference_type' => 'manual',
+        ]);
+
+        return back()->with('success', 'Movimiento registrado.');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function destroy(Request $request, CashMovement $cashMovement): RedirectResponse
     {
-        //
-    }
+        $companyId = CompanyContext::id();
+        $cashMovement->load('cash_session.cash_drawer');
+        abort_unless($cashMovement->cash_session->cash_drawer->company_id === $companyId, 404);
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        if ($cashMovement->cash_session->status !== 'open' || $cashMovement->reference_type !== 'manual') {
+            return back()->with('error', 'Solo se pueden eliminar movimientos manuales de una caja todavía abierta.');
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(CashMovement $cashMovement)
-    {
-        //
-    }
+        $cashMovement->delete();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(CashMovement $cashMovement)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, CashMovement $cashMovement)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(CashMovement $cashMovement)
-    {
-        //
+        return back()->with('success', 'Movimiento eliminado.');
     }
 }

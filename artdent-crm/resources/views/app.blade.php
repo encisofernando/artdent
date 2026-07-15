@@ -8,6 +8,7 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="apple-mobile-web-app-title" content="ArtDent CRM">
         <meta name="theme-color" content="#0f172a">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
         <link rel="icon" type="image/png" href="{{ asset('assets/logo-artdent-icon.png') }}">
         <link rel="shortcut icon" href="{{ asset('assets/logo-artdent-icon.png') }}">

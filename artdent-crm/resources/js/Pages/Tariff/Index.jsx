@@ -1,14 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, Trash2, Banknote, List, CircleDollarSign } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Banknote, List, CircleDollarSign, FileDown, NotebookText, X, Save } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 
-export default function Index({ auth, items, categories, filters }) {
+const TOKEN_PATTERN = /\{\{\s*arancel:\s*([^}]+?)\s*\}\}/gi;
+
+function resolveNotesPreview(text, priceMap) {
+    if (!text) return '';
+    return text.replace(TOKEN_PATTERN, (match, name) => {
+        const key = name.trim().toLowerCase();
+        const price = priceMap?.[key];
+        if (price === undefined) return match;
+        return price > 0
+            ? '$' + Number(price).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : 'Consultar precio';
+    });
+}
+
+function NotesModal({ open, onClose, initialNotes, priceMap, isDark }) {
+    const [text, setText] = useState(initialNotes || '');
+    const [processing, setProcessing] = useState(false);
+
+    useEffect(() => {
+        if (open) setText(initialNotes || '');
+    }, [open, initialNotes]);
+
+    if (!open) return null;
+
+    const inputCls = `w-full rounded-xl border px-3 py-2 text-sm font-mono transition-colors focus:ring-2 focus:outline-none ${isDark ? 'bg-slate-800/50 border-slate-700 text-white focus:border-teal-500 focus:ring-teal-500/20' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-teal-500 focus:ring-teal-500/20'}`;
+
+    const handleSave = () => {
+        setProcessing(true);
+        router.put(route('tariffs.notes.update'), { tariff_notes: text }, {
+            preserveScroll: true,
+            onSuccess: () => { setProcessing(false); onClose(); },
+            onError: () => setProcessing(false),
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl p-6 ${isDark ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-slate-100'}`}>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className={`font-extrabold text-lg ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Importante Leer (PDF del Arancel)</h3>
+                    <button onClick={onClose} className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-400 hover:bg-slate-100'}`}>
+                        <X size={15} />
+                    </button>
+                </div>
+                <p className={`text-xs mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Este texto aparece en la última página del PDF del arancel. Para insertar un precio que se actualice
+                    solo cuando cambies el arancel, escribí <code className={`px-1 rounded ${isDark ? 'bg-slate-800 text-teal-400' : 'bg-slate-100 text-teal-700'}`}>{'{{arancel:Nombre exacto del arancel}}'}</code>.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Texto (editable)</label>
+                        <textarea
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            rows={16}
+                            className={inputCls}
+                        />
+                    </div>
+                    <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Vista previa (como sale en el PDF)</label>
+                        <div className={`h-full rounded-xl border px-3 py-2 text-sm whitespace-pre-line ${isDark ? 'bg-slate-800/30 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'}`} style={{ minHeight: '24rem' }}>
+                            {resolveNotesPreview(text, priceMap) || <span className="opacity-50">Sin contenido todavía.</span>}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-5">
+                    <button type="button" onClick={onClose}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                        Cancelar
+                    </button>
+                    <button type="button" onClick={handleSave} disabled={processing}
+                        className="px-4 py-2 rounded-xl text-sm font-bold text-white flex items-center gap-2 disabled:opacity-50"
+                        style={{ background: 'linear-gradient(90deg, #397B9C, #49949C)' }}>
+                        <Save size={15} />
+                        {processing ? 'Guardando...' : 'Guardar'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function Index({ auth, items, categories, filters, tariffNotes, tariffPriceMap }) {
     const { isDark } = useTheme();
     const confirmDialog = useConfirm();
     const data = items?.data || [];
@@ -47,6 +132,11 @@ export default function Index({ auth, items, categories, filters }) {
         }).format(amount);
     };
 
+    const [notesModalOpen, setNotesModalOpen] = useState(false);
+    const lowerPriceMap = Object.fromEntries(
+        Object.entries(tariffPriceMap || {}).map(([name, price]) => [name.toLowerCase(), price])
+    );
+
     const B = { blue: "#397B9C", teal: "#49949C" };
 
     return (
@@ -71,7 +161,7 @@ export default function Index({ auth, items, categories, filters }) {
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 w-full sm:w-auto">
                         <SearchableSelect
                             value={category}
                             onChange={v => setCategory(v)}
@@ -96,12 +186,31 @@ export default function Index({ auth, items, categories, filters }) {
                             />
                         </div>
 
-                        <Link href={route('tariffs.create')} className="w-full sm:w-auto">
+                        <div className="w-full sm:w-auto sm:shrink-0">
                             <Button
-                                className="w-full text-white border-none shadow-md hover:shadow-lg transition-all rounded-xl"
+                                type="button"
+                                onClick={() => setNotesModalOpen(true)}
+                                variant="outline"
+                                className={`w-full whitespace-nowrap rounded-xl ${isDark ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : ''}`}
+                            >
+                                <NotebookText className="mr-2 shrink-0" size={16} />
+                                Importante Leer
+                            </Button>
+                        </div>
+
+                        <a href={route('tariffs.pdf')} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto sm:shrink-0">
+                            <Button variant="outline" className={`w-full whitespace-nowrap rounded-xl ${isDark ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : ''}`}>
+                                <FileDown className="mr-2 shrink-0" size={16} />
+                                Descargar Arancel PDF
+                            </Button>
+                        </a>
+
+                        <Link href={route('tariffs.create')} className="w-full sm:w-auto sm:shrink-0">
+                            <Button
+                                className="w-full whitespace-nowrap text-white border-none shadow-md hover:shadow-lg transition-all rounded-xl"
                                 style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
                             >
-                                <Plus className="mr-2" size={18} />
+                                <Plus className="mr-2 shrink-0" size={18} />
                                 Nuevo Arancel
                             </Button>
                         </Link>
@@ -280,6 +389,14 @@ export default function Index({ auth, items, categories, filters }) {
 
                 <Pagination data={items} />
             </div>
+
+            <NotesModal
+                open={notesModalOpen}
+                onClose={() => setNotesModalOpen(false)}
+                initialNotes={tariffNotes}
+                priceMap={lowerPriceMap}
+                isDark={isDark}
+            />
         </AuthenticatedLayout>
     );
 }

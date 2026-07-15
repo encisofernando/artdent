@@ -10,6 +10,7 @@ use App\Models\Job;
 use App\Models\JobItem;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -37,7 +38,7 @@ class ReportExportController extends Controller
     /** GET /export/sales */
     public function sales(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from');
         $to = $request->input('to');
 
@@ -100,7 +101,7 @@ class ReportExportController extends Controller
     /** GET /export/quotes */
     public function quotes(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from');
         $to = $request->input('to');
 
@@ -138,7 +139,7 @@ class ReportExportController extends Controller
     /** GET /export/expenses */
     public function expenses(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from');
         $to = $request->input('to');
 
@@ -174,7 +175,7 @@ class ReportExportController extends Controller
     /** GET /export/iva — Libro IVA Ventas */
     public function ivaVentas(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
         $to = $request->input('to', Carbon::now()->toDateString());
 
@@ -213,7 +214,7 @@ class ReportExportController extends Controller
     /** GET /export/iva-compras — Libro IVA Compras */
     public function ivaCompras(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
         $to = $request->input('to', Carbon::now()->toDateString());
 
@@ -247,7 +248,7 @@ class ReportExportController extends Controller
     /** GET /export/income-statement — Estado de resultados */
     public function incomeStatement(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
         $to = $request->input('to', Carbon::now()->toDateString());
 
@@ -316,7 +317,7 @@ class ReportExportController extends Controller
     /** GET /export/jobs — Trabajos del laboratorio */
     public function exportJobs(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from');
         $to = $request->input('to');
 
@@ -355,7 +356,7 @@ class ReportExportController extends Controller
     /** GET /export/dentists — Ranking de odontólogos */
     public function exportDentists(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from');
         $to = $request->input('to');
 
@@ -395,7 +396,7 @@ class ReportExportController extends Controller
     /** GET /export/tariffs — Aranceles más usados */
     public function exportTariffs(Request $request): StreamedResponse
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $from = $request->input('from');
         $to = $request->input('to');
 
@@ -417,19 +418,18 @@ class ReportExportController extends Controller
             ->whereNotNull('tariff_id')
             ->groupBy('tariff_id')
             ->orderByDesc('revenue')
-            ->with('tariff:id,name,category,lab_sector,price');
+            ->with('tariff:id,name,category,price');
 
         $rows = $query->get()->map(fn ($row) => [
             $row->tariff?->name ?? '—',
             $row->tariff?->category ?? '',
-            $row->tariff?->lab_sector ?? '',
             number_format((float) $row->tariff?->price, 2, ',', '.'),
             number_format((float) $row->qty_used, 2, ',', '.'),
             (int) $row->job_count,
             number_format((float) $row->revenue, 2, ',', '.'),
         ]);
 
-        $headers = ['Arancel', 'Categoría', 'Sector Lab', 'Precio Unitario', 'Cantidad Usada', 'N° Trabajos', 'Revenue Total'];
+        $headers = ['Arancel', 'Categoría', 'Precio Unitario', 'Cantidad Usada', 'N° Trabajos', 'Ingresos Totales'];
 
         return $this->streamCsv("aranceles_{$this->today()}.csv", $headers, $rows);
     }

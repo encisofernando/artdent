@@ -134,4 +134,57 @@ class CustomerController extends Controller
 
         return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
     }
+
+    /**
+     * Import customers from CSV mapped data (ver Customer/ImportCsvModal.jsx).
+     */
+    public function importCsv(Request $request)
+    {
+        $request->validate([
+            'customers' => 'required|array',
+            'customers.*.name' => 'required|string',
+        ]);
+
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($request->customers as $item) {
+            $dni = trim((string) ($item['dni'] ?? ''));
+            $email = trim((string) ($item['email'] ?? ''));
+
+            // 'email' es NOT NULL en la base: sin dni ni email no hay forma de crear
+            // ni de encontrar un cliente existente para actualizar.
+            if ($dni === '' && $email === '') {
+                $skipped++;
+
+                continue;
+            }
+
+            // Solo se incluyen los campos que la fila realmente trae, para no pisar
+            // con null datos ya cargados de un cliente existente al actualizar.
+            $attributes = array_filter([
+                'name' => $item['name'],
+                'email' => $email !== '' ? $email : null,
+                'dni' => $dni !== '' ? $dni : null,
+                'phone' => $item['phone'] ?? null,
+                'address' => $item['address'] ?? null,
+                'city' => $item['city'] ?? null,
+                'province' => $item['province'] ?? null,
+            ], fn ($value) => $value !== null);
+            $attributes['is_active'] = true;
+
+            try {
+                if ($dni !== '') {
+                    Customer::updateOrCreate(['dni' => $dni], $attributes);
+                } else {
+                    Customer::updateOrCreate(['email' => $email], $attributes);
+                }
+                $imported++;
+            } catch (\Throwable $e) {
+                $skipped++;
+            }
+        }
+
+        return response()->json(['imported' => $imported, 'skipped' => $skipped]);
+    }
 }

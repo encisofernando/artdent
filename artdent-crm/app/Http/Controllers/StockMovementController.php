@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,7 +13,7 @@ class StockMovementController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $search = $request->input('search');
         $warehouseId = $request->input('warehouse_id');
         $type = $request->input('type');

@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use App\Models\EcommerceOrder;
+use App\Models\TenantModule;
+use App\Models\TenantSubscription;
 use App\Models\User;
 use App\Observers\EcommerceOrderObserver;
+use App\Observers\TenantModuleCacheObserver;
 use App\Observers\UserObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
@@ -28,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
         EcommerceOrder::observe(EcommerceOrderObserver::class);
         User::observe(UserObserver::class);
+        TenantSubscription::observe(TenantModuleCacheObserver::class);
+        TenantModule::observe(TenantModuleCacheObserver::class);
 
         // Implicitly grant "Super Admin" role all permissions
         // This works in the app by using gate-related functions like auth()->user->can() and @can()

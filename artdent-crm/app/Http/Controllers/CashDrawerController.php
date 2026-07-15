@@ -3,63 +3,72 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashDrawer;
+use App\Support\CompanyContext;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CashDrawerController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request): Response
     {
-        //
+        $companyId = CompanyContext::id();
+
+        $drawers = CashDrawer::query()
+            ->with(['branch:id,name', 'cash_sessions' => function ($query) {
+                $query->where('status', 'open')->latest('opened_at')->limit(1)->with('user:id,name');
+            }])
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Caja/Drawers', [
+            'drawers' => $drawers,
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(Request $request): RedirectResponse
     {
-        //
+        $companyId = CompanyContext::id();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:191'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'is_active' => ['boolean'],
+        ]);
+
+        CashDrawer::create([
+            'company_id' => $companyId,
+            'branch_id' => $validated['branch_id'] ?? null,
+            'name' => $validated['name'],
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        return redirect()->route('cash-drawers.index')->with('success', 'Caja creada exitosamente.');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function update(Request $request, CashDrawer $cashDrawer): RedirectResponse
     {
-        //
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:191'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $cashDrawer->update($validated);
+
+        return redirect()->route('cash-drawers.index')->with('success', 'Caja actualizada.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(CashDrawer $cashDrawer)
+    public function destroy(CashDrawer $cashDrawer): RedirectResponse
     {
-        //
-    }
+        if ($cashDrawer->cash_sessions()->exists()) {
+            return back()->with('error', 'No se puede eliminar una caja que ya tiene sesiones registradas. Desactivala en su lugar.');
+        }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(CashDrawer $cashDrawer)
-    {
-        //
-    }
+        $cashDrawer->delete();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, CashDrawer $cashDrawer)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(CashDrawer $cashDrawer)
-    {
-        //
+        return redirect()->route('cash-drawers.index')->with('success', 'Caja eliminada.');
     }
 }

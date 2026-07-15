@@ -1,16 +1,33 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { buildPrintHtml, getThermalZoneWidth, openBrowserPrint } from '@/lib/print';
+import {
+    getStoredTicketFormat,
+    getThermalPrintZoom,
+    getThermalZoneWidth,
+    MONTSERRAT_PRINT_HEAD,
+    printElementWithElectron,
+} from '@/lib/print';
 import { CompanyLogo, getCompanyLogoUrl } from '@/lib/companyBranding';
+import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
+import { buildPhaseTicket, buildJobOrderTicket, mapFinalTicketToJobOrder } from '@/lib/escpos/buildJobOrderTicket';
+
+// El número ya viene precedido por la palabra "Orden" en el encabezado, así que
+// el prefijo "ORD-" es redundante ahí (se ve como una palabra repetida/cortada).
+const stripOrdPrefix = (value) => String(value ?? '').replace(/^ORD-/i, '');
 import {
     CheckCircle2,
     ChevronRight,
     ClipboardList,
     Clock,
+    Fingerprint,
+    LogIn,
+    LogOut,
     Search,
     Stethoscope,
     Loader2,
+    Maximize2,
+    Minimize2,
     Printer,
     RefreshCw,
     Users,
@@ -34,6 +51,77 @@ function KioskClock() {
     return <span className="font-mono text-slate-400 text-sm tabular-nums">{time}</span>;
 }
 
+// Botón de pantalla completa — útil en terminales de kiosco (evita que se
+// vea la barra de direcciones/estado del navegador o de la app Android).
+function FullscreenToggle() {
+    const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+
+    useEffect(() => {
+        const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', onChange);
+        return () => document.removeEventListener('fullscreenchange', onChange);
+    }, []);
+
+    const toggle = () => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen?.();
+        } else {
+            document.documentElement.requestFullscreen?.().catch(() => {});
+        }
+    };
+
+    return (
+        <button
+            onClick={toggle}
+            className="p-2 rounded-lg transition-colors hover:bg-slate-700"
+            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+        >
+            {isFullscreen
+                ? <Minimize2 size={15} color="#94a3b8" />
+                : <Maximize2 size={15} color="#94a3b8" />}
+        </button>
+    );
+}
+
+// ── Cartel de bienvenida al fichar (evento HikVision en tiempo real) ────────
+function AttendanceWelcomeOverlay({ event, onClose }) {
+    if (!event) { return null; }
+
+    const isIn = event.action === 'in';
+    const accent = isIn ? AD.green : '#f59e0b';
+
+    return (
+        <div key={event.key} className="fixed top-6 right-6 z-[300]">
+            <div
+                className="flex items-center gap-4 rounded-2xl shadow-2xl px-6 py-5"
+                style={{ background: '#1e293b', border: `2px solid ${accent}`, minWidth: 340 }}
+            >
+                <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: `${accent}22` }}
+                >
+                    {isIn
+                        ? <LogIn size={26} style={{ color: accent }} />
+                        : <LogOut size={26} style={{ color: accent }} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>
+                        {isIn ? 'Ingreso registrado' : 'Salida registrada'}
+                    </p>
+                    <p className="text-lg font-bold text-white truncate">¡Bienvenido/a, {event.name}!</p>
+                    <div className="flex items-center gap-2 mt-1 text-sm text-slate-400">
+                        <Fingerprint size={13} />
+                        <span>{event.time} hs</span>
+                    </div>
+                </div>
+                <button onClick={onClose} className="text-slate-500 hover:text-white shrink-0">
+                    <X size={16} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 // ── Screens ────────────────────────────────────────────────────────────────
 const SCREEN = {
     DASHBOARD:       'dashboard',
@@ -42,6 +130,7 @@ const SCREEN = {
     CONFIRM_PROOF:   'confirm_proof',
     CONFIRM_RETURN:  'confirm_return',
     TICKET_PRINT:    'ticket_print',
+    FINAL_TICKET:    'final_ticket',
 };
 
 export default function JobKioskIndex({ collaborators = [], company = null }) {
@@ -58,10 +147,37 @@ export default function JobKioskIndex({ collaborators = [], company = null }) {
     const [selectedCollabs, setSelectedCollabs] = useState([]);
     // Resulting ticket after completion
     const [lastTicket, setLastTicket]   = useState(null);
+    // Consolidated ticket for the whole job, when the last phase just finished it
+    const [finalTicket, setFinalTicket] = useState(null);
     const [lastSync, setLastSync]       = useState(null);
     const [search, setSearch]           = useState('');
+    const [attendanceEvent, setAttendanceEvent] = useState(null);
 
     const POLL_INTERVAL = 20_000; // ms
+
+    // ── Fichaje HikVision en tiempo real (cartel de bienvenida) ──────────
+    // Requiere que window.Echo esté inicializado (VITE_REVERB_HOST apuntando al
+    // servidor real, no "localhost") y el proceso `php artisan reverb:start` corriendo.
+    // Si Echo no está disponible, el kiosk sigue funcionando normalmente, solo sin el cartel.
+    useEffect(() => {
+        if (!company?.id || !window.Echo) { return; }
+
+        const channel = window.Echo.channel(`company.${company.id}`);
+
+        channel.listen('.attendance-recorded', (data) => {
+            setAttendanceEvent({ ...data, key: Date.now() });
+        });
+
+        return () => {
+            window.Echo.leaveChannel(`company.${company.id}`);
+        };
+    }, [company?.id]);
+
+    useEffect(() => {
+        if (!attendanceEvent) { return; }
+        const timer = setTimeout(() => setAttendanceEvent(null), 6000);
+        return () => clearTimeout(timer);
+    }, [attendanceEvent]);
 
     const loadData = useCallback(async (silent = false) => {
         if (!silent) { setLoading(true); }
@@ -147,6 +263,7 @@ export default function JobKioskIndex({ collaborators = [], company = null }) {
                 collaborator_ids: selectedCollabs.map((c) => c.id),
             });
             setLastTicket(res.data);
+            setFinalTicket(res.data.job_complete ? { ...res.data.final_ticket, ...res.data } : null);
             await loadData();
             setActivePhase(null);
             setSelectedCollabs([]);
@@ -208,6 +325,7 @@ export default function JobKioskIndex({ collaborators = [], company = null }) {
     return (
         <>
             <Head title="Órdenes" />
+            <AttendanceWelcomeOverlay event={attendanceEvent} onClose={() => setAttendanceEvent(null)} />
             <div className="min-h-screen flex flex-col" style={{ background: '#0f172a', color: '#e2e8f0' }}>
 
                 {/* Header */}
@@ -256,6 +374,7 @@ export default function JobKioskIndex({ collaborators = [], company = null }) {
                         >
                             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} color="#94a3b8" />
                         </button>
+                        <FullscreenToggle />
                     </div>
                 </header>
 
@@ -469,7 +588,18 @@ export default function JobKioskIndex({ collaborators = [], company = null }) {
                         <TicketPrintScreen
                             ticket={lastTicket}
                             collaborators={selectedCollabs}
-                            onDone={() => { setLastTicket(null); setScreen(SCREEN.DASHBOARD); }}
+                            onDone={() => {
+                                setLastTicket(null);
+                                setScreen(finalTicket ? SCREEN.FINAL_TICKET : SCREEN.DASHBOARD);
+                            }}
+                        />
+                    )}
+
+                    {/* ── Ticket Final (orden completa) ── */}
+                    {screen === SCREEN.FINAL_TICKET && finalTicket && (
+                        <FinalTicketPrintScreen
+                            ticket={finalTicket}
+                            onDone={() => { setFinalTicket(null); setScreen(SCREEN.DASHBOARD); }}
                         />
                     )}
 
@@ -652,9 +782,9 @@ function ConfirmCard({ title, body, confirmLabel, confirmStyle, onConfirm, onCan
 
 // ─── Ticket térmico de fase — mismo diseño que Job/Ticket ────────────────────
 function PhaseTicketThermal({ ticket, collabNames, widthMM = 80 }) {
-    const is54 = widthMM === 54;
+    const is54 = widthMM === 54 || widthMM === 57;
     const company = ticket.company ?? {};
-    const ticketWidth = getThermalZoneWidth(is54 ? '54mm' : '80mm');
+    const ticketWidth = getThermalZoneWidth(is54 ? '57mm' : '80mm');
     const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
     const fmtD = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
 
@@ -686,12 +816,12 @@ function PhaseTicketThermal({ ticket, collabNames, widthMM = 80 }) {
 
             <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
                 <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                    Ticket N° {ticket.ticket_number}
+                    Orden N° {stripOrdPrefix(ticket.ticket_number)}
                 </div>
             </div>
 
             <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
-                <InfoRow label="Orden" value={ticket.job_number} />
+                <InfoRow label="Orden" value={stripOrdPrefix(ticket.job_number)} />
                 <InfoRow label="Fecha" value={fmtD(ticket.received_at)} />
                 {ticket.patient_name && <InfoRow label="Paciente" value={ticket.patient_name} />}
                 {ticket.dentist_name && <InfoRow label="Profesional" value={ticket.dentist_name} />}
@@ -729,16 +859,35 @@ function TicketPrintScreen({ ticket, collaborators, onDone }) {
     const collabNames = collaborators.map((c) => c.name).join(', ') || '—';
     const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
     const ticketRef = useRef(null);
+    const [printStatus, setPrintStatus] = useState(null); // 'printing' | 'ok' | 'error'
+    const savedFormat = getStoredTicketFormat('80mm') === '57mm' ? '57mm' : '80mm';
+    const widthMM = savedFormat === '57mm' ? 57 : 80;
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
+        setPrintStatus('printing');
+
+        if (isNativePrintAvailable()) {
+            const bytes = await buildPhaseTicket(ticket, collabNames, { widthMM });
+            const result = await printRawBytes(bytes);
+            setPrintStatus(result.ok ? 'ok' : 'error');
+            return;
+        }
+
         const el = ticketRef.current?.querySelector('#phase-ticket-zone');
-        if (!el) { return; }
-        const html = buildPrintHtml({
+        if (!el) { setPrintStatus(null); return; }
+
+        const result = await printElementWithElectron({
+            element: el,
             title: `ArtDent — ${ticket.ticket_number}`,
-            bodyHtml: el.outerHTML,
-            zoneWidth: el.style.width,
+            mode: savedFormat,
+            zoneWidth: el.style.width || getThermalZoneWidth(savedFormat),
+            zoom: getThermalPrintZoom(savedFormat),
+            extraHead: MONTSERRAT_PRINT_HEAD,
+            fallbackToBrowser: true,
+            browserDelay: 400,
         });
-        openBrowserPrint(html, { delay: 400 });
+
+        setPrintStatus(result.ok || result.fallbackUsed ? 'ok' : 'error');
     };
 
     return (
@@ -751,7 +900,7 @@ function TicketPrintScreen({ ticket, collaborators, onDone }) {
 
             {/* Ticket preview */}
             <div ref={ticketRef} className="overflow-auto rounded-xl" style={{ background: '#fff', padding: 0, display: 'flex', justifyContent: 'center' }}>
-                <PhaseTicketThermal ticket={ticket} collabNames={collabNames} widthMM={80} />
+                <PhaseTicketThermal ticket={ticket} collabNames={collabNames} widthMM={widthMM} />
             </div>
 
             {/* Summary row */}
@@ -763,11 +912,176 @@ function TicketPrintScreen({ ticket, collaborators, onDone }) {
 
             <button
                 onClick={handlePrint}
-                className="w-full py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
+                disabled={printStatus === 'printing'}
+                className="w-full py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-80 disabled:opacity-60"
                 style={{ background: '#1e293b', border: `1.5px solid ${AD.blue}`, color: AD.blue }}
             >
-                <Printer size={15} /> Imprimir ticket
+                {printStatus === 'printing'
+                    ? <><Loader2 size={15} className="animate-spin" /> Imprimiendo…</>
+                    : <><Printer size={15} /> Imprimir ticket</>}
             </button>
+            {printStatus === 'error' && (
+                <p className="text-xs font-medium" style={{ color: '#f87171' }}>
+                    No se detectó el servicio de impresión ArtDent Print. Verificá que esté encendido e intentá de nuevo.
+                </p>
+            )}
+            <button
+                onClick={onDone}
+                className="w-full py-4 rounded-2xl text-base font-bold text-white transition-opacity hover:opacity-80"
+                style={{ background: `linear-gradient(135deg,${AD.blue},${AD.teal})` }}
+            >
+                Continuar
+            </button>
+        </div>
+    );
+}
+
+function FinalTicketThermal({ ticket, widthMM = 80 }) {
+    const is54 = widthMM === 54 || widthMM === 57;
+    const company = ticket.company ?? {};
+    const phases = ticket.phases ?? [];
+    const ticketWidth = getThermalZoneWidth(is54 ? '57mm' : '80mm');
+    const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    const fmtD = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+
+    const F = {
+        caption: is54 ? 7.2 : 8.1,
+        label: is54 ? 7.6 : 8.4,
+        body: is54 ? 8.2 : 9.2,
+        total: is54 ? 11.2 : 13.8,
+        small: is54 ? 6.8 : 7.6,
+        logo: is54 ? 54 : 62,
+    };
+
+    const InfoRow = ({ label, value }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt`, lineHeight: 1.3, marginBottom: 3 }}>
+            <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</span>
+            <span style={{ fontWeight: 600, textAlign: 'right', flex: 1 }}>{value || '—'}</span>
+        </div>
+    );
+
+    return (
+        <div id="final-ticket-zone" style={{ width: ticketWidth, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: `${F.body}pt`, color: '#000', padding: is54 ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm', background: '#fff', lineHeight: 1.35, boxSizing: 'border-box' }}>
+            <div style={{ borderTop: '3px solid #000', marginBottom: is54 ? 5 : 7 }} />
+
+            <div style={{ textAlign: 'center', marginBottom: is54 ? 6 : 8 }}>
+                <CompanyLogo company={company} scope="lab" thermal height={F.logo} maxWidth={is54 ? 140 : 180} style={{ margin: '0 auto' }} />
+                <div style={{ fontSize: `${F.small}pt`, marginTop: 4 }}>Documento interno. No válido como factura.</div>
+            </div>
+
+            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
+                <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                    Orden N° {stripOrdPrefix(ticket.job_number)}
+                </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
+                <InfoRow label="Fecha" value={fmtD(ticket.received_at)} />
+                {ticket.patient_name && <InfoRow label="Paciente" value={ticket.patient_name} />}
+                {ticket.dentist_name && <InfoRow label="Profesional" value={ticket.dentist_name} />}
+                {ticket.shade && <InfoRow label="Tono" value={ticket.shade} />}
+            </div>
+
+            <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 0', marginBottom: 4 }}>
+                Detalle del trabajo
+            </div>
+
+            <div style={{ marginBottom: is54 ? 6 : 8 }}>
+                {phases.map((p, i) => (
+                    <div key={i} style={{ borderBottom: '1px dotted #000', padding: '4px 0' }}>
+                        <div style={{ fontSize: `${F.body}pt`, fontWeight: 700, marginBottom: 2 }}>{p.phase_name}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt` }}>
+                            <span>1 x ${fmt(p.amount)}</span>
+                            <span style={{ fontWeight: 800 }}>${fmt(p.amount)}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>Total orden</span>
+                    <span style={{ fontSize: `${F.total}pt`, fontWeight: 900 }}>${fmt(ticket.total)}</span>
+                </div>
+            </div>
+
+            <div style={{ textAlign: 'center', fontSize: `${F.small}pt`, borderTop: '1px solid #000', paddingTop: 5 }}>
+                <div style={{ marginTop: 2 }}>Tu sonrisa, es nuestra prioridad.</div>
+            </div>
+
+            <div style={{ borderTop: '3px solid #000', marginTop: is54 ? 5 : 7 }} />
+        </div>
+    );
+}
+
+function FinalTicketPrintScreen({ ticket, onDone }) {
+    const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    const ticketRef = useRef(null);
+    const [printStatus, setPrintStatus] = useState(null); // 'printing' | 'ok' | 'error'
+    const savedFormat = getStoredTicketFormat('80mm') === '57mm' ? '57mm' : '80mm';
+    const widthMM = savedFormat === '57mm' ? 57 : 80;
+
+    const handlePrint = async () => {
+        setPrintStatus('printing');
+
+        if (isNativePrintAvailable()) {
+            const bytes = await buildJobOrderTicket(mapFinalTicketToJobOrder(ticket), { widthMM });
+            const result = await printRawBytes(bytes);
+            setPrintStatus(result.ok ? 'ok' : 'error');
+            return;
+        }
+
+        const el = ticketRef.current?.querySelector('#final-ticket-zone');
+        if (!el) { setPrintStatus(null); return; }
+
+        const result = await printElementWithElectron({
+            element: el,
+            title: `ArtDent — ${ticket.job_number} (completa)`,
+            mode: savedFormat,
+            zoneWidth: el.style.width || getThermalZoneWidth(savedFormat),
+            zoom: getThermalPrintZoom(savedFormat),
+            extraHead: MONTSERRAT_PRINT_HEAD,
+            fallbackToBrowser: true,
+            browserDelay: 400,
+        });
+
+        setPrintStatus(result.ok || result.fallbackUsed ? 'ok' : 'error');
+    };
+
+    return (
+        <div className="max-w-sm mx-auto text-center space-y-4">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                style={{ background: `${AD.green}22` }}>
+                <CheckCircle2 size={36} style={{ color: AD.green }} />
+            </div>
+            <p className="text-xl font-bold text-white">¡Orden completa!</p>
+            <p className="text-sm text-slate-400">Todas las fases de {ticket.job_number} están terminadas.</p>
+
+            <div ref={ticketRef} className="overflow-auto rounded-xl" style={{ background: '#fff', padding: 0, display: 'flex', justifyContent: 'center' }}>
+                <FinalTicketThermal ticket={ticket} widthMM={widthMM} />
+            </div>
+
+            <div className="flex justify-between items-baseline rounded-xl px-5 py-3"
+                style={{ background: '#1e293b', border: `1.5px solid ${AD.green}30` }}>
+                <span className="text-slate-400 text-sm">Total orden</span>
+                <span className="font-bold text-xl" style={{ color: AD.green }}>${fmt(ticket.total)}</span>
+            </div>
+
+            <button
+                onClick={handlePrint}
+                disabled={printStatus === 'printing'}
+                className="w-full py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-80 disabled:opacity-60"
+                style={{ background: '#1e293b', border: `1.5px solid ${AD.blue}`, color: AD.blue }}
+            >
+                {printStatus === 'printing'
+                    ? <><Loader2 size={15} className="animate-spin" /> Imprimiendo…</>
+                    : <><Printer size={15} /> Imprimir ticket final</>}
+            </button>
+            {printStatus === 'error' && (
+                <p className="text-xs font-medium" style={{ color: '#f87171' }}>
+                    No se detectó el servicio de impresión ArtDent Print. Verificá que esté encendido e intentá de nuevo.
+                </p>
+            )}
             <button
                 onClick={onDone}
                 className="w-full py-4 rounded-2xl text-base font-bold text-white transition-opacity hover:opacity-80"

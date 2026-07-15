@@ -252,7 +252,7 @@ class JobController extends Controller
     {
         $relations = ['company', 'dentist', 'patient', 'job_items.tariff.phases', 'job_teeths', 'collaborators',
             'phaseProgress.tariffPhase', 'phaseProgress.collaborator', 'phaseProgress.ticket',
-            'phaseProgress.phaseCollaborators.collaborator'];
+            'phaseProgress.phaseCollaborators.collaborator', 'receivedBy.employee'];
 
         if ($this->hasJobTypesTable()) {
             $relations[] = 'job_type';

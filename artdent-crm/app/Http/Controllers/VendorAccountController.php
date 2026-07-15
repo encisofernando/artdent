@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Vendor;
 use App\Models\VendorAccount;
 use App\Models\VendorAccountMove;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -13,7 +14,7 @@ class VendorAccountController extends Controller
     public function index(Request $request): \Inertia\Response
     {
         $search = $request->input('search');
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $query = VendorAccount::query()
             ->with('vendor')
@@ -47,7 +48,7 @@ class VendorAccountController extends Controller
 
     public function show(Request $request, Vendor $vendor): \Inertia\Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $account = VendorAccount::firstOrCreate(
             ['vendor_id' => $vendor->id],

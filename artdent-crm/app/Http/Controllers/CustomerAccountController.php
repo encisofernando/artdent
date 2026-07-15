@@ -10,6 +10,7 @@ use App\Models\PaymentMethod;
 use App\Models\Sale;
 use App\Services\CustomerAccountSaleAllocator;
 use App\Services\EmailTemplateService;
+use App\Support\CompanyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -83,7 +84,7 @@ class CustomerAccountController extends Controller
 
     public function show(Customer $customer, CustomerAccountSaleAllocator $allocator): Response
     {
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         DB::transaction(function () use ($allocator, $customer, $companyId) {
             $allocator->reconcileUnlinkedPaymentsForCustomer($customer->id, $companyId);
@@ -145,7 +146,7 @@ class CustomerAccountController extends Controller
             'send_email' => ['nullable', 'boolean'],
         ]);
 
-        $companyId = auth()->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $preferredSale = null;
 
         if (! empty($validated['sale_id'])) {
@@ -221,7 +222,7 @@ class CustomerAccountController extends Controller
         $account = $account->fresh();
 
         if (! empty($validated['send_email']) && $customer->email) {
-            $company = Company::findOrFail(auth()->user()->company_id ?? 1);
+            $company = Company::findOrFail(CompanyContext::id());
 
             $vars = [
                 'empresa' => $company->fantasy_name ?: $company->name,
@@ -311,7 +312,7 @@ class CustomerAccountController extends Controller
             ['balance' => 0]
         );
 
-        $company = Company::findOrFail(auth()->user()->company_id ?? 1);
+        $company = Company::findOrFail(CompanyContext::id());
 
         $saldo = (float) $account->balance;
         $saldoLabel = ($saldo > 0 ? 'Saldo a favor: $' : ($saldo < 0 ? 'Deuda: $' : 'Sin saldo: $'))

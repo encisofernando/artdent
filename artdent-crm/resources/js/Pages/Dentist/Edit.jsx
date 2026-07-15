@@ -3,10 +3,10 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, Info, Building2, MapPin, Banknote, Search, X, Briefcase } from 'lucide-react';
+import { ArrowLeft, Save, Info, Building2, MapPin, Banknote, Search, X, Briefcase, ExternalLink } from 'lucide-react';
 import SearchableSelect from '@/Components/SearchableSelect';
 
-export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
+export default function Edit({ auth, item, tariffs = [], customPrices = {}, portalUrl = null }) {
     const { isDark } = useTheme();
 
     // Initialize custom_prices array from the backend mapped data
@@ -110,6 +110,14 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {} }) {
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {portalUrl && (
+                            <a href={portalUrl} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" className={`gap-2 ${isDark ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : ''}`}>
+                                    <ExternalLink size={14} />
+                                    Ver Portal
+                                </Button>
+                            </a>
+                        )}
                         <Link href={route('dentists.index')}>
                             <Button variant="outline" className={isDark ? "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : ""}>
                                 <ArrowLeft className="mr-2" size={16} />

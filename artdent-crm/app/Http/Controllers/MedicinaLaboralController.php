@@ -6,6 +6,7 @@ use App\Models\ArtAccident;
 use App\Models\ArtProvider;
 use App\Models\Employee;
 use App\Models\MedicalExam;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,7 +15,7 @@ class MedicinaLaboralController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $employees = Employee::query()
             ->with('user:id,name')

@@ -10,12 +10,14 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
  * Class Dentist
  *
  * @property int $id
  * @property int $company_id
+ * @property string|null $portal_token
  * @property string|null $code
  * @property string|null $type
  * @property string $name
@@ -59,6 +61,7 @@ class Dentist extends Model
 
     protected $fillable = [
         'company_id',
+        'portal_token',
         'code',
         'type',
         'name',
@@ -87,6 +90,15 @@ class Dentist extends Model
         'is_active',
         'notes',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Dentist $dentist) {
+            if (empty($dentist->portal_token)) {
+                $dentist->portal_token = Str::random(48);
+            }
+        });
+    }
 
     public function company()
     {
@@ -123,6 +135,11 @@ class Dentist extends Model
     public function crm_interactions()
     {
         return $this->hasMany(CrmInteraction::class);
+    }
+
+    public function login_codes()
+    {
+        return $this->hasMany(DentistLoginCode::class);
     }
 
     public function delivery_routes()

@@ -5,19 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Collaborator;
 use App\Models\CollaboratorExtra;
 use App\Services\CollaboratorReceiptSyncService;
+use App\Support\CompanyContext;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CollaboratorExtraController extends Controller
 {
-    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService)
-    {
-    }
+    public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService) {}
 
     public function index(Request $request): \Inertia\Response
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
         $collaboratorId = $request->input('collaborator_id');
         $search = trim((string) $request->input('search', ''));
         $from = $request->input('from');
@@ -74,7 +73,7 @@ class CollaboratorExtraController extends Controller
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $companyId = $request->user()->company_id ?? 1;
+        $companyId = CompanyContext::id();
 
         $validated = $request->validate([
             'collaborator_id' => [
@@ -107,7 +106,7 @@ class CollaboratorExtraController extends Controller
 
     public function update(Request $request, CollaboratorExtra $collaboratorExtra): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorExtra, $request->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorExtra, CompanyContext::id());
         $originalDate = $collaboratorExtra->date->toDateString();
         $collaboratorId = (int) $collaboratorExtra->collaborator_id;
         $companyId = (int) $collaboratorExtra->company_id;
@@ -129,7 +128,7 @@ class CollaboratorExtraController extends Controller
 
     public function destroy(CollaboratorExtra $collaboratorExtra): \Illuminate\Http\RedirectResponse
     {
-        $this->ensureCompanyOwned($collaboratorExtra, auth()->user()->company_id ?? 1);
+        $this->ensureCompanyOwned($collaboratorExtra, CompanyContext::id());
         $companyId = (int) $collaboratorExtra->company_id;
         $collaboratorId = (int) $collaboratorExtra->collaborator_id;
         $date = $collaboratorExtra->date->toDateString();

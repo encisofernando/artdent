@@ -15,7 +15,7 @@ import {
     ShoppingCart, User, Search, Plus, Minus, Trash2,
     CreditCard, X, Package, ReceiptText, Store,
     Download, Share2, Printer, MessageCircle, Check,
-    ChevronRight, Loader2,
+    ChevronRight, Loader2, PauseCircle, ListRestart,
 } from 'lucide-react';
 import {
     B, G, useD, fmt,
@@ -252,6 +252,13 @@ export default function Create({ auth, products, customers = [], company = null 
     // Normaliza barcodes: convierte cualquier separador (', /, etc) a - para que SOP'GBEM === SOP-GBEM
     const normBarcode = (s) => s ? s.toUpperCase().replace(/[^A-Z0-9]/g, '-') : '';
 
+    // Códigos de barra adicionales (proveedor, packs, etc.) — ver ProductBarcode
+    const matchesAnyBarcode = (barcodes, normalizedNeedle) =>
+        Array.isArray(barcodes) && barcodes.some(bc => bc && normBarcode(bc).toLowerCase().includes(normalizedNeedle));
+
+    const equalsAnyBarcode = (barcodes, normalizedNeedle) =>
+        Array.isArray(barcodes) && barcodes.some(bc => bc && normBarcode(bc) === normalizedNeedle);
+
     const filteredProducts = useMemo(() => {
         if (!busca) return products;
         const lower = normBarcode(busca).toLowerCase();
@@ -259,9 +266,11 @@ export default function Create({ auth, products, customers = [], company = null 
             (p.name    && p.name.toLowerCase().includes(busca.toLowerCase())) ||
             (p.sku     && normBarcode(p.sku).toLowerCase().includes(lower))     ||
             (p.barcode && normBarcode(p.barcode).toLowerCase().includes(lower)) ||
+            matchesAnyBarcode(p.extra_barcodes, lower) ||
             (p.variants && p.variants.some(v =>
                 (v.sku     && normBarcode(v.sku).toLowerCase().includes(lower)) ||
-                (v.barcode && normBarcode(v.barcode).toLowerCase().includes(lower))
+                (v.barcode && normBarcode(v.barcode).toLowerCase().includes(lower)) ||
+                matchesAnyBarcode(v.extra_barcodes, lower)
             ))
         );
     }, [products, busca]);
@@ -271,20 +280,22 @@ export default function Create({ auth, products, customers = [], company = null 
         if (!code) return;
         const upper = normBarcode(code.trim());
         for (const p of products) {
-            // Producto sin variantes: match por barcode o SKU exacto
+            // Producto sin variantes: match por barcode principal, adicional o SKU exacto
             if (!p.has_variants) {
                 if ((p.barcode && normBarcode(p.barcode) === upper) ||
+                    equalsAnyBarcode(p.extra_barcodes, upper) ||
                     (p.sku     && normBarcode(p.sku)     === upper)) {
                     addToCart(p);
                     setBusca('');
                     return;
                 }
             }
-            // Producto con variantes: match por barcode o SKU de variante
+            // Producto con variantes: match por barcode principal, adicional o SKU de variante
             if (p.has_variants && p.variants) {
                 const variant = p.variants.find(v =>
                     v.is_active && (
                         (v.barcode && normBarcode(v.barcode) === upper) ||
+                        equalsAnyBarcode(v.extra_barcodes, upper) ||
                         (v.sku     && normBarcode(v.sku)     === upper)
                     )
                 );
@@ -468,6 +479,55 @@ export default function Create({ auth, products, customers = [], company = null 
         setCart([]);
         setCustomerName('Consumidor Final');
         setCustomerId('');
+    };
+
+    // ── Ventas en espera ──────────────────────────────────────────────────────
+    const [heldSalesOpen, setHeldSalesOpen] = useState(false);
+    const [heldSales, setHeldSales] = useState([]);
+    const [heldSavingLabel, setHeldSavingLabel] = useState(false);
+
+    const holdCurrentSale = () => {
+        if (cart.length === 0) return;
+
+        setHeldSavingLabel(true);
+        axios.post(route('held-sales.store'), {
+            label: customerId ? customerName : null,
+            cart_data: { cart, customerId, customerName, notes, receiptType },
+        })
+            .then(() => {
+                toast.success('Venta guardada en espera.');
+                clearCart();
+                setNotes('');
+            })
+            .catch(() => toast.error('No se pudo guardar la venta en espera.'))
+            .finally(() => setHeldSavingLabel(false));
+    };
+
+    const openHeldSales = () => {
+        axios.get(route('held-sales.index'))
+            .then((res) => { setHeldSales(res.data.items); setHeldSalesOpen(true); })
+            .catch(() => toast.error('No se pudieron cargar las ventas en espera.'));
+    };
+
+    const resumeHeldSale = (id) => {
+        axios.get(route('held-sales.show', id))
+            .then((res) => {
+                const data = res.data.cart_data || {};
+                setCart(data.cart || []);
+                setCustomerId(data.customerId || '');
+                setCustomerName(data.customerName || 'Consumidor Final');
+                setNotes(data.notes || '');
+                if (data.receiptType) setReceiptType(data.receiptType);
+                setHeldSalesOpen(false);
+                return axios.delete(route('held-sales.destroy', id));
+            })
+            .catch(() => toast.error('No se pudo recuperar la venta en espera.'));
+    };
+
+    const discardHeldSale = (id) => {
+        axios.delete(route('held-sales.destroy', id))
+            .then(() => setHeldSales((prev) => prev.filter((h) => h.id !== id)))
+            .catch(() => toast.error('No se pudo eliminar.'));
     };
 
     const updatePaymentSplit = (splitId, patch) => {
@@ -791,12 +851,26 @@ export default function Create({ auth, products, customers = [], company = null 
                             </span>
                         )}
                     </div>
-                    {cart.length > 0 && (
-                        <button onClick={clearCart} className="text-[11.5px] font-semibold px-2.5 py-1 rounded-[7px] transition-colors"
-                            style={{ color: B.red }}>
-                            Limpiar
+                    <div className="flex items-center gap-1">
+                        <button onClick={openHeldSales} title="Ventas en espera"
+                            className="flex items-center gap-1 text-[11.5px] font-semibold px-2 py-1 rounded-[7px] transition-colors"
+                            style={{ color: B.blue }}>
+                            <ListRestart size={13} /> En espera
                         </button>
-                    )}
+                        {cart.length > 0 && (
+                            <>
+                                <button onClick={holdCurrentSale} disabled={heldSavingLabel} title="Poner esta venta en espera"
+                                    className="flex items-center gap-1 text-[11.5px] font-semibold px-2 py-1 rounded-[7px] transition-colors disabled:opacity-50"
+                                    style={{ color: B.teal }}>
+                                    <PauseCircle size={13} /> Pausar
+                                </button>
+                                <button onClick={clearCart} className="text-[11.5px] font-semibold px-2.5 py-1 rounded-[7px] transition-colors"
+                                    style={{ color: B.red }}>
+                                    Limpiar
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Selector cliente */}
@@ -1948,6 +2022,37 @@ export default function Create({ auth, products, customers = [], company = null 
                             />
                         </div>
                     </div>
+                </div>
+            </Modal>
+
+            {/* ══════════════════════════════════════════════════════════
+                MODAL VENTAS EN ESPERA
+                ══════════════════════════════════════════════════════════ */}
+            <Modal open={heldSalesOpen} onClose={() => setHeldSalesOpen(false)} title="Ventas en Espera" D={D}>
+                <div className="flex flex-col gap-2 p-1">
+                    {heldSales.length === 0 ? (
+                        <p className="text-sm py-6 text-center" style={{ color: D.muted }}>No hay ventas en espera.</p>
+                    ) : (
+                        heldSales.map((h) => (
+                            <div key={h.id} className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-[10px]"
+                                style={{ border: `1.5px solid ${D.border}` }}>
+                                <div className="min-w-0">
+                                    <p className="text-[13px] font-bold truncate" style={{ color: D.text }}>{h.label || 'Consumidor Final'}</p>
+                                    <p className="text-[11px]" style={{ color: D.muted }}>{new Date(h.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} · {h.user?.name}</p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button onClick={() => resumeHeldSale(h.id)}
+                                        className="px-3 py-1.5 rounded-[8px] text-[12px] font-bold text-white"
+                                        style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                                        Retomar
+                                    </button>
+                                    <button onClick={() => discardHeldSale(h.id)} className="text-[11px] font-semibold" style={{ color: B.red }}>
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </Modal>
 

@@ -61,6 +61,7 @@ class Collaborator extends Model
         'hourly_rate',
         'specialty',
         'faceio_fid',
+        'hik_employee_no',
         'pin',
         'is_active',
         'notes',

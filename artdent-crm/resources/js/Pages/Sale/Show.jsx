@@ -9,6 +9,7 @@ import axios from 'axios';
 import SearchableSelect from '@/Components/SearchableSelect';
 import FacturaA4 from '@/Components/Sale/FacturaA4';
 import { Ticket80, Ticket57 } from '@/Components/Sale/TicketBase';
+import SaleReturnModal from '@/Components/Sale/SaleReturnModal';
 import {
     buildPrintHtml,
     getThermalPrintZoom,
@@ -17,6 +18,8 @@ import {
     openBrowserPrint,
     printElementWithElectron,
 } from '@/lib/print';
+import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
+import { buildSaleTicket } from '@/lib/escpos/buildSaleTicket';
 
 // Mapea tipo de factura a sus NC/ND correspondientes
 function getNotaFiscalTypes(rt) {
@@ -143,6 +146,7 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const { isDark } = useTheme();
     const toast = useToast();
     const [mode, setMode] = useState('a4');
+    const [printingNative, setPrintingNative] = useState(false);
     const saleBalance = Math.max(0, Number(sale.total || 0) - Number(sale.paid_amount || 0));
 
     // ── Cuenta Corriente ─────────────────────────────────────
@@ -184,6 +188,8 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const notaFiscalTypes = getNotaFiscalTypes(sale.receipt_type);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [notaFiscalOpen, setNotaFiscalOpen] = useState(false);
+    const [returnModalOpen, setReturnModalOpen] = useState(false);
+    const hasReturnableItems = (sale.sale_items || []).some((item) => (item.quantity ?? 0) - (item.returned_quantity ?? 0) > 0.0001);
 
     const handleDelete = () => {
         router.delete(route('sales.destroy', sale.id), {
@@ -264,11 +270,28 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
     };
 
     const handlePrint = async () => {
-        const printElement = document.getElementById('print-zone');
-        if (!printElement) return;
-
         const isA4 = mode === 'a4';
         const is57 = mode === '57mm';
+
+        if (!isA4 && isNativePrintAvailable()) {
+            setPrintingNative(true);
+
+            try {
+                const ticket = await buildSaleTicket(sale, { widthMM: is57 ? 57 : 80 });
+                const result = await printRawBytes(ticket);
+
+                if (!result.ok) {
+                    toast.warning(result.error || 'No se pudo imprimir en la impresora configurada.');
+                }
+            } finally {
+                setPrintingNative(false);
+            }
+
+            return;
+        }
+
+        const printElement = document.getElementById('print-zone');
+        if (!printElement) return;
 
         if (isA4) {
             const html = buildPrintHtml({
@@ -431,12 +454,15 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
 
                         <Button
                             onClick={handlePrint}
+                            disabled={printingNative}
                             className="text-white border-none shadow-md rounded-xl"
                             style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal})` }}
                         >
-                            {mode === 'a4'
-                                ? <><Download size={16} className="mr-2" />Exportar PDF</>
-                                : <><Printer size={16} className="mr-2" />Imprimir Ticket</>}
+                            {printingNative
+                                ? <><Loader2 size={16} className="mr-2 animate-spin" />Imprimiendo…</>
+                                : mode === 'a4'
+                                    ? <><Download size={16} className="mr-2" />Exportar PDF</>
+                                    : <><Printer size={16} className="mr-2" />Imprimir Ticket</>}
                         </Button>
                     </div>
                 </div>
@@ -496,6 +522,24 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                                             DNI: {sale.customer.dni}
                                         </span>
                                     )}
+                                </div>
+                            )}
+                            {isTicketX && sale.status !== 'cancelled' && hasReturnableItems && (
+                                <button onClick={() => setReturnModalOpen(true)}
+                                    className={`mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors
+                                        ${isDark ? 'border-red-800/50 bg-red-900/20 text-red-300 hover:bg-red-900/40' : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'}`}>
+                                    Cambio / Devolución
+                                </button>
+                            )}
+                            {sale.sale_returns?.length > 0 && (
+                                <div className="mt-3 pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                                    <h4 className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Devoluciones</h4>
+                                    {sale.sale_returns.map((r) => (
+                                        <div key={r.id} className="flex justify-between text-xs py-0.5">
+                                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{new Date(r.created_at).toLocaleDateString('es-AR')} · {r.user?.name}</span>
+                                            <span className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>${fmt(r.total_refund)}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -671,6 +715,10 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
                     </div>
                 </div>
             </div>
+
+            {returnModalOpen && (
+                <SaleReturnModal sale={sale} isDark={isDark} onClose={() => setReturnModalOpen(false)} toast={toast} />
+            )}
         </AuthenticatedLayout>
     );
 }
