@@ -217,10 +217,12 @@ class SaleController extends Controller
         $receiptType = strtoupper($request->receipt_type ?? 'X');
         $company = \App\Models\Company::find($companyId);
 
-        // X → punto de venta fijo 00001 | A/B/C/FA/FB/FC/NC*/ND* → companies.afip_point_sale
+        // X → punto de venta fijo 00001 | A/B/C/FA/FB/FC/NC*/ND* → punto de venta
+        // AFIP resuelto por sucursal (con fallback al default de la empresa).
         $isAfipType = in_array($receiptType, ['A', 'B', 'C', 'FA', 'FB', 'FC', 'NCA', 'NCB', 'NCC', 'NDA', 'NDB', 'NDC']);
+        $resolvedPos = \App\Models\AfipPointOfSale::resolveFor($companyId, $request->integer('branch_id') ?: null);
         $pointSale = $isAfipType
-            ? str_pad($company?->afip_point_sale ?? 1, 5, '0', STR_PAD_LEFT)
+            ? str_pad($resolvedPos->point_sale ?? 1, 5, '0', STR_PAD_LEFT)
             : '00001';
 
         // MAX sobre la secuencia numérica del sale_number para el mismo punto de venta.

@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\GenerateAfipInvoiceJob;
+use App\Models\AfipPointOfSale;
 use App\Models\Company;
 use App\Models\Sale;
 use App\Services\Afip\AfipService;
 use App\Support\CompanyContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class AfipController extends Controller
 {
@@ -135,8 +138,9 @@ class AfipController extends Controller
         if (empty($company->cuit)) {
             return response()->json(['success' => false, 'error' => 'CUIT de la empresa no configurado. Completalo en la sección Impositiva.']);
         }
-        if (empty($company->afip_point_sale)) {
-            return response()->json(['success' => false, 'error' => 'Punto de venta no configurado.']);
+        $pointsOfSale = AfipPointOfSale::where('company_id', $company->id)->where('is_active', true)->get();
+        if ($pointsOfSale->isEmpty()) {
+            return response()->json(['success' => false, 'error' => 'No hay ningún punto de venta configurado.']);
         }
 
         // Verificar formato cert (suprimimos warnings: Laravel los convierte en ErrorException)
@@ -179,24 +183,25 @@ class AfipController extends Controller
             $wsfev = new \App\Services\Afip\WsfevService($environment);
 
             $cuit = preg_replace('/\D/', '', $company->cuit);
-            $pointSale = (int) $company->afip_point_sale;
 
             // Autenticar con WSAA usando el cert del entorno solicitado
             $auth = $wsaa->getAuth($cuit, $certPath, $company->afip_key_path);
             $checks[] = ['label' => 'Autenticación WSAA', 'ok' => true, 'detail' => 'Token obtenido correctamente'];
 
-            // Consultar último comprobante por tipo
+            // Consultar último comprobante por tipo, para cada punto de venta activo
             $tiposQuery = $company->iva_condition === 'responsable_inscripto'
                 ? ['FA' => 1, 'FB' => 6]
                 : ['FC' => 11];
 
-            foreach ($tiposQuery as $key => $code) {
-                $last = $wsfev->getLastNumber($auth, $cuit, $pointSale, $code);
-                $checks[] = [
-                    'label' => "Último comprobante {$key} (PV {$pointSale})",
-                    'ok' => true,
-                    'detail' => $last === 0 ? 'Sin comprobantes emitidos aún' : "Nº {$last}",
-                ];
+            foreach ($pointsOfSale as $pos) {
+                foreach ($tiposQuery as $key => $code) {
+                    $last = $wsfev->getLastNumber($auth, $cuit, $pos->point_sale, $code);
+                    $checks[] = [
+                        'label' => "Último comprobante {$key} (PV {$pos->point_sale}".($pos->label ? " - {$pos->label}" : '').')',
+                        'ok' => true,
+                        'detail' => $last === 0 ? 'Sin comprobantes emitidos aún' : "Nº {$last}",
+                    ];
+                }
             }
 
             return response()->json([
@@ -286,12 +291,99 @@ class AfipController extends Controller
         $validated = $request->validate([
             'afip_environment' => 'required|in:homo,prod',
             'afip_auto_invoice' => 'required|boolean',
-            'afip_point_sale' => 'required|integer|min:1|max:99999',
         ]);
 
         $companyId = CompanyContext::id();
         Company::findOrFail($companyId)->update($validated);
 
         return response()->json(['success' => true, 'message' => 'Configuración AFIP guardada.']);
+    }
+
+    /**
+     * Listado de puntos de venta AFIP de la empresa activa.
+     */
+    public function pointsOfSale()
+    {
+        $companyId = CompanyContext::id();
+
+        return response()->json([
+            'points_of_sale' => AfipPointOfSale::where('company_id', $companyId)
+                ->with('branch:id,name')
+                ->orderByDesc('is_default')
+                ->orderBy('point_sale')
+                ->get(),
+            'branches' => \App\Models\Branch::where('company_id', $companyId)->where('is_active', true)->get(['id', 'name']),
+        ]);
+    }
+
+    public function storePointOfSale(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $companyId = CompanyContext::id();
+
+        $validated = $request->validate([
+            'point_sale' => [
+                'required', 'integer', 'min:1', 'max:99999',
+                Rule::unique('afip_points_of_sale')->where('company_id', $companyId),
+            ],
+            'branch_id' => 'nullable|integer|exists:branches,id',
+            'label' => 'nullable|string|max:100',
+            'is_default' => 'required|boolean',
+            'is_active' => 'required|boolean',
+        ]);
+
+        DB::transaction(function () use ($companyId, $validated) {
+            if ($validated['is_default']) {
+                AfipPointOfSale::where('company_id', $companyId)->update(['is_default' => false]);
+            }
+
+            AfipPointOfSale::create([...$validated, 'company_id' => $companyId]);
+        });
+
+        return response()->json(['success' => true, 'message' => 'Punto de venta creado.']);
+    }
+
+    public function updatePointOfSale(Request $request, AfipPointOfSale $pointOfSale): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($pointOfSale->company_id === CompanyContext::id(), 404);
+
+        $companyId = $pointOfSale->company_id;
+
+        $validated = $request->validate([
+            'point_sale' => [
+                'required', 'integer', 'min:1', 'max:99999',
+                Rule::unique('afip_points_of_sale')->where('company_id', $companyId)->ignore($pointOfSale->id),
+            ],
+            'branch_id' => 'nullable|integer|exists:branches,id',
+            'label' => 'nullable|string|max:100',
+            'is_default' => 'required|boolean',
+            'is_active' => 'required|boolean',
+        ]);
+
+        if (! $validated['is_active'] && $pointOfSale->is_default) {
+            return response()->json(['success' => false, 'error' => 'No se puede desactivar el punto de venta por defecto. Marcá otro como default primero.'], 422);
+        }
+
+        DB::transaction(function () use ($companyId, $pointOfSale, $validated) {
+            if ($validated['is_default']) {
+                AfipPointOfSale::where('company_id', $companyId)->where('id', '!=', $pointOfSale->id)->update(['is_default' => false]);
+            }
+
+            $pointOfSale->update($validated);
+        });
+
+        return response()->json(['success' => true, 'message' => 'Punto de venta actualizado.']);
+    }
+
+    public function destroyPointOfSale(AfipPointOfSale $pointOfSale): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($pointOfSale->company_id === CompanyContext::id(), 404);
+
+        if ($pointOfSale->is_default) {
+            return response()->json(['success' => false, 'error' => 'No se puede eliminar el punto de venta por defecto. Marcá otro como default primero.'], 422);
+        }
+
+        $pointOfSale->delete();
+
+        return response()->json(['success' => true, 'message' => 'Punto de venta eliminado.']);
     }
 }

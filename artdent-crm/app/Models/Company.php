@@ -146,6 +146,11 @@ class Company extends Model
         return $this->hasMany(Branch::class);
     }
 
+    public function afip_points_of_sale()
+    {
+        return $this->hasMany(AfipPointOfSale::class);
+    }
+
     public function cash_drawers()
     {
         return $this->hasMany(CashDrawer::class);

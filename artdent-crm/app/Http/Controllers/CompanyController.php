@@ -2,20 +2,55 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Company;
 use App\Support\AccountingSettings;
 use App\Support\CompanyContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Listado de todas las compañías del tenant (multi-empresa).
      */
     public function index()
     {
-        //
+        return \Inertia\Inertia::render('Companies/Index', [
+            'companies' => Company::query()
+                ->withCount('branches')
+                ->orderBy('name')
+                ->get(['id', 'name', 'fantasy_name', 'cuit', 'iva_condition', 'created_at']),
+        ]);
+    }
+
+    /**
+     * Crea una nueva compañía dentro del tenant, con su sucursal "Casa
+     * Central" por defecto (mismo patrón que TenantProvisioningService en
+     * artdent-admin al aprovisionar un tenant nuevo).
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'fantasy_name' => 'nullable|string|max:150',
+            'cuit' => 'nullable|string|max:20',
+            'iva_condition' => 'nullable|in:responsable_inscripto,monotributista,exento,consumidor_final',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $company = Company::create($validated);
+
+            Branch::create([
+                'company_id' => $company->id,
+                'name' => 'Casa Central',
+                'code' => 'CENTRAL',
+                'is_active' => true,
+            ]);
+        });
+
+        return redirect()->route('companies.index')->with('success', 'Compañía creada correctamente.');
     }
 
     public function edit()
@@ -55,7 +90,6 @@ class CompanyController extends Controller
             'iva_condition' => 'nullable|string|max:50',
             'iibb' => 'nullable|string|max:50',
             'start_date' => 'nullable|date',
-            'afip_point_sale' => 'nullable|integer',
             'email' => 'nullable|email|max:150',
             'phone' => 'nullable|string|max:50',
             'website' => 'nullable|string|max:150',

@@ -2,6 +2,7 @@
 
 namespace App\Services\Afip;
 
+use App\Models\AfipPointOfSale;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -72,7 +73,7 @@ class AfipService
         $cbteTipo = self::CBTE_TIPO[$receiptKey]
             ?? throw new RuntimeException("Tipo de comprobante inválido: {$receiptKey}");
 
-        $pointSale = (int) ($company->afip_point_sale ?? 1);
+        $pointSale = $this->resolvePointSale($company, $sale->branch_id);
         $cuit = preg_replace('/\D/', '', $company->cuit);
 
         // 1 — Obtener token WSAA
@@ -404,12 +405,28 @@ class AfipService
         if (empty($company->afip_key_path) || ! file_exists($company->afip_key_path)) {
             $errors[] = 'Clave privada AFIP no encontrada. Cargarla en Configuración → AFIP.';
         }
-        if (empty($company->afip_point_sale)) {
-            $errors[] = 'Punto de venta AFIP no configurado.';
+        if (! AfipPointOfSale::where('company_id', $company->id)->where('is_active', true)->exists()) {
+            $errors[] = 'No hay ningún punto de venta AFIP configurado. Agregá uno en Configuración → AFIP.';
         }
 
         if (! empty($errors)) {
             throw new RuntimeException(implode(' | ', $errors));
         }
+    }
+
+    /**
+     * Resuelve el punto de venta a usar: el asignado a la sucursal de la
+     * venta, o el is_default de la empresa si la sucursal no tiene uno
+     * propio (o la venta no tiene sucursal, ej. e-commerce).
+     */
+    private function resolvePointSale(Company $company, ?int $branchId): int
+    {
+        $pointOfSale = AfipPointOfSale::resolveFor($company->id, $branchId);
+
+        if (! $pointOfSale) {
+            throw new RuntimeException('No hay ningún punto de venta AFIP configurado para esta empresa.');
+        }
+
+        return $pointOfSale->point_sale;
     }
 }

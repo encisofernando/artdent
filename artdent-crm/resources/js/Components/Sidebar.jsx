@@ -263,6 +263,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Usuarios", path: "/users", permission: 'users.view' },
                         { title: "Roles y Permisos", path: "/roles", permission: 'roles.view' },
                         { title: "Auditoría", path: "/audit-logs", permission: 'settings.edit' },
+                        { title: "Empresas", path: "/companies", permission: 'companies.switch' },
                         { title: "Empresa", path: "/settings", permission: 'settings.edit' },
                         { title: "Impresión", path: "/settings?tab=preferencias", permission: 'settings.edit' },
                         { title: "Acceso Kiosk", path: "/admin/kiosk-access", permission: 'settings.edit', module: ['laboratorio', 'rrhh'] },

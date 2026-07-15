@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
@@ -7,6 +7,7 @@ import {
     Save, UploadCloud, X, Camera, CheckCircle2,
     ShieldCheck, KeyRound, FileCheck2, Loader2, Wifi, CircleCheck, CircleX, FileCog,
     Mail, Printer, Bot, Landmark, BookOpen, ShoppingBag, BarChart3,
+    Plus, Trash2, Edit, Star, Store,
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -25,6 +26,223 @@ const CHATBOT_MODEL_OPTIONS = [
 ];
 
 const DEFAULT_CHATBOT_MODEL = 'claude-haiku-4-5-20251001';
+
+function PointOfSaleForm({ isDark, branches, initial, onCancel, onSubmit, saving, error }) {
+    const [form, setForm] = useState(initial);
+
+    const inp = `w-full rounded-xl border text-sm font-medium px-3.5 py-2.5 transition-colors focus:ring-0 ${isDark
+        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm'}`;
+    const lbl = `block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className={`p-4 rounded-xl border grid gap-4 sm:grid-cols-2 ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div>
+                <label className={lbl}>Número de punto de venta</label>
+                <input type="number" min="1" max="99999" className={inp} value={form.point_sale}
+                    onChange={(e) => setForm((f) => ({ ...f, point_sale: e.target.value }))} placeholder="Ej: 1" />
+            </div>
+            <div>
+                <label className={lbl}>Etiqueta</label>
+                <input className={inp} value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} placeholder="Ej: Sucursal Centro" />
+            </div>
+            <div>
+                <label className={lbl}>Sucursal</label>
+                <SearchableSelect
+                    value={form.branch_id ? String(form.branch_id) : ''}
+                    onChange={(v) => setForm((f) => ({ ...f, branch_id: v || null }))}
+                    placeholder="Sin sucursal asignada (usa el default)"
+                    options={branches.map((b) => ({ value: String(b.id), label: b.name }))}
+                />
+            </div>
+            <div className="flex items-end gap-5 pb-1">
+                <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                    <input type="checkbox" checked={form.is_default} onChange={(e) => setForm((f) => ({ ...f, is_default: e.target.checked }))} className="rounded" />
+                    Por defecto
+                </label>
+                <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                    <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" />
+                    Activo
+                </label>
+            </div>
+
+            {error && <div className="sm:col-span-2 text-red-500 text-xs font-bold bg-red-500/10 px-3 py-2 rounded-lg">{error}</div>}
+
+            <div className="sm:col-span-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={onCancel} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                    Cancelar
+                </Button>
+                <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white gap-2 min-w-32">
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar
+                </Button>
+            </div>
+        </form>
+    );
+}
+
+function PointsOfSaleManager({ isDark }) {
+    const [items, setItems] = useState([]);
+    const [branches, setBranches] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showCreate, setShowCreate] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get(route('afip.points-of-sale.index'));
+            setItems(data.points_of_sale);
+            setBranches(data.branches);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []);
+
+    const blankForm = () => ({
+        point_sale: '', branch_id: null, label: '', is_default: items.length === 0, is_active: true,
+    });
+
+    const submitCreate = async (form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.post(route('afip.points-of-sale.store'), form);
+            setShowCreate(false);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const submitUpdate = async (id, form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.put(route('afip.points-of-sale.update', id), form);
+            setEditingId(null);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const destroy = async (id) => {
+        if (!window.confirm('¿Eliminar este punto de venta?')) return;
+        try {
+            await axios.delete(route('afip.points-of-sale.destroy', id));
+            await load();
+        } catch (e) {
+            alert(e.response?.data?.error || 'Error al eliminar.');
+        }
+    };
+
+    return (
+        <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="flex items-center justify-between gap-3 mb-1">
+                <div className="flex items-center gap-2">
+                    <Store size={18} className={isDark ? 'text-teal-400' : 'text-teal-600'} />
+                    <h3 className={`text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        Puntos de venta
+                    </h3>
+                </div>
+                {!showCreate && (
+                    <Button type="button" size="sm" onClick={() => { setShowCreate(true); setEditingId(null); }} className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white">
+                        <Plus size={14} /> Nuevo
+                    </Button>
+                )}
+            </div>
+            <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Cada venta usa el punto de venta asignado a su sucursal; si la sucursal no tiene uno propio, se usa el marcado como "Por defecto".
+            </p>
+
+            {showCreate && (
+                <div className="mb-4">
+                    <PointOfSaleForm
+                        isDark={isDark}
+                        branches={branches}
+                        initial={blankForm()}
+                        onCancel={() => { setShowCreate(false); setError(''); }}
+                        onSubmit={submitCreate}
+                        saving={saving}
+                        error={error}
+                    />
+                </div>
+            )}
+
+            {loading ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cargando…</div>
+            ) : items.length === 0 && !showCreate ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No hay puntos de venta configurados.</div>
+            ) : (
+                <div className="space-y-2">
+                    {items.map((pos) => (
+                        <div key={pos.id}>
+                            {editingId === pos.id ? (
+                                <PointOfSaleForm
+                                    isDark={isDark}
+                                    branches={branches}
+                                    initial={{
+                                        point_sale: pos.point_sale,
+                                        branch_id: pos.branch_id,
+                                        label: pos.label ?? '',
+                                        is_default: pos.is_default,
+                                        is_active: pos.is_active,
+                                    }}
+                                    onCancel={() => { setEditingId(null); setError(''); }}
+                                    onSubmit={(form) => submitUpdate(pos.id, form)}
+                                    saving={saving}
+                                    error={error}
+                                />
+                            ) : (
+                                <div className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-900/40 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                            {String(pos.point_sale).padStart(4, '0')}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className={`text-sm font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                {pos.label || `Punto de venta ${pos.point_sale}`}
+                                            </p>
+                                            <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {pos.branch?.name || 'Sin sucursal asignada'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {pos.is_default && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500">
+                                                <Star size={10} /> Default
+                                            </span>
+                                        )}
+                                        {pos.is_active ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500">Activo</span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400">Inactivo</span>
+                                        )}
+                                        <Button type="button" size="sm" variant="outline" onClick={() => { setEditingId(pos.id); setShowCreate(false); setError(''); }} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                                            <Edit size={13} />
+                                        </Button>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => destroy(pos.id)} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20">
+                                            <Trash2 size={13} />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function Settings({ company, accountingSettings }) {
     const { isDark } = useTheme();
@@ -117,7 +335,6 @@ export default function Settings({ company, accountingSettings }) {
         iva_condition: company.iva_condition || '',
         iibb: company.iibb || '',
         start_date: company.start_date ? String(company.start_date).substring(0, 10) : '',
-        afip_point_sale: company.afip_point_sale || '',
         email: company.email || '',
         phone: company.phone || '',
         website: company.website || '',
@@ -168,7 +385,6 @@ export default function Settings({ company, accountingSettings }) {
     const [afipSettings, setAfipSettings] = useState({
         afip_environment:  company.afip_environment  ?? 'homo',
         afip_auto_invoice: company.afip_auto_invoice ?? false,
-        afip_point_sale:   company.afip_point_sale   ?? '',
     });
     const [afipSaving,    setAfipSaving]    = useState(false);
     const [afipMsg,       setAfipMsg]       = useState('');
@@ -603,7 +819,6 @@ export default function Settings({ company, accountingSettings }) {
                                         </div>
 
                                         {renderInput('iibb', 'Ingresos Brutos (IIBB)', 'text', 'Ej: 901-123456-1')}
-                                        {renderInput('afip_point_sale', 'Punto de Venta Predeterminado', 'number', 'Ej: 1 o 5')}
                                         {renderInput('start_date', 'Fecha Inicio Actividades', 'date')}
                                     </div>
                                 </div>
@@ -1214,24 +1429,6 @@ export default function Settings({ company, accountingSettings }) {
                                             )}
                                         </div>
 
-                                        {/* Punto de venta */}
-                                        <div>
-                                            <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                Punto de Venta AFIP
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max="99999"
-                                                value={afipSettings.afip_point_sale}
-                                                onChange={e => setAfipSettings(s => ({ ...s, afip_point_sale: e.target.value }))}
-                                                placeholder="Ej: 1"
-                                                className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
-                                                    ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
-                                                    : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm'}`}
-                                            />
-                                        </div>
-
                                         {/* Auto-facturación */}
                                         <div className="md:col-span-2">
                                             <div className={`flex items-start gap-4 p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
@@ -1275,6 +1472,9 @@ export default function Settings({ company, accountingSettings }) {
                                         {afipSaving ? <><Loader2 size={16} className="animate-spin" /> Guardando…</> : <><Save size={16} /> Guardar configuración AFIP</>}
                                     </Button>
                                 </div>
+
+                                {/* Puntos de venta */}
+                                <PointsOfSaleManager isDark={isDark} />
 
                                 {/* Generar CSR */}
                                 <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>

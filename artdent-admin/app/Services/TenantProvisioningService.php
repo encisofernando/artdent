@@ -221,6 +221,16 @@ class TenantProvisioningService
                 ]);
             }
         }
+
+        // No sigue el patrón view/create/edit/delete: habilita el selector de
+        // compañía activa del topbar (multi-empresa por tenant).
+        DB::connection('tenant')->table('permissions')->updateOrInsert([
+            'name' => 'companies.switch',
+            'guard_name' => 'web',
+        ], [
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function seedSuperAdminRole(): int

@@ -48,7 +48,9 @@ Route::post('subscription/cancel', [SubscriptionController::class, 'cancel'])->n
 Route::get('settings', [CompanyController::class, 'edit'])->name('settings.edit');
 Route::put('settings', [CompanyController::class, 'update'])->name('settings.update');
 
-// Selector de compañía activa (usuarios con permiso companies.switch)
+// Multi-empresa: listado/alta + selector de compañía activa (companies.switch)
+Route::get('companies', [CompanyController::class, 'index'])->name('companies.index')->middleware('permission:companies.switch');
+Route::post('companies', [CompanyController::class, 'store'])->name('companies.store')->middleware('permission:companies.switch');
 Route::post('companies/active', [CompanyController::class, 'setActive'])->name('companies.set-active');
 
 Route::resource('branchs', BranchController::class);
@@ -112,6 +114,11 @@ Route::prefix('afip')->name('afip.')->group(function () {
     Route::get('test-connection', [AfipController::class, 'testConnection'])->name('test-connection');
     // Genera clave privada RSA + CSR para registrar en portal ARCA
     Route::post('generate-csr', [AfipController::class, 'generateCsr'])->name('generate-csr');
+    // Puntos de venta (multi-PV por empresa)
+    Route::get('points-of-sale', [AfipController::class, 'pointsOfSale'])->name('points-of-sale.index');
+    Route::post('points-of-sale', [AfipController::class, 'storePointOfSale'])->name('points-of-sale.store');
+    Route::put('points-of-sale/{pointOfSale}', [AfipController::class, 'updatePointOfSale'])->name('points-of-sale.update');
+    Route::delete('points-of-sale/{pointOfSale}', [AfipController::class, 'destroyPointOfSale'])->name('points-of-sale.destroy');
 });
 
 // ── Padrón ARCA ──────────────────────────────────────────────────────────────

@@ -42,7 +42,7 @@ class GenerateAfipInvoiceJob implements ShouldQueue
         $invoice = $service->generateFromSale($sale, $this->receiptKey);
 
         // Sincronizar sale_number con el número oficial asignado por AFIP
-        $pointSale = str_pad($sale->company->afip_point_sale ?? 1, 5, '0', STR_PAD_LEFT);
+        $pointSale = str_pad($invoice->point_sale, 5, '0', STR_PAD_LEFT);
         $afipNumber = str_pad($invoice->number, 8, '0', STR_PAD_LEFT);
 
         $sale->update([
