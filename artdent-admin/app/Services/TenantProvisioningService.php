@@ -5,8 +5,9 @@ namespace App\Services;
 use App\Models\Plan;
 use App\Models\Tenant;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 class TenantProvisioningService
 {
     /**
-     * @return array{tenant: \App\Models\Tenant, database: string, domain: string, owner_email: string, generated_password: ?string}
+     * @return array{tenant: Tenant, database: string, domain: string, owner_email: string, generated_password: ?string}
      */
     public function provision(array $data): array
     {
@@ -92,6 +93,15 @@ class TenantProvisioningService
         }
     }
 
+    /**
+     * Construye el schema de la base del tenant en dos pasos, igual que
+     * `migrate:fresh --schema-path` de Laravel: primero carga el dump SQL
+     * squasheado (rápido, es todo el historial de migraciones ya aplanado),
+     * y después corre `tenants:migrate` para aplicar cualquier migración real
+     * que haya quedado afuera del dump — así, aunque nadie vuelva a regenerar
+     * el dump, un tenant nuevo siempre termina con el schema completo y
+     * actualizado en vez de silenciosamente desactualizado.
+     */
     private function prepareTenantDatabase(Tenant $tenant): void
     {
         tenancy()->initialize($tenant);
@@ -113,6 +123,11 @@ class TenantProvisioningService
         }
 
         DB::connection('tenant')->unprepared($schemaSql);
+
+        Artisan::call('tenants:migrate', [
+            '--tenants' => [$tenant->getTenantKey()],
+        ]);
+
         $this->ensureInfrastructureTables();
     }
 

@@ -65,7 +65,12 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Debe coincidir con artdent-crm (env APP_TIMEZONE ahí también default
+    // 'America/Argentina/Buenos_Aires') — ambas apps escriben timestamps en
+    // la misma tabla central compartida (tickets/ticket_messages, etc.); si
+    // difieren, el orden cronológico se rompe al mezclar filas de las dos
+    // apps (un timestamp en UTC "parece" 3 horas más tarde que uno en ART).
+    'timezone' => env('APP_TIMEZONE', 'America/Argentina/Buenos_Aires'),
 
     /*
     |--------------------------------------------------------------------------

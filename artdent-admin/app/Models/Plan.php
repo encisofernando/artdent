@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Plan extends Model
@@ -20,6 +21,7 @@ class Plan extends Model
         'max_users',
         'max_products',
         'max_sales_per_month',
+        'max_chat_messages_per_month',
         'features',
     ];
 
@@ -31,12 +33,18 @@ class Plan extends Model
         'max_users' => 'integer',
         'max_products' => 'integer',
         'max_sales_per_month' => 'integer',
+        'max_chat_messages_per_month' => 'integer',
         'features' => 'array',
     ];
 
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    public function modules(): BelongsToMany
+    {
+        return $this->belongsToMany(Module::class, 'plan_modules');
     }
 
     public function getFormattedPriceAttribute(): string

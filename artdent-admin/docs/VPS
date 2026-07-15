@@ -1,0 +1,35 @@
+
+
+ArtDent CRM - Tenant con Plan Owner con su propia DB separada.
+
+Dominio: pos.artdent.com.ar
+Ubicacion: /home/fer/web/pos.artdent.com.ar/public_html
+Base de datos
+* User: fer_artdent_fer
+* Password: ArtDent_2025
+* DB: fer_artdent
+
+ArtCode - Admin
+
+Dominio: app.artcode.com.ar
+Ubicacion: /home/artcode/web/app.artcode.com.ar
+Base de datos
+* User: artcode_fer_dev
+* Password: Enci$o_97
+* DB: 	artcode_admin
+
+ArtCode CRM
+Dominio: pos.artcode.com.ar
+Ubicacion: /home/artcode/web/pos.artcode.com.ar
+Base de datos
+* User: artcode_pos
+* Password: Enci$o_97
+* DB: artcode_pos
+
+
+Nueva carpeta/Integraciones/DS-K1T320MX-Face-Recognition-Terminal_Datasheet_V1.0_20220824.pdf
+
+El Hikvision DS-K1T320MX es un terminal de control de acceso y asistencia compacto que utiliza reconocimiento facial, tarjetas (Mifare/M1) y PIN. Admite el protocolo ISUP 5.0 (HikCentral Protocol), lo que permite conectarlo a internet y administrarlo de forma remota sin necesidad de tener una dirección IP pública fija.¿Qué es ISUP en el DS-K1T320MX?ISUP (Intelligent Security Up Protocol) es el protocolo de Hikvision diseñado para conectar dispositivos de seguridad (como cámaras y terminales de control de acceso) a plataformas de software centrales (como HikCentral Professional o iVMS-4200) a través de redes públicas o privadas.Funciona de manera muy similar a un dispositivo móvil inteligente: en lugar de que el software central busque al equipo de acceso, el DS-K1T320MX "llama" o envía datos al servidor central de forma activa. Esto es ideal si el equipo está en una sucursal remota y la oficina central está en otra ubicación.¿Cómo habilitar y configurar ISUP en el dispositivo?La configuración de este protocolo se realiza fácilmente a través de la interfaz web del dispositivo:Conexión a la red: Conecta el DS-K1T320MX a tu red local mediante el cable de red (RJ45).Acceso al cliente web: Abre un navegador web en tu PC (dentro de la misma red) e ingresa la dirección IP del equipo.Inicio de sesión: Inicia sesión con el usuario administrador (generalmente admin) y la contraseña que creaste al configurarlo por primera vez.Configuración de ISUP:Ve al menú de Configuración (Configuration).Selecciona Red (Network) y luego Avanzado (Advanced).Busca la pestaña de Plataforma (Platform Access) o ISUP.Cambia el tipo de protocolo a ISUP (o Ehome).Ingresa la Dirección IP pública o Dominio del servidor central (donde tienes instalado el HikCentral o iVMS-4200).Configura el Puerto (por defecto suele ser el 7660).Asigna una Clave de comunicación (Device ID / Key) que servirá como contraseña de enlace.Guardar y verificar: Guarda los cambios. El terminal se comunicará automáticamente con tu plataforma central.
+
+
+Si no encuentras solucion pasamos a ISUP que parece mejor

@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDomains;
 use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
-    use HasDatabase;
+    use HasDatabase, HasDomains;
 
     public static function getCustomColumns(): array
     {
@@ -28,14 +30,19 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         ];
     }
 
-    public function subscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class, 'tenant_id');
     }
 
-    public function userMaps(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function userMaps(): HasMany
     {
         return $this->hasMany(UserTenantMap::class, 'tenant_id');
+    }
+
+    public function tenantModules(): HasMany
+    {
+        return $this->hasMany(TenantModule::class, 'tenant_id');
     }
 
     public function activeSubscription(): ?Subscription

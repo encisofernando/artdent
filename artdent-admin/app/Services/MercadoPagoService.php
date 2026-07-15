@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\AfipIssuerSetting;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Services\Afip\SubscriptionInvoiceService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -186,8 +189,14 @@ class MercadoPagoService
     {
         $type = $payload['type'] ?? null;
 
+        if ($type === 'payment') {
+            $this->processPaymentWebhook($payload);
+
+            return;
+        }
+
         if ($type !== 'preapproval') {
-            Log::info('MP webhook ignorado — tipo no es preapproval', ['type' => $type]);
+            Log::info('MP webhook ignorado — tipo no es preapproval ni payment', ['type' => $type]);
 
             return;
         }
@@ -230,7 +239,7 @@ class MercadoPagoService
         $subscription->update([
             'status' => $internalStatus,
             'mp_preapproval_id' => $preapprovalId,
-            'next_payment_date' => isset($mpData['next_payment_date']) ? \Carbon\Carbon::parse($mpData['next_payment_date']) : null,
+            'next_payment_date' => isset($mpData['next_payment_date']) ? Carbon::parse($mpData['next_payment_date']) : null,
             'mp_data' => $mpData,
         ]);
 
@@ -251,6 +260,94 @@ class MercadoPagoService
             ]);
 
             Log::info("MP webhook: tenant [{$tenant->id}] → {$tenantStatus}", ['preapproval_id' => $preapprovalId]);
+        }
+    }
+
+    /**
+     * Obtiene el detalle de un pago individual (cargo de una suscripción).
+     */
+    public function getPaymentDetails(string $paymentId): array
+    {
+        $response = Http::withToken($this->accessToken)
+            ->get("{$this->baseUrl}/v1/payments/{$paymentId}");
+
+        if ($response->failed()) {
+            Log::error('MP getPaymentDetails failed', ['payment_id' => $paymentId]);
+
+            return [];
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Procesa el webhook de un pago individual (cargo recurrente de una
+     * suscripción ya autorizada) — dispara la factura AFIP de ArtCode al
+     * tenant si `AfipIssuerSetting::auto_invoice` está activado. No bloquea
+     * el 200 al webhook: cualquier error de AFIP queda logueado, MP no
+     * reintenta por esto (la suscripción ya fue cobrada igual).
+     */
+    private function processPaymentWebhook(array $payload): void
+    {
+        $paymentId = $payload['data']['id'] ?? null;
+
+        if (! $paymentId) {
+            return;
+        }
+
+        $payment = $this->getPaymentDetails($paymentId);
+
+        if (empty($payment) || ($payment['status'] ?? null) !== 'approved') {
+            return;
+        }
+
+        $tenantId = $payment['external_reference'] ?? null;
+        $subscription = $tenantId
+            ? Subscription::where('tenant_id', $tenantId)->latest()->first()
+            : null;
+
+        if (! $subscription) {
+            Log::warning('MP payment webhook: no se pudo resolver la suscripción/tenant', [
+                'payment_id' => $paymentId,
+                'external_reference' => $tenantId,
+            ]);
+
+            return;
+        }
+
+        $tenant = $subscription->tenant;
+
+        if (! $tenant) {
+            return;
+        }
+
+        $issuer = AfipIssuerSetting::current();
+
+        if (! $issuer || ! $issuer->auto_invoice) {
+            Log::info('MP payment webhook: auto-factura de suscripción deshabilitada, se omite', [
+                'tenant_id' => $tenant->id,
+            ]);
+
+            return;
+        }
+
+        try {
+            $amount = (float) ($payment['transaction_amount'] ?? $subscription->amount);
+            $description = "Suscripción {$subscription->plan?->name} — ".now()->translatedFormat('F Y');
+
+            app(SubscriptionInvoiceService::class)->generateForPayment(
+                $tenant,
+                $subscription,
+                $amount,
+                $description,
+                (string) $paymentId,
+            );
+        } catch (\Throwable $e) {
+            Log::error('MP payment webhook: error al facturar suscripción', [
+                'tenant_id' => $tenant->id,
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

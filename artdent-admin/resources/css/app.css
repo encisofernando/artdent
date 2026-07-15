@@ -4,8 +4,43 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.jsx';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Paleta ArtCode — ver docs/ArtCode_Manual_de_Identidad.pdf
+ * brand-blue/cyan son la identidad (headers, acentos, botones primarios);
+ * brand-navy es el fondo oscuro de marca; brand-mint el fondo claro de marca
+ * (reemplaza el blanco/slate-50 genérico). Los estados (éxito/alerta/error)
+ * siguen la paleta semántica estándar a propósito — no deben mezclarse con
+ * el acento de marca.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+    --color-brand-blue: #397b9c;
+    --color-brand-cyan: #17b3a3;
+    --color-brand-navy: #0f2c3a;
+    --color-brand-navy-light: #163d50;
+    --color-brand-teal: #5aad9c;
+    --color-brand-aqua: #acd6ce;
+    --color-brand-mint: #e6f5f2;
+}
+
+/*
+ * Textura de marca — manual de identidad, sección "Patrón y textura": el
+ * ícono de la cápsula repetido como marca de agua, baja opacidad (8–14%),
+ * un solo color. Reemplaza el fondo plano por algo con identidad propia.
+ */
+.brand-pattern {
+    background-color: var(--color-brand-mint);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='100'%3E%3Crect x='8' y='8' width='56' height='84' rx='28' ry='28' fill='none' stroke='%23397B9C' stroke-width='4' opacity='0.10'/%3E%3C/svg%3E");
+}
+
+.dark .brand-pattern {
+    background-color: var(--color-brand-navy);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='100'%3E%3Crect x='8' y='8' width='56' height='84' rx='28' ry='28' fill='none' stroke='%2317B3A3' stroke-width='4' opacity='0.07'/%3E%3C/svg%3E");
 }

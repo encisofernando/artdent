@@ -49,7 +49,15 @@ return [
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'laravel'),
+            // Var propia (no DB_DATABASE): esta conexión es a la vez la
+            // conexión por defecto Y `tenancy.database.central_connection`
+            // (ver config/tenancy.php). phpunit.xml pisa DB_DATABASE a
+            // ':memory:' para la conexión sqlite de test — sin esta
+            // variable separada, esa misma pisada rompía cualquier test que
+            // tocara Tenant/domains/user_tenant_map (conecta mysql contra
+            // ":memory:"). Mismo criterio que CENTRAL_DB_DATABASE en
+            // artdent-crm.
+            'database' => env('DB_DATABASE_MYSQL', env('DB_DATABASE', 'laravel')),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'unix_socket' => env('DB_SOCKET', ''),
@@ -120,7 +128,6 @@ return [
             'strict' => true,
             'engine' => null,
         ],
-
 
         'mariadb' => [
             'driver' => 'mariadb',
