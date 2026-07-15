@@ -34,6 +34,18 @@ artdent-crm/node_modules/
 electron-print-server/node_modules/
 electron-print-server/dist/
 
+# --- Android (Capacitor) ---
+artdent-android/node_modules/
+
+# --- Carpetas/archivos personales de trabajo, nunca al repo ---
+# (dumps SQL con datos reales, recibos/comprobantes personales, credenciales
+# de prueba, documentos sueltos que no son parte del código del proyecto)
+/Nueva carpeta/
+/artdent_admin.sql
+/artdent_dev.sql
+/.codex
+/ArtDent*.pdf
+
 # --- Sistemas / IDE ---
 *.swp
 *.swo
