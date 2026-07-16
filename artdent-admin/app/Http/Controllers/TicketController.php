@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TicketMessageCreatedEvent;
 use App\Mail\TicketReplyMail;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -87,6 +89,19 @@ class TicketController extends Controller
             Mail::to($ticket->created_by_email)->send(new TicketReplyMail($ticket, $message));
         } catch (\Throwable) {
             // El mensaje ya quedó guardado — el mail es best-effort.
+        }
+
+        try {
+            TicketMessageCreatedEvent::dispatch(
+                $ticket->id,
+                $message->id,
+                $message->author_type,
+                $message->author_name,
+                $message->body,
+                $message->created_at->toISOString(),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Reverb broadcast failed (TicketMessageCreatedEvent): '.$e->getMessage());
         }
 
         return back()->with('success', 'Respuesta enviada.');

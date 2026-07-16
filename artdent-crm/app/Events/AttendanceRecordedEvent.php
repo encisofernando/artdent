@@ -21,6 +21,7 @@ class AttendanceRecordedEvent implements ShouldBroadcast
      * @param  'in'|'out'  $action
      */
     public function __construct(
+        public string $tenantId,
         public int $companyId,
         public string $personName,
         public string $personType,
@@ -32,7 +33,7 @@ class AttendanceRecordedEvent implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel("company.{$this->companyId}"),
+            new Channel("tenant.{$this->tenantId}.company.{$this->companyId}.attendance"),
         ];
     }
 

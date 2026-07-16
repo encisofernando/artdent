@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TicketMessageCreatedEvent;
 use App\Mail\NewTicketMail;
 use App\Models\Ticket;
 use App\Support\CrmMode;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -97,6 +99,19 @@ class SupportTicketController extends Controller
             'last_message_at' => $message->created_at,
             'status' => in_array($ticket->status, ['resuelto', 'cerrado'], true) ? 'abierto' : $ticket->status,
         ]);
+
+        try {
+            TicketMessageCreatedEvent::dispatch(
+                $ticket->id,
+                $message->id,
+                $message->author_type,
+                $message->author_name,
+                $message->body,
+                $message->created_at->toISOString(),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Reverb broadcast failed (TicketMessageCreatedEvent): '.$e->getMessage());
+        }
 
         return back()->with('success', 'Mensaje enviado.');
     }

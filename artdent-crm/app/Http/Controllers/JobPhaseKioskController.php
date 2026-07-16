@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Job;
 use App\Models\JobPhaseProgress;
 use App\Services\JobPhaseService;
+use App\Support\CrmMode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +35,7 @@ class JobPhaseKioskController extends Controller
         return Inertia::render('JobKiosk/Index', [
             'collaborators' => $collaborators,
             'company' => $company,
+            'tenant_id' => (string) (CrmMode::tenantInfo()['id'] ?? 'owner'),
         ]);
     }
 

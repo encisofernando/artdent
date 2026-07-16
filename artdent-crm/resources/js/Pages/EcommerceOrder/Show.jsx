@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag, MapPin, Banknote, QrCode, Printer, FileCheck2, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
@@ -372,6 +372,8 @@ function AfipPanel({ order, invoice, isDark }) {
 
 export default function Show({ auth, order, invoice }) {
     const { isDark } = useTheme();
+    const { props: pageProps } = usePage();
+    const tenantId = pageProps.tenant_info?.id;
     const [saved, setSaved] = useState(false);
 
     const handlePrintRemito = () => {
@@ -420,7 +422,9 @@ export default function Show({ auth, order, invoice }) {
         tracking_notes:    shipment?.notes            || '',
     });
 
-    // Auto-reload order data every 30s (updates badges/status without resetting form fields)
+    // Auto-reload order data (updates badges/status without resetting form fields).
+    // El poll de 30s queda como red de seguridad; el Echo listener de abajo es
+    // la vía principal para reflejar cambios de otros usuarios/webhooks al instante.
     useEffect(() => {
         const id = setInterval(() => {
             if (!processing) {
@@ -429,6 +433,18 @@ export default function Show({ auth, order, invoice }) {
         }, 30_000);
         return () => clearInterval(id);
     }, [processing]);
+
+    useEffect(() => {
+        if (!window.Echo || !tenantId || !order?.company_id || !order?.id) { return; }
+        const channelName = `tenant.${tenantId}.company.${order.company_id}.orders.${order.id}`;
+        const ch = window.Echo.private(channelName);
+        ch.listen('.order-status-changed', () => {
+            if (!processing) {
+                router.reload({ only: ['order'] });
+            }
+        });
+        return () => { window.Echo.leave(channelName); };
+    }, [tenantId, order?.company_id, order?.id, processing]);
 
     const submit = (e) => {
         e?.preventDefault();

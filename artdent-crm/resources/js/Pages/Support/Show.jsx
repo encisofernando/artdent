@@ -16,14 +16,24 @@ export default function Show({ ticket }) {
     const { data, setData, post, processing, reset } = useForm({ body: "" });
     const bottomRef = useRef(null);
 
-    // Refresca el ticket cada ~8s para mostrar respuestas nuevas del staff
-    // sin recargar manualmente (mensajería casi-en-vivo, sin WebSockets).
+    // Poll de red de seguridad — la vía principal es el Echo listener de abajo,
+    // que refresca al instante cuando llega una respuesta del staff.
     useEffect(() => {
         const interval = setInterval(() => {
             router.reload({ only: ["ticket"], preserveScroll: true });
-        }, 8000);
+        }, 45000);
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        if (!window.Echo) { return; }
+        const channelName = `ticket.${ticket.id}`;
+        const ch = window.Echo.private(channelName);
+        ch.listen(".ticket-message-created", () => {
+            router.reload({ only: ["ticket"], preserveScroll: true });
+        });
+        return () => { window.Echo.leave(channelName); };
+    }, [ticket.id]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Events\NewEcommerceOrderEvent;
 use App\Http\Controllers\Controller;
 use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
@@ -324,13 +323,6 @@ class PaymentController extends Controller
                         'url' => '/ecommerce-orders/'.$order->id,
                         'order_code' => $order->order_number,
                     ]);
-
-                    // Broadcast real-time notification to CRM dashboard
-                    try {
-                        NewEcommerceOrderEvent::dispatch($order);
-                    } catch (\Throwable $e) {
-                        Log::warning('Reverb broadcast failed: '.$e->getMessage());
-                    }
 
                     // Auto-generate AFIP invoice for MercadoPago payments
                     try {

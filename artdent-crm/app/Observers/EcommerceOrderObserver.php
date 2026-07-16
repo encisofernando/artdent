@@ -2,8 +2,11 @@
 
 namespace App\Observers;
 
+use App\Events\EcommerceOrderStatusChangedEvent;
 use App\Mail\OrderStatusChanged;
 use App\Models\EcommerceOrder;
+use App\Support\CrmMode;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class EcommerceOrderObserver
@@ -16,6 +19,17 @@ class EcommerceOrderObserver
     {
         if (! $order->wasChanged('status')) {
             return;
+        }
+
+        try {
+            EcommerceOrderStatusChangedEvent::dispatch(
+                (string) (CrmMode::tenantInfo()['id'] ?? 'owner'),
+                $order->company_id,
+                $order->id,
+                $order->status,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Reverb broadcast failed (EcommerceOrderStatusChangedEvent): '.$e->getMessage());
         }
 
         // Don't notify on initial pending (creation handled by OrderConfirmed)

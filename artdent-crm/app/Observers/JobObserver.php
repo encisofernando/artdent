@@ -2,8 +2,10 @@
 
 namespace App\Observers;
 
+use App\Events\JobStatusChangedEvent;
 use App\Models\Job;
 use App\Models\JobStatusHistory;
+use App\Support\CrmMode;
 use Illuminate\Support\Facades\Log;
 
 class JobObserver
@@ -24,6 +26,17 @@ class JobObserver
         if ($job->isDirty('status')) {
             $note = "Estado actualizado a: {$job->status}";
             $this->recordStatusHistory($job, $note);
+
+            try {
+                JobStatusChangedEvent::dispatch(
+                    (string) (CrmMode::tenantInfo()['id'] ?? 'owner'),
+                    $job->company_id,
+                    $job->id,
+                    $job->status,
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Reverb broadcast failed (JobStatusChangedEvent): '.$e->getMessage());
+            }
         }
     }
 
@@ -40,9 +53,9 @@ class JobObserver
                 'note' => $note,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error recording JobStatusHistory: ' . $e->getMessage(), [
+            Log::error('Error recording JobStatusHistory: '.$e->getMessage(), [
                 'job_id' => $job->id,
-                'status' => $job->status
+                'status' => $job->status,
             ]);
         }
     }

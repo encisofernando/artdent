@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Events\NewEcommerceOrderEvent;
 use App\Http\Controllers\Controller;
 use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
@@ -274,12 +273,6 @@ class NavePaymentController extends Controller
             'url' => '/ecommerce-orders/'.$order->id,
             'order_code' => $order->order_number,
         ]);
-
-        try {
-            NewEcommerceOrderEvent::dispatch($order);
-        } catch (\Throwable $e) {
-            Log::warning('Reverb broadcast failed: '.$e->getMessage());
-        }
 
         try {
             \App\Jobs\GenerateEcommerceAfipInvoiceJob::dispatch($order->id);

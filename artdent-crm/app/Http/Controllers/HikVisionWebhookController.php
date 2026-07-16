@@ -139,6 +139,7 @@ class HikVisionWebhookController extends Controller
             if ($result['action'] && $device?->company_id) {
                 try {
                     AttendanceRecordedEvent::dispatch(
+                        (string) (\App\Support\CrmMode::tenantInfo()['id'] ?? 'owner'),
                         $device->company_id,
                         $person['model']->name ?? ($person['model']->user?->name ?? 'Empleado'),
                         $person['type'],

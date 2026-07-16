@@ -133,7 +133,7 @@ const SCREEN = {
     FINAL_TICKET:    'final_ticket',
 };
 
-export default function JobKioskIndex({ collaborators = [], company = null }) {
+export default function JobKioskIndex({ collaborators = [], company = null, tenant_id = null }) {
     const [screen, setScreen]           = useState(SCREEN.DASHBOARD);
     const [available, setAvailable]     = useState([]);
     const [inProgress, setInProgress]   = useState([]);
@@ -154,24 +154,6 @@ export default function JobKioskIndex({ collaborators = [], company = null }) {
     const [attendanceEvent, setAttendanceEvent] = useState(null);
 
     const POLL_INTERVAL = 20_000; // ms
-
-    // ── Fichaje HikVision en tiempo real (cartel de bienvenida) ──────────
-    // Requiere que window.Echo esté inicializado (VITE_REVERB_HOST apuntando al
-    // servidor real, no "localhost") y el proceso `php artisan reverb:start` corriendo.
-    // Si Echo no está disponible, el kiosk sigue funcionando normalmente, solo sin el cartel.
-    useEffect(() => {
-        if (!company?.id || !window.Echo) { return; }
-
-        const channel = window.Echo.channel(`company.${company.id}`);
-
-        channel.listen('.attendance-recorded', (data) => {
-            setAttendanceEvent({ ...data, key: Date.now() });
-        });
-
-        return () => {
-            window.Echo.leaveChannel(`company.${company.id}`);
-        };
-    }, [company?.id]);
 
     useEffect(() => {
         if (!attendanceEvent) { return; }
@@ -202,6 +184,35 @@ export default function JobKioskIndex({ collaborators = [], company = null }) {
 
     // Initial load
     useEffect(() => { loadData(); }, [loadData]);
+
+    // ── Tiempo real (fichaje + tablero de jobs) ──────────────────────────
+    // Canal público (este kiosk no tiene sesión de usuario — se autentica por
+    // IP/token, no hay forma de pedir un PrivateChannel). Requiere que
+    // window.Echo esté inicializado (VITE_REVERB_HOST apuntando al servidor
+    // real, no "localhost") y el proceso `php artisan reverb:start` corriendo.
+    // Si Echo no está disponible, el kiosk sigue funcionando normalmente
+    // (queda el poll de 20s como red de seguridad).
+    useEffect(() => {
+        if (!company?.id || !tenant_id || !window.Echo) { return; }
+
+        const channelName = `tenant.${tenant_id}.company.${company.id}.jobkiosk`;
+        const attendanceChannelName = `tenant.${tenant_id}.company.${company.id}.attendance`;
+
+        const jobChannel = window.Echo.channel(channelName);
+        jobChannel.listen('.job-status-changed', () => {
+            loadData(true);
+        });
+
+        const attendanceChannel = window.Echo.channel(attendanceChannelName);
+        attendanceChannel.listen('.attendance-recorded', (data) => {
+            setAttendanceEvent({ ...data, key: Date.now() });
+        });
+
+        return () => {
+            window.Echo.leaveChannel(channelName);
+            window.Echo.leaveChannel(attendanceChannelName);
+        };
+    }, [company?.id, tenant_id, loadData]);
 
     // Auto-poll — only while on the dashboard (pause when a dialog is open)
     const screenRef = useRef(screen);

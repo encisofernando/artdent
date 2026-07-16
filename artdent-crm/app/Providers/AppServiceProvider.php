@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
 use App\Models\TenantModule;
 use App\Models\TenantSubscription;
 use App\Models\User;
+use App\Observers\CrmNotificationObserver;
 use App\Observers\EcommerceOrderObserver;
 use App\Observers\TenantModuleCacheObserver;
 use App\Observers\UserObserver;
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
         EcommerceOrder::observe(EcommerceOrderObserver::class);
+        CrmNotification::observe(CrmNotificationObserver::class);
         User::observe(UserObserver::class);
         TenantSubscription::observe(TenantModuleCacheObserver::class);
         TenantModule::observe(TenantModuleCacheObserver::class);

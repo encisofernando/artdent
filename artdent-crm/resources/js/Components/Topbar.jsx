@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
@@ -90,6 +90,8 @@ function ToastItem({ toast, onDismiss, isDark }) {
 
 export default function Topbar({ user, onSidebarToggle }) {
     const { isDark, toggleTheme } = useTheme();
+    const { props: pageProps } = usePage();
+    const tenantId = pageProps.tenant_info?.id;
     const { canInstall, promptInstall } = usePwaInstall();
     const userInitial = user?.name ? user.name[0].toUpperCase() : 'A';
     const printManagerDownloadUrl = (() => {
@@ -159,18 +161,20 @@ export default function Topbar({ user, onSidebarToggle }) {
 
     useEffect(() => {
         fetchNotifications();
-        const id = setInterval(fetchNotifications, 30_000);
+        // Red de seguridad — el Echo listener de abajo es la vía principal;
+        // este poll más lento solo cubre una caída silenciosa del WebSocket.
+        const id = setInterval(fetchNotifications, 120_000);
         return () => clearInterval(id);
     }, []);
 
-    // Reverb real-time: re-fetch immediately on push events
+    // Reverb real-time: re-fetch immediately when any notificación se crea.
     useEffect(() => {
-        if (!window.Echo || !user?.company_id) { return; }
-        const ch = window.Echo.channel(`company.${user.company_id}`);
-        ch.listen('.new-order', () => fetchNotifications());
-        ch.listen('.low-stock', () => fetchNotifications());
-        return () => { window.Echo.leaveChannel(`company.${user.company_id}`); };
-    }, [user?.company_id]);
+        if (!window.Echo || !tenantId) { return; }
+        const channelName = `tenant.${tenantId}.notifications`;
+        const ch = window.Echo.private(channelName);
+        ch.listen('.notification-created', () => fetchNotifications());
+        return () => { window.Echo.leave(channelName); };
+    }, [tenantId]);
 
     // Close dropdown on outside click
     useEffect(() => {
