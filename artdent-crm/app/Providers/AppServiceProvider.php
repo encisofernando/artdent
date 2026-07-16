@@ -12,7 +12,6 @@ use App\Observers\EcommerceOrderObserver;
 use App\Observers\TenantModuleCacheObserver;
 use App\Observers\UserObserver;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,7 +29,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Vite::prefetch(concurrency: 3);
         EcommerceOrder::observe(EcommerceOrderObserver::class);
         CrmNotification::observe(CrmNotificationObserver::class);
         User::observe(UserObserver::class);
