@@ -74,6 +74,11 @@ export default function Sidebar({ className = "" }) {
                         { title: "Cuentas Corrientes", path: "/customers-accounts" },
                     ],
                 },
+            ],
+        },
+        {
+            label: "Compras e Insumos",
+            items: [
                 {
                     title: "Proveedores", icon: Building2, key: "proveedores",
                     permission: 'purchases.view',
@@ -147,7 +152,7 @@ export default function Sidebar({ className = "" }) {
             ],
         },
         {
-            label: "Personal",
+            label: "RRHH",
             items: [
                 {
                     title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
@@ -202,18 +207,6 @@ export default function Sidebar({ className = "" }) {
             ],
         },
         {
-            label: "Accesos y Kiosks",
-            items: [
-                { title: "Mi Portal", icon: UserCheck, path: "/portal", module: 'rrhh' },
-                { title: "Kiosk de Fichaje", icon: Fingerprint, path: "/attendance-kiosk", module: 'rrhh', external: true },
-                { title: "Kiosk de Producción", icon: Factory, path: "/job-kiosk", module: 'laboratorio', external: true },
-                { title: "Terminales HikVision", icon: Cpu, path: "/hikvision/devices", permission: 'staff.edit', module: 'rrhh' },
-                { title: "Eventos Biométricos", icon: History, path: "/hikvision/events", permission: 'staff.edit', module: 'rrhh' },
-                { title: "Ayuda", icon: LifeBuoy, path: "/ayuda" },
-                { title: "Soporte", icon: MessageSquare, path: "/soporte" },
-            ],
-        },
-        {
             label: "Finanzas",
             items: [
                 {
@@ -254,6 +247,18 @@ export default function Sidebar({ className = "" }) {
             ],
         },
         {
+            label: "Accesos y Kiosks",
+            items: [
+                { title: "Mi Portal", icon: UserCheck, path: "/portal", module: 'rrhh' },
+                { title: "Kiosk de Fichaje", icon: Fingerprint, path: "/attendance-kiosk", module: 'rrhh', external: true },
+                { title: "Kiosk de Producción", icon: Factory, path: "/job-kiosk", module: 'laboratorio', external: true },
+                { title: "Terminales HikVision", icon: Cpu, path: "/hikvision/devices", permission: 'staff.edit', module: 'rrhh' },
+                { title: "Eventos Biométricos", icon: History, path: "/hikvision/events", permission: 'staff.edit', module: 'rrhh' },
+                { title: "Ayuda", icon: LifeBuoy, path: "/ayuda" },
+                { title: "Soporte", icon: MessageSquare, path: "/soporte" },
+            ],
+        },
+        {
             label: "Sistema",
             items: [
                 {
@@ -263,8 +268,8 @@ export default function Sidebar({ className = "" }) {
                         { title: "Usuarios", path: "/users", permission: 'users.view' },
                         { title: "Roles y Permisos", path: "/roles", permission: 'roles.view' },
                         { title: "Auditoría", path: "/audit-logs", permission: 'settings.edit' },
-                        { title: "Empresas", path: "/companies", permission: 'companies.switch' },
-                        { title: "Empresa", path: "/settings", permission: 'settings.edit' },
+                        { title: "Compañías", path: "/companies", permission: 'companies.switch' },
+                        { title: "Datos de la Empresa", path: "/settings", permission: 'settings.edit' },
                         { title: "Impresión", path: "/settings?tab=preferencias", permission: 'settings.edit' },
                         { title: "Acceso Kiosk", path: "/admin/kiosk-access", permission: 'settings.edit', module: ['laboratorio', 'rrhh'] },
                         ...(billingEnabled ? [{ title: "Suscripción", path: "/subscription", permission: 'settings.edit' }] : []),
