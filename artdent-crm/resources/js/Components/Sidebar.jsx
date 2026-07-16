@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { CompanyLogo, getCompanyLogoUrl } from '@/lib/companyBranding';
 import {
     LayoutDashboard,
     Banknote,
@@ -39,6 +40,8 @@ export default function Sidebar({ className = "" }) {
     const auth = props.auth;
     const billingEnabled = props.app_context?.billing_enabled !== false;
     const enabledModules = props.enabled_modules || [];
+    const company = props.company?.active ?? null;
+    const hasCustomLogo = Boolean(getCompanyLogoUrl(company, 'general'));
 
     const NAV_SECTIONS = [
         {
@@ -327,17 +330,21 @@ export default function Sidebar({ className = "" }) {
                 ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}
             >
                 {!sidebarCollapsed ? (
-                    <img
-                        src="/assets/artcode-horizontal-white.png"
-                        alt="ArtCode"
-                        className="h-8 object-contain transition-all"
+                    <CompanyLogo
+                        company={company}
+                        variant="white"
+                        height={32}
+                        maxWidth={160}
+                        className="object-contain transition-all"
                     />
                 ) : (
-                    <img
-                        src="/assets/artcode-icon-color.svg"
-                        alt="AC"
-                        className="h-8 w-8 rounded-md object-contain transition-all"
-                        style={{ filter: 'brightness(0) invert(1)' }}
+                    <CompanyLogo
+                        company={company}
+                        variant="icon"
+                        height={32}
+                        maxWidth={32}
+                        className="rounded-md object-contain transition-all"
+                        style={hasCustomLogo ? {} : { filter: 'brightness(0) invert(1)' }}
                     />
                 )}
 

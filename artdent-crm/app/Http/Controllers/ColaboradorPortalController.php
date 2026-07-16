@@ -337,7 +337,7 @@ class ColaboradorPortalController extends Controller
     {
         $phase->load(['tariffPhase', 'collaborator', 'ticket']);
 
-        $job->load(['dentist', 'job_items.tariff']);
+        $job->load(['dentist', 'job_items.tariff', 'company']);
 
         return Inertia::render('Colaboradores/PhaseTicket', [
             'job' => [
@@ -356,6 +356,7 @@ class ColaboradorPortalController extends Controller
                 'created_at' => $phase->ticket->created_at->toDateTimeString(),
             ] : null,
             'collaborator' => ['name' => $phase->collaborator->name],
+            'company' => $job->company,
         ]);
     }
 

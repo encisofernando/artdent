@@ -176,7 +176,8 @@ class JobPhaseKioskController extends Controller
             'patient_name' => $job?->patient?->name,
             'company' => $job?->company ? [
                 'name' => $job->company->name,
-                'logo' => $job->company->logo,
+                'logo_url' => $job->company->logo_url,
+                'lab_logo_url' => $job->company->lab_logo_url,
                 'address' => $job->company->address,
                 'city' => $job->company->city,
                 'province' => $job->company->province,

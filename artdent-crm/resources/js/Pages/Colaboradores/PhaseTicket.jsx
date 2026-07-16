@@ -1,10 +1,11 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { CompanyLogo } from '@/lib/companyBranding';
 
 const AD = { blue: '#397B9C', teal: '#5AAD9C', mint: '#ACD6CE' };
 const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function PhaseTicket({ job, phase, ticket, collaborator }) {
+export default function PhaseTicket({ job, phase, ticket, collaborator, company }) {
     const handlePrint = () => window.print();
 
     const printedDate = ticket?.created_at
@@ -38,8 +39,8 @@ export default function PhaseTicket({ job, phase, ticket, collaborator }) {
                     {/* Header */}
                     <div className="px-5 pt-5 pb-4 text-white text-center"
                         style={{ background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})` }}>
-                        <img src="/assets/artcode-horizontal-white.png" alt="ArtCode"
-                            className="h-7 mx-auto mb-2 object-contain" />
+                        <CompanyLogo company={company} scope="lab" variant="white" height={28} maxWidth={160}
+                            className="mx-auto mb-2 object-contain" />
                         <p className="text-[10px] tracking-widest uppercase opacity-80 font-medium">
                             Ticket de Trabajo
                         </p>

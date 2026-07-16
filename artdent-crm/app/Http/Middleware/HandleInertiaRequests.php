@@ -49,7 +49,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'tenant_info' => fn () => CrmMode::tenantInfo(),
             'company' => fn () => $request->user() ? [
-                'active' => Company::find(CompanyContext::id(), ['id', 'name', 'fantasy_name']),
+                'active' => Company::find(CompanyContext::id(), ['id', 'name', 'fantasy_name', 'logo_url', 'lab_logo_url']),
                 'available' => CompanyContext::availableFor($request->user()),
             ] : null,
             'enabled_modules' => fn () => $request->user()

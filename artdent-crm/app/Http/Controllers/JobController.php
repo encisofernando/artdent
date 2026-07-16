@@ -375,7 +375,7 @@ class JobController extends Controller
 
     public function ticket(Job $job)
     {
-        $relations = ['dentist', 'patient', 'job_items'];
+        $relations = ['dentist', 'patient', 'job_items', 'company'];
 
         if ($this->hasJobTypesTable()) {
             $relations[] = 'job_type';
