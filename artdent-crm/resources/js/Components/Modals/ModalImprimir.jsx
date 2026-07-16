@@ -34,7 +34,7 @@ const Ticket = forwardRef((props, ref) => {
   const is57 = widthMM === 57
   const previewWidthPx = mmToPx(widthMM)
 
-  const razonSocial = empresa.razonSocial || "ARTDENT"
+  const razonSocial = empresa.razonSocial || "ARTCODE"
   const condicionIva = empresa.condicionIva || "Responsable Inscripto"
   const domicilio = empresa.domicilio || ""
   const cuit = empresa.cuit || ""

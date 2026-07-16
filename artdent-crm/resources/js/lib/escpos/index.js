@@ -6,7 +6,7 @@ export { buildBarcodeBytes, BARCODE_TYPE } from './barcodeCommand';
 import { EscPosBuilder, ALIGN } from './commands';
 import { buildQrRasterBytes } from './qrRaster';
 
-export function buildTestTicket({ companyName = 'ArtDent CRM', url = 'https://pos.artdent.com.ar', columns = 32 } = {}) {
+export function buildTestTicket({ companyName = 'ArtCode CRM', url = 'https://pos.artcode.com.ar', columns = 32 } = {}) {
     const builder = new EscPosBuilder();
     // A doble tamaño cada caracter ocupa 2 columnas, así que el ancho útil se reduce a la mitad.
     const doubleWidthCols = Math.floor(columns / 2);

@@ -205,10 +205,10 @@ table { border-collapse: collapse; width: 100%; }
     };
 
     // Logo del encabezado: el de la empresa (tenant) si tiene uno cargado; si no, solo texto.
-    // El logo de ArtDent queda reservado para el pie de página, como atribución del software (igual que invoice_afip).
+    // El logo de ArtCode queda reservado para el pie de página, como atribución del software (igual que invoice_afip).
     $storedLogoUrl = $company->documentLogoUrl('general');
     $logoSrc = $storedLogoUrl ? $encodeImg(public_path(ltrim($storedLogoUrl, '/'))) : '';
-    $logoIconSrc = $encodeImg(public_path('assets/logo-artdent-icon.png'));
+    $logoIconSrc = $encodeImg(public_path('assets/artcode-horizontal-color.png'));
 
     $recibNumero = str_pad((string) $receipt->id, 8, '0', STR_PAD_LEFT);
     $mesLiquidacion = \Carbon\Carbon::parse($receipt->period_to)->locale('es')->translatedFormat('F');
@@ -443,11 +443,11 @@ table { border-collapse: collapse; width: 100%; }
                     <tr>
                         <td style="width: 12mm; vertical-align: middle;">
                             @if($logoIconSrc)
-                                <img src="{{ $logoIconSrc }}" alt="ArtDent" style="height: 8mm; object-fit: contain; display: block;">
+                                <img src="{{ $logoIconSrc }}" alt="ArtCode" style="height: 8mm; object-fit: contain; display: block;">
                             @endif
                         </td>
                         <td style="vertical-align: middle; font-size: 6.8pt; color: #444; line-height: 1.4;">
-                            Documento generado electrónicamente por ArtDent CRM.<br>
+                            Documento generado electrónicamente por ArtCode CRM.<br>
                             <span style="color: #49949C; font-weight: 600;">{{ $company->name }}</span>
                         </td>
                     </tr>

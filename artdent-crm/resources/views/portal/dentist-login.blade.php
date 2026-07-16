@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="{{ asset('assets/logo-artdent-icon.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('assets/artcode-icon-color.svg') }}">
     <title>Ingresar — Portal del Odontólogo</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -35,7 +35,7 @@
 </head>
 <body>
     <div class="card">
-        <div class="logo"><img src="{{ asset('assets/logo-artdent-icon.png') }}" alt="ArtDent"></div>
+        <div class="logo"><img src="{{ asset('assets/artcode-icon-color.svg') }}" alt="ArtCode"></div>
         <h1>Portal del Odontólogo</h1>
         <p class="subtitle">Ingresá tu email y te mandamos un código de acceso.</p>
 
@@ -53,7 +53,7 @@
             <button type="submit">Enviar código</button>
         </form>
 
-        <div class="footer">ArtDent · Acceso exclusivo para odontólogos</div>
+        <div class="footer">ArtCode · Acceso exclusivo para odontólogos</div>
     </div>
 </body>
 </html>

@@ -201,7 +201,7 @@ class ReportesController extends Controller
 
         $chartData = $this->buildChartData($period, $start, $end, $companyId);
         $transactions = $this->buildRecentTransactions($start, $end, $companyId);
-        $company = Company::find($companyId) ?? new Company(['name' => 'ArtDent']);
+        $company = Company::find($companyId) ?? new Company(['name' => 'ArtCode']);
 
         $periodLabels = [
             'today' => 'Hoy · '.now()->format('d/m/Y'),
@@ -224,7 +224,7 @@ class ReportesController extends Controller
             'userName' => auth()->user()->name ?? 'Sistema',
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'reporte-artdent-'.$period.'-'.now()->format('Ymd').'.pdf';
+        $filename = 'reporte-artcode-'.$period.'-'.now()->format('Ymd').'.pdf';
 
         return $pdf->download($filename);
     }

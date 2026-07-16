@@ -270,13 +270,13 @@ export default function ImportExportModal({ isOpen, onClose }) {
                             {step === 2 && (
                                 <div className="space-y-4">
                                     <h3 className="font-bold border-b pb-2 dark:border-slate-700">Mapear Columnas</h3>
-                                    <p className="text-sm text-slate-500">Relaciona las columnas de tu CSV con los campos de la base de datos de ArtDent.</p>
+                                    <p className="text-sm text-slate-500">Relaciona las columnas de tu CSV con los campos de la base de datos de ArtCode.</p>
                                     
                                     <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                                         <table className="w-full text-sm text-left">
                                             <thead className={isDark ? 'bg-slate-800/50' : 'bg-slate-50'}>
                                                 <tr>
-                                                    <th className="px-4 py-3 font-semibold w-1/2 border-r dark:border-slate-700">Campo en ArtDent</th>
+                                                    <th className="px-4 py-3 font-semibold w-1/2 border-r dark:border-slate-700">Campo en ArtCode</th>
                                                     <th className="px-4 py-3 font-semibold w-1/2">Columna en tu CSV</th>
                                                 </tr>
                                             </thead>

@@ -312,7 +312,7 @@ export default function Settings({ company, accountingSettings }) {
 
     const handleTestPrint = async () => {
         setPrinterTestState({ status: 'loading', message: '' });
-        const ticket = buildTestTicket({ companyName: company.fantasy_name || company.name || 'ArtDent CRM' });
+        const ticket = buildTestTicket({ companyName: company.fantasy_name || company.name || 'ArtCode CRM' });
         const result = await printRawBytes(ticket, printerTransport === 'usb' ? usbPrinterConfig : printerConfig);
 
         setPrinterTestState({
@@ -764,12 +764,12 @@ export default function Settings({ company, accountingSettings }) {
                                     )}
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {renderInput('name', 'Razón Social (Legal)', 'text', 'Ej: ArtDent S.A.')}
-                                        {renderInput('fantasy_name', 'Nombre Comercial (Fantasía)', 'text', 'Ej: ArtDent Insumos')}
+                                        {renderInput('name', 'Razón Social (Legal)', 'text', 'Ej: ArtCode S.A.')}
+                                        {renderInput('fantasy_name', 'Nombre Comercial (Fantasía)', 'text', 'Ej: ArtCode Insumos')}
                                         {renderInput('email', 'Correo Corporativo', 'email', 'contacto@empresa.com')}
                                         {renderInput('phone', 'Teléfono Principal', 'text', '+54 11 1234-5678')}
                                         {renderInput('website', 'Sitio Web', 'url', 'https://www.empresa.com')}
-                                        {renderInput('instagram_handle', 'Usuario de Instagram', 'text', 'artdentformosa')}
+                                        {renderInput('instagram_handle', 'Usuario de Instagram', 'text', 'artcodeformosa')}
                                     </div>
                                 </div>
 
@@ -1111,7 +1111,7 @@ export default function Settings({ company, accountingSettings }) {
 
                                     <div className="grid grid-cols-2 gap-3 mt-5">
                                         {[
-                                            { id: 'electron', label: 'Print Service', desc: 'Gestor ArtDent instalado', icon: '🖨️' },
+                                            { id: 'electron', label: 'Print Service', desc: 'Gestor ArtCode instalado', icon: '🖨️' },
                                             { id: 'browser', label: 'Navegador', desc: 'Diálogo del sistema', icon: '🌐' },
                                         ].map(opt => (
                                             <button
@@ -1142,7 +1142,7 @@ export default function Settings({ company, accountingSettings }) {
 
                                     <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                         {printBackend === 'electron'
-                                            ? 'Se usará el gestor ArtDent. Si no está instalado, caerá al diálogo del navegador automáticamente.'
+                                            ? 'Se usará el gestor ArtCode. Si no está instalado, caerá al diálogo del navegador automáticamente.'
                                             : 'Se usará siempre el diálogo de impresión del sistema, sin necesitar el Print Service instalado.'}
                                     </p>
                                 </div>
@@ -1163,7 +1163,7 @@ export default function Settings({ company, accountingSettings }) {
 
                                     {!isNativePrintAvailable() && (
                                         <p className={`text-xs mt-4 rounded-lg px-3 py-2 ${isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
-                                            Esta función solo está disponible dentro de la app Android de ArtDent CRM. Desde el navegador podés dejar la configuración lista, pero la prueba de impresión no va a funcionar acá.
+                                            Esta función solo está disponible dentro de la app Android de ArtCode CRM. Desde el navegador podés dejar la configuración lista, pero la prueba de impresión no va a funcionar acá.
                                         </p>
                                     )}
 
@@ -1511,14 +1511,14 @@ export default function Settings({ company, accountingSettings }) {
                                             type="text"
                                             value={csrAlias}
                                             onChange={e => setCsrAlias(e.target.value)}
-                                            placeholder="artdent-wsfe"
+                                            placeholder="artcode-wsfe"
                                             maxLength={40}
                                             className={`w-full rounded-xl border text-sm font-medium transition-colors focus:ring-0 ${isDark
                                                 ? 'bg-slate-800/50 border-slate-700 text-white focus:border-teal-500 placeholder:text-slate-600'
                                                 : 'bg-white border-slate-200 text-slate-800 focus:border-teal-500 placeholder:text-slate-400 shadow-sm'}`}
                                         />
                                         <p className={`text-[10px] mt-1 pl-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            Solo letras, números y guiones. Ej: artdent-wsfe
+                                            Solo letras, números y guiones. Ej: artcode-wsfe
                                         </p>
                                     </div>
 

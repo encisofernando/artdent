@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\Company;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -20,6 +21,7 @@ class CrmTransactionalMail extends Mailable implements ShouldQueue
     public function __construct(
         public readonly string $resolvedSubject,
         public readonly string $resolvedBody,
+        public readonly ?Company $company = null,
     ) {}
 
     public function envelope(): Envelope
@@ -29,7 +31,10 @@ class CrmTransactionalMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        return new Content(view: 'emails.crm_transactional');
+        return new Content(
+            view: 'emails.crm_transactional',
+            with: ['company' => $this->company],
+        );
     }
 
     public function attachments(): array

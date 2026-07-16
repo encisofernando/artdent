@@ -33,8 +33,10 @@ class OrderStatusChanged extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $companyName = $this->order->company?->fantasy_name ?: $this->order->company?->name ?: 'ArtCode';
+
         return new Envelope(
-            subject: "Tu pedido #{$this->order->order_number} · {$this->statusLabel} · ARTDENT",
+            subject: "Tu pedido #{$this->order->order_number} · {$this->statusLabel} · {$companyName}",
         );
     }
 
@@ -42,6 +44,7 @@ class OrderStatusChanged extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.order_status_changed',
+            with: ['company' => $this->order->company],
         );
     }
 }

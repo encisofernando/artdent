@@ -10,10 +10,10 @@ import {
     getStoredTicketFormat,
     getStoredPrintBackend,
 } from '@/lib/print';
-import { getCompanyLogoSrc } from '@/lib/companyBranding';
+import { getCompanyLogoSrc, getCompanyDisplayName } from '@/lib/companyBranding';
 import axios from 'axios';
 
-/* ── Brand tokens (ArtDent Insumos — manual de marca) ───────────────────── */
+/* ── Brand tokens ─────────────────────────────────────────────────────── */
 const BLUE  = '#124C69';   // Navy principal R:18 G:76 B:105
 const TEAL  = '#1E6B8A';   // Variante más clara para gradientes
 const LIGHT = '#B8D4E0';   // Tinte claro para bordes
@@ -113,7 +113,7 @@ function BarcodeSvg({ value, width = 1.8, height = 50 }) {
 }
 
 /* ── Thermal label card (preview) ──────────────────────────────────────── */
-function ThermalLabelCard({ product, format, logoSrc }) {
+function ThermalLabelCard({ product, format, logoSrc, companyName = 'ArtCode' }) {
     const code     = product.barcode || product.sku || String(product.id);
     const W        = format === '57mm' ? 164 : format === '55x44' ? 200 : 234;
     const bH       = format === '57mm' ? 38  : format === '55x44' ? 44  : 46;
@@ -124,7 +124,7 @@ function ThermalLabelCard({ product, format, logoSrc }) {
     return (
         <div style={{ width: W, background: '#fff', borderRadius: 6, overflow: 'hidden', border: `1px solid ${LIGHT}`, boxShadow: '0 1px 4px rgba(57,123,156,0.12)', flexShrink: 0, fontFamily: "'Montserrat',Arial,sans-serif" }}>
             <div style={{ background: BLUE, height: headerH, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 6 }}>
-                <img src={logoSrc} alt="ArtDent" style={{ height: headerH - 8, objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+                <img src={logoSrc} alt={companyName} style={{ height: headerH - 8, objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
                 <div style={{ flex: 1 }} />
                 <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: format === '57mm' ? 5.5 : 6.5, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'right', lineHeight: 1.2, fontFamily: "'Montserrat',Arial,sans-serif" }}>
                     INSUMOS<br />ODONTOLÓGICOS
@@ -148,7 +148,7 @@ function ThermalLabelCard({ product, format, logoSrc }) {
 }
 
 /* ── A4 label card (preview — scaled) ──────────────────────────────────── */
-function A4LabelCard({ product, tpl, scale, logoSrc }) {
+function A4LabelCard({ product, tpl, scale, logoSrc, companyName = 'ArtCode' }) {
     const code = product.barcode || product.sku || String(product.id);
 
     // Mirror exact same proportions as buildA4LabelsHtml
@@ -183,7 +183,7 @@ function A4LabelCard({ product, tpl, scale, logoSrc }) {
             <div style={{ background: BLUE, height: hdrH, minHeight: hdrH, display: 'flex', alignItems: 'center', padding: `0 ${Math.max(1, tpl.w * 0.012) * scale}px`, gap: Math.max(1, scale * 0.5), flexShrink: 0, overflow: 'hidden' }}>
                 {showLogo
                     ? <img src={logoSrc} alt="" style={{ height: logoH, maxWidth: tpl.w * 0.52 * scale, objectFit: 'contain', flexShrink: 0, filter: 'brightness(0) invert(1)' }} />
-                    : <span style={{ color: '#fff', fontSize: hdrH * 0.38, fontWeight: 900, letterSpacing: 0.3, textTransform: 'uppercase' }}>ARTDENT</span>
+                    : <span style={{ color: '#fff', fontSize: hdrH * 0.38, fontWeight: 900, letterSpacing: 0.3, textTransform: 'uppercase' }}>{companyName}</span>
                 }
                 {showSub && (
                     <>
@@ -267,7 +267,7 @@ body{margin:0;padding:0;background:#fff;font-family:'Montserrat',Arial,sans-seri
 </body></html>`;
 }
 
-function buildA4LabelsHtml(items, tplId, logoSrc) {
+function buildA4LabelsHtml(items, tplId, logoSrc, companyName = 'ArtCode') {
     const tpl = HUSARES_TEMPLATES.find(t => t.id === tplId) || HUSARES_TEMPLATES[2];
     const expanded = items.flatMap(({ product, qty }) => Array.from({ length: qty }, () => product));
 
@@ -304,7 +304,7 @@ function buildA4LabelsHtml(items, tplId, logoSrc) {
 
     const hdrInner = showLogo
         ? `<img src="${logoSrc}" class="logo">${showSub ? `<div style="flex:1"></div><span class="sub">INSUMOS<br>ODONT.</span>` : ''}`
-        : `<span style="color:#fff;font-size:${hdrMm * 0.38}mm;font-weight:900;letter-spacing:.3px;text-transform:uppercase">ARTDENT</span>`;
+        : `<span style="color:#fff;font-size:${hdrMm * 0.38}mm;font-weight:900;letter-spacing:.3px;text-transform:uppercase">${escHtml(companyName)}</span>`;
 
     function labelHtml(p) {
         const rawCode  = String(p.barcode || p.sku || p.id);
@@ -415,8 +415,9 @@ export default function BarcodeLabels({ auth, company }) {
     const [printing,   setPrinting]   = useState(false);
     const [printError, setPrintError] = useState(null);
 
-    const currentTpl = HUSARES_TEMPLATES.find(t => t.id === husaresId) || HUSARES_TEMPLATES[2];
-    const logoSrc    = getCompanyLogoSrc(company, { scope: 'general', variant: 'white' });
+    const currentTpl  = HUSARES_TEMPLATES.find(t => t.id === husaresId) || HUSARES_TEMPLATES[2];
+    const logoSrc     = getCompanyLogoSrc(company, { scope: 'general', variant: 'white' });
+    const companyName = getCompanyDisplayName(company);
 
     // Product search
     useEffect(() => {
@@ -481,7 +482,7 @@ export default function BarcodeLabels({ auth, company }) {
             const printLogoSrc = logoSrc?.startsWith('/storage/') ? `${origin}${logoSrc}` : logoSrc;
             let html;
             if (format === 'a4') {
-                html = buildA4LabelsHtml(selectedItems, husaresId, printLogoSrc);
+                html = buildA4LabelsHtml(selectedItems, husaresId, printLogoSrc, companyName);
                 openBrowserPrint(html, { delay: 1000 });
             } else {
                 html = buildThermalLabelsHtml(selectedItems, format, printLogoSrc);
@@ -791,7 +792,7 @@ export default function BarcodeLabels({ auth, company }) {
                                                             {Array.from({ length: currentTpl.cols * currentTpl.rows }, (_, ci) => {
                                                                 const product = page[ci];
                                                                 return product
-                                                                    ? <A4LabelCard key={ci} product={product} tpl={currentTpl} scale={scaleF} logoSrc={logoSrc} />
+                                                                    ? <A4LabelCard key={ci} product={product} tpl={currentTpl} scale={scaleF} logoSrc={logoSrc} companyName={companyName} />
                                                                     : <div key={ci} style={{ width: currentTpl.w * scaleF, height: currentTpl.h * scaleF, border: '0.3px dashed #e2e8f0' }} />;
                                                             })}
                                                         </div>
@@ -808,7 +809,7 @@ export default function BarcodeLabels({ auth, company }) {
                                         <div className="flex flex-wrap gap-2">
                                             {selectedItems.flatMap(({ product, qty }) =>
                                                 Array.from({ length: qty }, (_, i) => (
-                                                    <ThermalLabelCard key={`${product.id}-${i}`} product={product} format={format} logoSrc={logoSrc} />
+                                                    <ThermalLabelCard key={`${product.id}-${i}`} product={product} format={format} logoSrc={logoSrc} companyName={companyName} />
                                                 ))
                                             )}
                                         </div>

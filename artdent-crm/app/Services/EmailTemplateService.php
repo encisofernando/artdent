@@ -75,6 +75,6 @@ class EmailTemplateService
     {
         ['subject' => $subject, 'body' => $body] = $this->build($type, $company, $vars);
 
-        Mail::to($recipientEmail)->queue(new CrmTransactionalMail($subject, $body));
+        Mail::to($recipientEmail)->queue(new CrmTransactionalMail($subject, $body, $company));
     }
 }

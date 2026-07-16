@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="refresh" content="30" />
-    <title>ArtDent CRM — Mantenimiento</title>
+    <title>ArtCode CRM — Mantenimiento</title>
     <style>
         * { box-sizing: border-box; }
         html, body {
@@ -62,7 +62,7 @@
 </head>
 <body>
     <div class="card">
-        <img class="logo" src="/brand/logo-artdent-blanco.png" alt="ArtDent" />
+        <img class="logo" src="/brand/artcode-horizontal-white.png" alt="ArtCode" />
         <h1>Estamos actualizando el sistema</h1>
         <p>Volvemos enseguida. Esta página se va a actualizar sola en unos segundos.</p>
         <div class="dots"><span></span><span></span><span></span></div>

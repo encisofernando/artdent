@@ -84,7 +84,7 @@ function printSignaturesAndFooter(builder, { firmaLabel, columns }) {
     builder.feed(2).line(justify('Firma Empleador', '', columns));
     builder.feed(2).line(justify(firmaLabel, '', columns));
     builder.hr('─', columns);
-    builder.align(ALIGN.CENTER).line('Tu sonrisa, es nuestra prioridad.').line('ArtDent CRM').align(ALIGN.LEFT);
+    builder.align(ALIGN.CENTER).line('Tu sonrisa, es nuestra prioridad.').line('ArtCode CRM').align(ALIGN.LEFT);
     builder.feed(1).cut(true);
 }
 

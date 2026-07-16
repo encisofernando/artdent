@@ -29,9 +29,10 @@ class InvoiceAfipMail extends Mailable implements ShouldQueue
         $formattedNumber = str_pad($this->invoice->point_sale, 4, '0', STR_PAD_LEFT)
             .'-'
             .str_pad($this->invoice->number, 8, '0', STR_PAD_LEFT);
+        $companyName = $this->invoice->company?->fantasy_name ?: $this->invoice->company?->name ?: 'ArtCode';
 
         return new Envelope(
-            subject: "Comprobante #{$formattedNumber} · ARTDENT",
+            subject: "Comprobante #{$formattedNumber} · {$companyName}",
         );
     }
 
@@ -39,6 +40,7 @@ class InvoiceAfipMail extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.invoice_afip',
+            with: ['company' => $this->invoice->company],
         );
     }
 

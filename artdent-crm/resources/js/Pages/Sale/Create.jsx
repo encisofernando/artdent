@@ -643,7 +643,7 @@ export default function Create({ auth, products, customers = [], company = null 
         const el = document.getElementById('print-zone');
         if (!el) return;
         const html = buildPrintHtml({
-            title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+            title: `ArtCode — ${postSale.sale_number || 'Comprobante'}`,
             bodyHtml: el.outerHTML,
             pageSize: 'A4',
             zoneWidth: '210mm',
@@ -660,7 +660,7 @@ export default function Create({ auth, products, customers = [], company = null 
         setWaLoading(true);
         try {
             const html = buildPrintHtml({
-                title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+                title: `ArtCode — ${postSale.sale_number || 'Comprobante'}`,
                 bodyHtml: el.outerHTML,
                 pageSize: 'A4',
                 zoneWidth: '210mm',
@@ -682,7 +682,7 @@ export default function Create({ auth, products, customers = [], company = null 
         const phone = waPhone.replace(/\D/g, '');
 
         const vars = {
-            '{empresa}': company?.name || company?.fantasy_name || 'ArtDent',
+            '{empresa}': company?.name || company?.fantasy_name || 'ArtCode',
             '{numero}':  postSale.sale_number || '',
             '{cliente}': postSale.customer_name || 'Consumidor Final',
             '{total}':   `$${Number(postSale.total).toLocaleString('es-AR')}`,
@@ -713,7 +713,7 @@ export default function Create({ auth, products, customers = [], company = null 
 
         if (isA4) {
             const html = buildPrintHtml({
-                title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+                title: `ArtCode — ${postSale.sale_number || 'Comprobante'}`,
                 bodyHtml: el.outerHTML,
                 pageSize: 'A4',
                 zoneWidth: '210mm',
@@ -725,7 +725,7 @@ export default function Create({ auth, products, customers = [], company = null 
 
         const result = await printElementWithElectron({
             element: el,
-            title: `ArtDent — ${postSale.sale_number || 'Comprobante'}`,
+            title: `ArtCode — ${postSale.sale_number || 'Comprobante'}`,
             mode: printMode,
             zoneWidth: getThermalZoneWidth(printMode),
             zoom: getThermalPrintZoom(printMode),
@@ -735,7 +735,7 @@ export default function Create({ auth, products, customers = [], company = null 
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            toast.warning('El gestor de impresión ArtDent no está activo.');
+            toast.warning('El gestor de impresión ArtCode no está activo.');
         }
     };
 
@@ -2180,7 +2180,7 @@ export default function Create({ auth, products, customers = [], company = null 
                                                 <div style={{ flex:1 }}>
                                                     <p style={{ margin:0, fontWeight:700, fontSize:13, color: isDark?'#e2e8f0':'#1e293b' }}>Imprimir ticket</p>
                                                     <p style={{ margin:'2px 0 0', fontSize:11, color: isDark?'#64748b':'#94a3b8' }}>
-                                                        Formato: <strong style={{ color: AD.teal }}>{printMode}</strong> · vía ArtDent Print
+                                                        Formato: <strong style={{ color: AD.teal }}>{printMode}</strong> · vía ArtCode Print
                                                     </p>
                                                 </div>
                                                 <Printer size={15} color={AD.teal} />

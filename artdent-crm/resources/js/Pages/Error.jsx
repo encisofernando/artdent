@@ -43,8 +43,8 @@ export default function Error({ status, reason, module }) {
 
                     <p className="text-sm leading-relaxed mb-10 opacity-70">
                         {billingEnabled
-                            ? 'Mejorá tu plan para desbloquear este módulo y seguir creciendo con ArtDent.'
-                            : 'Contactá a tu administrador o a soporte de ArtDent para habilitar este módulo.'}
+                            ? 'Mejorá tu plan para desbloquear este módulo y seguir creciendo con ArtCode.'
+                            : 'Contactá a tu administrador o a soporte de ArtCode para habilitar este módulo.'}
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -77,8 +77,8 @@ export default function Error({ status, reason, module }) {
                     </div>
 
                     <div className="mt-16 opacity-30 flex items-center justify-center gap-2">
-                        <img src="/assets/logo-artdent-icon.png" alt="ArtDent" className="h-4 w-4 grayscale" />
-                        <span className="text-[10px] uppercase font-black tracking-widest">ArtDent CRM</span>
+                        <img src="/assets/artcode-icon-color.svg" alt="ArtCode" className="h-4 w-4 grayscale" />
+                        <span className="text-[10px] uppercase font-black tracking-widest">ArtCode CRM</span>
                     </div>
                 </div>
             </div>
@@ -168,8 +168,8 @@ export default function Error({ status, reason, module }) {
 
                 {/* Footer brand */}
                 <div className="mt-16 opacity-30 flex items-center justify-center gap-2">
-                    <img src="/assets/logo-artdent-icon.png" alt="ArtDent" className="h-4 w-4 grayscale" />
-                    <span className="text-[10px] uppercase font-black tracking-widest">ArtDent CRM</span>
+                    <img src="/assets/artcode-icon-color.svg" alt="ArtCode" className="h-4 w-4 grayscale" />
+                    <span className="text-[10px] uppercase font-black tracking-widest">ArtCode CRM</span>
                 </div>
             </div>
         </div>

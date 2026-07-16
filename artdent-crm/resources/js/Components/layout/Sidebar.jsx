@@ -148,14 +148,14 @@ export default function Sidebar({ className = "" }) {
             >
                 {!sidebarCollapsed ? (
                     <img
-                        src={isDark ? "/assets/logo-artdent-blanco.png" : "/assets/logo-artdent-color.png"}
-                        alt="ArtDent"
+                        src={isDark ? "/assets/artcode-horizontal-white.png" : "/assets/artcode-horizontal-color.png"}
+                        alt="ArtCode"
                         className="h-8 object-contain transition-all"
                     />
                 ) : (
                     <img
-                        src="/assets/logo-artdent-icon.png"
-                        alt="AD"
+                        src="/assets/artcode-icon-color.svg"
+                        alt="AC"
                         className="h-8 w-8 rounded-md object-cover transition-all"
                     />
                 )}
@@ -256,7 +256,7 @@ export default function Sidebar({ className = "" }) {
             {!sidebarCollapsed && (
                 <div className="p-4 border-t border-slate-800 shrink-0">
                     <p className="text-xs text-slate-500 text-center truncate">
-                        © {new Date().getFullYear()} ArtDent
+                        © {new Date().getFullYear()} ArtCode
                     </p>
                 </div>
             )}

@@ -42,6 +42,7 @@ class QuoteController extends Controller
         return Inertia::render('Invoice/Index', [
             'items' => $items,
             'filters' => ['search' => $search, 'status' => $status],
+            'company' => Company::find(CompanyContext::id(), ['id', 'name', 'fantasy_name']),
         ]);
     }
 

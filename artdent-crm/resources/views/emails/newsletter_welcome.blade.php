@@ -1,6 +1,8 @@
 @extends('emails._layout')
 
-@section('title', '¡Te suscribiste a ARTDENT!')
+@php $company ??= null; $companyName = $company?->fantasy_name ?: $company?->name ?: 'ArtCode'; @endphp
+
+@section('title', "¡Te suscribiste a {$companyName}!")
 
 @section('content')
   <h1 style="margin:0 0 8px;font-size:22px;color:#397B9C;">¡Estás dentro! 🦷</h1>
@@ -8,7 +10,7 @@
     @if($subscriberName)
     Hola <strong>{{ $subscriberName }}</strong>,
     @endif
-    gracias por suscribirte a las novedades de <strong>ARTDENT</strong>.
+    gracias por suscribirte a las novedades de <strong>{{ $companyName }}</strong>.
   </p>
 
   <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.6;">

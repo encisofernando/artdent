@@ -197,7 +197,7 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
                     <CompanyLogo company={company} scope="store" height={18} maxWidth={48} />
                     <span style={{ fontSize: 6.4, color: '#000', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>Tu sonrisa, es nuestra prioridad.</span>
                 </div>
-                <div style={{ fontSize: 6, color: '#000' }}>ArtDent CRM</div>
+                <div style={{ fontSize: 6, color: '#000' }}>ArtCode CRM</div>
             </div>
 
             <div style={{ borderTop: '3px solid #000', marginTop: 6 }} />

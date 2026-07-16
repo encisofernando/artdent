@@ -108,7 +108,7 @@ export default function Index({ auth, items, filters }) {
                                 Órdenes de Trabajo
                             </h1>
                             <p style={{ color: D.sub, fontSize: 13, marginTop: 2 }}>
-                                {items.total} trabajos · Lab ArtDent
+                                {items.total} trabajos
                             </p>
                         </div>
                     </div>

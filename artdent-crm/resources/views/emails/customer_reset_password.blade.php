@@ -1,6 +1,8 @@
 @extends('emails._layout')
 
-@section('title', 'Recuperá tu contraseña · ARTDENT')
+@php $company ??= null; $companyName = $company?->fantasy_name ?: $company?->name ?: 'ArtCode'; @endphp
+
+@section('title', "Recuperá tu contraseña · {$companyName}")
 
 @section('content')
   <h1 style="margin:0 0 8px;font-size:22px;color:#397B9C;">Recuperar contraseña</h1>

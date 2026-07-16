@@ -18,8 +18,10 @@ class DentistPortalLoginCode extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $companyName = $this->dentist->company?->fantasy_name ?: $this->dentist->company?->name ?: 'ArtCode';
+
         return new Envelope(
-            subject: 'Tu código de acceso · ARTDENT',
+            subject: "Tu código de acceso · {$companyName}",
         );
     }
 
@@ -27,6 +29,7 @@ class DentistPortalLoginCode extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.dentist_portal_code',
+            with: ['company' => $this->dentist->company],
         );
     }
 }

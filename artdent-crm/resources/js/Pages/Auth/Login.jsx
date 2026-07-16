@@ -72,7 +72,7 @@ export default function Login({ status, canResetPassword }) {
               value={data.email}
               autoComplete="username"
               autoFocus
-              placeholder="email@artdent.com.ar"
+              placeholder="email@artcode.com.ar"
               onChange={(e) => setData("email", e.target.value)}
               className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.06] pl-10 pr-3 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-[rgba(172,214,206,0.6)] focus:border-transparent"
             />

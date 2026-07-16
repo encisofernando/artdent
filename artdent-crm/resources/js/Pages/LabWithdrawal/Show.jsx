@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { ArrowLeft, Printer, Trash2, CheckCircle, XCircle, PackageMinus } from 'lucide-react';
+import { getCompanyDisplayName } from '@/lib/companyBranding';
 
 const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n ?? 0);
 
@@ -12,7 +13,7 @@ const STATUS_CFG = {
     cancelled:  { label: 'Cancelado',  icon: XCircle,     cls: 'bg-red-100 text-red-700 border-red-200'           },
 };
 
-export default function Show({ auth, withdrawal }) {
+export default function Show({ auth, withdrawal, company }) {
     const { isDark } = useTheme();
     const confirmDialog = useConfirm();
     const B = { blue: '#397B9C', teal: '#49949C' };
@@ -118,7 +119,7 @@ export default function Show({ auth, withdrawal }) {
                                 <PackageMinus size={20} style={{ color: B.teal }} />
                                 <span className="font-black text-xl text-slate-900 dark:text-white">Retiro de Insumos</span>
                             </div>
-                            <p className="text-slate-500 text-sm">ArtDent Laboratorio</p>
+                            <p className="text-slate-500 text-sm">{getCompanyDisplayName(company)}</p>
                         </div>
                         <div className="text-right">
                             <p className="text-2xl font-black text-slate-900" style={{ color: B.teal }}>{number}</p>

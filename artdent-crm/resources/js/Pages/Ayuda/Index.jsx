@@ -17,8 +17,8 @@ const CATEGORIES = [
         icon: Rocket,
         articles: [
             {
-                title: '¿Cómo inicio sesión y qué es mi empresa dentro de ArtDent?',
-                body: 'Cada laboratorio o clínica que usa ArtDent tiene su propia empresa (lo llamamos "tenant"): tus datos, ventas, clientes y personal están completamente separados de los de cualquier otra empresa que use el sistema. Iniciás sesión con el usuario y contraseña que te dio el administrador de tu empresa. ArtDent no tiene un formulario público de "Registrarse": las cuentas de usuario solo las crea un administrador desde Administración → Usuarios.',
+                title: '¿Cómo inicio sesión y qué es mi empresa dentro de ArtCode?',
+                body: 'Cada laboratorio o clínica que usa ArtCode tiene su propia empresa (lo llamamos "tenant"): tus datos, ventas, clientes y personal están completamente separados de los de cualquier otra empresa que use el sistema. Iniciás sesión con el usuario y contraseña que te dio el administrador de tu empresa. ArtCode no tiene un formulario público de "Registrarse": las cuentas de usuario solo las crea un administrador desde Administración → Usuarios.',
             },
             {
                 title: '¿Cómo funcionan los roles y permisos?',
@@ -27,10 +27,10 @@ const CATEGORIES = [
             },
             {
                 title: 'Estructura general del menú lateral',
-                body: 'El menú de la izquierda agrupa los módulos por área: Ventas (ventas, clientes, proveedores, inventario), E-Commerce (tienda online), Laboratorio (órdenes y odontólogos), Personal (colaboradores, empleados, liquidación de sueldos, asistencia, capacitación), Accesos y Kiosks, Finanzas, CRM, Análisis y Sistema. Podés colapsar el menú con la flecha junto al logo para ganar espacio de pantalla; al pasar el mouse por los íconos colapsados se despliega un mini menú con las mismas opciones.',
+                body: 'El menú de la izquierda agrupa los módulos por área: Ventas (ventas, clientes), Compras e Insumos (proveedores, inventario), E-Commerce (tienda online), Laboratorio (órdenes y odontólogos), RRHH (colaboradores, empleados, liquidación de sueldos, asistencia, capacitación), Finanzas, CRM, Análisis, Accesos y Kiosks y Sistema. Podés colapsar el menú con la flecha junto al logo para ganar espacio de pantalla; al pasar el mouse por los íconos colapsados se despliega un mini menú con las mismas opciones.',
             },
             {
-                title: '¿ArtDent maneja varias sucursales?',
+                title: '¿ArtCode maneja varias sucursales?',
                 body: 'Sí. Cada empresa puede tener varias sucursales (branches), y empleados, colaboradores y ventas quedan asociados a la sucursal que corresponda. La sucursal activa determina qué caja, stock y personal ves por defecto en varias pantallas.',
             },
         ],
@@ -51,7 +51,7 @@ const CATEGORIES = [
             },
             {
                 title: 'Etiquetas y códigos de barra',
-                body: 'En Ventas → Etiquetas / Códigos podés generar e imprimir hojas de etiquetas con código de barra para tus artículos, en varios formatos de hoja A4 (desde 14 hasta 80 etiquetas por hoja). Usa el mismo motor de impresión que el resto del sistema, así que funciona tanto con una impresora convencional como con el ArtDent Print Service en equipos con impresora térmica.',
+                body: 'En Ventas → Etiquetas / Códigos podés generar e imprimir hojas de etiquetas con código de barra para tus artículos, en varios formatos de hoja A4 (desde 14 hasta 80 etiquetas por hoja). Usa el mismo motor de impresión que el resto del sistema, así que funciona tanto con una impresora convencional como con el ArtCode Print Service en equipos con impresora térmica.',
                 link: { href: '/barcode-labels', label: 'Ir a Etiquetas / Códigos' },
             },
             {
@@ -121,7 +121,7 @@ const CATEGORIES = [
             },
             {
                 title: 'Cupones, ofertas y contenido de la tienda',
-                body: 'Cupones y Ofertas te dejan crear descuentos y promociones puntuales. Carrusel Hero y Banners controlan las imágenes destacadas de la portada de tu tienda. Todo esto es contenido propio de tu tienda ArtDent — no es una sincronización con una tienda externa de WooCommerce ni Mercado Libre, sino el catálogo y las promociones que administrás vos mismo desde acá.',
+                body: 'Cupones y Ofertas te dejan crear descuentos y promociones puntuales. Carrusel Hero y Banners controlan las imágenes destacadas de la portada de tu tienda. Todo esto es contenido propio de tu tienda ArtCode — no es una sincronización con una tienda externa de WooCommerce ni Mercado Libre, sino el catálogo y las promociones que administrás vos mismo desde acá.',
             },
             {
                 title: 'Envíos: puntos de retiro y moto mandados',
@@ -192,7 +192,7 @@ const CATEGORIES = [
             },
             {
                 title: 'Kiosk de Fichaje y Kiosk de Producción',
-                body: 'Estas dos pantallas están pensadas para correr en una pantalla o tablet fija (por ejemplo, en la entrada del laboratorio) y se abren en una pestaña aparte, no dentro del menú normal. El Kiosk de Fichaje registra entradas/salidas por reconocimiento facial o PIN. El Kiosk de Producción, además de imprimir tickets de trabajo (compatible con impresora térmica vía ArtDent Print Service), muestra en tiempo real un cartel de bienvenida cuando alguien ficha en la terminal HikVision conectada.',
+                body: 'Estas dos pantallas están pensadas para correr en una pantalla o tablet fija (por ejemplo, en la entrada del laboratorio) y se abren en una pestaña aparte, no dentro del menú normal. El Kiosk de Fichaje registra entradas/salidas por reconocimiento facial o PIN. El Kiosk de Producción, además de imprimir tickets de trabajo (compatible con impresora térmica vía ArtCode Print Service), muestra en tiempo real un cartel de bienvenida cuando alguien ficha en la terminal HikVision conectada.',
             },
             {
                 title: 'Terminales HikVision y Eventos Biométricos',
@@ -213,7 +213,7 @@ const CATEGORIES = [
             },
             {
                 title: 'Facturación electrónica (AFIP/ARCA)',
-                body: 'ArtDent emite comprobantes electrónicos autorizados directamente contra AFIP/ARCA al confirmar una venta o factura, usando el punto de venta y el certificado configurados para tu empresa. Si un comprobante rechaza, el mensaje de error que devuelve AFIP se muestra tal cual para poder diagnosticarlo (por ejemplo, datos de un cliente inválidos ante el padrón).',
+                body: 'ArtCode emite comprobantes electrónicos autorizados directamente contra AFIP/ARCA al confirmar una venta o factura, usando el punto de venta y el certificado configurados para tu empresa. Si un comprobante rechaza, el mensaje de error que devuelve AFIP se muestra tal cual para poder diagnosticarlo (por ejemplo, datos de un cliente inválidos ante el padrón).',
             },
         ],
     },
@@ -224,7 +224,7 @@ const CATEGORIES = [
         articles: [
             {
                 title: 'Artie, el asistente conversacional',
-                body: 'Artie es el chatbot de ArtDent: responde preguntas frecuentes de tus clientes usando una base de conocimiento propia de tu empresa (no se conecta a servicios externos de IA de terceros más allá de lo que tengas configurado). Interacciones guarda el historial de conversaciones para que puedas revisar qué te están preguntando los clientes.',
+                body: 'Artie es el chatbot de ArtCode: responde preguntas frecuentes de tus clientes usando una base de conocimiento propia de tu empresa (no se conecta a servicios externos de IA de terceros más allá de lo que tengas configurado). Interacciones guarda el historial de conversaciones para que puedas revisar qué te están preguntando los clientes.',
                 link: { href: '/crm/chatbot', label: 'Ir a Artie' },
             },
         ],
@@ -253,7 +253,7 @@ const CATEGORIES = [
             },
             {
                 title: 'Datos de la empresa e impresión',
-                body: 'Empresa guarda los datos fiscales y de contacto de tu empresa. Impresión configura cómo se imprimen los comprobantes (impresora convencional o térmica, tamaño de ticket) y qué backend de impresión usa cada equipo — por ejemplo el ArtDent Print Service para una impresora térmica conectada por USB.',
+                body: 'Datos de la Empresa guarda los datos fiscales y de contacto de tu empresa, y Compañías te deja administrar más de una empresa dentro del mismo tenant. Impresión configura cómo se imprimen los comprobantes (impresora convencional o térmica, tamaño de ticket) y qué backend de impresión usa cada equipo — por ejemplo el ArtCode Print Service para una impresora térmica conectada por USB.',
                 link: { href: '/settings', label: 'Ir a Empresa' },
             },
             {
@@ -268,7 +268,7 @@ const CATEGORIES = [
 const FAQ = [
     {
         q: '¿Cómo doy de alta un usuario nuevo?',
-        a: 'Solo un administrador puede hacerlo, desde Administración → Usuarios. ArtDent no tiene un formulario público de autorregistro por diseño, para que el acceso al sistema quede siempre bajo control del administrador de la empresa.',
+        a: 'Solo un administrador puede hacerlo, desde Administración → Usuarios. ArtCode no tiene un formulario público de autorregistro por diseño, para que el acceso al sistema quede siempre bajo control del administrador de la empresa.',
     },
     {
         q: 'No veo un módulo que debería tener disponible, ¿qué hago?',
@@ -284,7 +284,7 @@ const FAQ = [
     },
     {
         q: 'Quiero imprimir tickets en una impresora térmica conectada a una notebook o Raspberry Pi, ¿cómo lo configuro?',
-        a: 'Instalá el ArtDent Print Service en ese equipo y elegí ese backend de impresión desde Sistema → Administración → Impresión. Una vez configurado, los tickets de Ventas y del Kiosk de Producción se envían directamente a la impresora térmica sin pasar por el diálogo de impresión del navegador.',
+        a: 'Instalá el ArtCode Print Service en ese equipo y elegí ese backend de impresión desde Sistema → Administración → Impresión. Una vez configurado, los tickets de Ventas y del Kiosk de Producción se envían directamente a la impresora térmica sin pasar por el diálogo de impresión del navegador.',
     },
 ];
 
@@ -325,7 +325,7 @@ export default function Index({ kbArticles = [] }) {
                     </div>
                     <div>
                         <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Centro de Ayuda</h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Guías por módulo y preguntas frecuentes de ArtDent</p>
+                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Guías por módulo y preguntas frecuentes de ArtCode</p>
                     </div>
                 </div>
 
@@ -515,7 +515,7 @@ export default function Index({ kbArticles = [] }) {
                 <p className={`text-xs text-center ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
                     ¿No encontraste lo que buscabas? Abrí un ticket en{' '}
                     <Link href="/soporte" className="font-semibold" style={{ color: B.blue }}>Soporte</Link>{' '}
-                    o consultá con el administrador de tu empresa dentro de ArtDent.
+                    o consultá con el administrador de tu empresa dentro de ArtCode.
                 </p>
             </div>
         </AuthenticatedLayout>

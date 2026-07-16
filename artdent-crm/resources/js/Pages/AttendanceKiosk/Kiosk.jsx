@@ -119,13 +119,13 @@ export default function Kiosk({ kioskToken }) {
 
     return (
         <>
-            <Head title="Fichaje Biométrico - ArtDent" />
+            <Head title="Fichaje Biométrico - ArtCode" />
             <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
                 {/* Header */}
                 <div className="mb-8 text-center">
                     <img
-                        src="/assets/logo-artdent-blanco.png"
-                        alt="ArtDent"
+                        src="/assets/artcode-horizontal-white.png"
+                        alt="ArtCode"
                         className="h-12 mx-auto mb-3 object-contain"
                         onError={(e) => { e.target.style.display = 'none'; }}
                     />

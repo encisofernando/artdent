@@ -135,7 +135,7 @@ async function inlineElementImages(element) {
 }
 
 export function buildPrintHtml({
-    title = 'ArtDent',
+    title = 'ArtCode',
     bodyHtml,
     pageSize = 'auto',
     zoneWidth,
@@ -248,7 +248,7 @@ export async function printHtmlWithElectron({ html, mode = '80mm' }) {
 export async function printElementWithElectron({
     element,
     elementId = 'print-zone',
-    title = 'ArtDent',
+    title = 'ArtCode',
     mode = '80mm',
     pageSize = 'auto',
     zoneWidth,

@@ -1,8 +1,8 @@
 {
   "id": "/dashboard",
-  "name": "ArtDent CRM",
-  "short_name": "ArtDent CRM",
-  "description": "Gestión comercial, laboratorio, e-commerce y finanzas de ArtDent en una experiencia instalable.",
+  "name": "ArtCode CRM",
+  "short_name": "ArtCode CRM",
+  "description": "Gestión comercial, laboratorio, e-commerce y finanzas de ArtCode en una experiencia instalable.",
   "lang": "es-AR",
   "dir": "ltr",
   "start_url": "/dashboard?source=pwa",

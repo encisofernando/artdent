@@ -15,7 +15,7 @@ class TestResendMail extends Command
     {
         $email = $this->argument('email');
         try {
-            Mail::raw('Test email desde ArtDent via Resend 🦷', fn ($m) => $m->to($email)->subject('Test ArtDent · Resend'));
+            Mail::raw('Test email desde ArtCode via Resend 🦷', fn ($m) => $m->to($email)->subject('Test ArtCode · Resend'));
             $this->info("Email enviado a {$email}");
         } catch (\Exception $e) {
             $this->error('Error: '.$e->getMessage());

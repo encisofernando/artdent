@@ -75,7 +75,7 @@ class PaymentController extends Controller
         $items = [
             [
                 'id' => 'order-'.$order->order_number,
-                'title' => 'Pedido #'.$order->order_number.' — ArtDent',
+                'title' => 'Pedido #'.$order->order_number.' — '.($order->company?->fantasy_name ?: $order->company?->name ?: 'ArtCode'),
                 'quantity' => 1,
                 'unit_price' => (float) $order->total,
                 'currency_id' => 'ARS',

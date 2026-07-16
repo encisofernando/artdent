@@ -22,8 +22,10 @@ class OrderConfirmed extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $companyName = $this->order->company?->fantasy_name ?: $this->order->company?->name ?: 'ArtCode';
+
         return new Envelope(
-            subject: "Pedido #{$this->order->order_number} recibido · ARTDENT",
+            subject: "Pedido #{$this->order->order_number} recibido · {$companyName}",
         );
     }
 
@@ -31,6 +33,7 @@ class OrderConfirmed extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.order_confirmed',
+            with: ['company' => $this->order->company],
         );
     }
 }

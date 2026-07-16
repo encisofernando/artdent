@@ -8,6 +8,7 @@ import {
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { Button } from '@/Components/ui/button';
+import { getCompanyDisplayName } from '@/lib/companyBranding';
 
 const B = {
     blue:  '#397B9C',
@@ -54,7 +55,7 @@ function KpiCard({ title, value, subtitle, icon: Icon, color }) {
     );
 }
 
-export default function Index({ auth, items, filters }) {
+export default function Index({ auth, items, filters, company }) {
     const { isDark, sidebarCollapsed } = useTheme();
     const data = items?.data || [];
 
@@ -289,7 +290,7 @@ export default function Index({ auth, items, filters }) {
                                                         </Link>
                                                         {item.public_token && (
                                                             <a
-                                                                href={`https://wa.me/?text=${encodeURIComponent(`Hola! Te comparto el presupuesto ${item.quote_number} de ArtDent. Podés verlo aquí: ${window?.location?.origin || ''}/q/${item.public_token}`)}`}
+                                                                href={`https://wa.me/?text=${encodeURIComponent(`Hola! Te comparto el presupuesto ${item.quote_number} de ${getCompanyDisplayName(company)}. Podés verlo aquí: ${window?.location?.origin || ''}/q/${item.public_token}`)}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                             >

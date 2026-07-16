@@ -162,7 +162,7 @@ class SubscriptionController extends Controller
         $response = Http::withToken($this->mpAccessToken)
             ->post('https://api.mercadopago.com/preapproval', [
                 'preapproval_plan_id' => $plan->mp_plan_id,
-                'reason' => "Plan {$plan->name} — ArtDent",
+                'reason' => "Plan {$plan->name} — ArtCode",
                 // external_reference = id del tenant a secas (no un string compuesto):
                 // es lo que usa artdent-admin para resolver el tenant en los webhooks
                 // de pago individual y así poder facturarle la suscripción (ver

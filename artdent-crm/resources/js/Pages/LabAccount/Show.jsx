@@ -243,7 +243,7 @@ export default function Show({ auth, account, dentist, company, moves = [], paym
         setPrinting(false);
 
         if (!result.ok && !result.fallbackUsed) {
-            toast.warning('El gestor de impresión ArtDent no está activo. Iniciá la aplicación o usá la impresión del navegador.');
+            toast.warning('El gestor de impresión ArtCode no está activo. Iniciá la aplicación o usá la impresión del navegador.');
         }
     };
 

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Reporte ArtDent · {{ $periodLabel }}</title>
+<title>Reporte ArtCode · {{ $periodLabel }}</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -436,7 +436,7 @@ body {
 <div class="header">
   <div class="header-top">
     <div class="header-left">
-      <div class="brand-name">ArtDent</div>
+      <div class="brand-name">ArtCode</div>
       <div class="brand-sub">Sistema de Gestión</div>
     </div>
     <div class="header-right">
@@ -740,7 +740,7 @@ body {
     @if($company->address) &nbsp;·&nbsp; {{ $company->address }}@if($company->city), {{ $company->city }}@endif @endif
   </div>
   <div class="footer-right">
-    Documento confidencial &nbsp;·&nbsp; ArtDent CRM &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
+    Documento confidencial &nbsp;·&nbsp; ArtCode CRM &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
   </div>
 </div>
 

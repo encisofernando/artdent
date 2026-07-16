@@ -88,7 +88,7 @@ class ChatbotService
 
     public function getWelcomeMessage(): string
     {
-        return '¡Hola! Soy **Artie**, tu asistente inteligente de **Artdent CRM**. 👋 Estoy aquí para ayudarte con ventas, laboratorio, stock y navegación del sistema. ¿En qué te doy una mano?';
+        return '¡Hola! Soy **Artie**, tu asistente inteligente de **ArtCode CRM**. 👋 Estoy aquí para ayudarte con ventas, laboratorio, stock y navegación del sistema. ¿En qué te doy una mano?';
     }
 
     protected function resolveChatbotSettings(): array
@@ -142,7 +142,7 @@ class ChatbotService
     protected function getStaticSystemPrompt(): string
     {
         return <<<'PROMPT'
-Eres "Artie", el asistente inteligente de Artdent CRM.
+Eres "Artie", el asistente inteligente de ArtCode CRM.
 
 PERSONALIDAD:
 - Amable, claro, resolutivo y profesional.

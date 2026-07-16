@@ -878,7 +878,7 @@ function TicketPrintScreen({ ticket, collaborators, onDone }) {
 
         const result = await printElementWithElectron({
             element: el,
-            title: `ArtDent — ${ticket.ticket_number}`,
+            title: `ArtCode — ${ticket.ticket_number}`,
             mode: savedFormat,
             zoneWidth: el.style.width || getThermalZoneWidth(savedFormat),
             zoom: getThermalPrintZoom(savedFormat),
@@ -922,7 +922,7 @@ function TicketPrintScreen({ ticket, collaborators, onDone }) {
             </button>
             {printStatus === 'error' && (
                 <p className="text-xs font-medium" style={{ color: '#f87171' }}>
-                    No se detectó el servicio de impresión ArtDent Print. Verificá que esté encendido e intentá de nuevo.
+                    No se detectó el servicio de impresión ArtCode Print. Verificá que esté encendido e intentá de nuevo.
                 </p>
             )}
             <button
@@ -1036,7 +1036,7 @@ function FinalTicketPrintScreen({ ticket, onDone }) {
 
         const result = await printElementWithElectron({
             element: el,
-            title: `ArtDent — ${ticket.job_number} (completa)`,
+            title: `ArtCode — ${ticket.job_number} (completa)`,
             mode: savedFormat,
             zoneWidth: el.style.width || getThermalZoneWidth(savedFormat),
             zoom: getThermalPrintZoom(savedFormat),
@@ -1079,7 +1079,7 @@ function FinalTicketPrintScreen({ ticket, onDone }) {
             </button>
             {printStatus === 'error' && (
                 <p className="text-xs font-medium" style={{ color: '#f87171' }}>
-                    No se detectó el servicio de impresión ArtDent Print. Verificá que esté encendido e intentá de nuevo.
+                    No se detectó el servicio de impresión ArtCode Print. Verificá que esté encendido e intentá de nuevo.
                 </p>
             )}
             <button

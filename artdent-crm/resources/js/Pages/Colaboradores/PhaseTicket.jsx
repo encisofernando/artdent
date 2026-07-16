@@ -38,7 +38,7 @@ export default function PhaseTicket({ job, phase, ticket, collaborator }) {
                     {/* Header */}
                     <div className="px-5 pt-5 pb-4 text-white text-center"
                         style={{ background: `linear-gradient(135deg, ${AD.blue}, ${AD.teal})` }}>
-                        <img src="/assets/logo-artdent-blanco.png" alt="ArtDent"
+                        <img src="/assets/artcode-horizontal-white.png" alt="ArtCode"
                             className="h-7 mx-auto mb-2 object-contain" />
                         <p className="text-[10px] tracking-widest uppercase opacity-80 font-medium">
                             Ticket de Trabajo

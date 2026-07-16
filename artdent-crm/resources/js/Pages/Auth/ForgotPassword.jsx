@@ -61,7 +61,7 @@ export default function ForgotPassword({ status }) {
                   value={data.email}
                   autoFocus
                   autoComplete="email"
-                  placeholder="email@artdent.com.ar"
+                  placeholder="email@artcode.com.ar"
                   onChange={(e) => setData("email", e.target.value)}
                   className="pl-10 bg-white/[0.04] border-white/10 text-white placeholder:text-white/25
                              focus-visible:ring-2 focus-visible:ring-[rgba(172,214,206,0.7)]"

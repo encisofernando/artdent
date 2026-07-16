@@ -145,13 +145,13 @@ strong { font-weight: 700; }
         $logoColorSrc = $encodeImg($dbLogoPath);
     }
     if (empty($logoColorSrc)) {
-        $logoColorSrc = $encodeImg(public_path('assets/logo-artdent-color.png'));
+        $logoColorSrc = $encodeImg(public_path('assets/artcode-horizontal-color.png'));
     }
 
     // Logo icono (footer): si la empresa tiene logo propio lo usa, si no el icono estático
     $logoIconSrc = !empty($logoColorSrc)
         ? $logoColorSrc
-        : $encodeImg(public_path('assets/logo-artdent-icon.png'));
+        : $encodeImg(public_path('assets/artcode-horizontal-color.png'));
 
     // Logo ARCA (JPEG)
     $arcaLogoSrc = $encodeImg(public_path('images/logo-arca.jpg'), 'image/jpeg');
@@ -368,14 +368,14 @@ strong { font-weight: 700; }
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 @if($logoIconSrc)
-                    <img src="{{ $logoIconSrc }}" alt="ArtDent" style="height: 10mm; object-fit: contain; display: block; max-width: 20mm;">
+                    <img src="{{ $logoIconSrc }}" alt="ArtCode" style="height: 10mm; object-fit: contain; display: block; max-width: 20mm;">
                 @endif
                 <span style="font-size: 7.5pt; color: #49949C; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
                     {{ $company->name }} — Tu sonrisa, es nuestra prioridad.
                 </span>
             </div>
             <div style="text-align: right; font-size: 7pt; color: #bbb; line-height: 1.7;">
-                <div>Generado por ArtDent CRM — {{ now()->format('d/m/Y') }}</div>
+                <div>Generado por ArtCode CRM — {{ now()->format('d/m/Y') }}</div>
             </div>
         </div>
     </div>

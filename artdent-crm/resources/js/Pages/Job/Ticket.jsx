@@ -263,7 +263,7 @@ function OrdenA4({ job }) {
                         <CompanyLogo company={company} scope="lab" height="10mm" maxWidth="20mm" />
                         <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tu sonrisa, es nuestra prioridad.</span>
                     </div>
-                    <div style={{ fontSize: 7, color: '#bbb' }}>Generado por ArtDent CRM — {fmtDate(new Date())}</div>
+                    <div style={{ fontSize: 7, color: '#bbb' }}>Generado por ArtCode CRM — {fmtDate(new Date())}</div>
                 </div>
                 <div style={{ background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 5 }} />
             </div>
@@ -299,7 +299,7 @@ export default function Ticket({ item }) {
             const el = document.getElementById('print-zone');
             if (!el) return;
             const html = buildPrintHtml({
-                title: `ArtDent — ${job.job_number}`,
+                title: `ArtCode — ${job.job_number}`,
                 bodyHtml: el.outerHTML,
                 pageSize: 'A4',
                 zoneWidth: '210mm',
@@ -331,7 +331,7 @@ export default function Ticket({ item }) {
 
         const result = await printElementWithElectron({
             element: printElement,
-            title: `ArtDent — ${job.job_number}`,
+            title: `ArtCode — ${job.job_number}`,
             mode,
             zoneWidth: printElement.style.width || getThermalZoneWidth(mode),
             zoom: getThermalPrintZoom(mode),
@@ -341,7 +341,7 @@ export default function Ticket({ item }) {
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            toast.warning('No se detectó el servidor ArtDent Print. Verifique que el icono aparezca junto al reloj de Windows.');
+            toast.warning('No se detectó el servidor ArtCode Print. Verifique que el icono aparezca junto al reloj de Windows.');
         }
     };
 

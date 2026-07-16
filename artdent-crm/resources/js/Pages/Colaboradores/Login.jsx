@@ -36,7 +36,7 @@ export default function ColaboradoresLogin({ collaborators }) {
 
             {/* Logo */}
             <div className="mb-8 text-center">
-                <img src="/assets/logo-artdent-blanco.png" alt="ArtDent" className="h-10 mx-auto mb-3 object-contain" />
+                <img src="/assets/artcode-horizontal-white.png" alt="ArtCode" className="h-10 mx-auto mb-3 object-contain" />
                 <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">Portal de Colaboradores</p>
             </div>
 
@@ -129,7 +129,7 @@ export default function ColaboradoresLogin({ collaborators }) {
                 )}
             </div>
 
-            <p className="mt-8 text-slate-600 text-xs">© {new Date().getFullYear()} ArtDent</p>
+            <p className="mt-8 text-slate-600 text-xs">© {new Date().getFullYear()} ArtCode</p>
         </div>
     );
 }

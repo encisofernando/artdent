@@ -1,11 +1,13 @@
 @extends('emails._layout')
 
-@section('title', '¡Bienvenido/a a ARTDENT!')
+@php $company ??= null; $companyName = $company?->fantasy_name ?: $company?->name ?: 'ArtCode'; @endphp
+
+@section('title', "¡Bienvenido/a a {$companyName}!")
 
 @section('content')
   <h1 style="margin:0 0 8px;font-size:22px;color:#397B9C;">¡Bienvenido/a, {{ $customer->name }}!</h1>
   <p style="margin:0 0 20px;font-size:15px;color:#555;line-height:1.6;">
-    Tu cuenta en <strong>ARTDENT</strong> fue creada exitosamente. A partir de ahora podés:
+    Tu cuenta en <strong>{{ $companyName }}</strong> fue creada exitosamente. A partir de ahora podés:
   </p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">

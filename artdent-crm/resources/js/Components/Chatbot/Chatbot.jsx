@@ -101,7 +101,7 @@ function TypingDots() {
 }
 
 // ─── Helper de mensajes originales ─────────────────────────────────────────
-const FALLBACK_WELCOME_MESSAGE = '¡Hola! Soy **Artie**, tu asistente de **Artdent CRM**. 👋 ¿En qué te puedo ayudar hoy?';
+const FALLBACK_WELCOME_MESSAGE = '¡Hola! Soy **Artie**, tu asistente de **ArtCode CRM**. 👋 ¿En qué te puedo ayudar hoy?';
 const buildDefaultMessages = (welcomeMessage) => ([
     { role: 'assistant', content: welcomeMessage || FALLBACK_WELCOME_MESSAGE }
 ]);
@@ -434,7 +434,7 @@ export default function Chatbot() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ color: "white", fontWeight: 700, fontSize: 14, letterSpacing: 0.3 }}>Artie</div>
-                <div style={{ color: "rgba(255,255,255,0.82)", fontSize: 11 }}>Asistente ArtDent · {(loading || isHistoryLoading) ? "escribiendo..." : "en línea"}</div>
+                <div style={{ color: "rgba(255,255,255,0.82)", fontSize: 11 }}>Asistente ArtCode · {(loading || isHistoryLoading) ? "escribiendo..." : "en línea"}</div>
               </div>
               <button
                 onClick={openChat}
@@ -565,7 +565,7 @@ export default function Chatbot() {
               padding: "4px 0 8px",
               letterSpacing: 0.3,
             }}>
-              ArtDent · Laboratorio Odontológico
+              ArtCode
             </div>
           </div>
         )}

@@ -216,7 +216,7 @@ class ChatbotKnowledgeBase
                     ['ayudame'],
                     ['ayuda'],
                 ],
-                'answer' => '¡Hola! Soy **Artie**, el asistente de **ArtDent CRM**. Puedo ayudarte con:
+                'answer' => '¡Hola! Soy **Artie**, el asistente de **ArtCode CRM**. Puedo ayudarte con:
 
 - **Navegación**: encontrar cualquier módulo del sistema
 - **Laboratorio**: consultar órdenes, estados y trabajos
@@ -785,7 +785,7 @@ Los reportes de MercadoPago están en el menú lateral: **E-Commerce** → **Tie
                     ['que', 'hace'],
                     ['explicame'],
                 ],
-                'answer' => '**ArtDent CRM** es un sistema de gestión integral para laboratorios odontológicos y venta de insumos.
+                'answer' => '**ArtCode CRM** es un sistema de gestión integral para laboratorios odontológicos y venta de insumos.
 
 **Módulos principales:**
 

@@ -2,16 +2,16 @@ import React from 'react';
 
 const FALLBACK_LOGOS = {
     general: {
-        color: '/assets/logo-artdent-color.png',
-        thermal: '/assets/logo-artdent-negro.png',
-        icon: '/assets/logo-artdent-icon.png',
-        white: '/assets/logo-artdent-blanco.png',
+        color: '/assets/artcode-horizontal-color.png',
+        thermal: '/assets/artcode-horizontal-color.png',
+        icon: '/assets/artcode-icon-color.svg',
+        white: '/assets/artcode-horizontal-white.png',
     },
     lab: {
-        color: '/assets/logo-artdent-color.png',
-        thermal: '/assets/logo-artdent-negro.png',
-        icon: '/assets/logo-artdent-icon.png',
-        white: '/assets/logo-artdent-blanco.png',
+        color: '/assets/artcode-horizontal-color.png',
+        thermal: '/assets/artcode-horizontal-color.png',
+        icon: '/assets/artcode-icon-color.svg',
+        white: '/assets/artcode-horizontal-white.png',
     },
 };
 
@@ -61,14 +61,14 @@ export function getCompanyLogoSrc(
 
 export function getCompanyDisplayName(company, { preferFantasy = true } = {}) {
     if (!company) {
-        return 'ArtDent';
+        return 'ArtCode';
     }
 
     const primary = preferFantasy
         ? (company.fantasy_name || company.name)
         : (company.name || company.fantasy_name);
 
-    return primary || 'ArtDent';
+    return primary || 'ArtCode';
 }
 
 export function CompanyLogo({

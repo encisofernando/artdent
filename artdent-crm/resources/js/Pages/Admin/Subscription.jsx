@@ -127,7 +127,7 @@ export default function Subscription({ tenant, subscription, plans, modules = []
                     </div>
                     <h1 className={`text-2xl font-bold mb-2 ${text}`}>Plan Ilimitado</h1>
                     <p className={`${muted} mb-6`}>
-                        Tu cuenta tiene acceso <strong className={text}>permanente e ilimitado</strong> a todas las funcionalidades de ArtDent. No se requiere suscripción ni pagos periódicos.
+                        Tu cuenta tiene acceso <strong className={text}>permanente e ilimitado</strong> a todas las funcionalidades de ArtCode. No se requiere suscripción ni pagos periódicos.
                     </p>
                     <div className={`rounded-xl p-5 ${card} text-left`}>
                         <ul className="space-y-2">

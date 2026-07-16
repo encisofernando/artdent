@@ -28,7 +28,7 @@ class CrmMode
 
         return [
             'id' => (string) ($tenant['id'] ?? 'owner'),
-            'name' => (string) ($tenant['name'] ?? config('app.name', 'ArtDent CRM')),
+            'name' => (string) ($tenant['name'] ?? config('app.name', 'ArtCode CRM')),
             'email' => filled($tenant['email'] ?? null) ? (string) $tenant['email'] : null,
             'plan' => (string) ($tenant['plan'] ?? 'owner'),
             'status' => (string) ($tenant['status'] ?? 'active'),

@@ -328,14 +328,14 @@ export default function Sidebar({ className = "" }) {
             >
                 {!sidebarCollapsed ? (
                     <img
-                        src="/assets/logo-artdent-blanco.png"
-                        alt="ArtDent"
+                        src="/assets/artcode-horizontal-white.png"
+                        alt="ArtCode"
                         className="h-8 object-contain transition-all"
                     />
                 ) : (
                     <img
-                        src="/assets/logo-artdent-icon.png"
-                        alt="AD"
+                        src="/assets/artcode-icon-color.svg"
+                        alt="AC"
                         className="h-8 w-8 rounded-md object-contain transition-all"
                         style={{ filter: 'brightness(0) invert(1)' }}
                     />
@@ -562,7 +562,7 @@ export default function Sidebar({ className = "" }) {
             {!sidebarCollapsed && (
                 <div className={`p-4 border-t shrink-0 ${isDark ? 'border-slate-800' : 'border-white/20'}`}>
                     <p className={`text-xs text-center truncate ${isDark ? 'text-slate-500' : 'text-white/40'}`}>
-                        © {new Date().getFullYear()} ArtDent
+                        © {new Date().getFullYear()} ArtCode
                     </p>
                 </div>
             )}

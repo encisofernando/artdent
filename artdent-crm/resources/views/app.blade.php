@@ -6,12 +6,12 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-        <meta name="apple-mobile-web-app-title" content="ArtDent CRM">
+        <meta name="apple-mobile-web-app-title" content="ArtCode CRM">
         <meta name="theme-color" content="#0f172a">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
-        <link rel="icon" type="image/png" href="{{ asset('assets/logo-artdent-icon.png') }}">
-        <link rel="shortcut icon" href="{{ asset('assets/logo-artdent-icon.png') }}">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('assets/artcode-icon-color.svg') }}">
+        <link rel="shortcut icon" href="{{ asset('assets/artcode-icon-color.svg') }}">
         <link rel="apple-touch-icon" href="{{ asset('pwa/icon-192.png') }}">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>

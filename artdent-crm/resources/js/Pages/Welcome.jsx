@@ -14,7 +14,7 @@ const C = {
 export default function Welcome({ auth }) {
     return (
         <>
-            <Head title="ArtDent — Laboratorio Odontológico" />
+            <Head title="ArtCode — Laboratorio Odontológico" />
 
             <link
                 href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap"
@@ -487,15 +487,15 @@ export default function Welcome({ auth }) {
 
                 {/* Símbolos decorativos flotantes */}
                 <div className="deco-symbol" style={{ top: '15%', right: '8%', animationDelay: '0s' }}>
-                    <img src="/assets/logo-artdent-icon.png" alt="" width="160" style={{ opacity: 1 }} />
+                    <img src="/assets/artcode-icon-color.svg" alt="" width="160" style={{ opacity: 1 }} />
                 </div>
                 <div className="deco-symbol" style={{ top: '55%', left: '4%', animationDelay: '2.5s', animationDuration: '9s' }}>
-                    <img src="/assets/logo-artdent-icon.png" alt="" width="90" style={{ opacity: 1 }} />
+                    <img src="/assets/artcode-icon-color.svg" alt="" width="90" style={{ opacity: 1 }} />
                 </div>
 
                 {/* Navbar */}
                 <nav className="navbar anim-fadein">
-                    <img src="/assets/logo-artdent-color.png" alt="ArtDent" style={{ height: 44 }} />
+                    <img src="/assets/artcode-horizontal-color.png" alt="ArtCode" style={{ height: 44 }} />
                     <div className="nav-links">
                         {auth?.user ? (
                             <a href={route('dashboard')} className="btn-dashboard">
@@ -512,7 +512,7 @@ export default function Welcome({ auth }) {
                     <div className="hero-inner">
 
                         <div className="hero-logo anim-fadeup anim-d1">
-                            <img src="/assets/logo-artdent-color.png" alt="ArtDent Laboratorio Odontológico" />
+                            <img src="/assets/artcode-horizontal-color.png" alt="ArtCode" />
                         </div>
 
                         <div className="hero-badge anim-fadeup anim-d2">
@@ -656,20 +656,20 @@ export default function Welcome({ auth }) {
                     <span className="quote-mark">"</span>
                 </div>
                 <p className="tagline-sub anim-fadeup anim-d2">
-                    ArtDent Laboratorio Odontológico — Tecnología al servicio del arte dental.
+                    ArtCode — Tecnología al servicio del arte dental.
                 </p>
                 <div className="tagline-logo anim-fadeup anim-d3">
-                    <img src="/assets/logo-artdent-blanco.png" alt="ArtDent" />
+                    <img src="/assets/artcode-horizontal-white.png" alt="ArtCode" />
                 </div>
             </section>
 
             {/* ══════════════ FOOTER ══════════════ */}
             <footer className="footer">
                 <div className="footer-brand">
-                    <img src="/assets/logo-artdent-blanco.png" alt="ArtDent" />
+                    <img src="/assets/artcode-horizontal-white.png" alt="ArtCode" />
                 </div>
                 <div className="footer-copy">
-                    <div>ArtDent Laboratorio Odontológico</div>
+                    <div>ArtCode</div>
                     <div>Sistema de Gestión v2 — {new Date().getFullYear()}</div>
                 </div>
             </footer>

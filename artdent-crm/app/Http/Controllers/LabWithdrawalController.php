@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLabWithdrawalRequest;
 use App\Models\Collaborator;
+use App\Models\Company;
 use App\Models\LabSupplyWithdrawal;
 use App\Models\LabSupplyWithdrawalItem;
 use App\Models\Product;
@@ -157,6 +158,7 @@ class LabWithdrawalController extends Controller
 
         return Inertia::render('LabWithdrawal/Show', [
             'withdrawal' => $labWithdrawal,
+            'company' => Company::find(CompanyContext::id(), ['id', 'name', 'fantasy_name']),
         ]);
     }
 

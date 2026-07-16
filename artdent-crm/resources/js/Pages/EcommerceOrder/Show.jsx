@@ -101,7 +101,7 @@ function RemitoEcommerce({ order }) {
 
     // Remitente (empresa)
     const remLines = [
-        company.fantasy_name || company.name || 'ArtDent',
+        company.fantasy_name || company.name || 'ArtCode',
         company.address,
         [company.city, company.province, company.postal_code].filter(Boolean).join(', '),
         company.country || 'Argentina',
@@ -304,7 +304,7 @@ function RemitoEcommerce({ order }) {
             <div style={{ flex: 1 }} />
             <div style={{ marginTop: 10, background: `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`, height: 5, borderRadius: 2 }} />
             <div style={{ textAlign: 'center', fontSize: 7, color: '#aaa', marginTop: 4 }}>
-                Generado por ArtDent CRM — {fmtDateShort(new Date())}
+                Generado por ArtCode CRM — {fmtDateShort(new Date())}
             </div>
         </div>
     );

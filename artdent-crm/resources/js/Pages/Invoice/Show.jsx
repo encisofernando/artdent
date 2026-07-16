@@ -207,7 +207,7 @@ function QuoteA4({ quote }) {
                         </div>
                         <div style={{ textAlign: 'right', fontSize: 7, color: '#bbb', lineHeight: 1.7 }}>
                             <div>Presupuesto no válido como factura</div>
-                            <div>ArtDent CRM — {new Date().toLocaleDateString('es-AR')}</div>
+                            <div>ArtCode CRM — {new Date().toLocaleDateString('es-AR')}</div>
                         </div>
                     </div>
                 </div>
@@ -266,7 +266,7 @@ export default function Show({ auth, item, shareUrl }) {
     };
 
     const waText = shareUrl
-        ? encodeURIComponent(`Hola ${item.recipient_name}! Te comparto el presupuesto ${item.quote_number} de ArtDent Laboratorio Odontológico. Podés verlo o imprimirlo aquí: ${shareUrl}`)
+        ? encodeURIComponent(`Hola ${item.recipient_name}! Te comparto el presupuesto ${item.quote_number} de ${getCompanyDisplayName(item.company)}. Podés verlo o imprimirlo aquí: ${shareUrl}`)
         : '';
 
     const STATUS_ACTIONS = [

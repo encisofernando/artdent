@@ -1,6 +1,8 @@
 @extends('emails._layout')
 
-@section('title', '¿Olvidaste algo? Tu carrito te espera en ArtDent')
+@php $company ??= null; $companyName = $company?->fantasy_name ?: $company?->name ?: 'ArtCode'; @endphp
+
+@section('title', "¿Olvidaste algo? Tu carrito te espera en {$companyName}")
 
 @section('content')
   <h1 style="margin:0 0 6px;font-size:22px;color:#397B9C;">¡Tu carrito te está esperando!</h1>
@@ -39,7 +41,6 @@
   </table>
 
   <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">
-    Si ya completaste tu compra, ignorá este mensaje.<br>
-    <a href="{{ $checkoutUrl }}" style="color:#397B9C;">shop.artdent.com.ar</a>
+    Si ya completaste tu compra, ignorá este mensaje.
   </p>
 @endsection

@@ -1,6 +1,6 @@
 @php
     $company = $quote->company;
-    $companyDisplayName = $company?->fantasy_name ?: $company?->name ?: 'ArtDent';
+    $companyDisplayName = $company?->fantasy_name ?: $company?->name ?: 'ArtCode';
     $companyLegalName = $company?->name ?: $companyDisplayName;
     $companyLocation = collect([$company?->city, $company?->province, $company?->country])->filter()->join(' - ') ?: 'Argentina';
     $companyIvaLabels = [
@@ -10,18 +10,18 @@
         'consumidor_final' => 'Consumidor final',
     ];
     $companyIva = $companyIvaLabels[$company?->iva_condition ?? ''] ?? ($company?->iva_condition ?: 'Monotributista');
-    $companyLogo = $company?->documentLogoUrl('lab') ?: '/assets/logo-artdent-color.png';
-    $companyFooterLogo = $company?->documentLogoUrl('lab') ?: '/assets/logo-artdent-icon.png';
+    $companyLogo = $company?->documentLogoUrl('lab') ?: '/assets/artcode-horizontal-color.png';
+    $companyFooterLogo = $company?->documentLogoUrl('lab') ?: '/assets/artcode-icon-color.svg';
 @endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="{{ asset('assets/logo-artdent-icon.png') }}">
-    <link rel="shortcut icon" href="{{ asset('assets/logo-artdent-icon.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('assets/logo-artdent-icon.png') }}">
-    <title>Presupuesto {{ $quote->quote_number }} — ArtDent</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('assets/artcode-icon-color.svg') }}">
+    <link rel="shortcut icon" href="{{ asset('assets/artcode-icon-color.svg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/artcode-icon-color.svg') }}">
+    <title>Presupuesto {{ $quote->quote_number }} — {{ $companyDisplayName }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -458,7 +458,7 @@
                 </div>
                 <div class="footer-right">
                     <div>Este presupuesto no constituye factura</div>
-                    <div>ArtDent CRM — {{ now()->format('d/m/Y') }}</div>
+                    <div>ArtCode CRM — {{ now()->format('d/m/Y') }}</div>
                 </div>
             </div>
             <div class="bottom-stripe"></div>

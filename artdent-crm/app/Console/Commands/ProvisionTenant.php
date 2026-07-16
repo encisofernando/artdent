@@ -13,7 +13,7 @@ class ProvisionTenant extends Command
                             {--name= : Nombre de la empresa}
                             {--email= : Email de contacto}
                             {--plan=starter : Plan (starter|pro|enterprise)}
-                            {--domain= : Dominio personalizado (por defecto: {slug}.artdent.com.ar)}
+                            {--domain= : Dominio personalizado (por defecto: {slug}.artcode.com.ar)}
                             {--seed : Ejecutar seeders después de migrar}';
 
     protected $description = 'Provisiona un nuevo tenant: crea la base de datos y ejecuta migraciones.';
@@ -41,7 +41,7 @@ class ProvisionTenant extends Command
         $name = $this->option('name') ?? $this->ask('Nombre de la empresa');
         $email = $this->option('email') ?? $this->ask('Email de contacto (opcional)', '');
         $plan = $this->option('plan');
-        $domain = $this->option('domain') ?? "{$slug}.artdent.com.ar";
+        $domain = $this->option('domain') ?? "{$slug}.artcode.com.ar";
 
         try {
             $this->info("Creando tenant [{$slug}]...");

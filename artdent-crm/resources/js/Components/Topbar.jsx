@@ -345,7 +345,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                                 ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200'
                                 : 'border-white/25 text-white/80 hover:bg-white/15 hover:text-white'
                             }`}
-                            title="Instalar ArtDent CRM"
+                            title="Instalar ArtCode CRM"
                         >
                             <Download className="h-4 w-4" />
                             <span className="hidden xl:inline text-sm font-semibold">Instalar app</span>

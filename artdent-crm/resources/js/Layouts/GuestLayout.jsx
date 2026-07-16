@@ -28,8 +28,8 @@ export default function GuestLayout({ children, title = "Acceso" }) {
 
           <div className="relative z-10">
             <img
-              src="/brand/logo-artdent-blanco.png"
-              alt="ArtDent Laboratorio Odontológico"
+              src="/brand/artcode-horizontal-white.png"
+              alt="ArtCode"
               className="h-16 w-auto"
             />
           </div>
@@ -59,7 +59,7 @@ export default function GuestLayout({ children, title = "Acceso" }) {
           <div className="w-full max-w-[420px]">
             {/* Logo mobile */}
             <div className="mb-8 flex md:hidden items-center justify-center">
-              <img src="/brand/logo-artdent-color.png" alt="ArtDent" className="h-12 w-auto" />
+              <img src="/brand/artcode-horizontal-color.png" alt="ArtCode" className="h-12 w-auto" />
             </div>
 
             {/* Card */}
@@ -68,7 +68,7 @@ export default function GuestLayout({ children, title = "Acceso" }) {
             </div>
 
             <p className="mt-6 text-center text-xs text-white/25">
-              pos.artdent.com.ar
+              pos.artcode.com.ar
             </p>
           </div>
         </main>

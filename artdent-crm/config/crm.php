@@ -42,7 +42,7 @@ return [
 
     'owner_tenant' => [
         'id' => env('CRM_OWNER_TENANT_ID', 'owner'),
-        'name' => env('CRM_OWNER_TENANT_NAME', env('APP_NAME', 'ArtDent CRM')),
+        'name' => env('CRM_OWNER_TENANT_NAME', env('APP_NAME', 'ArtCode CRM')),
         'email' => env('CRM_OWNER_TENANT_EMAIL'),
         'plan' => env('CRM_OWNER_TENANT_PLAN', 'owner'),
         'status' => env('CRM_OWNER_TENANT_STATUS', 'active'),

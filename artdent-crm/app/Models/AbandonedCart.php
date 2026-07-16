@@ -19,9 +19,15 @@ class AbandonedCart extends Model
     protected function casts(): array
     {
         return [
+            'company_id' => 'int',
             'cart_json' => 'array',
             'notified_at' => 'datetime',
             'recovered_at' => 'datetime',
         ];
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 }

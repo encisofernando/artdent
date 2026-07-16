@@ -24,8 +24,10 @@ class CustomerResetPassword extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $companyName = $this->customer->company?->fantasy_name ?: $this->customer->company?->name ?: 'ArtCode';
+
         return new Envelope(
-            subject: 'Recuperá tu contraseña · ARTDENT',
+            subject: "Recuperá tu contraseña · {$companyName}",
         );
     }
 
@@ -33,6 +35,7 @@ class CustomerResetPassword extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.customer_reset_password',
+            with: ['company' => $this->customer->company],
         );
     }
 }

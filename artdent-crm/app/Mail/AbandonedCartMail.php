@@ -17,8 +17,10 @@ class AbandonedCartMail extends Mailable
 
     public function envelope(): Envelope
     {
+        $companyName = $this->cart->company?->fantasy_name ?: $this->cart->company?->name ?: 'ArtCode';
+
         return new Envelope(
-            subject: '¿Olvidaste algo? Tu carrito te espera en ArtDent',
+            subject: "¿Olvidaste algo? Tu carrito te espera en {$companyName}",
         );
     }
 
@@ -28,7 +30,8 @@ class AbandonedCartMail extends Mailable
             view: 'emails.abandoned-cart',
             with: [
                 'items' => $this->cart->cart_json,
-                'checkoutUrl' => 'https://shop.artdent.com.ar/carrito',
+                'checkoutUrl' => config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')).'/carrito',
+                'company' => $this->cart->company,
             ],
         );
     }

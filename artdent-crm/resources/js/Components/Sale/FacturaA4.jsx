@@ -388,7 +388,7 @@ export default function FacturaA4({ sale }) {
                         </div>
                         <div style={{ textAlign: 'right', fontSize: 7, color: '#bbb', lineHeight: 1.7 }}>
                             {receipt.letter === 'X' && <div>Comprobante no válido como factura</div>}
-                            <div>Generado por ArtDent CRM — {fmtDate(new Date())}</div>
+                            <div>Generado por ArtCode CRM — {fmtDate(new Date())}</div>
                         </div>
                     </div>
                 </div>

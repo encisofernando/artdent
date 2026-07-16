@@ -51,20 +51,20 @@ function CompanyLogo({ company, height = 50, variant = 'color' }) {
         return (
             <img
                 src={company.logo_url}
-                alt={company.fantasy_name || company.name || 'ArtDent'}
+                alt={company.fantasy_name || company.name || 'ArtCode'}
                 style={{ height, objectFit: 'contain', display: 'block', maxWidth: 180 }}
             />
         );
     }
     const src = variant === 'icon'
-        ? '/assets/logo-artdent-icon.png'
+        ? '/assets/artcode-icon-color.svg'
         : variant === 'blanco'
-        ? '/assets/logo-artdent-blanco.png'
-        : '/assets/logo-artdent-color.png';
+        ? '/assets/artcode-horizontal-white.png'
+        : '/assets/artcode-horizontal-color.png';
     return (
         <img
             src={src}
-            alt="ArtDent"
+            alt="ArtCode"
             style={{ height, objectFit: 'contain', display: 'block' }}
         />
     );
@@ -295,7 +295,7 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
 
         if (isA4) {
             const html = buildPrintHtml({
-                title: `ArtDent — ${sale.sale_number}`,
+                title: `ArtCode — ${sale.sale_number}`,
                 bodyHtml: printElement.outerHTML,
                 pageSize: 'A4',
                 zoneWidth: '210mm',
@@ -307,7 +307,7 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
 
         const result = await printElementWithElectron({
             element: printElement,
-            title: `ArtDent — ${sale.sale_number}`,
+            title: `ArtCode — ${sale.sale_number}`,
             mode,
             zoneWidth: getThermalZoneWidth(mode),
             zoom: getThermalPrintZoom(mode),
@@ -317,7 +317,7 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            toast.warning('El gestor de impresión ArtDent no está activo. Por favor, inicie la aplicación.');
+            toast.warning('El gestor de impresión ArtCode no está activo. Por favor, inicie la aplicación.');
         }
     };
 

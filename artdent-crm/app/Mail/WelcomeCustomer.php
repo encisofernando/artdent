@@ -18,8 +18,10 @@ class WelcomeCustomer extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $companyName = $this->customer->company?->fantasy_name ?: $this->customer->company?->name ?: 'ArtCode';
+
         return new Envelope(
-            subject: '¡Bienvenido/a a ARTDENT!',
+            subject: "¡Bienvenido/a a {$companyName}!",
         );
     }
 
@@ -27,6 +29,7 @@ class WelcomeCustomer extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.welcome_customer',
+            with: ['company' => $this->customer->company],
         );
     }
 }

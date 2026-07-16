@@ -234,7 +234,7 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
         });
 
         if (!result.ok && !result.fallbackUsed) {
-            toast.error('No se pudo conectar con ArtDent Print.');
+            toast.error('No se pudo conectar con ArtCode Print.');
         }
     };
 

@@ -71,7 +71,7 @@ class NavePaymentController extends Controller
         if (empty($products)) {
             $products = [[
                 'name' => 'Pedido #'.$order->order_number,
-                'description' => 'ArtDent',
+                'description' => $order->company?->fantasy_name ?: $order->company?->name ?: 'ArtCode',
                 'quantity' => 1,
                 'unit_price' => (float) $order->total,
             ]];
