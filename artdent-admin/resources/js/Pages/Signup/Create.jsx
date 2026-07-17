@@ -8,7 +8,7 @@ import BrandLogo from '@/Components/ui/BrandLogo';
 // alta, coherente con el resto de las pantallas "cara al público" del manual
 // de marca (ver Sidebar.jsx / Login.jsx para el criterio de cuándo no se
 // sigue el toggle claro/oscuro).
-export default function Create({ plans }) {
+export default function Create({ plans, loginUrl }) {
     const { props } = usePage();
     const [slugTouched, setSlugTouched] = useState(false);
 
@@ -156,7 +156,7 @@ export default function Create({ plans }) {
                     </form>
 
                     <p className="text-xs mt-6 text-center text-white/30">
-                        ¿Ya tenés cuenta? <a href="/login" className="text-brand-cyan hover:underline">Ingresá acá</a>
+                        ¿Ya tenés cuenta? <a href={loginUrl || '/login'} className="text-brand-cyan hover:underline">Ingresá acá</a>
                     </p>
                 </div>
             </div>

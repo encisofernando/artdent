@@ -1,14 +1,3 @@
-/* ─── AUTH ──────────────────────────────────────── */
-(function checkAuth() {
-  const loggedIn =
-    document.cookie.includes("laravel_session") ||
-    document.cookie.includes("remember_web");
-  if (loggedIn) {
-    document.getElementById("guestButtons")?.classList.add("hidden");
-    document.getElementById("userButtons")?.classList.remove("hidden");
-  }
-})();
-
 /* ─── NAV SCROLL EFFECT ─────────────────────────── */
 const navbar = document.getElementById("navbar");
 window.addEventListener("scroll", () => {
@@ -50,37 +39,16 @@ const revealObserver = new IntersectionObserver(entries => {
 
 document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
 
-/* ─── COUNTER ANIMATION ─────────────────────────── */
-function animateCounter(el, target, duration = 1800) {
-  const start     = performance.now();
-  const startVal  = 0;
-  const isPercent = el.nextElementSibling?.textContent === "%";
-
-  const update = now => {
-    const elapsed  = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    // ease-out cubic
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const current = Math.round(startVal + (target - startVal) * eased);
-    el.textContent = current.toLocaleString("es-AR");
-    if (progress < 1) requestAnimationFrame(update);
-  };
-  requestAnimationFrame(update);
-}
-
-const counterObserver = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      const el     = entry.target;
-      const target = parseInt(el.dataset.target, 10);
-      if (!isNaN(target)) animateCounter(el, target);
-      counterObserver.unobserve(el);
-    }
+/* ─── FAQ ACCORDION ──────────────────────────────── */
+document.querySelectorAll(".faq-item").forEach(item => {
+  const q = item.querySelector(".faq-q");
+  q?.addEventListener("click", () => {
+    const wasOpen = item.classList.contains("open");
+    document.querySelectorAll(".faq-item.open").forEach(other => {
+      if (other !== item) other.classList.remove("open");
+    });
+    item.classList.toggle("open", !wasOpen);
   });
-}, { threshold: 0.5 });
-
-document.querySelectorAll(".stat-num[data-target]").forEach(el => {
-  counterObserver.observe(el);
 });
 
 /* ─── SMOOTH ANCHOR SCROLLING ───────────────────── */

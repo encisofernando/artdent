@@ -43,6 +43,7 @@ class SignupController extends Controller
                 ->where('is_active', true)
                 ->orderBy('price')
                 ->get(['slug', 'name', 'price', 'trial_days', 'description']),
+            'loginUrl' => config('tenancy.crm_login_url'),
         ]);
     }
 
