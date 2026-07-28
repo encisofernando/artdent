@@ -43,6 +43,7 @@ class HikVisionWebhookController extends Controller
         'cardOrFingerprint' => 'fingerprint',
         'pin' => 'pin',
         'cardOrPwd' => 'pin',
+        'cardOrfaceOrPw' => 'biometric',
     ];
 
     public function receive(Request $request): Response
@@ -50,12 +51,23 @@ class HikVisionWebhookController extends Controller
         $sourceIp = $request->ip();
         $raw = $this->parsePayload($request);
 
-        // Identificar dispositivo por IP
+        // Identificar dispositivo por IP (solo funciona si el terminal pushea
+        // directo por LAN; cuando pega a la IP pública del servidor a través del
+        // WAN del consultorio, $sourceIp es la IP pública del ISP, no la del
+        // terminal, y esto no matchea).
         $device = HikVisionDevice::where('ip_address', $sourceIp)
             ->where('is_active', true)
             ->first();
 
-        // Si no encontramos por IP exacta, buscar por serial en el payload
+        // Fallback por macAddress del payload, que el terminal siempre manda
+        // en la raíz del evento independientemente de la topología de red.
+        if (! $device && ! empty($raw['macAddress'])) {
+            $device = HikVisionDevice::where('mac_address', $raw['macAddress'])
+                ->where('is_active', true)
+                ->first();
+        }
+
+        // Si no encontramos por IP ni MAC, buscar por serial en el payload
         if (! $device && ! empty($raw['deviceID'])) {
             $device = HikVisionDevice::where('serial_no', $raw['deviceID'])->first();
         }
@@ -97,7 +109,10 @@ class HikVisionWebhookController extends Controller
         }
 
         // ── Resolver colaborador o empleado ────────────────────────────────
-        $employeeNo = $acEvent['employeeNo'] ?? null;
+        // El DS-K1T320MX manda el legajo como employeeNoString en los eventos
+        // de autenticación (subEventType 75 = "Authenticated via Face", etc.);
+        // employeeNo sin sufijo no viene poblado en este firmware.
+        $employeeNo = $acEvent['employeeNoString'] ?? $acEvent['employeeNo'] ?? null;
 
         if (! $employeeNo) {
             $hikEvent->update(['error' => 'employeeNo vacío en el evento']);
@@ -119,9 +134,17 @@ class HikVisionWebhookController extends Controller
             : ['employee_id' => $person['model']->id]);
 
         // ── Registrar asistencia ──────────────────────────────────────────
+        // Este firmware no completa attendanceStatus (llega el string literal
+        // "undefined"): en ese caso se infiere entrada/salida dentro de
+        // record*Attendance() según si ya hay un fichaje abierto hoy.
         $attendanceStatus = $acEvent['attendanceStatus'] ?? 'checkIn';
+        if ($attendanceStatus === 'undefined') {
+            $attendanceStatus = null;
+        }
         $verifyMode = $acEvent['currentVerifyMode'] ?? $acEvent['verifyMode'] ?? 'unknown';
-        $method = self::VERIFY_MODE_MAP[$verifyMode] ?? 'hikvision';
+        // Fallback a 'biometric' (no 'hikvision': el enum method de las tablas de
+        // asistencia no admite ese valor) para cualquier verifyMode no mapeado.
+        $method = self::VERIFY_MODE_MAP[$verifyMode] ?? 'biometric';
         $eventTime = $hikEvent->event_time ?? now();
 
         try {
@@ -183,8 +206,46 @@ class HikVisionWebhookController extends Controller
             }
         }
 
+        // multipart/form-data: el terminal envía el evento como un campo de
+        // formulario (event_log) en JSON o XML junto con fotos binarias, cuando
+        // pictureURLType=binary está habilitado en la suscripción.
+        if (str_contains($contentType, 'multipart/form-data')) {
+            $field = $request->input('event_log') ?? $request->input('Event') ?? null;
+
+            if ($field) {
+                $decoded = json_decode($field, true);
+
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+
+                try {
+                    $xml = simplexml_load_string($field);
+
+                    return json_decode(json_encode($xml), true) ?? [];
+                } catch (\Throwable) {
+                    return [];
+                }
+            }
+
+            Log::debug('HikVision webhook: multipart sin campo event_log reconocido', [
+                'fields' => array_keys($request->all()),
+            ]);
+
+            return [];
+        }
+
         // JSON (default)
-        return $request->json()->all() ?: [];
+        $decoded = $request->json()->all() ?: [];
+
+        if (! $decoded) {
+            Log::debug('HikVision webhook: payload vacio o no reconocido', [
+                'content_type' => $contentType,
+                'raw' => substr($request->getContent(), 0, 3000),
+            ]);
+        }
+
+        return $decoded;
     }
 
     private function parseEventTime(?string $rawTime): ?Carbon
@@ -245,7 +306,7 @@ class HikVisionWebhookController extends Controller
      */
     private function recordCollaboratorAttendance(
         Collaborator $collaborator,
-        string $attendanceStatus,
+        ?string $attendanceStatus,
         string $method,
         Carbon $eventTime,
         string $sourceIp,
@@ -258,8 +319,14 @@ class HikVisionWebhookController extends Controller
             ->where('work_date', $workDate)
             ->first();
 
-        $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
-        $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
+        if ($attendanceStatus === null) {
+            // Firmware sin attendanceStatus: entrada si no hay fichaje hoy, salida si hay uno abierto.
+            $isEntry = ! $attendance;
+            $isExit = $attendance && ! $attendance->time_out;
+        } else {
+            $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
+            $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
+        }
 
         if (! $attendance && $isEntry) {
             $created = CollaboratorAttendance::create([
@@ -304,7 +371,7 @@ class HikVisionWebhookController extends Controller
      */
     private function recordEmployeeAttendance(
         Employee $employee,
-        string $attendanceStatus,
+        ?string $attendanceStatus,
         string $method,
         Carbon $eventTime,
         string $sourceIp,
@@ -317,8 +384,14 @@ class HikVisionWebhookController extends Controller
             ->where('work_date', $workDate)
             ->first();
 
-        $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
-        $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
+        if ($attendanceStatus === null) {
+            // Firmware sin attendanceStatus: entrada si no hay fichaje hoy, salida si hay uno abierto.
+            $isEntry = ! $attendance;
+            $isExit = $attendance && ! $attendance->time_out;
+        } else {
+            $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
+            $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
+        }
 
         if (! $attendance && $isEntry) {
             $created = EmployeeAttendance::create([

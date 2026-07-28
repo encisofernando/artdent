@@ -17,6 +17,7 @@ class HikVisionDevice extends Model
         'device_model',
         'serial_no',
         'ip_address',
+        'mac_address',
         'port',
         'username',
         'password_enc',
