@@ -345,7 +345,9 @@ class HikVisionWebhookController extends Controller
 
         if ($attendance && ! $attendance->time_out && $isExit) {
             $timeIn = Carbon::parse("{$workDate} {$attendance->getRawOriginal('time_in')}");
-            $hours = round($eventTime->diffInMinutes($timeIn) / 60, 2);
+            // abs(): en Carbon 3 diffInMinutes() devuelve el signo según el orden
+            // de los operandos, y $eventTime (salida) es posterior a $timeIn.
+            $hours = round(abs($eventTime->diffInMinutes($timeIn)) / 60, 2);
             $amount = round($hours * ($attendance->hourly_rate_snap ?? 0), 2);
 
             $attendance->update([
@@ -409,7 +411,9 @@ class HikVisionWebhookController extends Controller
 
         if ($attendance && ! $attendance->time_out && $isExit) {
             $timeIn = Carbon::parse("{$workDate} {$attendance->getRawOriginal('time_in')}");
-            $hours = round($eventTime->diffInMinutes($timeIn) / 60, 2);
+            // abs(): en Carbon 3 diffInMinutes() devuelve el signo según el orden
+            // de los operandos, y $eventTime (salida) es posterior a $timeIn.
+            $hours = round(abs($eventTime->diffInMinutes($timeIn)) / 60, 2);
 
             $attendance->update([
                 'time_out' => $timeStr,
