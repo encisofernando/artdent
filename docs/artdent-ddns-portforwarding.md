@@ -1,5 +1,9 @@
 # ArtDent: sacar la PC con Tailscale del medio (DDNS + port forwarding)
 
+**Estado: en curso, iniciado 2026-07-28/29, a terminar en el laboratorio
+(el router está ahí físicamente).** Valores ya decididos y confirmados, ver
+abajo — no volver a improvisar nombres/puertos, usar estos.
+
 Objetivo: que `artdent-crm` en el VPS pueda seguir haciendo las mismas
 consultas ISAPI que hace hoy (`HikVisionIsapiService` — test de conexión,
 sync de colaboradores, pull de registros, etc.) contra el terminal
@@ -12,6 +16,23 @@ tu red) — esta es la guía para que lo hagas vos. Avisame en qué paso quedast
 si algo no coincide con el firmware real (los menúes pueden variar un poco
 entre versiones del WR940N).
 
+## Valores reales decididos (no cambiar sin razón)
+
+- **Proveedor DDNS**: No-IP (cuenta `fernandoenciso97@gmail.com`).
+- **Hostname**: `hikvision.hopto.org` — ya creado como registro tipo A en
+  No-IP (2026-07-28). El IPv4 que quedó cargado al crearlo es un placeholder
+  (la IP de la PC personal desde la que se creó la cuenta, NO la del
+  laboratorio) — se autocorrige solo en cuanto el router del local actualice
+  el registro vía el cliente DDNS nativo (paso 4). No hace falta editarlo a
+  mano.
+- **Puerto HTTP del terminal**: `8899` (elegido para no chocar con 8090 y
+  8091, que ya usa el VPS para el webhook ISAPI y el listener ISUP
+  respectivamente).
+- **MAC del terminal** (para la reserva DHCP del paso 2):
+  `04:03:12:1f:1f:41`.
+- **IP local actual del terminal**: `192.168.0.100` (reservarla tal cual en
+  el paso 2, para no tener que cambiar nada más).
+
 ## Antes de empezar
 
 - Dejá la PC con Tailscale prendida y funcionando hasta el final del paso 5
@@ -23,23 +44,23 @@ entre versiones del WR940N).
 
 ## 1. Fijar el puerto HTTP del terminal
 
-En el terminal (interfaz web local, `Configuración → Red → TCP/IP` o similar):
+En el terminal: **System Configuration → Network → Network Service → HTTP(S)**
+(la misma pantalla donde está configurado el webhook ISAPI push).
 
-- Cambiar el puerto HTTP de `80` a algo no estándar, ej. **8090**. Reduce el
-  ruido de bots que escanean el puerto 80 buscando cámaras/DVRs expuestos.
-- Si el equipo soporta HTTPS nativo, activarlo también (puerto separado, ej.
-  `8091`) — usar HTTPS en vez de HTTP si es una opción real, no sólo un
-  checkbox que no hace nada (algunos firmwares Hikvision tienen HTTPS con
-  certificado autofirmado, que el cliente HTTP de Laravel puede aceptar
-  igual desactivando la verificación SSL sólo para este host, si hace falta).
+- Cambiar **HTTP Port** de `80` a **`8899`**. Reduce el ruido de bots que
+  escanean el puerto 80 buscando cámaras/DVRs expuestos, y evita chocar con
+  los puertos 8090/8091 que ya usa el VPS.
+- HTTPS puede quedar como está (activado, puerto 443) — no hace falta
+  tocarlo para esto.
+- ⚠️ Después de este cambio, cualquier acceso local a `http://192.168.0.100`
+  sin puerto deja de andar hasta agregar `:8899` a la URL.
 
 ## 2. Reserva de IP fija por MAC (router)
 
 Router → **DHCP → Address Reservation** (o "Reserva de direcciones"):
 
-- Agregar una entrada: MAC del terminal (la misma que ya cargamos en el CRM,
-  campo "MAC address" de `HikVision/Devices.jsx`) → una IP fija dentro del
-  rango DHCP, ej. `192.168.0.50`.
+- Agregar una entrada: MAC `04:03:12:1f:1f:41` → IP fija `192.168.0.100`
+  (la que ya tiene hoy, así no cambia nada más).
 - Reiniciar el terminal (o esperar a que renueve el DHCP) y confirmar que
   tomó esa IP.
 
@@ -47,40 +68,45 @@ Router → **DHCP → Address Reservation** (o "Reserva de direcciones"):
 
 Router → **Forwarding → Virtual Servers**:
 
-- Puerto de servicio (externo): elegir uno, puede ser el mismo 8090 u otro
-  distinto si preferís no exponer el mismo número afuera que adentro.
-- Puerto interno: **8090** (el que configuraste en el paso 1).
-- IP interna: la IP fija del paso 2.
+- Puerto de servicio (externo): **`8899`**.
+- Puerto interno: **`8899`** (el que se configuró en el paso 1).
+- IP interna: `192.168.0.100`.
 - Protocolo: TCP.
 - Si el WR940N permite **restringir por IP de origen** en esa regla (no
   todos los firmwares lo tienen): limitarlo a la IP pública del VPS
-  (`157.230.x.x` o la que corresponda — confirmar la IP actual del servidor
-  antes de cargarla, `curl ifconfig.me` desde el VPS). Si no lo tiene, seguir
-  igual — queda cubierto por el usuario/contraseña del ISAPI y por no usar
-  el puerto default.
+  (`149.50.143.129`). Si no lo tiene, seguir igual — queda cubierto por el
+  usuario/contraseña del ISAPI y por no usar el puerto default.
 
 ## 4. DDNS
 
 Router → **Dynamic DNS**:
 
-- El WR940N stock suele soportar **No-IP** y/o **DynDNS** (TP-Link, no
-  terceros) según la versión de firmware — ver qué aparece en el menú.
-- Si soporta No-IP: crear una cuenta gratuita en noip.com, un hostname (ej.
-  `artdent-lab.ddns.net`), cargar usuario/contraseña de No-IP en el router.
-- El router va a mantener ese hostname apuntando a la IP pública actual del
-  local aunque cambie (la mayoría de los ISP residenciales en Argentina dan
-  IP dinámica).
-- Confirmar que resuelve: `nslookup artdent-lab.ddns.net` desde cualquier
-  lado tiene que devolver la IP pública actual del local.
+- Ya existe la cuenta y el hostname en **No-IP**: `hikvision.hopto.org`
+  (cuenta `fernandoenciso97@gmail.com`). No crear una cuenta nueva ni otro
+  hostname — usar este.
+- Si el WR940N soporta No-IP nativamente en su menú de DDNS: cargar ahí el
+  usuario/contraseña de esa cuenta de No-IP y el hostname
+  `hikvision.hopto.org`.
+- Si el firmware del WR940N no tiene No-IP en la lista de proveedores
+  (pasa en firmwares viejos, sólo traen DynDNS u otros): avisar para ver una
+  alternativa (cliente de actualización de No-IP corriendo en algún equipo
+  del local, o confirmar si hay firmware alternativo para este router).
+- El router va a mantener `hikvision.hopto.org` apuntando a la IP pública
+  actual del local aunque cambie (típico de ISPs residenciales/PyME en
+  Argentina, IP dinámica).
+- Confirmar que resuelve bien: `nslookup hikvision.hopto.org` tiene que
+  devolver la IP pública actual del local (no la del VPS ni la de ninguna
+  otra PC).
 
 ## 5. Apuntar el CRM al nuevo host
 
-En `artdent-crm` → **RRHH → Terminales HikVision** → editar el dispositivo:
+En `artdent-crm` → **RRHH → Terminales HikVision** → editar "Registro
+Facial" (el dispositivo ISAPI real, no el de ISUP):
 
-- Campo **"IP o hostname del terminal"**: cambiar la IP de Tailscale por el
-  hostname DDNS del paso 4 (ej. `artdent-lab.ddns.net`) — el campo ya acepta
-  hostname además de IP.
-- Campo **Puerto**: el puerto externo elegido en el paso 3.
+- Campo **"IP o hostname del terminal"**: cambiar `192.168.0.100` (o la IP
+  de Tailscale, según cuál esté cargada) por **`hikvision.hopto.org`** — el
+  campo ya acepta hostname además de IP.
+- Campo **Puerto**: **`8899`**.
 - Guardar y usar el botón **"Probar conexión"** de la tarjeta del
   dispositivo — tiene que dar OK y traer el firmware/modelo del terminal,
   igual que hoy vía Tailscale.

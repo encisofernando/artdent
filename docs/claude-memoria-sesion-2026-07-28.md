@@ -76,6 +76,36 @@ paso que falta si preguntan puntualmente por esto.
   detalle técnico exacto de hoy (structs, funciones, hallazgos).
 - `docs/hikvision-isup-onboarding.md` — guía de alta de un terminal nuevo.
 - `docs/artdent-ddns-portforwarding.md` — Parte 1 del pedido original
-  (DDNS/port forwarding para ISAPI pull), no tocada hoy.
+  (DDNS/port forwarding para ISAPI pull) — **en curso, ver sección siguiente**.
 - `isup-listener/src/sdk.js` — el binding real a HCISUPSDK.
 - `isup-listener/README.md` — cómo correr en mock / producción.
+
+## Parte 1 (aparte de ISUP): DDNS/port-forwarding para ISAPI pull — EN CURSO
+
+Objetivo distinto del ISUP de arriba: sacar la PC con Tailscale que hoy hace
+de puente para las consultas ISAPI **pull** (test de conexión, sync de
+colaboradores, pull de registros — el modelo "el servidor le pregunta al
+terminal", no el push). Guía completa y actualizada con los valores reales
+en [`artdent-ddns-portforwarding.md`](artdent-ddns-portforwarding.md).
+
+**Hecho:**
+- Cuenta y hostname en No-IP creados: `hikvision.hopto.org` (cuenta
+  `fernandoenciso97@gmail.com`).
+
+**Falta (se termina en el laboratorio, ahí está el router físicamente):**
+1. Terminal: cambiar HTTP Port de 80 a `8899` (System Configuration →
+   Network → Network Service → HTTP(S)).
+2. Router TP-Link WR940N: reserva DHCP para MAC `04:03:12:1f:1f:41` →
+   `192.168.0.100`.
+3. Router: port forwarding `8899` externo → `192.168.0.100:8899` interno,
+   TCP.
+4. Router: configurar el cliente DDNS nativo con la cuenta de No-IP y el
+   hostname `hikvision.hopto.org` (si el firmware del WR940N no lo soporta,
+   hay que definir una alternativa — no resuelto todavía).
+5. CRM: editar el dispositivo "Registro Facial" (ISAPI) en
+   `HikVision/Devices.jsx` → IP `hikvision.hopto.org`, Puerto `8899` →
+   "Probar conexión".
+6. Recién con eso estable, apagar la PC con Tailscale.
+
+No se tocó nada de código para esto — es 100% configuración de
+router/terminal/CRM vía UI, sin cambios en el repo.
