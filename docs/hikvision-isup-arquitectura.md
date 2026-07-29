@@ -265,23 +265,84 @@ descrito en §5 ya no se usa.
   3. El equipo dispara `ENUM_DEV_SESSIONKEY` — nuestro callback llama
      `NET_ECMS_SetDeviceSessionKey()` con el `byDeviceID`/`bySessionKey` que
      vinieron en `NET_EHOME_DEV_REG_INFO_V12.struRegInfo`, y devuelve `true`.
-  4. **Acá se traba**: el equipo nunca llega a `ENUM_DEV_ON` — vuelve a
-     `ENUM_DEV_AUTH` cada ~18 segundos, en loop indefinido, sin reportar error
-     visible en su propia UI (sigue mostrando "Offline" sin más detalle).
+  4. El equipo repetía `ENUM_DEV_AUTH` cada ~18 segundos en loop, sin llegar
+     nunca a `ENUM_DEV_ON`. **Resuelto** — ver § 7.
 
-**Hipótesis de por qué se traba (sin confirmar):** el repo de referencia que
-tenemos es para cámaras IP, no para terminales de control de acceso — es
-posible que falte un paso de la secuencia específico de este tipo de
-dispositivo (ej. una respuesta adicional en `ENUM_DEV_SESSIONKEY` que el
-ejemplo de cámaras no necesita, o un orden de bytes/padding distinto en
-`sDeviceID`/`sSessionKey` que hace que el equipo no pueda validar la sesión
-aunque `NET_ECMS_SetDeviceSessionKey` devuelva éxito). No hay documentación
-pública que cubra este detalle para dispositivos de acceso — sería la
-pregunta más precisa para hacerle a soporte de Hikvision si se retoma el
-ticket ya enviado.
+## 7. Resolución final (2026-07-29): registro estable y funcionando
 
-**Para retomar:** todo el código (`isup-listener/src/sdk.js`,
-`vendor-sdk/isup/` con el HCISUPSDK real) y el terminal (ya configurado en
-ISUP5.0, Device ID `kpy5s3r6b55o`, key `ArtDent2026Key`, apuntando a
-`149.50.143.129:8091`) quedan tal cual — no hace falta rehacer nada de la
-configuración para seguir iterando sobre la respuesta exacta del handshake.
+Dos causas distintas, encontradas y arregladas en la misma sesión:
+
+**A. Faltaba responder `ENUM_DEV_DAS_REQ` (= 5).** Después de
+`ENUM_DEV_SESSIONKEY`, el equipo manda un pedido de "redirección DAS"
+(Device Access Server) — el servidor tiene que confirmarle a qué dirección
+real tiene que quedar registrado, o el equipo asume que falló y reinicia
+todo el handshake desde `ENUM_DEV_AUTH`. Esto **no está** en el repo de
+cámaras IP (`corenel/ip-camera-ehome-server`) — se encontró en un segundo
+repo de referencia más específico,
+[`135356/hikvision_isup`](https://github.com/135356/hikvision_isup)
+(`include/cms.h`), que sí cubre este paso. La respuesta va en `pInBuffer`
+como JSON, no como struct binaria:
+
+```json
+{"Type":"DAS","DasInfo":{"Address":"<IP pública del VPS>","Domain":"<misma IP>","ServerID":"das_<ip>_<puerto>","Port":<puerto>,"UdpPort":<puerto>}}
+```
+
+Ese mismo repo también reveló que la SessionKey hay que registrarla en **los
+dos módulos** del SDK, no sólo uno:
+`NET_ECMS_SetDeviceSessionKey()` **y** `NET_EALARM_SetDeviceSessionKey()`
+(cada módulo — registro y alarmas — mantiene su propio estado de cifrado
+interno).
+
+**B. Segfault (`SIGSEGV`) inmediatamente después de `ENUM_DEV_ON`.** Con (A)
+resuelto, el equipo pasaba a `ENUM_DEV_ON` correctamente, pero el proceso
+Node crasheaba un instante después — lo que en los logs parecía "seguir sin
+conectar" pero en realidad era: conecta bien → crash → systemd reinicia →
+vuelve a intentar desde cero. Diagnosticado con un core dump real
+(`apport-unpack` + `gdb -batch -ex 'bt full'` sobre `/var/crash/*.crash`):
+
+```
+#0 __strlen_avx2 ()
+#1 basic_string::basic_string<std::allocator<char>>(...)
+#2 node::crypto::FetchAndMaybeCacheMD(...)
+#3 node::crypto::SaveSupportedHashAlgorithmsAndCacheMD(...)
+#4 OBJ_NAME_do_all_sorted ()
+#5 EVP_MD_do_all_sorted ()
+#6 node::crypto::Hash::GetHashes(...)
+```
+
+Causa: `HCISUPSDK` carga transitivamente su propio OpenSSL 1.0.0
+(`libHCNetUtils.so` → `libcrypto.so.1.0.0`/`libssl.so.1.0.0`, bundlados en
+el paquete). Con `LD_LIBRARY_PATH` apuntando a esa carpeta (necesario para
+que el SDK encuentre sus propias libs), esas mismas rutas quedaban visibles
+para la resolución de símbolos de **todo el proceso**, incluido el OpenSSL
+3.x propio de Node — que es lo que usa `fetch()` para HTTPS. Cuando Node
+necesitaba su propio crypto (al hacer `fetch()` a `https://pos.artdent.com.ar`),
+terminaba saltando a código de la OpenSSL 1.0.0 vieja (ABI incompatible) →
+`SIGSEGV`.
+
+Se probaron dos arreglos parciales que **no alcanzaron por sí solos**:
+- `patchelf --set-rpath '$ORIGIN'` en los `.so` del SDK (para no necesitar
+  `LD_LIBRARY_PATH` global) — ayuda pero no resuelve del todo, porque
+  `libHCISUPCMS.so`/`libHCISUPAlarm.so` hacen su propio `dlopen()` interno
+  de `libHCNetUtils.so` en tiempo de ejecución, fuera del control de koffi.
+- `koffi.load(path, { deep: true })` (RTLD_DEEPBIND) al cargar los `.so`
+  principales — tampoco alcanza, por la misma razón (no cubre el dlopen
+  interno del SDK).
+
+**Arreglo real: aislar el SDK en un proceso hijo separado.** `isup-listener`
+pasó de un único proceso a dos (`index.js` padre + `sdkWorker.js` hijo,
+comunicados por IPC con `child_process.fork()`/`process.send()`). El hijo es
+el único lugar que carga koffi/HCISUPSDK; el padre es el único que hace
+`fetch()`/HTTPS a Laravel. Al ser procesos de sistema operativo distintos,
+con espacios de memoria separados, es estructuralmente imposible que los
+símbolos de las dos versiones de OpenSSL choquen. `patchelf --set-rpath` se
+mantiene igual (evita depender de `LD_LIBRARY_PATH` global, buena práctica
+igual) pero ya no es el mecanismo que resuelve el crash — lo resuelve el
+aislamiento de procesos.
+
+**Resultado, confirmado en producción (2026-07-29):** terminal DS-K1T320MX
+real, `Registration Status: Online` en el propio equipo, `isup_status =
+connected` en la base de `fer_artdent`, proceso estable sin crashes.
+Pendiente sólo: probar una fichada real end-to-end (evento ACS →
+`HikVisionEventProcessor` → asistencia registrada) — el terminal no estaba a
+mano para probarlo el mismo día que se logró el registro.

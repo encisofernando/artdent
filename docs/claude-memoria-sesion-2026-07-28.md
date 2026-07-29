@@ -1,10 +1,27 @@
-# Memoria de sesión — 2026-07-28 (ISUP/EHome HikVision)
+# Memoria de sesión — 2026-07-28/29 (ISUP/EHome HikVision)
+
+**ACTUALIZACIÓN 2026-07-29: ISUP funciona.** El registro quedó confirmado
+estable en producción — `Registration Status: Online` en el terminal físico
+y `isup_status: connected` en la base. El detalle completo de los dos
+bugs que faltaba resolver (paso `ENUM_DEV_DAS_REQ` del handshake, y un
+segfault por choque de OpenSSL entre el SDK y Node, arreglado aislando el
+SDK en un proceso hijo aparte) está en
+[`hikvision-isup-arquitectura.md`](hikvision-isup-arquitectura.md) § 7. Lo
+que sigue abajo es el estado de ANTES de esa resolución — se deja como
+referencia histórica de cómo se llegó ahí, pero el bloqueo ya no existe.
 
 Este archivo es para retomar el trabajo desde otra PC. Documento técnico
 completo en [`hikvision-isup-arquitectura.md`](hikvision-isup-arquitectura.md)
-(§6 tiene el estado más actual) — esto es sólo el resumen de orientación
+(§7 tiene el estado más actual) — esto es sólo el resumen de orientación
 rápida y los datos operativos que hacen falta para no perder tiempo
 reconstruyendo contexto.
+
+## Pendiente real (único punto abierto)
+
+Probar una fichada real en el terminal (huella o cara) y confirmar que el
+evento llega completo hasta un fichaje en `collaborator_attendances`/
+`employee_attendances` — el registro/conexión ya está confirmado, falta
+validar el flujo de eventos ACS de punta a punta con una fichada real.
 
 ## Qué se hizo hoy (resumen)
 

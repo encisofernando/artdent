@@ -90,11 +90,16 @@ const ENUM_DEV_OFF = 1;
 const ENUM_DEV_ADDRESS_CHANGED = 2;
 const ENUM_DEV_AUTH = 3;
 const ENUM_DEV_SESSIONKEY = 4;
+const ENUM_DEV_DAS_REQ = 5; // EHome5.0: pide redirección — hay que confirmarle la dirección real del servidor o se cuelga en loop de auth
+
+// IP pública del VPS donde corre este listener — el DAS_REQ le confirma al
+// terminal "seguí registrado acá" con esta dirección.
+const SERVER_PUBLIC_IP = process.env.ISUP_SERVER_PUBLIC_IP || '149.50.143.129';
 
 // EHome5.0: clave que hay que cargar EXACTO igual en el terminal (Encryption
 // Key, pestaña ISUP). La elige el servidor (acá), no Hikvision — se la
 // respondemos al equipo cuando pide autenticarse (ENUM_DEV_AUTH).
-const EHOME_KEY = process.env.ISUP_EHOME_KEY || 'ArtDent2026Key';
+const EHOME_KEY = process.env.ISUP_EHOME_KEY || 'A1B2C3D4E5F60789';
 
 function defineTypes() {
     // NET_EHOME_IPADDRESS — HCISUPPublic.h
@@ -106,6 +111,33 @@ function defineTypes() {
 
     // typedef BOOL (CALLBACK * DEVICE_REGISTER_CB)(LONG lUserID, DWORD dwDataType, void *pOutBuffer, DWORD dwOutLen, void *pInBuffer, DWORD dwInLen, void *pUser);
     koffi.proto('DEVICE_REGISTER_CB', 'bool', ['int32', 'uint32', 'void *', 'uint32', 'void *', 'uint32', 'void *']);
+
+    // NET_EHOME_BLACKLIST_SEVER — HCISUPCMS.h (NAME_LEN=32)
+    koffi.struct('NET_EHOME_BLACKLIST_SEVER', {
+        struAdd: 'NET_EHOME_IPADDRESS',
+        byServerName: koffi.array('uint8', 32),
+        byUserName: koffi.array('uint8', 32),
+        byPassWord: koffi.array('uint8', 32),
+        byRes: koffi.array('uint8', 64),
+    });
+
+    // NET_EHOME_SERVER_INFO — HCISUPCMS.h. pInBuffer de ENUM_DEV_ON apunta acá
+    // (uninicializado por el SDK) — HAY que escribirlo completo o el equipo
+    // (o el propio proceso, visto en la práctica: segfault) lee basura.
+    koffi.struct('NET_EHOME_SERVER_INFO', {
+        dwSize: 'uint32',
+        dwKeepAliveSec: 'uint32',
+        dwTimeOutCount: 'uint32',
+        struTCPAlarmSever: 'NET_EHOME_IPADDRESS',
+        struUDPAlarmSever: 'NET_EHOME_IPADDRESS',
+        dwAlarmServerType: 'uint32',
+        struNTPSever: 'NET_EHOME_IPADDRESS',
+        dwNTPInterval: 'uint32',
+        struPictureSever: 'NET_EHOME_IPADDRESS',
+        dwPicServerType: 'uint32',
+        struBlackListServer: 'NET_EHOME_BLACKLIST_SEVER',
+        byRes: koffi.array('uint8', 128),
+    });
 
     // NET_EHOME_CMS_LISTEN_PARAM — HCISUPCMS.h
     koffi.struct('NET_EHOME_CMS_LISTEN_PARAM', {
@@ -203,12 +235,22 @@ function cString(bytes) {
     return Buffer.from(slice).toString('utf8');
 }
 
+function emptyIpAddress() {
+    return { szIP: new Array(128).fill(0), wPort: 0, byRes: [0, 0] };
+}
+
 function createRealSdk({ onConnect, onDisconnect, onEvent }) {
     defineTypes();
 
     const libDir = process.env.HCISUPSDK_LIB_DIR;
-    const cms = koffi.load(`${libDir}/libHCISUPCMS.so`);
-    const alarm = koffi.load(`${libDir}/libHCISUPAlarm.so`);
+    // deep (RTLD_DEEPBIND): el SDK carga transitivamente su propio OpenSSL
+    // 1.0.0 (libHCNetUtils.so → libcrypto/libssl.so.1.0.0). Sin esto, sus
+    // símbolos pueden interponerse con el OpenSSL propio de Node (3.x) y
+    // crashear cualquier llamada a crypto de Node con SIGSEGV (confirmado
+    // con un core dump: crash dentro de node::crypto::Hash::GetHashes).
+    const loadOpts = { deep: true };
+    const cms = koffi.load(`${libDir}/libHCISUPCMS.so`, loadOpts);
+    const alarm = koffi.load(`${libDir}/libHCISUPAlarm.so`, loadOpts);
 
     const NET_ECMS_Init = cms.func('bool NET_ECMS_Init()');
     const NET_ECMS_Fini = cms.func('bool NET_ECMS_Fini()');
@@ -223,6 +265,7 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
     const NET_EALARM_GetLastError = alarm.func('uint32 NET_EALARM_GetLastError()');
     const NET_EALARM_StartListen = alarm.func('int32 NET_EALARM_StartListen(NET_EHOME_ALARM_LISTEN_PARAM *pAlarmListenParam)');
     const NET_EALARM_StopListen = alarm.func('bool NET_EALARM_StopListen(int32 iListenHandle)');
+    const NET_EALARM_SetDeviceSessionKey = alarm.func('bool NET_EALARM_SetDeviceSessionKey(NET_EHOME_DEV_SESSIONKEY *pDeviceKey)');
 
     if (!NET_ECMS_Init()) {
         throw new Error(`NET_ECMS_Init falló (NET_ECMS_GetLastError=${NET_ECMS_GetLastError()})`);
@@ -237,8 +280,9 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
     // desconexión explícita (ENUM_DEV_OFF), a diferencia del HCNetSDK
     // genérico — no hace falta inferir por inactividad acá.
     const connected = new Map(); // accountId -> { serialNo, sourceIp }
+    let listenPort = null; // seteado en start(), lo necesita ENUM_DEV_DAS_REQ
 
-    function handleRegister(lUserID, dwDataType, pOutBuffer, dwOutLen, pInBuffer /* , dwInLen, pUser */) {
+    function handleRegister(lUserID, dwDataType, pOutBuffer, dwOutLen, pInBuffer, dwInLen /* , pUser */) {
         try {
             if (dwDataType === ENUM_DEV_ON) {
                 const info = koffi.decode(pOutBuffer, 'NET_EHOME_DEV_REG_INFO');
@@ -248,9 +292,31 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
 
                 connected.set(accountId, { serialNo, sourceIp, lUserID });
                 onConnect({ accountId, serialNo, sourceIp });
-                // dwKeepAliveSec/dwTimeOutCount de NET_EHOME_SERVER_INFO (pInBuffer)
-                // se dejan en 0 a propósito — el SDK documenta que 0 usa los
-                // defaults (15s / 6 timeouts), no hace falta escribir la respuesta.
+
+                // pInBuffer (NET_EHOME_SERVER_INFO*) viene SIN inicializar —
+                // hay que escribirlo completo o el proceso segfaultea al leer
+                // basura (visto en la práctica). dwKeepAliveSec/dwTimeOutCount
+                // en 15/6 (los defaults documentados), el resto en cero.
+                koffi.encode(pInBuffer, 'NET_EHOME_SERVER_INFO', {
+                    dwSize: 0,
+                    dwKeepAliveSec: 15,
+                    dwTimeOutCount: 6,
+                    struTCPAlarmSever: emptyIpAddress(),
+                    struUDPAlarmSever: emptyIpAddress(),
+                    dwAlarmServerType: 0,
+                    struNTPSever: emptyIpAddress(),
+                    dwNTPInterval: 0,
+                    struPictureSever: emptyIpAddress(),
+                    dwPicServerType: 0,
+                    struBlackListServer: {
+                        struAdd: emptyIpAddress(),
+                        byServerName: new Array(32).fill(0),
+                        byUserName: new Array(32).fill(0),
+                        byPassWord: new Array(32).fill(0),
+                        byRes: new Array(64).fill(0),
+                    },
+                    byRes: new Array(128).fill(0),
+                });
             } else if (dwDataType === ENUM_DEV_OFF) {
                 const accountId = [...connected.entries()].find(([, v]) => v.lUserID === lUserID)?.[0];
 
@@ -269,9 +335,22 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
                 const info = koffi.decode(pOutBuffer, 'NET_EHOME_DEV_REG_INFO_V12');
                 const accountId = cString(info.struRegInfo.byDeviceID);
 
-                logger.info('Terminal pidió autenticación EHome5.0', { accountId, lUserID });
+                logger.info('Terminal pidió autenticación EHome5.0', {
+                    accountId,
+                    lUserID,
+                    dwOutLen,
+                    dwInLen,
+                    keyLen: EHOME_KEY.length,
+                });
 
-                const keyBytes = [...Buffer.from(EHOME_KEY, 'utf8'), 0];
+                // Importante: dwInLen es el tamaño REAL del buffer de salida —
+                // si sólo escribimos key+\0 y dejamos el resto sin tocar, el
+                // equipo puede estar leyendo dwInLen bytes fijos (no hasta el
+                // primer \0) y encontrar basura después de la clave. Se
+                // rellena todo el buffer con ceros primero.
+                const bufLen = dwInLen > 0 ? dwInLen : 32;
+                const keyBytes = new Array(bufLen).fill(0);
+                Buffer.from(EHOME_KEY, 'utf8').forEach((byte, i) => { keyBytes[i] = byte; });
                 koffi.encode(pInBuffer, 'char', keyBytes, keyBytes.length);
             } else if (dwDataType === ENUM_DEV_SESSIONKEY) {
                 // EHome5.0: el terminal ya validó la clave y manda su
@@ -279,13 +358,52 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
                 // sesión (incluidas las alarmas) se decodifique bien.
                 const info = koffi.decode(pOutBuffer, 'NET_EHOME_DEV_REG_INFO_V12');
                 const accountId = cString(info.struRegInfo.byDeviceID);
+                const sessionKeyHex = Buffer.from(info.struRegInfo.bySessionKey).toString('hex');
+                const deviceIdHex = Buffer.from(info.struRegInfo.byDeviceID.slice(0, 32)).toString('hex');
 
-                const ok = NET_ECMS_SetDeviceSessionKey({
-                    sDeviceID: info.struRegInfo.byDeviceID,
-                    sSessionKey: info.struRegInfo.bySessionKey,
+                logger.info('Terminal mandó SessionKey EHome5.0', {
+                    accountId, lUserID, dwOutLen, dwInLen, sessionKeyHex, deviceIdHex,
                 });
 
-                logger.info('SessionKey EHome5.0 registrada', { accountId, ok });
+                const sessionKeyParam = {
+                    sDeviceID: info.struRegInfo.byDeviceID,
+                    sSessionKey: info.struRegInfo.bySessionKey,
+                };
+
+                // Hay que registrar la SessionKey en LOS DOS módulos del SDK
+                // (registro y alarmas) — cada uno mantiene su propio estado
+                // interno de cifrado. Con sólo NET_ECMS_SetDeviceSessionKey
+                // el equipo se quedaba reintentando el handshake en loop.
+                const okCms = NET_ECMS_SetDeviceSessionKey(sessionKeyParam);
+                const okAlarm = NET_EALARM_SetDeviceSessionKey(sessionKeyParam);
+
+                logger.info('SessionKey EHome5.0 registrada', { accountId, okCms, okAlarm });
+            } else if (dwDataType === ENUM_DEV_DAS_REQ) {
+                // EHome5.0: después de auth+sessionkey, el equipo pide que le
+                // confirmen a qué servidor (DAS) tiene que quedar registrado.
+                // Sin responder esto, vuelve a ENUM_DEV_AUTH en loop — esto es
+                // lo que faltaba.
+                const info = koffi.decode(pOutBuffer, 'NET_EHOME_DEV_REG_INFO_V12');
+                const accountId = cString(info.struRegInfo.byDeviceID);
+                const port = listenPort;
+
+                const dasResponse = JSON.stringify({
+                    Type: 'DAS',
+                    DasInfo: {
+                        Address: SERVER_PUBLIC_IP,
+                        Domain: SERVER_PUBLIC_IP,
+                        ServerID: `das_${SERVER_PUBLIC_IP}_${port}`,
+                        Port: port,
+                        UdpPort: port,
+                    },
+                });
+
+                logger.info('Terminal pidió redirección DAS (EHome5.0)', { accountId, dwInLen, dasResponse });
+
+                const bufLen = dwInLen > 0 ? dwInLen : 512;
+                const bytes = new Array(bufLen).fill(0);
+                Buffer.from(dasResponse, 'utf8').forEach((byte, i) => { bytes[i] = byte; });
+                koffi.encode(pInBuffer, 'char', bytes, bytes.length);
             }
         } catch (error) {
             logger.error('Error procesando callback de registro HCISUPSDK', { error: String(error), stack: error?.stack });
@@ -342,6 +460,7 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
 
     return {
         start(port) {
+            listenPort = port;
             registerCallbackRef = koffi.register(handleRegister, koffi.pointer('DEVICE_REGISTER_CB'));
 
             const listenParam = {
