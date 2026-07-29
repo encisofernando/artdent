@@ -16,27 +16,27 @@ class CollaboratorAttendanceController extends Controller
 {
     public function __construct(private readonly CollaboratorReceiptSyncService $receiptSyncService) {}
 
+    private const PERIODS = ['day', 'week', 'month', 'year'];
+
     public function index(Request $request): \Inertia\Response
     {
         $companyId = CompanyContext::id();
         $collaboratorId = $request->input('collaborator_id');
-        $from = $request->input('from');
-        $to = $request->input('to');
+        $period = $request->input('period', 'week');
+
+        if (! in_array($period, self::PERIODS, true)) {
+            $period = 'week';
+        }
+
+        [$from, $to] = $this->resolvePeriodRange($period);
 
         $query = CollaboratorAttendance::query()
             ->with('collaborator')
-            ->where('company_id', $companyId);
+            ->where('company_id', $companyId)
+            ->whereBetween('work_date', [$from->toDateString(), $to->toDateString()]);
 
         if ($collaboratorId) {
             $query->where('collaborator_id', $collaboratorId);
-        }
-
-        if ($from) {
-            $query->where('work_date', '>=', $from);
-        }
-
-        if ($to) {
-            $query->where('work_date', '<=', $to);
         }
 
         $summaryQuery = clone $query;
@@ -52,8 +52,9 @@ class CollaboratorAttendanceController extends Controller
             'collaborators' => $collaborators,
             'filters' => [
                 'collaborator_id' => $collaboratorId,
-                'from' => $from,
-                'to' => $to,
+                'period' => $period,
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
             ],
             'summary' => [
                 'records' => (clone $summaryQuery)->count(),
@@ -62,6 +63,19 @@ class CollaboratorAttendanceController extends Controller
                 'amount' => round((float) ((clone $summaryQuery)->sum('amount') ?? 0), 2),
             ],
         ]);
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function resolvePeriodRange(string $period): array
+    {
+        return match ($period) {
+            'day' => [now()->startOfDay(), now()->endOfDay()],
+            'month' => [now()->startOfMonth(), now()->endOfMonth()],
+            'year' => [now()->startOfYear(), now()->endOfYear()],
+            default => [now()->startOfWeek(), now()->endOfWeek()],
+        };
     }
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse

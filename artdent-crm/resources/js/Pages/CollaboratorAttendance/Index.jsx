@@ -13,6 +13,13 @@ const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('es-AR') : '—';
 
+const PERIOD_OPTIONS = [
+    { value: 'day', label: 'Día' },
+    { value: 'week', label: 'Semana' },
+    { value: 'month', label: 'Mes' },
+    { value: 'year', label: 'Año' },
+];
+
 const METHOD_LABELS = { biometric: 'Biométrico', manual: 'Manual', system: 'Sistema', webauthn: 'Huella' };
 const METHOD_COLORS = {
     biometric: 'bg-blue-500/10 text-blue-500',
@@ -99,8 +106,7 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
     const data = items?.data || [];
 
     const [collaboratorFilter, setCollaboratorFilter] = useState(filters?.collaborator_id || '');
-    const [from, setFrom] = useState(filters?.from || '');
-    const [to, setTo] = useState(filters?.to || '');
+    const [period, setPeriod] = useState(filters?.period || 'week');
     const [showCreate, setShowCreate] = useState(false);
     const [editItem, setEditItem] = useState(null);
     const hasPermission = (permission) => auth.user?.is_super_admin || auth.user?.permissions?.includes(permission);
@@ -116,20 +122,32 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (
-                collaboratorFilter !== (filters?.collaborator_id || '') ||
-                from !== (filters?.from || '') ||
-                to !== (filters?.to || '')
-            ) {
+            if (collaboratorFilter !== (filters?.collaborator_id || '')) {
                 router.get(route('collaborator-attendances.index'), {
                     collaborator_id: collaboratorFilter,
-                    from,
-                    to,
+                    period,
                 }, { preserveState: true, preserveScroll: true, replace: true });
             }
         }, 400);
         return () => clearTimeout(timer);
-    }, [collaboratorFilter, from, to, filters?.collaborator_id, filters?.from, filters?.to]);
+    }, [collaboratorFilter, filters?.collaborator_id]);
+
+    const changePeriod = (value) => {
+        setPeriod(value);
+        router.get(route('collaborator-attendances.index'), {
+            collaborator_id: collaboratorFilter,
+            period: value,
+        }, { preserveState: true, preserveScroll: true, replace: true });
+    };
+
+    const resetFilters = () => {
+        setCollaboratorFilter('');
+        setPeriod('week');
+        router.get(route('collaborator-attendances.index'), {
+            collaborator_id: '',
+            period: 'week',
+        }, { preserveState: true, preserveScroll: true, replace: true });
+    };
 
     const openEdit = (item) => {
         setEditItem(item);
@@ -225,12 +243,28 @@ export default function Index({ auth, items, collaborators, filters, summary }) 
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <Calendar size={16} className="text-slate-400 shrink-0" />
-                        <input type="date" className={inputClass} value={from} onChange={e => setFrom(e.target.value)} title="Desde" />
-                        <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>—</span>
-                        <input type="date" className={inputClass} value={to} onChange={e => setTo(e.target.value)} title="Hasta" />
+                        <div className={`flex rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                            {PERIOD_OPTIONS.map(opt => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => changePeriod(opt.value)}
+                                    className={`px-3 py-2 text-sm font-semibold transition-colors ${
+                                        period === opt.value
+                                            ? 'text-white'
+                                            : (isDark ? 'bg-slate-900 text-slate-400 hover:text-white' : 'bg-white text-slate-500 hover:text-slate-900')
+                                    }`}
+                                    style={period === opt.value ? { background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` } : undefined}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                        <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {fmtDate(filters?.from)} — {fmtDate(filters?.to)}
+                        </span>
                     </div>
-                    {(collaboratorFilter || from || to) && (
-                        <button onClick={() => { setCollaboratorFilter(''); setFrom(''); setTo(''); }} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
+                    {(collaboratorFilter || period !== 'week') && (
+                        <button onClick={resetFilters} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
                             <X size={14} /> Limpiar
                         </button>
                     )}
