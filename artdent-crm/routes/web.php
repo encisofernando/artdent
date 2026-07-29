@@ -51,6 +51,16 @@ Route::middleware(['lab.network', 'module:rrhh'])->group(function () {
     Route::post('/attendance-kiosk/webauthn/verify', [\App\Http\Controllers\WebAuthnKioskController::class, 'verify'])->name('attendance-kiosk.webauthn.verify');
 });
 
+// ISUP listener ingest — sólo lo llama el proceso isup-listener (Node.js),
+// nunca un terminal ni un navegador. isup.internal exige el token compartido;
+// isup.tenant resuelve e inicializa la tenancy a partir del account_id del
+// body (no hay sesión/dominio para resolverlo, igual que lab.network).
+Route::middleware(['isup.internal', 'isup.tenant'])->prefix('internal/isup')->name('isup.internal.')->group(function () {
+    Route::post('/connect', [\App\Http\Controllers\IsupIngestController::class, 'connect'])->name('connect');
+    Route::post('/disconnect', [\App\Http\Controllers\IsupIngestController::class, 'disconnect'])->name('disconnect');
+    Route::post('/events', [\App\Http\Controllers\IsupIngestController::class, 'events'])->name('events');
+});
+
 Route::middleware(['tenant.session', 'auth'])->group(function () {
 
     require __DIR__.'/modules/dashboard.php';

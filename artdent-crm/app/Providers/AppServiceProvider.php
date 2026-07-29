@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
+use App\Models\HikVisionDevice;
 use App\Models\TenantModule;
 use App\Models\TenantSubscription;
 use App\Models\User;
 use App\Observers\CrmNotificationObserver;
 use App\Observers\EcommerceOrderObserver;
+use App\Observers\HikVisionDeviceObserver;
 use App\Observers\TenantModuleCacheObserver;
 use App\Observers\UserObserver;
 use Illuminate\Support\Facades\Gate;
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         User::observe(UserObserver::class);
         TenantSubscription::observe(TenantModuleCacheObserver::class);
         TenantModule::observe(TenantModuleCacheObserver::class);
+        HikVisionDevice::observe(HikVisionDeviceObserver::class);
 
         // Implicitly grant "Super Admin" role all permissions
         // This works in the app by using gate-related functions like auth()->user->can() and @can()

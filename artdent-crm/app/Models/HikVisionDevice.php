@@ -15,6 +15,7 @@ class HikVisionDevice extends Model
         'company_id',
         'name',
         'device_model',
+        'connection_type',
         'serial_no',
         'ip_address',
         'mac_address',
@@ -23,6 +24,10 @@ class HikVisionDevice extends Model
         'password_enc',
         'isup_verify_code',
         'webhook_secret',
+        'isup_account_id',
+        'isup_status',
+        'isup_last_connected_at',
+        'isup_last_disconnected_at',
         'is_active',
         'last_heartbeat_at',
         'firmware_version',
@@ -34,6 +39,8 @@ class HikVisionDevice extends Model
         return [
             'is_active' => 'boolean',
             'last_heartbeat_at' => 'datetime',
+            'isup_last_connected_at' => 'datetime',
+            'isup_last_disconnected_at' => 'datetime',
             'port' => 'integer',
         ];
     }

@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // navegador (no hay forma de que envíe un token CSRF).
         $middleware->validateCsrfTokens(except: [
             'hikvision/webhook',
+            'internal/isup/*',
         ]);
 
         $middleware->alias([
@@ -33,6 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.session' => \App\Http\Middleware\InitializeTenancyBySession::class,
             'module' => \App\Http\Middleware\EnsureModuleEnabled::class,
             'lab.network' => \App\Http\Middleware\RestrictToLabNetwork::class,
+            'isup.internal' => \App\Http\Middleware\EnsureIsupInternalToken::class,
+            'isup.tenant' => \App\Http\Middleware\InitializeTenancyByIsupAccount::class,
             'colaborador.auth' => \App\Http\Middleware\ColaboradorAuth::class,
             'dentist.portal.auth' => \App\Http\Middleware\DentistPortalAuth::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

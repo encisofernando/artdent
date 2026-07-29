@@ -1,0 +1,15 @@
+[Unit]
+Description=ArtCode ISUP listener (Hikvision Platform Access)
+After=network.target
+
+[Service]
+Type=simple
+User=artcode
+WorkingDirectory=/home/artcode/isup-listener
+EnvironmentFile=/home/artcode/isup-listener/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

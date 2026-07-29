@@ -19,6 +19,26 @@ class HikVisionController extends Controller
 {
     public function __construct(private readonly HikVisionIsapiService $isapi) {}
 
+    /**
+     * IP o hostname (para terminales detrás de DDNS — ej. "midominio.ddns.net"
+     * en vez de una IP fija, ver docs/hikvision-isup-arquitectura.md Parte 1).
+     * La regla nativa `ip` de Laravel sólo acepta direcciones IP.
+     */
+    private function ipOrHostnameRule(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            if (filter_var($value, FILTER_VALIDATE_IP)) {
+                return;
+            }
+
+            if (preg_match('/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))+$/', $value)) {
+                return;
+            }
+
+            $fail('Debe ser una IP válida o un hostname (ej. midominio.ddns.net).');
+        };
+    }
+
     // ── Admin: dispositivos ───────────────────────────────────────────────
 
     public function index(Request $request): InertiaResponse
@@ -44,40 +64,58 @@ class HikVisionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $isUpConnection = $request->input('connection_type') === 'isup';
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'device_model' => ['nullable', 'string', 'max:50'],
-            'ip_address' => ['required', 'ip'],
+            'connection_type' => ['nullable', 'in:isapi,isup'],
+            // ISUP: el terminal es el que inicia la conexión, así que no hace
+            // falta una IP fija de nuestro lado para poder crearlo — se
+            // completa sola con el primer connect() del listener.
+            'ip_address' => [$isUpConnection ? 'nullable' : 'required', $this->ipOrHostnameRule()],
+            'mac_address' => ['nullable', 'regex:/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'username' => ['nullable', 'string', 'max:64'],
-            'password' => ['required', 'string', 'max:128'],
+            'password' => [$isUpConnection ? 'nullable' : 'required', 'string', 'max:128'],
             'isup_verify_code' => ['nullable', 'string', 'max:64'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        HikVisionDevice::create([
+        $device = HikVisionDevice::create([
             'company_id' => $request->user()->company_id,
             'name' => $data['name'],
             'device_model' => $data['device_model'] ?? 'DS-K1T320MFWX',
-            'ip_address' => $data['ip_address'],
+            'connection_type' => $isUpConnection ? 'isup' : 'isapi',
+            'ip_address' => $data['ip_address'] ?? '0.0.0.0',
+            'mac_address' => $data['mac_address'] ?? null,
             'port' => $data['port'] ?? 80,
             'username' => $data['username'] ?? 'admin',
-            'password_enc' => Crypt::encryptString($data['password']),
+            'password_enc' => Crypt::encryptString($data['password'] ?? ''),
             'isup_verify_code' => $data['isup_verify_code'],
             'webhook_secret' => Str::random(32),
+            'isup_account_id' => $isUpConnection ? Str::random(12) : null,
             'notes' => $data['notes'],
         ]);
 
-        return back()->with('success', 'Dispositivo registrado correctamente.');
+        return back()->with('success', $isUpConnection
+            ? "Dispositivo registrado. Account ID para cargar en el terminal: {$device->isup_account_id}"
+            : 'Dispositivo registrado correctamente.');
     }
 
     public function update(Request $request, HikVisionDevice $hikVisionDevice): RedirectResponse
     {
         $this->authorizeDevice($request, $hikVisionDevice);
 
+        // connection_type no es editable acá: cambiar de ISAPI a ISUP (o viceversa)
+        // implica generar/limpiar el Account ID y re-cargar el terminal a mano, así
+        // que se maneja borrando y dando de alta el dispositivo de nuevo.
+        $isUpConnection = $hikVisionDevice->connection_type === 'isup';
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
-            'ip_address' => ['required', 'ip'],
+            'ip_address' => [$isUpConnection ? 'nullable' : 'required', $this->ipOrHostnameRule()],
+            'mac_address' => ['nullable', 'regex:/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'username' => ['nullable', 'string', 'max:64'],
             'password' => ['nullable', 'string', 'max:128'],
@@ -88,7 +126,10 @@ class HikVisionController extends Controller
 
         $update = [
             'name' => $data['name'],
-            'ip_address' => $data['ip_address'],
+            // Para ISUP el campo del form puede venir vacío: no pisar la IP que
+            // ya haya reportado el listener en el último connect() con null.
+            'ip_address' => $data['ip_address'] ?? $hikVisionDevice->ip_address,
+            'mac_address' => $data['mac_address'] ?? null,
             'port' => $data['port'] ?? 80,
             'username' => $data['username'] ?? 'admin',
             'isup_verify_code' => $data['isup_verify_code'],

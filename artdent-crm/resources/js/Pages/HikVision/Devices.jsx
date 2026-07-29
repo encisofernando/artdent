@@ -28,13 +28,13 @@ export default function Devices({ auth, devices = [], collaborators = [], webhoo
 
     /* ── Add form ── */
     const addForm = useForm({
-        name: '', device_model: 'DS-K1T320MFWX', ip_address: '',
+        name: '', device_model: 'DS-K1T320MFWX', connection_type: 'isapi', ip_address: '', mac_address: '',
         port: '80', username: 'admin', password: '', isup_verify_code: '', notes: '',
     });
 
     /* ── Edit form ── */
     const editForm = useForm({
-        name: '', ip_address: '', port: '80', username: 'admin',
+        name: '', ip_address: '', mac_address: '', port: '80', username: 'admin',
         password: '', isup_verify_code: '', is_active: true, notes: '',
     });
 
@@ -43,6 +43,7 @@ export default function Devices({ auth, devices = [], collaborators = [], webhoo
         editForm.setData({
             name: device.name,
             ip_address: device.ip_address,
+            mac_address: device.mac_address ?? '',
             port: String(device.port),
             username: device.username,
             password: '',
@@ -202,31 +203,69 @@ export default function Devices({ auth, devices = [], collaborators = [], webhoo
                                 <input className={inputCls} value={addForm.data.device_model}
                                     onChange={e => addForm.setData('device_model', e.target.value)} />
                             </div>
+                            <div className="col-span-2">
+                                <label className={`block text-xs font-medium mb-1 ${muted}`}>Tipo de conexión</label>
+                                <div className="flex gap-2">
+                                    {[
+                                        { value: 'isapi', label: 'ISAPI (pull/push por IP)' },
+                                        { value: 'isup', label: 'ISUP (el terminal se conecta al listener)' },
+                                    ].map(opt => (
+                                        <button key={opt.value} type="button"
+                                            onClick={() => addForm.setData('connection_type', opt.value)}
+                                            className={`flex-1 rounded-xl border px-3 py-2 text-xs font-medium text-left transition ${
+                                                addForm.data.connection_type === opt.value
+                                                    ? 'border-teal-500 bg-teal-500/10 text-teal-500'
+                                                    : (isDark ? 'border-slate-600 text-slate-300' : 'border-slate-300 text-slate-600')
+                                            }`}>
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {addForm.data.connection_type === 'isup' ? (
+                                <div className={`col-span-2 rounded-xl border p-3 text-xs ${isDark ? 'border-teal-500/30 bg-teal-500/5 text-teal-300' : 'border-teal-300 bg-teal-50 text-teal-700'}`}>
+                                    Al registrar se genera un <strong>Account ID</strong> nuevo, que hay que cargar en el
+                                    terminal en Configuración → Red → Plataforma de acceso → ISUP, junto con la
+                                    dirección y el puerto del listener. No hace falta IP ni contraseña acá — el
+                                    terminal es el que inicia la conexión.
+                                </div>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label className={`block text-xs font-medium mb-1 ${muted}`}>IP o hostname del terminal</label>
+                                        <input className={inputCls} value={addForm.data.ip_address}
+                                            onChange={e => addForm.setData('ip_address', e.target.value)}
+                                            placeholder="192.168.1.100 o midominio.ddns.net" />
+                                        {addForm.errors.ip_address && <p className="text-red-400 text-xs mt-1">{addForm.errors.ip_address}</p>}
+                                    </div>
+                                    <div>
+                                        <label className={`block text-xs font-medium mb-1 ${muted}`}>Puerto</label>
+                                        <input className={inputCls} type="number" value={addForm.data.port}
+                                            onChange={e => addForm.setData('port', e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className={`block text-xs font-medium mb-1 ${muted}`}>Usuario</label>
+                                        <input className={inputCls} value={addForm.data.username}
+                                            onChange={e => addForm.setData('username', e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className={`block text-xs font-medium mb-1 ${muted}`}>Contraseña</label>
+                                        <input className={inputCls} type="password" value={addForm.data.password}
+                                            onChange={e => addForm.setData('password', e.target.value)} />
+                                        {addForm.errors.password && <p className="text-red-400 text-xs mt-1">{addForm.errors.password}</p>}
+                                    </div>
+                                </>
+                            )}
                             <div>
-                                <label className={`block text-xs font-medium mb-1 ${muted}`}>IP del terminal</label>
-                                <input className={inputCls} value={addForm.data.ip_address}
-                                    onChange={e => addForm.setData('ip_address', e.target.value)}
-                                    placeholder="192.168.1.100" />
-                                {addForm.errors.ip_address && <p className="text-red-400 text-xs mt-1">{addForm.errors.ip_address}</p>}
+                                <label className={`block text-xs font-medium mb-1 ${muted}`}>MAC address (opcional)</label>
+                                <input className={inputCls} value={addForm.data.mac_address}
+                                    onChange={e => addForm.setData('mac_address', e.target.value)}
+                                    placeholder="AA:BB:CC:DD:EE:FF" />
+                                {addForm.errors.mac_address && <p className="text-red-400 text-xs mt-1">{addForm.errors.mac_address}</p>}
+                                <p className={`text-[11px] mt-1 ${muted}`}>Configuración → Red → TCP/IP en el terminal. Necesaria si el terminal pushea eventos a través de un router/WAN (la IP de origen no coincide con la IP configurada).</p>
                             </div>
                             <div>
-                                <label className={`block text-xs font-medium mb-1 ${muted}`}>Puerto</label>
-                                <input className={inputCls} type="number" value={addForm.data.port}
-                                    onChange={e => addForm.setData('port', e.target.value)} />
-                            </div>
-                            <div>
-                                <label className={`block text-xs font-medium mb-1 ${muted}`}>Usuario</label>
-                                <input className={inputCls} value={addForm.data.username}
-                                    onChange={e => addForm.setData('username', e.target.value)} />
-                            </div>
-                            <div>
-                                <label className={`block text-xs font-medium mb-1 ${muted}`}>Contraseña</label>
-                                <input className={inputCls} type="password" value={addForm.data.password}
-                                    onChange={e => addForm.setData('password', e.target.value)} />
-                                {addForm.errors.password && <p className="text-red-400 text-xs mt-1">{addForm.errors.password}</p>}
-                            </div>
-                            <div>
-                                <label className={`block text-xs font-medium mb-1 ${muted}`}>Código ISUP (opcional)</label>
+                                <label className={`block text-xs font-medium mb-1 ${muted}`}>Código ISUP 5.0 (opcional, sólo ISAPI)</label>
                                 <input className={inputCls} value={addForm.data.isup_verify_code}
                                     onChange={e => addForm.setData('isup_verify_code', e.target.value)}
                                     placeholder="Para registro ISUP 5.0" />
@@ -278,6 +317,13 @@ export default function Devices({ auth, devices = [], collaborators = [], webhoo
                                             <label className={`block text-xs font-medium mb-1 ${muted}`}>IP</label>
                                             <input className={inputCls} value={editForm.data.ip_address}
                                                 onChange={e => editForm.setData('ip_address', e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <label className={`block text-xs font-medium mb-1 ${muted}`}>MAC address (opcional)</label>
+                                            <input className={inputCls} value={editForm.data.mac_address}
+                                                onChange={e => editForm.setData('mac_address', e.target.value)}
+                                                placeholder="AA:BB:CC:DD:EE:FF" />
+                                            {editForm.errors.mac_address && <p className="text-red-400 text-xs mt-1">{editForm.errors.mac_address}</p>}
                                         </div>
                                         <div>
                                             <label className={`block text-xs font-medium mb-1 ${muted}`}>Puerto</label>
@@ -336,12 +382,37 @@ export default function Devices({ auth, devices = [], collaborators = [], webhoo
                                                                 Inactivo
                                                             </span>
                                                         )}
+                                                        {device.connection_type === 'isup' && (
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                                                device.isup_status === 'connected'
+                                                                    ? 'bg-emerald-500/15 text-emerald-500'
+                                                                    : device.isup_status === 'disconnected'
+                                                                        ? 'bg-amber-500/15 text-amber-500'
+                                                                        : 'bg-slate-500/20 text-slate-400'
+                                                            }`}>
+                                                                ISUP · {device.isup_status === 'connected' ? 'conectado' : device.isup_status === 'disconnected' ? 'desconectado' : 'nunca se conectó'}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <p className={`text-xs mt-0.5 ${muted}`}>
-                                                        {device.device_model} · {device.ip_address}:{device.port} · usuario: {device.username}
-                                                    </p>
+                                                    {device.connection_type === 'isup' ? (
+                                                        <p className={`text-xs mt-0.5 ${muted}`}>
+                                                            {device.device_model} · Account ID: <code className="font-mono">{device.isup_account_id}</code>
+                                                            {device.ip_address && device.ip_address !== '0.0.0.0' && ` · última IP: ${device.ip_address}`}
+                                                        </p>
+                                                    ) : (
+                                                        <p className={`text-xs mt-0.5 ${muted}`}>
+                                                            {device.device_model} · {device.ip_address}:{device.port} · usuario: {device.username}
+                                                            {device.mac_address && ` · MAC: ${device.mac_address}`}
+                                                        </p>
+                                                    )}
                                                     {device.serial_no && (
                                                         <p className={`text-xs ${muted}`}>S/N: {device.serial_no} · FW: {device.firmware_version}</p>
+                                                    )}
+                                                    {device.connection_type === 'isup' && device.isup_last_connected_at && (
+                                                        <p className={`text-xs ${muted}`}>
+                                                            <Clock className="inline h-3 w-3 mr-0.5" />
+                                                            Última conexión ISUP: {new Date(device.isup_last_connected_at).toLocaleString('es-AR')}
+                                                        </p>
                                                     )}
                                                     {device.last_heartbeat_at && (
                                                         <p className={`text-xs ${muted}`}>
@@ -367,25 +438,35 @@ export default function Devices({ auth, devices = [], collaborators = [], webhoo
                                             </div>
                                         </div>
 
-                                        {/* Actions row */}
-                                        <div className="mt-4 pt-4 border-t flex flex-wrap gap-2"
-                                            style={{ borderColor: isDark ? 'rgb(51,65,85)' : 'rgb(226,232,240)' }}>
-                                            <ActionBtn device={device} action="test-connection"
-                                                icon={Wifi} label="Probar conexión"
-                                                className={btnOutline} />
-                                            <ActionBtn device={device} action="sync-collaborators"
-                                                icon={Users} label="Sincronizar colaboradores"
-                                                className={btnOutline} />
-                                            <ActionBtn device={device} action="subscribe-events"
-                                                icon={Radio} label="Configurar eventos"
-                                                className={btnOutline} />
-                                            <ActionBtn device={device} action="sync-time"
-                                                icon={Clock} label="Sincronizar hora"
-                                                className={btnOutline} />
-                                            <ActionBtn device={device} action="pull-records"
-                                                icon={RotateCcw} label="Pull registros"
-                                                className={btnOutline} />
-                                        </div>
+                                        {/* Actions row — llamadas ISAPI directas al terminal, no aplican a ISUP
+                                            (ahí es el terminal el que se conecta al listener, no al revés) */}
+                                        {device.connection_type === 'isup' ? (
+                                            <div className={`mt-4 pt-4 border-t text-xs ${muted}`}
+                                                style={{ borderColor: isDark ? 'rgb(51,65,85)' : 'rgb(226,232,240)' }}>
+                                                Cargá el Account ID de arriba en el terminal (Configuración → Red →
+                                                Plataforma de acceso → ISUP) para que se conecte al listener. El estado
+                                                de conexión se actualiza solo cuando el terminal se registra.
+                                            </div>
+                                        ) : (
+                                            <div className="mt-4 pt-4 border-t flex flex-wrap gap-2"
+                                                style={{ borderColor: isDark ? 'rgb(51,65,85)' : 'rgb(226,232,240)' }}>
+                                                <ActionBtn device={device} action="test-connection"
+                                                    icon={Wifi} label="Probar conexión"
+                                                    className={btnOutline} />
+                                                <ActionBtn device={device} action="sync-collaborators"
+                                                    icon={Users} label="Sincronizar colaboradores"
+                                                    className={btnOutline} />
+                                                <ActionBtn device={device} action="subscribe-events"
+                                                    icon={Radio} label="Configurar eventos"
+                                                    className={btnOutline} />
+                                                <ActionBtn device={device} action="sync-time"
+                                                    icon={Clock} label="Sincronizar hora"
+                                                    className={btnOutline} />
+                                                <ActionBtn device={device} action="pull-records"
+                                                    icon={RotateCcw} label="Pull registros"
+                                                    className={btnOutline} />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

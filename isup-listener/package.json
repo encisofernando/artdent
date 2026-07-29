@@ -1,0 +1,19 @@
+{
+  "name": "isup-listener",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Daemon que habla ISUP/HCNetSDK con terminales Hikvision y reenvía eventos normalizados a artdent-crm (ver docs/hikvision-isup-arquitectura.md en la raíz del monorepo).",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "koffi": "^2.9.0",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -69,4 +69,10 @@ return [
         'anthropic_model' => env('CHATBOT_ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
     ],
 
+    // Token compartido entre Laravel y el proceso isup-listener (Node.js). Sólo
+    // ese proceso, corriendo en localhost, debe poder llamar a /internal/isup/*.
+    'isup_listener' => [
+        'token' => env('ISUP_LISTENER_TOKEN'),
+    ],
+
 ];
