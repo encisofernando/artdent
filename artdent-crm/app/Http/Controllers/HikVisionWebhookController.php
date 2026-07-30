@@ -60,6 +60,14 @@ class HikVisionWebhookController extends Controller
             $device = HikVisionDevice::where('serial_no', $raw['deviceID'])->first();
         }
 
+        // Si el dispositivo ya está migrado a ISUP, ese evento ya lo procesó
+        // (o lo va a procesar) IsupIngestController — ignorar acá para no
+        // duplicar el fichaje si el terminal todavía tiene el push ISAPI
+        // activo en paralelo.
+        if ($device && $device->connection_type === 'isup') {
+            return response('OK', 200);
+        }
+
         $eventType = $raw['eventType'] ?? ($raw['Events'][0]['eventType'] ?? 'unknown');
 
         // ── Heartbeat / keepalive ─────────────────────────────────────────

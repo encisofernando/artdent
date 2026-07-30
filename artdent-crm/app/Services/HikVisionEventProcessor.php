@@ -73,6 +73,27 @@ class HikVisionEventProcessor
         ?array $acEvent,
         ?Carbon $eventTime,
     ): HikVisionEvent {
+        // El terminal reenvía el mismo evento de autenticación varias veces en
+        // pocos segundos (probablemente por "Attendance Status Lasts for" en
+        // su configuración de asistencia) — verifyNo+serialNo identifican de
+        // forma única cada interacción física, sin importar cuántas veces se
+        // reciba el mismo mensaje. Si ya lo procesamos, devolvemos ese mismo
+        // registro en vez de crear uno nuevo y reprocesar la asistencia.
+        $verifyNo = $acEvent['verifyNo'] ?? null;
+        $serialNo = $acEvent['serialNo'] ?? null;
+
+        if ($device && $verifyNo !== null && $serialNo !== null) {
+            $duplicate = HikVisionEvent::where('device_id', $device->id)
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->whereRaw("JSON_EXTRACT(raw_payload, '$.AccessControllerEvent.verifyNo') = ?", [$verifyNo])
+                ->whereRaw("JSON_EXTRACT(raw_payload, '$.AccessControllerEvent.serialNo') = ?", [$serialNo])
+                ->first();
+
+            if ($duplicate) {
+                return $duplicate;
+            }
+        }
+
         $hikEvent = HikVisionEvent::create([
             'device_id' => $device?->id,
             'source_ip' => $sourceIp,
