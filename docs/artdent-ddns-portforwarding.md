@@ -1,6 +1,40 @@
 # ArtDent: sacar la PC con Tailscale del medio (DDNS + port forwarding)
 
-**Estado: en curso, iniciado 2026-07-28/29, a terminar en el laboratorio
+**ACTUALIZACIÓN 2026-07-30: plan bloqueado por doble NAT de Starlink — no
+reintentar sin resolver eso primero.** Se hicieron los pasos 1-4 (puerto
+8899 en el terminal, reserva DHCP, port forwarding en el TP-Link, DDNS con
+No-IP) y quedaron correctamente configurados — confirmado por LAN
+(`http://192.168.0.100:8899/ISAPI/...` responde 401, o sea el terminal
+escucha bien ahí). Pero desde afuera (`http://hikvision.hopto.org:8899/...`)
+nunca respondió nada (timeout).
+
+Causa encontrada: el TP-Link **no está conectado directo a internet**. Su
+propia pantalla de Estado muestra IP de WAN `192.168.1.x` (rango privado) con
+gateway `192.168.1.1` — eso es el router/nodo del Starlink, no el ISP. Es
+decir, hay un **doble NAT**: Starlink → (NAT) → TP-Link → (NAT) → terminal.
+El port forwarding configurado en el TP-Link es correcto pero inútil sin una
+segunda regla equivalente en el router de Starlink (forwardear 8899 hacia la
+IP `192.168.1.x` del TP-Link) — y ese Starlink en particular **no tiene modo
+Bypass ni opción de port forwarding** (nodo de malla/principal sin esos
+controles expuestos), así que no hay forma de resolverlo desde este lado sin
+cambiar de plan/hardware de Starlink.
+
+**Por qué esto NO es un problema grave en la práctica:** el objetivo
+original de este documento (ISAPI *pull* — test de conexión, sync de
+colaboradores, pull de registros) es lo único que necesita esta ruta. El
+fichaje en tiempo real (ISAPI *push*, el terminal conectando saliente al
+VPS) ya funciona 24/7 sin depender de la PC ni del doble NAT, porque es una
+conexión saliente — confirmado funcionando el 2026-07-30 (checkout de FER
+vía ISAPI push, sin Tailscale). La PC con Tailscale sólo hace falta prendida
+para las acciones de gestión ocasionales (alta/baja de colaboradores en el
+terminal), no para el uso diario. Dado que también se decidió priorizar
+ISUP (ver `hikvision-isup-arquitectura.md`) — que no depende de ninguna
+conectividad entrante al local — este plan de DDNS queda en pausa
+indefinida, no cancelado: si en el futuro cambia el equipo/plan de Starlink
+(o se consigue exponer port forwarding de otra forma), retomar desde el
+paso 5 de abajo, ya que los pasos 1-4 quedaron hechos y verificados.
+
+**Estado original: iniciado 2026-07-28/29, a terminar en el laboratorio
 (el router está ahí físicamente).** Valores ya decididos y confirmados, ver
 abajo — no volver a improvisar nombres/puertos, usar estos.
 

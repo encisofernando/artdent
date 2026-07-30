@@ -43,14 +43,27 @@ class HikVisionWebhookController extends Controller
         // directo por LAN; cuando pega a la IP pública del servidor a través del
         // WAN del consultorio, $sourceIp es la IP pública del ISP, no la del
         // terminal, y esto no matchea).
+        // connection_type != 'isup': el ip_address de la fila ISUP se
+        // autoactualiza con la IP pública real del terminal en cada conexión
+        // (HikVisionDeviceObserver) — sin este filtro, cualquier push ISAPI
+        // que llegue de esa misma IP pública matchea siempre la fila ISUP acá
+        // y el guard de abajo lo descarta entero, aunque el terminal siga
+        // empujando por ISAPI en paralelo.
         $device = HikVisionDevice::where('ip_address', $sourceIp)
+            ->where('connection_type', '!=', 'isup')
             ->where('is_active', true)
             ->first();
 
         // Fallback por macAddress del payload, que el terminal siempre manda
         // en la raíz del evento independientemente de la topología de red.
+        // connection_type != 'isup': si el mismo terminal físico tiene una fila
+        // ISAPI y otra ISUP con la misma MAC (migración en curso), esta ruta
+        // (transporte ISAPI) tiene que matchear siempre la fila ISAPI — si
+        // matcheara la ISUP, el guard de abajo descartaría el evento entero
+        // sin guardar nada, aunque el terminal siga empujando por ISAPI.
         if (! $device && ! empty($raw['macAddress'])) {
             $device = HikVisionDevice::where('mac_address', $raw['macAddress'])
+                ->where('connection_type', '!=', 'isup')
                 ->where('is_active', true)
                 ->first();
         }
