@@ -384,13 +384,20 @@ export default function Devices({ auth, devices = [], collaborators = [], webhoo
                                                         )}
                                                         {device.connection_type === 'isup' && (
                                                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                                                device.isup_status === 'connected'
+                                                                device.isup_effective_status === 'connected'
                                                                     ? 'bg-emerald-500/15 text-emerald-500'
-                                                                    : device.isup_status === 'disconnected'
-                                                                        ? 'bg-amber-500/15 text-amber-500'
-                                                                        : 'bg-slate-500/20 text-slate-400'
-                                                            }`}>
-                                                                ISUP · {device.isup_status === 'connected' ? 'conectado' : device.isup_status === 'disconnected' ? 'desconectado' : 'nunca se conectó'}
+                                                                    : device.isup_effective_status === 'stale'
+                                                                        ? 'bg-red-500/15 text-red-500'
+                                                                        : device.isup_effective_status === 'disconnected'
+                                                                            ? 'bg-amber-500/15 text-amber-500'
+                                                                            : 'bg-slate-500/20 text-slate-400'
+                                                            }`} title={device.isup_effective_status === 'stale' ? `Sin señal desde ${device.isup_last_connected_at ? new Date(device.isup_last_connected_at).toLocaleString('es-AR') : '?'} — puede estar colgado` : undefined}>
+                                                                ISUP · {
+                                                                    device.isup_effective_status === 'connected' ? 'conectado'
+                                                                        : device.isup_effective_status === 'stale' ? 'sin señal'
+                                                                            : device.isup_effective_status === 'disconnected' ? 'desconectado'
+                                                                                : 'nunca se conectó'
+                                                                }
                                                             </span>
                                                         )}
                                                     </div>

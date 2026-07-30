@@ -73,6 +73,11 @@ return [
     // ese proceso, corriendo en localhost, debe poder llamar a /internal/isup/*.
     'isup_listener' => [
         'token' => env('ISUP_LISTENER_TOKEN'),
+        // isup_status queda pegado en "connected" para siempre si el listener
+        // se cuelga sin mandar el evento de desconexión (visto en producción:
+        // horas de silencio real con el status todavía en "connected"). Pasado
+        // este tiempo sin un connect nuevo, se considera obsoleto.
+        'stale_after_seconds' => env('ISUP_STALE_AFTER_SECONDS', 600),
     ],
 
 ];

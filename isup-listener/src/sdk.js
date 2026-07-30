@@ -50,6 +50,11 @@ function createMockSdk({ onConnect, onDisconnect, onEvent }) {
                 }, 3000));
             }
         },
+        // Modo mock: nunca hay SDK real que se pueda colgar, así que reporta
+        // actividad constante para que el watchdog de sdkWorker.js no dispare.
+        getLastActivityAt() {
+            return Date.now();
+        },
         stop() {
             timers.forEach(clearTimeout);
             timers = [];
@@ -282,7 +287,19 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
     const connected = new Map(); // accountId -> { serialNo, sourceIp }
     let listenPort = null; // seteado en start(), lo necesita ENUM_DEV_DAS_REQ
 
+    // Timestamp de la última vez que el SDK llamó a CUALQUIERA de nuestros
+    // callbacks (registro o alarma), sin importar el resultado. En producción
+    // se observó que el proceso queda "colgado" — vivo según systemd, sin
+    // crashear, pero sin que el SDK vuelva a invocar el callback nunca más
+    // (el socket TCP queda abierto pero mudo) — a veces por horas. sdkWorker.js
+    // usa esto como watchdog: si pasa demasiado tiempo sin actividad real acá
+    // adentro, se reinicia solo. Se inicializa en el momento de creación (no
+    // en start()) para no arrancar en null.
+    let lastActivityAt = Date.now();
+
     function handleRegister(lUserID, dwDataType, pOutBuffer, dwOutLen, pInBuffer, dwInLen /* , pUser */) {
+        lastActivityAt = Date.now();
+
         try {
             if (dwDataType === ENUM_DEV_ON) {
                 const info = koffi.decode(pOutBuffer, 'NET_EHOME_DEV_REG_INFO');
@@ -413,6 +430,8 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
     }
 
     function handleAlarm(iHandle, pAlarmMsg /* , pUser */) {
+        lastActivityAt = Date.now();
+
         try {
             const msg = koffi.decode(pAlarmMsg, 'NET_EHOME_ALARM_MSG');
 
@@ -502,6 +521,9 @@ function createRealSdk({ onConnect, onDisconnect, onEvent }) {
             }
 
             logger.info('HCISUPSDK escuchando alarmas ISUP (mismo puerto)', { alarmListenHandle });
+        },
+        getLastActivityAt() {
+            return lastActivityAt;
         },
         stop() {
             if (alarmListenHandle !== null) {
