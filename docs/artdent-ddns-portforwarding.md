@@ -34,6 +34,25 @@ indefinida, no cancelado: si en el futuro cambia el equipo/plan de Starlink
 (o se consigue exponer port forwarding de otra forma), retomar desde el
 paso 5 de abajo, ya que los pasos 1-4 quedaron hechos y verificados.
 
+**Horario real de la PC con Tailscale (confirmado 2026-07-30):** la PC se
+apaga a las 15hs y se prende recién a las 8am — no queda encendida 24/7. El
+laboratorio abre a las 7am (a veces hasta las 18hs), así que hay una ventana
+de una hora (7-8am) donde el lugar está abierto pero la PC todavía apagada.
+Esto **no afecta el fichaje en tiempo real**: tanto ISAPI push como ISUP son
+conexiones salientes del terminal hacia el VPS, no pasan por esta PC — una
+fichada a las 7:15am se procesa y queda registrada igual que a cualquier
+otra hora. Sólo afecta a las acciones de *pull* (probar conexión, sincronizar
+colaboradores, pull de registros) si alguien las necesita antes de las 8am o
+después de las 15hs — en la práctica no pasa, porque esas acciones son
+manuales y sólo se hacen con el lugar abierto y alguien de gestión presente.
+No hay ningún cron/job automático en el CRM que dependa de esta ruta.
+
+**Prueba de una semana en curso (arrancada 2026-07-30):** se decidió correr
+ISAPI push e ISUP en paralelo una semana para ver el comportamiento real de
+ISUP con el watchdog nuevo (ver `hikvision-isup-arquitectura.md` § actualización
+2026-07-30 tarde) antes de decidir si conviene apagar ISAPI. No apagar nada
+de esto hasta cumplir la semana de observación.
+
 **Estado original: iniciado 2026-07-28/29, a terminar en el laboratorio
 (el router está ahí físicamente).** Valores ya decididos y confirmados, ver
 abajo — no volver a improvisar nombres/puertos, usar estos.
