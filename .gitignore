@@ -30,6 +30,8 @@ e-commerce/.env
 e-commerce/.env.production
 e-commerce/.env.local
 e-commerce/.env.*.local
+e-commerce/test-results/
+e-commerce/playwright-report/
 
 # --- Backend (Laravel) ---
 artdent-crm/vendor/

@@ -309,7 +309,7 @@ function AccordionItem({
         </span>
         <ChevronDown
           size={16}
-          className={`shrink-0 mt-0.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--brand-primary)]' : 'text-gray-400'}`}
+          className={`shrink-0 mt-0.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--brand-primary)]' : 'text-gray-500'}`}
         />
       </button>
       {isOpen && (
@@ -391,7 +391,7 @@ export default function FAQ() {
 
             {/* Buscador */}
             <div className="relative mt-6 max-w-lg mx-auto">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
               <input
                 type="search"
                 value={search}
@@ -402,7 +402,7 @@ export default function FAQ() {
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600"
                   aria-label="Limpiar"
                 >
                   <X size={15} />
@@ -489,7 +489,7 @@ export default function FAQ() {
                     <cat.icon size={18} />
                   </div>
                   <h2 className="text-base font-bold text-gray-900">{cat.label}</h2>
-                  <span className="ml-auto text-xs font-semibold text-gray-400">
+                  <span className="ml-auto text-xs font-semibold text-gray-500">
                     {cat.items.length} pregunta{cat.items.length !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -511,7 +511,7 @@ export default function FAQ() {
 
             {/* Nota al pie */}
             {filtered.length > 0 && (
-              <p className="text-xs text-center text-gray-400 pb-2">
+              <p className="text-xs text-center text-gray-500 pb-2">
                 ¿No encontraste lo que buscabas?{' '}
                 <Link to="/contacto" className="text-[var(--brand-primary)] hover:underline font-medium">
                   Contactanos
@@ -544,18 +544,18 @@ export default function FAQ() {
                   href="mailto:ventas@artdent.com.ar"
                   className="flex items-center gap-3 rounded-xl border border-gray-200 hover:border-[var(--brand-primary)] hover:bg-[var(--brand-soft)] px-4 py-3 text-sm font-semibold text-gray-700 transition group"
                 >
-                  <Mail size={16} className="text-gray-400 group-hover:text-[var(--brand-primary)] shrink-0" />
+                  <Mail size={16} className="text-gray-500 group-hover:text-[var(--brand-primary)] shrink-0" />
                   ventas@artdent.com.ar
                 </a>
                 <Link
                   to="/contacto"
                   className="flex items-center gap-3 rounded-xl border border-gray-200 hover:border-[var(--brand-primary)] hover:bg-[var(--brand-soft)] px-4 py-3 text-sm font-semibold text-gray-700 transition group"
                 >
-                  <Phone size={16} className="text-gray-400 group-hover:text-[var(--brand-primary)] shrink-0" />
+                  <Phone size={16} className="text-gray-500 group-hover:text-[var(--brand-primary)] shrink-0" />
                   Formulario de contacto
                 </Link>
               </div>
-              <p className="text-xs text-gray-400 text-center mt-3">
+              <p className="text-xs text-gray-500 text-center mt-3">
                 Lun–Vie · 8:00 a 14:00 hs
               </p>
             </div>

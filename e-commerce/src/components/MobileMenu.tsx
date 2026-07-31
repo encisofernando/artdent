@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Menu, X, ChevronRight, Home, Package, ShoppingBag, Sparkles, Mail } from 'lucide-react'
+import { Menu, X, ChevronRight, Home, Package, Sparkles, Mail } from 'lucide-react'
 import { useAuth } from '../store/auth'
 import { listCategories, type Category } from '../api/categories'
 import { useFocusTrap } from '../hooks/useFocusTrap'
@@ -16,6 +16,15 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const [expandedSection, setExpandedSection] = useState<'productos' | 'marcas' | null>(null)
   const panelRef = useRef<HTMLElement>(null)
 
+  const loadCategories = async () => {
+    try {
+      const data = await listCategories()
+      setCategories(data.filter((cat) => !cat.parent_id))
+    } catch (error) {
+      console.error('Error al cargar categorías:', error)
+    }
+  }
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -27,6 +36,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     return () => {
       document.body.style.overflow = ''
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   useEffect(() => {
@@ -39,15 +49,6 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   }, [isOpen, onClose])
 
   useFocusTrap(panelRef, isOpen)
-
-  const loadCategories = async () => {
-    try {
-      const data = await listCategories()
-      setCategories(data.filter((cat) => !cat.parent_id))
-    } catch (error) {
-      console.error('Error al cargar categorías:', error)
-    }
-  }
 
   const handleLinkClick = () => {
     onClose()
@@ -121,7 +122,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 </div>
                 <ChevronRight
                   size={16}
-                  className={`text-gray-400 transition-transform ${
+                  className={`text-gray-500 transition-transform ${
                     expandedSection === 'productos' ? 'rotate-90' : ''
                   }`}
                 />
@@ -185,7 +186,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 </div>
                 <ChevronRight
                   size={16}
-                  className={`text-gray-400 transition-transform ${
+                  className={`text-gray-500 transition-transform ${
                     expandedSection === 'marcas' ? 'rotate-90' : ''
                   }`}
                 />
@@ -246,15 +247,6 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 </div>
               )}
             </div>
-
-            <Link
-              to="/comparar"
-              onClick={handleLinkClick}
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition active:bg-gray-100"
-            >
-              <ShoppingBag size={18} className="text-[var(--brand-primary)]" />
-              <span className="font-medium text-sm">Comparar</span>
-            </Link>
 
             <Link
               to="/contacto"

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { X, SlidersHorizontal, ChevronRight } from 'lucide-react'
-import { listProducts, type CatalogProduct } from '../api/products'
+import { listProducts, listBrands, type CatalogProduct } from '../api/products'
 import { productPath } from '../utils/slug'
 import { listCategories } from '../api/categories'
 import { useCart } from '../store/cart'
@@ -77,7 +77,7 @@ function ProductCard({ p, onAdd }: { p: CatalogProduct; onAdd: (p: CatalogProduc
             </div>
           )}
           {originalPrice && (
-            <p className="text-[10px] text-gray-400 line-through">${originalPrice.toLocaleString('es-AR')}</p>
+            <p className="text-[10px] text-gray-500 line-through">${originalPrice.toLocaleString('es-AR')}</p>
           )}
           <p className="price-main">${price.toLocaleString('es-AR')}</p>
         </div>
@@ -129,6 +129,11 @@ export default function Products() {
   const categoryId = searchParams.get('cat') || searchParams.get('category_id') || ''
   const category_id = categoryId ? Number(categoryId) : undefined
   const trimmedQuery = q.trim()
+  const brand = searchParams.get('brand') || ''
+  const minPriceParam = searchParams.get('min_price') || ''
+  const maxPriceParam = searchParams.get('max_price') || ''
+  const min_price = minPriceParam ? Number(minPriceParam) : undefined
+  const max_price = maxPriceParam ? Number(maxPriceParam) : undefined
 
   const cart = useCart()
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -148,6 +153,22 @@ export default function Products() {
   })
   const categories = categoriesQuery.data ?? []
 
+  // Marcas
+  const brandsQuery = useQuery({
+    queryKey: ['brands'],
+    queryFn: () => listBrands(),
+    staleTime: 5 * 60_000,
+  })
+  const brands = brandsQuery.data ?? []
+
+  // Precio: inputs locales que solo tocan la URL al aplicar (evita refetch en cada tecla)
+  const [minPriceInput, setMinPriceInput] = useState(minPriceParam)
+  const [maxPriceInput, setMaxPriceInput] = useState(maxPriceParam)
+  useEffect(() => {
+    setMinPriceInput(minPriceParam)
+    setMaxPriceInput(maxPriceParam)
+  }, [minPriceParam, maxPriceParam])
+
   // Infinite scroll query
   const {
     data,
@@ -157,9 +178,9 @@ export default function Products() {
     isLoading,
     isError,
   } = useInfiniteQuery({
-    queryKey: ['catalog_products_inf', q, category_id],
+    queryKey: ['catalog_products_inf', q, category_id, brand, min_price, max_price],
     queryFn: ({ pageParam = 1 }) =>
-      listProducts({ q: q || undefined, page: pageParam as number, category_id }),
+      listProducts({ q: q || undefined, page: pageParam as number, category_id, brand: brand || undefined, min_price, max_price }),
     initialPageParam: 1,
     getNextPageParam: (last) =>
       last.current_page < last.last_page ? last.current_page + 1 : undefined,
@@ -209,6 +230,52 @@ export default function Products() {
       next.delete('q')
       return next
     })
+  }
+
+  const setBrand = (b: string | undefined) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (b) next.set('brand', b)
+      else next.delete('brand')
+      next.delete('page')
+      return next
+    })
+    setSidebarOpen(false)
+  }
+
+  const applyPriceRange = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (minPriceInput) next.set('min_price', minPriceInput)
+      else next.delete('min_price')
+      if (maxPriceInput) next.set('max_price', maxPriceInput)
+      else next.delete('max_price')
+      next.delete('page')
+      return next
+    })
+  }
+
+  const clearPriceRange = () => {
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('min_price')
+      next.delete('max_price')
+      return next
+    })
+  }
+
+  const clearAllFilters = () => {
+    // OJO: no encadenar varios setSearchParams() sueltos acá — cada llamada
+    // parte del snapshot de params del render en el que se creó la función,
+    // así que si se llaman una tras otra (clearQ + setCategory + setBrand +
+    // clearPriceRange) cada una pisa a la anterior y solo sobrevive la
+    // última. Por eso se arma un único URLSearchParams y se aplica una vez.
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setSearchParams(new URLSearchParams())
+    setSidebarOpen(false)
   }
 
   const selectedCategory = categories.find((c) => c.id === category_id)
@@ -295,7 +362,7 @@ export default function Products() {
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-5 flex-wrap">
         <Link to="/" className="hover:text-[var(--brand-primary)] transition-colors">Inicio</Link>
-        <ChevronRight size={14} className="text-gray-400 shrink-0" />
+        <ChevronRight size={14} className="text-gray-500 shrink-0" />
         {selectedCategory ? (
           <button onClick={() => setCategory(undefined)} className="hover:text-[var(--brand-primary)] transition-colors">
             Productos
@@ -305,7 +372,7 @@ export default function Products() {
         )}
         {selectedCategory && (
           <>
-            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+            <ChevronRight size={14} className="text-gray-500 shrink-0" />
             <span className="text-gray-800 font-medium">{selectedCategory.name}</span>
           </>
         )}
@@ -347,6 +414,66 @@ export default function Products() {
                 </li>
               ))}
             </ul>
+
+            {brands.length > 0 && (
+              <>
+                <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 mt-6 px-1">
+                  Marca
+                </h2>
+                <ul className="space-y-0.5 max-h-56 overflow-y-auto">
+                  <li>
+                    <button
+                      onClick={() => setBrand(undefined)}
+                      className={`w-full text-left text-sm px-3 py-2 rounded-lg transition
+                        ${!brand ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                    >
+                      Todas las marcas
+                    </button>
+                  </li>
+                  {brands.map((b) => (
+                    <li key={b}>
+                      <button
+                        onClick={() => setBrand(b)}
+                        className={`w-full text-left text-sm px-3 py-2 rounded-lg transition truncate
+                          ${brand === b ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                      >
+                        {b}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 mt-6 px-1">
+              Precio
+            </h2>
+            <div className="px-1 space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={minPriceInput}
+                  onChange={(e) => setMinPriceInput(e.target.value)}
+                  placeholder="Mín"
+                  aria-label="Precio mínimo"
+                  className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                />
+                <span className="text-gray-500 text-sm">–</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={maxPriceInput}
+                  onChange={(e) => setMaxPriceInput(e.target.value)}
+                  placeholder="Máx"
+                  aria-label="Precio máximo"
+                  className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                />
+              </div>
+              <button onClick={applyPriceRange} className="btn btn-outline w-full py-1.5 text-xs">
+                Aplicar
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -377,12 +504,12 @@ export default function Products() {
               className="lg:hidden flex items-center gap-2 btn btn-outline text-sm"
             >
               <SlidersHorizontal size={15} />
-              Categorías
+              Filtros
             </button>
           </div>
 
           {/* Chips filtros activos */}
-          {(q || category_id) && (
+          {(q || category_id || brand || min_price !== undefined || max_price !== undefined) && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
               {q && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand-primary)]/30 px-3 py-1 text-sm font-semibold text-[var(--brand-primary)]">
@@ -400,8 +527,24 @@ export default function Products() {
                   </button>
                 </span>
               )}
-              <button onClick={() => { clearQ(); setCategory(undefined) }}
-                className="text-xs text-gray-400 hover:text-red-500 transition">
+              {brand && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand-primary)]/30 px-3 py-1 text-sm font-semibold text-[var(--brand-primary)]">
+                  {brand}
+                  <button onClick={() => setBrand(undefined)} className="rounded-full hover:bg-[var(--brand-primary)]/10 p-0.5">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {(min_price !== undefined || max_price !== undefined) && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand-primary)]/30 px-3 py-1 text-sm font-semibold text-[var(--brand-primary)]">
+                  ${min_price?.toLocaleString('es-AR') ?? '0'} – ${max_price ? max_price.toLocaleString('es-AR') : '∞'}
+                  <button onClick={clearPriceRange} className="rounded-full hover:bg-[var(--brand-primary)]/10 p-0.5">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              <button onClick={clearAllFilters}
+                className="text-xs text-gray-500 hover:text-red-500 transition">
                 Limpiar todo
               </button>
             </div>
@@ -418,7 +561,7 @@ export default function Products() {
           ) : products.length === 0 ? (
             <div className="card p-10 text-center">
               <p className="text-gray-600 font-medium">No se encontraron productos.</p>
-              <button onClick={() => { clearQ(); setCategory(undefined) }} className="mt-4 btn btn-outline">
+              <button onClick={clearAllFilters} className="mt-4 btn btn-outline">
                 Limpiar filtros
               </button>
             </div>
@@ -438,7 +581,7 @@ export default function Products() {
             </div>
           )}
           {!hasNextPage && products.length > 0 && (
-            <p className="text-center text-sm text-gray-400 py-6">
+            <p className="text-center text-sm text-gray-500 py-6">
               · {products.length.toLocaleString('es-AR')} productos mostrados ·
             </p>
           )}
@@ -451,29 +594,84 @@ export default function Products() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
           <div className="relative w-72 bg-white h-full shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-4 py-4 border-b">
-              <h2 className="font-bold text-gray-800">Categorías</h2>
+              <h2 className="font-bold text-gray-800">Filtros</h2>
               <button onClick={() => setSidebarOpen(false)}>
                 <X size={20} className="text-gray-500" />
               </button>
             </div>
-            <ul className="flex-1 overflow-y-auto p-3 space-y-0.5">
-              <li>
-                <button onClick={() => setCategory(undefined)}
-                  className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition
-                    ${!category_id ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  Todas las categorías
-                </button>
-              </li>
-              {categories.map((c) => (
-                <li key={c.id}>
-                  <button onClick={() => setCategory(c.id)}
+            <div className="flex-1 overflow-y-auto p-3">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-1 mb-1">Categorías</p>
+              <ul className="space-y-0.5 mb-5">
+                <li>
+                  <button onClick={() => setCategory(undefined)}
                     className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition
-                      ${category_id === c.id ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
-                    {c.name}
+                      ${!category_id ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    Todas las categorías
                   </button>
                 </li>
-              ))}
-            </ul>
+                {categories.map((c) => (
+                  <li key={c.id}>
+                    <button onClick={() => setCategory(c.id)}
+                      className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition
+                        ${category_id === c.id ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                      {c.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
+              {brands.length > 0 && (
+                <>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-1 mb-1">Marca</p>
+                  <ul className="space-y-0.5 mb-5">
+                    <li>
+                      <button onClick={() => setBrand(undefined)}
+                        className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition
+                          ${!brand ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                        Todas las marcas
+                      </button>
+                    </li>
+                    {brands.map((b) => (
+                      <li key={b}>
+                        <button onClick={() => setBrand(b)}
+                          className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition truncate
+                            ${brand === b ? 'bg-[var(--brand-primary)] text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                          {b}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-1 mb-1">Precio</p>
+              <div className="px-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    value={minPriceInput}
+                    onChange={(e) => setMinPriceInput(e.target.value)}
+                    placeholder="Mín"
+                    aria-label="Precio mínimo"
+                    className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                  />
+                  <span className="text-gray-500 text-sm">–</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={maxPriceInput}
+                    onChange={(e) => setMaxPriceInput(e.target.value)}
+                    placeholder="Máx"
+                    aria-label="Precio máximo"
+                    className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                  />
+                </div>
+                <button onClick={() => { applyPriceRange(); setSidebarOpen(false) }} className="btn btn-primary w-full py-2 text-sm">
+                  Aplicar filtros
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

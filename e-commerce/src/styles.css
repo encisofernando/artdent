@@ -12,7 +12,7 @@
   --brand-light-1: #8ab4c8;      /* Tinte 50% — iconos, separadores */
   --brand-light-2: #cfe4ed;      /* Tinte 20% — fondos suaves */
   --brand-light-3: #ddeaf3;      /* Tinte 15% — gradientes */
-  --brand-muted: #5b8fa5;        /* Azul apagado — textos secundarios */
+  --brand-muted: #3d6a80;        /* Azul apagado — textos secundarios (5.88:1 sobre blanco, pasa WCAG AA) */
   --brand-soft: #edf5f9;         /* Fondo muy suave — badges, chips */
 
   --text: #0b1220;

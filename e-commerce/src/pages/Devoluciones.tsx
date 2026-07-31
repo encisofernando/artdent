@@ -439,7 +439,7 @@ export default function Devoluciones() {
                           <input type="radio" name="preferencia" value={opt.value}
                             checked={formData.preferencia === opt.value}
                             onChange={handleChange} className="sr-only" />
-                          <opt.icon size={18} className={formData.preferencia === opt.value ? 'text-[var(--brand-primary)]' : 'text-gray-400'} />
+                          <opt.icon size={18} className={formData.preferencia === opt.value ? 'text-[var(--brand-primary)]' : 'text-gray-500'} />
                           <span className={`font-medium text-sm ${formData.preferencia === opt.value ? 'text-[var(--brand-primary)]' : 'text-gray-700'}`}>
                             {opt.label}
                           </span>

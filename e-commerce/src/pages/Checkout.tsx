@@ -13,6 +13,7 @@ import { createNavePayment } from '../api/nave'
 import { analytics } from '../api/analytics'
 import CouponInput from '../components/CouponInput'
 import { formatMoney } from '../lib/format'
+import { getApiErrorMessage } from '../lib/apiError'
 
 const LS_LAST_EMAIL = 'artdent_last_checkout_email'
 const SS_CHECKOUT = 'artdent_checkout_draft'
@@ -58,10 +59,10 @@ function StepBar({ step }: { step: number }) {
           <div key={label} className="flex items-center flex-1">
             <div className="flex flex-col items-center gap-1">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors
-                ${done ? 'bg-[var(--brand-primary)] text-white' : active ? 'bg-[var(--brand-primary)] text-white ring-4 ring-[var(--brand-primary)]/20' : 'bg-gray-100 text-gray-400'}`}>
+                ${done ? 'bg-[var(--brand-primary)] text-white' : active ? 'bg-[var(--brand-primary)] text-white ring-4 ring-[var(--brand-primary)]/20' : 'bg-gray-100 text-gray-500'}`}>
                 {done ? <Check size={14} /> : idx}
               </div>
-              <span className={`text-[10px] font-semibold ${active ? 'text-[var(--brand-primary)]' : done ? 'text-[var(--brand-primary)]' : 'text-gray-400'}`}>{label}</span>
+              <span className={`text-[10px] font-semibold ${active ? 'text-[var(--brand-primary)]' : done ? 'text-[var(--brand-primary)]' : 'text-gray-500'}`}>{label}</span>
             </div>
             {i < steps.length - 1 && (
               <div className={`flex-1 h-0.5 mx-2 mb-5 ${done ? 'bg-[var(--brand-primary)]' : 'bg-gray-100'}`} />
@@ -215,7 +216,7 @@ function StepCustomer({
         <div>
           <label htmlFor="checkout-dni" className="text-xs font-semibold text-gray-600">DNI o CUIT *</label>
           <input id="checkout-dni" className={`mt-1.5 ${inp}`} value={dni} onChange={e => setDni(e.target.value.replace(/\D/g, ''))} placeholder="20-12345678-9" />
-          <p className="text-[10px] text-gray-400 mt-1">Requerido por Mercado Pago para asegurar la transacción.</p>
+          <p className="text-[10px] text-gray-500 mt-1">Requerido por Mercado Pago para asegurar la transacción.</p>
         </div>
 
         <div>
@@ -260,6 +261,48 @@ function StepCustomer({
 
 // ── Step 2: Shipping method ─────────────────────────────────────────────────────
 type ShippingMethod = 'home_delivery' | 'pickup_point' | 'moto'
+
+// Componente de módulo (no definido dentro de StepShipping) para que su
+// identidad no cambie en cada render — si se redefine en cada render de un
+// padre que re-renderiza en cada tecleo (como este formulario), React lo
+// trata como un componente distinto y lo remonta de cero cada vez.
+function MethodCard({
+  icon, title, description, available, badge, selected, onSelect,
+}: {
+  icon: React.ReactNode; title: string; description: string; available: boolean; badge?: string
+  selected: boolean; onSelect: () => void
+}) {
+  return (
+    <button
+      onClick={() => available && onSelect()}
+      disabled={!available}
+      className={`w-full text-left rounded-xl border-2 p-4 transition-all
+        ${!available ? 'opacity-40 cursor-not-allowed border-gray-100 bg-gray-50' :
+          selected ? 'border-[var(--brand-primary)] bg-[var(--brand-soft)]' :
+            'border-gray-200 hover:border-[var(--brand-primary)]/40 bg-white'}`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0
+          ${selected ? 'bg-[var(--brand-primary)] text-white' : 'bg-gray-100 text-gray-500'}`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-sm text-gray-800">{title}</p>
+            {badge && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{badge}</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        </div>
+        <div className={`h-5 w-5 rounded-full border-2 shrink-0 flex items-center justify-center
+          ${selected ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]' : 'border-gray-300'}`}>
+          {selected && <div className="h-2 w-2 rounded-full bg-white" />}
+        </div>
+      </div>
+    </button>
+  )
+}
 
 function StepShipping({
   city, setCity,
@@ -323,41 +366,6 @@ function StepShipping({
 
   const inp = 'w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--brand-primary)]'
 
-  const MethodCard = ({
-    id, icon, title, description, available, badge,
-  }: {
-    id: ShippingMethod; icon: React.ReactNode; title: string; description: string; available: boolean; badge?: string
-  }) => (
-    <button
-      onClick={() => available && setSelectedMethod(id)}
-      disabled={!available}
-      className={`w-full text-left rounded-xl border-2 p-4 transition-all
-        ${!available ? 'opacity-40 cursor-not-allowed border-gray-100 bg-gray-50' :
-          selectedMethod === id ? 'border-[var(--brand-primary)] bg-[var(--brand-soft)]' :
-            'border-gray-200 hover:border-[var(--brand-primary)]/40 bg-white'}`}
-    >
-      <div className="flex items-start gap-3">
-        <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0
-          ${selectedMethod === id ? 'bg-[var(--brand-primary)] text-white' : 'bg-gray-100 text-gray-500'}`}>
-          {icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-semibold text-sm text-gray-800">{title}</p>
-            {badge && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{badge}</span>
-            )}
-          </div>
-          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-        </div>
-        <div className={`h-5 w-5 rounded-full border-2 shrink-0 flex items-center justify-center
-          ${selectedMethod === id ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]' : 'border-gray-300'}`}>
-          {selectedMethod === id && <div className="h-2 w-2 rounded-full bg-white" />}
-        </div>
-      </div>
-    </button>
-  )
-
   return (
     <div className="space-y-5">
       <div className="card p-6 space-y-4">
@@ -409,21 +417,24 @@ function StepShipping({
         ) : (
           <div className="space-y-3">
             <MethodCard
-              id="home_delivery"
+              selected={selectedMethod === 'home_delivery'}
+              onSelect={() => setSelectedMethod('home_delivery')}
               icon={<Home size={20} />}
               title={options?.home_delivery.label ?? 'Envío a domicilio'}
               description={options?.home_delivery.description ?? 'Recibí tu pedido en tu domicilio'}
               available={options?.home_delivery.available ?? true}
             />
             <MethodCard
-              id="pickup_point"
+              selected={selectedMethod === 'pickup_point'}
+              onSelect={() => setSelectedMethod('pickup_point')}
               icon={<Package size={20} />}
               title={options?.pickup_points.label ?? 'Retiro en punto de entrega'}
               description={options?.pickup_points.available ? options.pickup_points.description : 'No hay puntos disponibles'}
               available={options?.pickup_points.available ?? false}
             />
             <MethodCard
-              id="moto"
+              selected={selectedMethod === 'moto'}
+              onSelect={() => setSelectedMethod('moto')}
               icon={<Bike size={20} />}
               title={options?.moto.label ?? 'Moto Mandados'}
               description={options?.moto.available ? options.moto.description : 'Solo disponible en Formosa Capital'}
@@ -477,8 +488,8 @@ function StepShipping({
                   <div className="flex-1">
                     <p className="font-semibold text-sm text-gray-800">{point.name}</p>
                     <p className="text-xs text-gray-500">{point.address}, {point.city}</p>
-                    {point.schedule && <p className="text-xs text-gray-400 mt-0.5">{point.schedule}</p>}
-                    {point.phone && <p className="text-xs text-gray-400">{point.phone}</p>}
+                    {point.schedule && <p className="text-xs text-gray-500 mt-0.5">{point.schedule}</p>}
+                    {point.phone && <p className="text-xs text-gray-500">{point.phone}</p>}
                   </div>
                   <div className={`h-5 w-5 rounded-full border-2 shrink-0 flex items-center justify-center
                     ${selectedPickupPoint?.id === point.id ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]' : 'border-gray-300'}`}>
@@ -524,11 +535,11 @@ function StepShipping({
                   <div className="flex-1">
                     <p className="font-semibold text-sm text-gray-800">{company.name}</p>
                     <p className="text-xs text-gray-500">{company.zone ?? 'Formosa Capital'}</p>
-                    {company.phone && <p className="text-xs text-gray-400">{company.phone}</p>}
+                    {company.phone && <p className="text-xs text-gray-500">{company.phone}</p>}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-[var(--brand-primary)]">{formatMoney(company.price)}</p>
-                    <p className="text-[10px] text-gray-400">costo de envío</p>
+                    <p className="text-[10px] text-gray-500">costo de envío</p>
                   </div>
                   <div className={`h-5 w-5 rounded-full border-2 shrink-0 flex items-center justify-center
                     ${selectedMotoCompany?.id === company.id ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]' : 'border-gray-300'}`}>
@@ -782,8 +793,7 @@ export default function Checkout() {
       clearDraft()
       setOrderCode(res.code)
     } catch (e: any) {
-      const msg = e?.response?.data?.message || 'No se pudo generar el pedido.'
-      setError(msg)
+      setError(getApiErrorMessage(e, 'No se pudo generar el pedido.'))
     } finally {
       setLoading(false)
     }
@@ -893,7 +903,7 @@ export default function Checkout() {
                     <div key={pp.id} className="text-sm">
                       <p className="font-semibold text-gray-800">{pp.name}</p>
                       <p className="text-xs text-gray-500">{pp.address}, {pp.city}</p>
-                      {pp.schedule && <p className="text-xs text-gray-400">{pp.schedule}</p>}
+                      {pp.schedule && <p className="text-xs text-gray-500">{pp.schedule}</p>}
                     </div>
                   ))}
                 </div>
@@ -1091,7 +1101,7 @@ export default function Checkout() {
                 </button>
               </div>
 
-              <p className="text-xs text-gray-400 text-center">
+              <p className="text-xs text-gray-500 text-center">
                 Al confirmar se genera el pedido.
               </p>
             </div>

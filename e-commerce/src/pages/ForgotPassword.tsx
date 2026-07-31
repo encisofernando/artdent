@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { forgotPassword } from '../api/auth'
+import { getApiErrorMessage } from '../lib/apiError'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -26,7 +27,7 @@ export default function ForgotPassword() {
             setMessage(res?.message || 'Si el email existe, se enviará un enlace de recuperación.')
           } catch (err: any) {
             setStatus('error')
-            setMessage(err?.response?.data?.message || 'No se pudo enviar el email.')
+            setMessage(getApiErrorMessage(err, 'No se pudo enviar el email.'))
           }
         }}
       >

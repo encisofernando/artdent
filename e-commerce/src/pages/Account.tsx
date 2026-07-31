@@ -14,6 +14,7 @@ import {
   type CustomerProfile, type CustomerAddress, type CustomerOrder,
 } from '../api/customer'
 import PaymentReportButton from '../components/PaymentReportButton'
+import { getApiErrorMessage } from '../lib/apiError'
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
 function fmt(n: number) { return `$${Number(n || 0).toLocaleString('es-AR')}` }
@@ -240,7 +241,7 @@ function ProfileDataCard({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
     },
   })
 
-  if (isLoading) return <div className="card p-6 text-sm text-gray-400 text-center py-10">Cargando datos…</div>
+  if (isLoading) return <div className="card p-6 text-sm text-gray-500 text-center py-10">Cargando datos…</div>
   if (!profile) return null
 
   if (editing) {
@@ -276,7 +277,7 @@ function ProfileDataCard({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
             Quiero recibir novedades y ofertas
           </label>
           {mutation.isError && (
-            <p className="text-sm text-red-600">{(mutation.error as any)?.response?.data?.message ?? 'Error al guardar.'}</p>
+            <p className="text-sm text-red-600">{getApiErrorMessage(mutation.error, 'Error al guardar.')}</p>
           )}
           <div className="flex gap-2">
             <button type="submit" disabled={mutation.isPending} className="btn btn-primary flex-1 py-2.5">
@@ -290,10 +291,10 @@ function ProfileDataCard({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
   }
 
   const rows: { icon: React.ReactNode; value: string; label: string; editable?: boolean }[] = [
-    { icon: <IdCard size={16} className="text-gray-400" />, value: profile.dni ?? '—', label: 'DNI / CUIT' },
-    { icon: <Phone size={16} className="text-gray-400" />, value: profile.phone ?? '—', label: 'Teléfono', editable: true },
-    { icon: <Mail size={16} className="text-gray-400" />, value: profile.email, label: 'Correo electrónico' },
-    { icon: <Home size={16} className="text-gray-400" />, value: [profile.address, profile.city, profile.province, profile.postal_code].filter(Boolean).join(', ') || '—', label: 'Domicilio fiscal' },
+    { icon: <IdCard size={16} className="text-gray-500" />, value: profile.dni ?? '—', label: 'DNI / CUIT' },
+    { icon: <Phone size={16} className="text-gray-500" />, value: profile.phone ?? '—', label: 'Teléfono', editable: true },
+    { icon: <Mail size={16} className="text-gray-500" />, value: profile.email, label: 'Correo electrónico' },
+    { icon: <Home size={16} className="text-gray-500" />, value: [profile.address, profile.city, profile.province, profile.postal_code].filter(Boolean).join(', ') || '—', label: 'Domicilio fiscal' },
   ]
 
   return (
@@ -320,12 +321,12 @@ function ProfileDataCard({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
             <div className="w-8 flex items-center justify-center shrink-0">{row.icon}</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-800 truncate">{row.value}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{row.label}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{row.label}</p>
             </div>
             {row.editable && (
               <button
                 onClick={() => { setForm({ ...profile }); setEditing(true) }}
-                className="text-xs text-gray-400 hover:text-[var(--brand-primary)] flex items-center gap-1 transition shrink-0"
+                className="text-xs text-gray-500 hover:text-[var(--brand-primary)] flex items-center gap-1 transition shrink-0"
               >
                 <Edit2 size={12} /> Editar
               </button>
@@ -390,11 +391,11 @@ function AddressesSection({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
       )}
 
       {isLoading && (
-        <div className="px-5 py-6 text-sm text-gray-400 text-center">Cargando…</div>
+        <div className="px-5 py-6 text-sm text-gray-500 text-center">Cargando…</div>
       )}
 
       {!isLoading && addresses.length === 0 && !showForm && (
-        <div className="px-5 py-8 text-center text-sm text-gray-400">
+        <div className="px-5 py-8 text-center text-sm text-gray-500">
           No tenés domicilios guardados.
         </div>
       )}
@@ -420,18 +421,18 @@ function AddressesSection({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
                       </span>
                     )}
                   </div>
-                  {addr.label && <p className="text-xs text-gray-400 mb-0.5">{addr.label}</p>}
+                  {addr.label && <p className="text-xs text-gray-500 mb-0.5">{addr.label}</p>}
                   <p className="text-sm text-gray-600">{addr.address}</p>
                   <p className="text-sm text-gray-500">
                     {[addr.city, addr.province].filter(Boolean).join(' · ')}
                     {addr.postal_code ? ` (${addr.postal_code})` : ''}
                   </p>
-                  {addr.phone && <p className="text-xs text-gray-400 mt-0.5">{addr.phone}</p>}
+                  {addr.phone && <p className="text-xs text-gray-500 mt-0.5">{addr.phone}</p>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => setEditId(addr.id)}
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-[var(--brand-primary)] transition"
+                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-[var(--brand-primary)] transition"
                     title="Editar"
                   >
                     <Edit2 size={15} />
@@ -439,7 +440,7 @@ function AddressesSection({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
                   <button
                     onClick={() => deleteMut.mutate(addr.id)}
                     disabled={deleteMut.isPending}
-                    className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
+                    className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-500 transition"
                     title="Eliminar"
                   >
                     <Trash2 size={15} />
@@ -509,10 +510,10 @@ function StatusStepper({ status }: { status: CustomerOrder['status'] }) {
               }`}>
                 {done
                   ? <Check size={13} className="text-white" />
-                  : <span className={`text-[10px] font-bold ${active ? 'text-white' : 'text-gray-400'}`}>{idx + 1}</span>
+                  : <span className={`text-[10px] font-bold ${active ? 'text-white' : 'text-gray-500'}`}>{idx + 1}</span>
                 }
               </div>
-              <span className={`text-[10px] mt-1 text-center leading-tight px-0.5 ${active ? 'font-bold text-[var(--brand-primary)]' : done ? 'text-gray-600' : 'text-gray-400'}`}>
+              <span className={`text-[10px] mt-1 text-center leading-tight px-0.5 ${active ? 'font-bold text-[var(--brand-primary)]' : done ? 'text-gray-600' : 'text-gray-500'}`}>
                 {STEP_LABELS[step]}
               </span>
             </div>
@@ -565,7 +566,7 @@ function PayOrderButton({ code, failed }: { code: string; failed?: boolean }) {
       const pref = await createMpPreference(code)
       window.location.href = getMpCheckoutUrl(pref)
     } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'Error al iniciar el pago.')
+      setErr(getApiErrorMessage(e, 'Error al iniciar el pago.'))
       setLoading(false)
     }
   }
@@ -606,7 +607,7 @@ function CancelButton({ order, onCancelled }: { order: CustomerOrder; onCancelle
       const updated = await cancelOrder(order.code)
       onCancelled(updated)
     } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'No se pudo cancelar el pedido.')
+      setErr(getApiErrorMessage(e, 'No se pudo cancelar el pedido.'))
       setLoading(false)
       setConfirm(false)
     }
@@ -619,7 +620,7 @@ function CancelButton({ order, onCancelled }: { order: CustomerOrder; onCancelle
           <XCircle size={14} /> Cancelar pedido
         </button>
         {timeLeft && (
-          <span className="text-xs text-gray-400 flex items-center gap-1">
+          <span className="text-xs text-gray-500 flex items-center gap-1">
             <Clock size={12} /> Podés cancelar hasta en {timeLeft}
           </span>
         )}
@@ -683,7 +684,7 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
             <div className="flex items-start gap-3 min-w-0">
               <div className="shrink-0">
                 <p className="text-sm font-bold text-gray-900">#{order.code}</p>
-                <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
               </div>
               <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                 <span className={`badge text-xs ${STATUS_COLOR[order.status] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -696,7 +697,7 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
             </div>
             <div className="flex items-center gap-3 shrink-0 ml-2">
               <span className="text-sm font-bold text-gray-900">{fmt(order.total)}</span>
-              <ChevronRight size={16} className={`text-gray-400 transition-transform ${expanded === order.id ? 'rotate-90' : ''}`} />
+              <ChevronRight size={16} className={`text-gray-500 transition-transform ${expanded === order.id ? 'rotate-90' : ''}`} />
             </div>
           </button>
 
@@ -710,11 +711,11 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
                     <div key={it.id} className="flex items-center justify-between px-3 py-2.5 text-sm bg-white">
                       <div className="min-w-0">
                         <p className="font-medium text-gray-800 truncate">{it.name}</p>
-                        {it.sku && <p className="text-[10px] text-gray-400">SKU: {it.sku}</p>}
+                        {it.sku && <p className="text-[10px] text-gray-500">SKU: {it.sku}</p>}
                       </div>
                       <div className="text-right shrink-0 ml-3">
                         <p className="font-semibold text-gray-900">{fmt(it.total)}</p>
-                        <p className="text-[11px] text-gray-400">{fmt(it.unit_price)} × {it.qty}</p>
+                        <p className="text-[11px] text-gray-500">{fmt(it.unit_price)} × {it.qty}</p>
                       </div>
                     </div>
                   ))}
@@ -731,7 +732,7 @@ function OrdersTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
               </div>
               {order.shipping_address && (
                 <div className="flex gap-2 text-sm text-gray-600">
-                  <MapPinned size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                  <MapPinned size={15} className="text-gray-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-semibold text-gray-700 text-xs uppercase tracking-wide mb-0.5">Dirección de entrega</p>
                     {order.shipping_name && <p className="font-medium">{order.shipping_name}</p>}
@@ -805,7 +806,7 @@ function SecurityTab() {
           </div>
         ))}
         {mutation.isError && (
-          <p className="text-sm text-red-600">{(mutation.error as any)?.response?.data?.errors?.current_password?.[0] ?? 'Error al cambiar contraseña.'}</p>
+          <p className="text-sm text-red-600">{getApiErrorMessage(mutation.error, 'Error al cambiar contraseña.')}</p>
         )}
         {ok && <p className="text-sm text-green-600 flex items-center gap-1"><Check size={14} /> Contraseña actualizada.</p>}
         <button type="submit" disabled={mutation.isPending} className="btn btn-primary w-full py-2.5">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { http } from '../api/http'
+import { getApiErrorMessage } from '../lib/apiError'
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams()
@@ -49,11 +50,7 @@ export default function ResetPassword() {
       setTimeout(() => navigate('/iniciar-sesion'), 2000)
     } catch (err: any) {
       setStatus('error')
-      setMessage(
-        err?.response?.data?.errors?.token?.[0] ||
-        err?.response?.data?.message ||
-        'No se pudo restablecer la contraseña.'
-      )
+      setMessage(getApiErrorMessage(err, 'No se pudo restablecer la contraseña.'))
     }
   }
 

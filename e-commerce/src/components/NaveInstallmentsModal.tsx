@@ -45,7 +45,7 @@ export default function NaveInstallmentsModal({ isOpen, onClose, amount }: NaveI
                             <strong className="text-gray-900">
                               ${cuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                             </strong>{' '}
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-gray-500">
                               (PTF: ${ptf.toLocaleString('es-AR', { minimumFractionDigits: 2 })})
                             </span>
                             {r.tier_label && <span className="text-xs text-purple-600 ml-1">· {r.tier_label}</span>}

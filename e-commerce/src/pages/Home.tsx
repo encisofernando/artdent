@@ -44,10 +44,10 @@ function MiniCard({ p }: { p: CatalogProduct }) {
         )}
       </div>
       <div className="p-3 flex flex-col gap-0.5 flex-1">
-        {p.sku && <span className="text-[10px] text-gray-400">Cód: {p.sku}</span>}
+        {p.sku && <span className="text-[10px] text-gray-500">Cód: {p.sku}</span>}
         <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug flex-1">{p.name}</h3>
         <div className="mt-1.5">
-          {orig && <span className="text-[10px] text-gray-400 line-through block">${orig.toLocaleString('es-AR')}</span>}
+          {orig && <span className="text-[10px] text-gray-500 line-through block">${orig.toLocaleString('es-AR')}</span>}
           <span className="text-base font-extrabold text-gray-900">${price.toLocaleString('es-AR')}</span>
           <span className="text-[10px] text-green-600 font-semibold block"></span>
         </div>

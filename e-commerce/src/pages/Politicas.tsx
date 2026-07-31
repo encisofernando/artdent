@@ -245,7 +245,7 @@ export default function Politicas() {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <span className="text-[10px] text-gray-400">Actualizado: {policy.updated}</span>
+                  <span className="text-[10px] text-gray-500">Actualizado: {policy.updated}</span>
                   <Link
                     to={policy.to}
                     className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--brand-primary)] hover:underline"
@@ -316,7 +316,7 @@ export default function Politicas() {
                   { label: 'Horario de atención', value: 'Lunes a Viernes de 8:00 a 14:00 hs' },
                 ].map(row => (
                   <div key={row.label} className="flex flex-col sm:flex-row sm:gap-3">
-                    <span className="text-xs font-bold uppercase tracking-wide text-gray-400 sm:w-36 shrink-0">{row.label}</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-gray-500 sm:w-36 shrink-0">{row.label}</span>
                     <span className="text-sm text-gray-800">{row.value}</span>
                   </div>
                 ))}
@@ -327,7 +327,7 @@ export default function Politicas() {
                   { label: 'Teléfono / WA', value: '+54 3704-995406', href: 'https://wa.me/5493704995406' },
                 ].map(row => (
                   <div key={row.label} className="flex flex-col sm:flex-row sm:gap-3">
-                    <span className="text-xs font-bold uppercase tracking-wide text-gray-400 sm:w-36 shrink-0">{row.label}</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-gray-500 sm:w-36 shrink-0">{row.label}</span>
                     <a href={row.href} className="text-sm text-[var(--brand-primary)] hover:underline">{row.value}</a>
                   </div>
                 ))}

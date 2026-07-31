@@ -319,11 +319,11 @@ export default function ProductDetail() {
           {/* Breadcrumb */}
           <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-6 flex-wrap">
             <Link to="/" className="hover:text-[var(--brand-primary)] transition-colors">Inicio</Link>
-            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+            <ChevronRight size={14} className="text-gray-500 shrink-0" />
             <Link to="/productos" className="hover:text-[var(--brand-primary)] transition-colors">Productos</Link>
             {product.category && (
               <>
-                <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                <ChevronRight size={14} className="text-gray-500 shrink-0" />
                 <Link
                   to={`/productos?cat=${product.category.id}`}
                   className="hover:text-[var(--brand-primary)] transition-colors"
@@ -332,7 +332,7 @@ export default function ProductDetail() {
                 </Link>
               </>
             )}
-            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+            <ChevronRight size={14} className="text-gray-500 shrink-0" />
             <span className="text-gray-800 font-medium truncate max-w-[200px]">{product.name}</span>
           </nav>
 
@@ -497,7 +497,7 @@ export default function ProductDetail() {
                   <button
                     onClick={handleShare}
                     title="Compartir"
-                    className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-[var(--brand-primary)] hover:bg-[var(--brand-soft)] transition-colors"
+                    className="w-9 h-9 flex items-center justify-center rounded-full text-gray-500 hover:text-[var(--brand-primary)] hover:bg-[var(--brand-soft)] transition-colors"
                   >
                     <Share2 size={18} />
                   </button>
@@ -507,7 +507,7 @@ export default function ProductDetail() {
               {/* Precio */}
               <div className="space-y-1">
                 {originalPrice && (
-                  <p className="text-sm text-gray-400 line-through">${originalPrice.toLocaleString('es-AR')}</p>
+                  <p className="text-sm text-gray-500 line-through">${originalPrice.toLocaleString('es-AR')}</p>
                 )}
                 <div className="flex items-baseline gap-3">
                   <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">
@@ -575,7 +575,7 @@ export default function ProductDetail() {
               {/* Stock */}
               <div className="text-sm text-gray-700">
                 {product.has_variants && !selectedVariant ? (
-                  <span className="text-gray-400">Seleccioná una opción para ver stock</span>
+                  <span className="text-gray-500">Seleccioná una opción para ver stock</span>
                 ) : hasStock ? (
                   stockCount > 0 && stockCount <= LOW_STOCK_THRESHOLD ? (
                     <span className="inline-flex items-center gap-1.5 font-semibold text-amber-600">
@@ -637,7 +637,7 @@ export default function ProductDetail() {
                   className={`w-full py-3.5 rounded-xl text-base font-bold transition-all ${
                     hasStock && !(product.has_variants && !selectedVariant)
                       ? 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-dark)] text-white shadow-md active:scale-[0.98]'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
                 >
                   Comprar ahora
@@ -650,7 +650,7 @@ export default function ProductDetail() {
                   className={`w-full py-3.5 rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-all ${
                     hasStock && !(product.has_variants && !selectedVariant)
                       ? 'bg-[var(--brand-soft)] hover:bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] border border-[var(--brand-primary)]/25 active:scale-[0.98]'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                      : 'bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200'
                   }`}
                 >
                   <ShoppingCart size={18} />

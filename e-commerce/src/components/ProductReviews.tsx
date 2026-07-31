@@ -216,7 +216,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
               
               {images.length < 3 && (
                 <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-gray-300 hover:border-gray-400">
-                  <Upload size={20} className="text-gray-400" />
+                  <Upload size={20} className="text-gray-500" />
                   <input
                     type="file"
                     accept="image/*"

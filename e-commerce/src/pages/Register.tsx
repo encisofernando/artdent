@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import SocialButtons from '../components/SocialButtons'
 import { analytics } from '../api/analytics'
+import { getApiErrorMessage } from '../lib/apiError'
 
 export default function Register() {
   const { signUp } = useAuth()
@@ -49,10 +50,7 @@ export default function Register() {
       analytics.signup('email')
       window.location.replace('/mi-cuenta')
     } catch (err: any) {
-      const msg = err?.response?.data?.errors
-        ? Object.values(err.response.data.errors).flat().join(' ')
-        : err?.response?.data?.message || 'No se pudo crear la cuenta.'
-      setError(String(msg))
+      setError(getApiErrorMessage(err, 'No se pudo crear la cuenta.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -77,7 +75,7 @@ export default function Register() {
       {/* Divider */}
       <div className="relative my-6 flex items-center">
         <div className="flex-grow border-t border-gray-200" />
-        <span className="mx-4 shrink-0 text-xs text-gray-400 font-medium uppercase tracking-wide">
+        <span className="mx-4 shrink-0 text-xs text-gray-500 font-medium uppercase tracking-wide">
           o registrate con email
         </span>
         <div className="flex-grow border-t border-gray-200" />

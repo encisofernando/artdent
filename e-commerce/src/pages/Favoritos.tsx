@@ -36,7 +36,7 @@ export default function Favoritos() {
         <div className="flex flex-col items-center gap-4 py-20 text-center">
           <Heart size={48} className="text-gray-200" />
           <p className="text-gray-500 text-lg">No tenés productos guardados</p>
-          <p className="text-gray-400 text-sm">Explorá el catálogo y guardá los que te interesan</p>
+          <p className="text-gray-500 text-sm">Explorá el catálogo y guardá los que te interesan</p>
           <Link to="/productos" className="btn btn-primary mt-2">
             Ver catálogo
           </Link>

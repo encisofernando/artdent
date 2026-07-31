@@ -182,7 +182,7 @@ export default function CookieConsent() {
                 {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 {expanded ? 'Ocultar opciones' : 'Personalizar'}
               </button>
-              <div className="flex items-center gap-3 text-[11px] text-gray-400">
+              <div className="flex items-center gap-3 text-[11px] text-gray-500">
                 <Link to="/cookies" className="hover:text-[var(--brand-primary)] hover:underline flex items-center gap-0.5">
                   <Shield size={10} />
                   Política de cookies

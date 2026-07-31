@@ -140,7 +140,7 @@ export default function AdvancedSearch({ onSearch, placeholder, autoFocus = fals
         className="relative"
       >
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
           
           <input
             ref={inputRef}
@@ -161,7 +161,7 @@ export default function AdvancedSearch({ onSearch, placeholder, autoFocus = fals
                 className="rounded-full p-1 hover:bg-gray-100"
                 title="Limpiar"
               >
-                <X size={18} className="text-gray-400" />
+                <X size={18} className="text-gray-500" />
               </button>
             )}
             
@@ -196,10 +196,10 @@ export default function AdvancedSearch({ onSearch, placeholder, autoFocus = fals
                   onClick={() => handleSelectSuggestion(item.suggestion || item.name)}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm hover:bg-gray-50"
                 >
-                  <Search size={16} className="text-gray-400" />
+                  <Search size={16} className="text-gray-500" />
                   <span>{item.suggestion || item.name}</span>
                   {item.count && (
-                    <span className="ml-auto text-xs text-gray-400">
+                    <span className="ml-auto text-xs text-gray-500">
                       {item.count} resultados
                     </span>
                   )}
@@ -223,7 +223,7 @@ export default function AdvancedSearch({ onSearch, placeholder, autoFocus = fals
                 >
                   <TrendingUp size={16} className="text-[var(--brand-primary)]" />
                   <span>{item.query}</span>
-                  <span className="ml-auto text-xs text-gray-400">
+                  <span className="ml-auto text-xs text-gray-500">
                     {item.search_count} búsquedas
                   </span>
                 </button>
@@ -283,7 +283,7 @@ function RecentSearches({ onSelect }: { onSelect: (query: string) => void }) {
           onClick={() => onSelect(item)}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm hover:bg-gray-50"
         >
-          <Clock size={16} className="text-gray-400" />
+          <Clock size={16} className="text-gray-500" />
           <span>{item}</span>
         </button>
       ))}

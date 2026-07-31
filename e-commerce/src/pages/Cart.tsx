@@ -76,7 +76,7 @@ export default function Cart() {
                     {it.variant_label && (
                       <p className="mt-0.5 text-xs text-[var(--brand-primary)] font-medium">{it.variant_label}</p>
                     )}
-                    {sku && <p className="text-xs text-gray-400 mt-0.5">SKU: {sku}</p>}
+                    {sku && <p className="text-xs text-gray-500 mt-0.5">SKU: {sku}</p>}
                     <p className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Stock disponible
                     </p>
@@ -100,14 +100,14 @@ export default function Cart() {
                         <Trash2 size={15} />
                       </button>
                     </div>
-                    <p className="text-xs text-gray-400">{formatMoney(unit)} c/u</p>
+                    <p className="text-xs text-gray-500">{formatMoney(unit)} c/u</p>
                   </div>
                 </div>
               )
             })}
           </div>
           <div className="flex justify-end pt-3 border-t mt-2">
-            <button onClick={() => cart.clear()} className="text-xs text-gray-400 hover:text-red-500 transition">
+            <button onClick={() => cart.clear()} className="text-xs text-gray-500 hover:text-red-500 transition">
               Vaciar carrito
             </button>
           </div>
@@ -123,7 +123,7 @@ export default function Cart() {
                 <span className="font-bold">Subtotal</span>
                 <span className="font-bold text-lg text-[var(--brand-primary)]">{formatMoney(cart.subtotal)}</span>
               </div>
-              <p className="text-xs text-gray-400">Envío y cupón de descuento se calculan en el siguiente paso.</p>
+              <p className="text-xs text-gray-500">Envío y cupón de descuento se calculan en el siguiente paso.</p>
             </div>
 
             <button

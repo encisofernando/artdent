@@ -189,7 +189,7 @@ function HeroSearch() {
   }
   return (
     <form onSubmit={handleSearch} className="relative mt-6 max-w-lg mx-auto">
-      <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
       <input
         type="search"
         value={q}
@@ -446,7 +446,7 @@ export default function Ayuda() {
                 <div className={`flex h-9 w-9 items-center justify-center rounded-xl mb-3 ${item.iconColor}`}>
                   <item.icon size={18} />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{item.badge}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{item.badge}</span>
                 <h3 className="font-bold text-gray-900 mt-1 mb-2 text-sm">{item.title}</h3>
                 <p className="text-xs text-gray-600 leading-relaxed">{item.desc}</p>
               </div>
@@ -483,7 +483,7 @@ export default function Ayuda() {
                 <p className="text-xs text-gray-500 mt-0.5">+54 3704-995406</p>
                 <p className="text-xs text-green-600 font-semibold mt-1">Respuesta rápida</p>
               </div>
-              <span className="text-xs text-gray-400">Lun–Vie · 8:00 a 14:00 hs</span>
+              <span className="text-xs text-gray-500">Lun–Vie · 8:00 a 14:00 hs</span>
             </a>
 
             {/* Email */}
@@ -499,7 +499,7 @@ export default function Ayuda() {
                 <p className="text-xs text-gray-500 mt-0.5">ventas@artdent.com.ar</p>
                 <p className="text-xs text-[var(--brand-primary)] font-semibold mt-1">Respuesta en 24 hs</p>
               </div>
-              <span className="text-xs text-gray-400">Para consultas detalladas</span>
+              <span className="text-xs text-gray-500">Para consultas detalladas</span>
             </a>
 
             {/* Formulario */}
@@ -515,7 +515,7 @@ export default function Ayuda() {
                 <p className="text-xs text-gray-500 mt-0.5">artdent.com.ar/contacto</p>
                 <p className="text-xs text-gray-500 font-semibold mt-1">Con adjunto de archivos</p>
               </div>
-              <span className="text-xs text-gray-400">Para reclamos y garantías</span>
+              <span className="text-xs text-gray-500">Para reclamos y garantías</span>
             </Link>
           </div>
         </section>
@@ -545,7 +545,7 @@ export default function Ayuda() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-[var(--brand-soft)] hover:text-[var(--brand-primary)] transition"
                   >
-                    <link.icon size={14} className="shrink-0 text-gray-400" />
+                    <link.icon size={14} className="shrink-0 text-gray-500" />
                     {link.label}
                     <ExternalLink size={11} className="ml-auto text-gray-300" />
                   </a>
@@ -554,7 +554,7 @@ export default function Ayuda() {
                     to={link.to}
                     className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-[var(--brand-soft)] hover:text-[var(--brand-primary)] transition"
                   >
-                    <link.icon size={14} className="shrink-0 text-gray-400" />
+                    <link.icon size={14} className="shrink-0 text-gray-500" />
                     {link.label}
                     <ChevronRight size={13} className="ml-auto text-gray-300" />
                   </Link>

@@ -16,10 +16,10 @@ import { getCustomerOrder, cancelOrder, changePaymentMethod } from '../api/custo
 import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
 import { createNavePayment } from '../api/nave'
 import { getPaymentOptions, PaymentOption } from '../api/paymentOptions'
+import { formatMoney as fmt } from '../lib/format'
+import { getApiErrorMessage } from '../lib/apiError'
 
 const LS_LAST_EMAIL = 'artdent_last_checkout_email'
-
-function fmt(n: number) { return `$${Number(n || 0).toLocaleString('es-AR')}` }
 
 /* ── Status timeline ─────────────────────────────────────────────────── */
 const ORDER_STEPS = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'] as const
@@ -73,11 +73,11 @@ function StatusTimeline({ status }: { status: string }) {
             <div className={`z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors ${
               done
                 ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white'
-                : 'bg-white border-gray-300 text-gray-400'
+                : 'bg-white border-gray-300 text-gray-500'
             } ${current ? 'ring-4 ring-[var(--brand-primary)]/20' : ''}`}>
               {done ? <CheckCircle size={16} /> : <Circle size={16} />}
             </div>
-            <span className={`text-[10px] font-semibold text-center leading-tight ${done ? 'text-[var(--brand-primary)]' : 'text-gray-400'}`}>
+            <span className={`text-[10px] font-semibold text-center leading-tight ${done ? 'text-[var(--brand-primary)]' : 'text-gray-500'}`}>
               {STEP_LABEL[step]}
             </span>
           </div>
@@ -117,7 +117,7 @@ function PaymentMethodChanger({
   const mut = useMutation({
     mutationFn: (method: string) => changePaymentMethod(code, method),
     onSuccess: () => { setOpen(false); setSelected(null); setError(''); onSuccess() },
-    onError: (e: any) => setError(e?.response?.data?.message ?? 'Error al cambiar el método de pago.'),
+    onError: (e: any) => setError(getApiErrorMessage(e, 'Error al cambiar el método de pago.')),
   })
 
   if (!open) {
@@ -135,7 +135,7 @@ function PaymentMethodChanger({
     <div className="mt-3 rounded-xl border border-gray-200 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Elegí un método de pago</p>
-        <button onClick={() => { setOpen(false); setSelected(null); setError('') }} className="text-gray-400 hover:text-gray-600">
+        <button onClick={() => { setOpen(false); setSelected(null); setError('') }} className="text-gray-500 hover:text-gray-600">
           <X size={16} />
         </button>
       </div>
@@ -203,7 +203,7 @@ function CancelModal({ onConfirm, onClose, loading }: { onConfirm: () => void; o
             </div>
             <h2 className="text-base font-bold text-gray-900">Cancelar pedido</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-400">
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-500">
             <X size={16} />
           </button>
         </div>
@@ -296,7 +296,7 @@ export default function OrderDetail() {
       setCancelError('')
       queryClient.invalidateQueries({ queryKey: ['customer_order', code] })
     },
-    onError: (e: any) => setCancelError(e?.response?.data?.message ?? 'No se pudo cancelar el pedido.'),
+    onError: (e: any) => setCancelError(getApiErrorMessage(e, 'No se pudo cancelar el pedido.')),
   })
 
   const handleCancelConfirm = () => {
@@ -379,7 +379,7 @@ export default function OrderDetail() {
         <div className="card p-6 text-center">
           <p className="text-sm font-semibold text-red-700">No se pudo cargar el pedido.</p>
           <p className="mt-1 text-sm text-gray-500">
-            {String((query.error as any)?.response?.data?.message ?? 'Error de conexión.')}
+            {getApiErrorMessage(query.error, 'Error de conexión.')}
           </p>
         </div>
       )}
@@ -489,7 +489,7 @@ export default function OrderDetail() {
                 </button>
               )}
               {mpMut.isError && (
-                <p className="mt-2 text-xs text-red-600">{(mpMut.error as any)?.response?.data?.message ?? 'Error al iniciar el pago.'}</p>
+                <p className="mt-2 text-xs text-red-600">{getApiErrorMessage(mpMut.error, 'Error al iniciar el pago.')}</p>
               )}
 
               {/* Pay button — Nave */}
@@ -506,7 +506,7 @@ export default function OrderDetail() {
                 </button>
               )}
               {naveMut.isError && (
-                <p className="mt-2 text-xs text-red-600">{(naveMut.error as any)?.response?.data?.message ?? 'Error al iniciar el pago.'}</p>
+                <p className="mt-2 text-xs text-red-600">{getApiErrorMessage(naveMut.error, 'Error al iniciar el pago.')}</p>
               )}
 
               {/* Change payment method */}
@@ -546,7 +546,7 @@ export default function OrderDetail() {
                   )}
                   {order.shipping_phone && <p>{order.shipping_phone}</p>}
                   {(order.customer_notes ?? order.notes) && (
-                    <p className="pt-1 text-xs italic text-gray-400">{order.customer_notes ?? order.notes}</p>
+                    <p className="pt-1 text-xs italic text-gray-500">{order.customer_notes ?? order.notes}</p>
                   )}
                 </div>
               </div>

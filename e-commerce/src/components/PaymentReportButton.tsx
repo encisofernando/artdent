@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Upload, FileCheck2, Hourglass, ThumbsUp, ThumbsDown, RefreshCw } from 'lucide-react'
 import { submitPaymentReport, type PaymentReport } from '../api/paymentReport'
 import type { CustomerOrder } from '../api/customer'
+import { getApiErrorMessage } from '../lib/apiError'
 
 export default function PaymentReportButton({ order, onReported }: {
   order: CustomerOrder
@@ -47,7 +48,7 @@ export default function PaymentReportButton({ order, onReported }: {
       setFile(null)
       setNotes('')
     } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'No se pudo enviar el comprobante.')
+      setErr(getApiErrorMessage(e, 'No se pudo enviar el comprobante.'))
     } finally {
       setLoading(false)
     }
@@ -82,7 +83,7 @@ export default function PaymentReportButton({ order, onReported }: {
         </p>
         <button
           onClick={() => { setOpen(false); setFile(null); setErr(null) }}
-          className="text-xs text-gray-400 hover:text-gray-600"
+          className="text-xs text-gray-500 hover:text-gray-600"
         >
           Cancelar
         </button>
@@ -96,14 +97,14 @@ export default function PaymentReportButton({ order, onReported }: {
             onClick={() => fileRef.current?.click()}
             className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 hover:border-[var(--brand-primary)] px-4 py-3 cursor-pointer transition-colors"
           >
-            <Upload size={18} className="text-gray-400 shrink-0" />
+            <Upload size={18} className="text-gray-500 shrink-0" />
             <div className="min-w-0">
               {file ? (
                 <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
               ) : (
                 <>
                   <p className="text-sm text-gray-600">Seleccioná tu comprobante</p>
-                  <p className="text-xs text-gray-400">JPG, PNG, PDF — máx. 8 MB</p>
+                  <p className="text-xs text-gray-500">JPG, PNG, PDF — máx. 8 MB</p>
                 </>
               )}
             </div>

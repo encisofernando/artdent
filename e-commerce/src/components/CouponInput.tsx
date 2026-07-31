@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Tag, X, Check } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { validateCoupon } from '../api/coupons'
+import { getApiErrorMessage } from '../lib/apiError'
 
 interface CouponInputProps {
   cartTotal: number
@@ -41,7 +42,7 @@ export default function CouponInput({
       }
     },
     onError: (err: any) => {
-      setError(err?.response?.data?.message || 'Error al validar el cupón')
+      setError(getApiErrorMessage(err, 'Error al validar el cupón'))
     },
   })
 
@@ -65,7 +66,7 @@ export default function CouponInput({
       {!appliedCoupon ? (
         <form onSubmit={handleApply} className="flex gap-2">
           <div className="relative flex-1">
-            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <input
               type="text"
               value={code}

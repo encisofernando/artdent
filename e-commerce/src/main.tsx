@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HelmetProvider } from 'react-helmet-async'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import { initSentry } from './lib/sentry'
 import { registerPwa } from './lib/registerPwa'
 import { ensureCsrfCookie } from './api/http'
 import { fetchRemoteConfig } from './api/config'
@@ -13,6 +14,7 @@ import { analytics } from './api/analytics'
 import './styles.css'
 import './styles/expansive-display.css'
 
+initSentry()
 registerPwa()
 
 // No se espera — solo necesita estar lista para cuando el usuario haga login/

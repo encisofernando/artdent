@@ -24,7 +24,6 @@ const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Account = lazy(() => import('./pages/Account'))
-const Comparar = lazy(() => import('./pages/Comparar'))
 const Contacto = lazy(() => import('./pages/Contacto'))
 const DefensaConsumidor = lazy(() => import('./pages/DefensaConsumidor'))
 const Privacidad = lazy(() => import('./pages/Privacidad'))
@@ -155,11 +154,6 @@ const ROUTE_META_RULES: RouteMetaRule[] = [
     title: 'Políticas',
     description: 'Resumen de políticas comerciales, operativas y legales del e-commerce de ArtDent.',
     ownSEOHead: true,
-  },
-  {
-    path: '/comparar',
-    title: 'Comparar Productos',
-    description: 'Compará insumos odontológicos del catálogo de ArtDent para elegir la opción más adecuada.',
   },
   {
     path: '/carrito',
@@ -314,7 +308,7 @@ function NotFound() {
               style={{ width: `${((5 - seconds) / 5) * 100}%` }}
             />
           </div>
-          <p className="text-xs text-gray-400 mt-2">Redirigiendo en <strong>{seconds}s</strong>…</p>
+          <p className="text-xs text-gray-500 mt-2">Redirigiendo en <strong>{seconds}s</strong>…</p>
         </div>
         <button
           onClick={() => navigate('/')}
@@ -356,7 +350,6 @@ export default function App() {
             <Route path="/politicas" element={<Politicas />} />
             
             {/* Comparador de productos */}
-            <Route path="/comparar" element={<Comparar />} />
 
             {/* Carrito y checkout */}
             <Route path="/carrito" element={<Cart />} />

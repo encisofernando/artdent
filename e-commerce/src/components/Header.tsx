@@ -321,11 +321,11 @@ export default function Header() {
                             {unread > 0 && (
                               <button onClick={markAllRead} className="text-[11px] text-[var(--brand-primary)] hover:underline font-medium">Todo leído</button>
                             )}
-                            <button onClick={() => setNotifOpen(false)}><X size={14} className="text-gray-400" /></button>
+                            <button onClick={() => setNotifOpen(false)}><X size={14} className="text-gray-500" /></button>
                           </div>
                         </div>
                         {notifications.length === 0 ? (
-                          <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                          <div className="px-4 py-8 text-center text-gray-500 text-sm">
                             <Bell size={28} className="mx-auto mb-2 text-gray-200" />
                             No tenés notificaciones por el momento.
                           </div>
@@ -343,7 +343,7 @@ export default function Header() {
                                       <div className="flex-1 min-w-0">
                                         <p className="text-xs font-semibold text-gray-800">{n.title}</p>
                                         <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">{timeAgo(n.createdAt)}</p>
                                       </div>
                                       <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
                                     </Link>
@@ -353,7 +353,7 @@ export default function Header() {
                                       <div className="flex-1 min-w-0">
                                         <p className="text-xs font-semibold text-gray-800">{n.title}</p>
                                         <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">{timeAgo(n.createdAt)}</p>
                                       </div>
                                       <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)] shrink-0 mt-1.5" />
                                     </div>
@@ -524,7 +524,7 @@ export default function Header() {
                 </Link>
               )}
             </div>
-            <button onClick={dismissToast} className="text-gray-400 hover:text-gray-600 shrink-0">
+            <button onClick={dismissToast} className="text-gray-500 hover:text-gray-600 shrink-0">
               <X size={14} />
             </button>
           </div>

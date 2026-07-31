@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../store/auth'
+import { getApiErrorMessage } from '../lib/apiError'
 
 declare global {
   interface Window {
@@ -66,8 +67,7 @@ export default function SocialButtons({ onSuccess, onError }: Props) {
                 await signInWithSocial('google', response.access_token!)
                 onSuccess?.()
               } catch (err: any) {
-                const msg = err?.response?.data?.message || 'Error al iniciar sesión con Google.'
-                onError?.(msg)
+                onError?.(getApiErrorMessage(err, 'Error al iniciar sesión con Google.'))
               } finally {
                 setLoadingProvider(null)
               }

@@ -41,13 +41,13 @@ export async function fetchRemoteConfig(): Promise<RemoteConfig> {
         return cached.data
       }
     }
-  } catch {}
+  } catch { /* cache corrupta o inaccesible, se ignora y se pide de nuevo */ }
 
   try {
     const { data } = await http.get<RemoteConfig>('/config')
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
-    } catch {}
+    } catch { /* localStorage lleno o deshabilitado, no es crítico */ }
     return data
   } catch {
     // Fallback silencioso: vacío para no bloquear el arranque

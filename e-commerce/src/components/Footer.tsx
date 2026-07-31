@@ -74,7 +74,6 @@ export default function Footer() {
                 <p className="text-sm font-semibold">E-commerce</p>
                 <ul className="mt-3 space-y-2 text-sm text-white/90">
                   <li><Link to="/productos" className="hover:text-white transition">Catálogo</Link></li>
-                  <li><Link to="/comparar" className="hover:text-white transition">Comparar productos</Link></li>
                   <li><Link to="/promociones" className="hover:text-white transition">Promociones</Link></li>
                   <li><Link to="/novedades" className="hover:text-white transition">Novedades</Link></li>
                 </ul>
@@ -127,7 +126,6 @@ export default function Footer() {
               <p className="text-sm font-semibold">E-commerce</p>
               <ul className="mt-3 space-y-2 text-sm text-white/90">
                 <li><Link to="/productos" className="hover:text-white transition">Catálogo</Link></li>
-                <li><Link to="/comparar" className="hover:text-white transition">Comparar productos</Link></li>
                 <li><Link to="/promociones" className="hover:text-white transition">Promociones</Link></li>
                 <li><Link to="/novedades" className="hover:text-white transition">Novedades</Link></li>
               </ul>

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import SocialButtons from '../components/SocialButtons'
 import { analytics } from '../api/analytics'
+import { getApiErrorMessage } from '../lib/apiError'
 
 export default function SignIn() {
   const { signIn } = useAuth()
@@ -30,7 +31,7 @@ export default function SignIn() {
       {/* Divider */}
       <div className="relative my-6 flex items-center">
         <div className="flex-grow border-t border-gray-200" />
-        <span className="mx-4 shrink-0 text-xs text-gray-400 font-medium uppercase tracking-wide">
+        <span className="mx-4 shrink-0 text-xs text-gray-500 font-medium uppercase tracking-wide">
           o ingresá con email
         </span>
         <div className="flex-grow border-t border-gray-200" />
@@ -47,7 +48,7 @@ export default function SignIn() {
             analytics.login('email')
             window.location.replace(from)
           } catch (err: any) {
-            setError(err?.response?.data?.message || 'Correo o contraseña incorrectos.')
+            setError(getApiErrorMessage(err, 'Correo o contraseña incorrectos.'))
           } finally {
             setIsSubmitting(false)
           }

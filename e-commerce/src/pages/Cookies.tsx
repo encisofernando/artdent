@@ -333,7 +333,7 @@ export default function Cookies() {
                     className="flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 hover:border-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/5 transition"
                   >
                     <span className="font-medium text-gray-900">{browser.nombre}</span>
-                    <ExternalLink size={14} className="text-gray-400 shrink-0" />
+                    <ExternalLink size={14} className="text-gray-500 shrink-0" />
                   </a>
                 ))}
               </div>

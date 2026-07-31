@@ -149,6 +149,10 @@ class AnalyticsService {
     const id = this.config.metaPixelId
     if (!id) return
 
+    // Snippet oficial de Meta Pixel, calcado tal cual lo publica Meta —
+    // se deja intacto (no reescrito a spread/rest) para poder diffearlo
+    // contra la fuente si Meta lo actualiza.
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-expressions, prefer-rest-params, prefer-spread */
     ;(function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
       if (f.fbq) return
       n = f.fbq = function () {
@@ -160,6 +164,7 @@ class AnalyticsService {
       s = b.getElementsByTagName(e)[0]
       s.parentNode.insertBefore(t, s)
     })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js')
+    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-expressions, prefer-rest-params, prefer-spread */
 
     window.fbq('init', id)
     window.fbq('track', 'PageView')
