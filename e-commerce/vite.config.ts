@@ -16,5 +16,14 @@ export default defineConfig({
   server: {
     https: true,
     port: 8080,
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+        },
+      },
+    },
+  },
 })

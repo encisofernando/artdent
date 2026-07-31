@@ -85,39 +85,39 @@ export default function Register() {
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className={labelCls}>Nombre completo *</label>
-          <input value={form.name} onChange={(e) => set('name', e.target.value)}
+          <label htmlFor="register-name" className={labelCls}>Nombre completo *</label>
+          <input id="register-name" value={form.name} onChange={(e) => set('name', e.target.value)}
             className={inputCls} placeholder="Tu nombre y apellido" required />
         </div>
 
         <div>
-          <label className={labelCls}>Email *</label>
-          <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)}
+          <label htmlFor="register-email" className={labelCls}>Email *</label>
+          <input id="register-email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)}
             className={inputCls} placeholder="tu@email.com" required />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Teléfono</label>
-            <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)}
+            <label htmlFor="register-phone" className={labelCls}>Teléfono</label>
+            <input id="register-phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)}
               className={inputCls} placeholder="+54 9 11..." />
           </div>
           <div>
-            <label className={labelCls}>DNI / CUIT</label>
-            <input value={form.dni} onChange={(e) => set('dni', e.target.value)}
+            <label htmlFor="register-dni" className={labelCls}>DNI / CUIT</label>
+            <input id="register-dni" value={form.dni} onChange={(e) => set('dni', e.target.value)}
               className={inputCls} placeholder="20123456789" />
           </div>
         </div>
 
         <div>
-          <label className={labelCls}>Contraseña *</label>
-          <input type="password" value={form.password} onChange={(e) => set('password', e.target.value)}
+          <label htmlFor="register-password" className={labelCls}>Contraseña *</label>
+          <input id="register-password" type="password" value={form.password} onChange={(e) => set('password', e.target.value)}
             className={inputCls} placeholder="Mínimo 8 caracteres" required minLength={8} />
         </div>
 
         <div>
-          <label className={labelCls}>Confirmar contraseña *</label>
-          <input type="password" value={form.password_confirmation}
+          <label htmlFor="register-password-confirmation" className={labelCls}>Confirmar contraseña *</label>
+          <input id="register-password-confirmation" type="password" value={form.password_confirmation}
             onChange={(e) => set('password_confirmation', e.target.value)}
             className={inputCls} placeholder="Repetí tu contraseña" required />
         </div>

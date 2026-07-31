@@ -8,4 +8,4 @@ Disallow: /recuperar
 Disallow: /resetear-contrasena
 Disallow: /pedido/
 
-Sitemap: https://artdent.com.ar/api/sitemap.xml
+Sitemap: https://pos.artdent.com.ar/api/sitemap.xml

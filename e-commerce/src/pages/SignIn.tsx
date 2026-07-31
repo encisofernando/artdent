@@ -54,8 +54,9 @@ export default function SignIn() {
         }}
       >
         <div>
-          <label className="text-sm font-semibold">Correo</label>
+          <label htmlFor="signin-email" className="text-sm font-semibold">Correo</label>
           <input
+            id="signin-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -64,8 +65,9 @@ export default function SignIn() {
           />
         </div>
         <div>
-          <label className="text-sm font-semibold">Contraseña</label>
+          <label htmlFor="signin-password" className="text-sm font-semibold">Contraseña</label>
           <input
+            id="signin-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

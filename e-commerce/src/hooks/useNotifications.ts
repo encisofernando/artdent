@@ -148,11 +148,13 @@ export function useNotifications(isAuthenticated: boolean) {
     }
   }, [isAuthenticated, showToast])
 
-  // Initial fetch + polling every 30s
+  // Initial fetch + polling — esto corre a nivel layout en TODAS las páginas
+  // mientras el usuario está logueado, no solo en pedidos: es un badge de
+  // notificaciones, no tracking en tiempo real, así que 60s alcanza.
   useEffect(() => {
     fetch()
     if (!isAuthenticated) return
-    const id = setInterval(fetch, 30_000)
+    const id = setInterval(fetch, 60_000)
     return () => clearInterval(id)
   }, [fetch, isAuthenticated])
 

@@ -1,5 +1,5 @@
 import { Routes, Route, useNavigate, useLocation, matchPath } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { AuthProvider } from './store/auth'
 import { CartProvider } from './store/cart'
 import { Helmet } from 'react-helmet-async'
@@ -7,31 +7,35 @@ import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LiveChat from './components/LiveChat'
 import WhatsAppButton from './components/WhatsAppButton'
+import LoadingSpinner from './components/LoadingSpinner'
 import { analytics } from './api/analytics'
 
-import Home from './pages/Home'
-import Products from './pages/Products'
-import ProductDetail from './pages/ProductDetail'
-import Cart from './pages/Cart'
-import Checkout from './pages/Checkout'
-import OrderDetail from './pages/OrderDetail'
-import SignIn from './pages/SignIn'
-import Register from './pages/Register'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
-import Account from './pages/Account'
-import Comparar from './pages/Comparar'
-import Contacto from './pages/Contacto'
-import DefensaConsumidor from './pages/DefensaConsumidor'
-import Privacidad from './pages/Privacidad'
-import Terminos from './pages/Terminos'
-import Cookies from './pages/Cookies'
-import Devoluciones from './pages/Devoluciones'
-import Favoritos from './pages/Favoritos'
-import FAQ from './pages/FAQ'
-import Ayuda from './pages/Ayuda'
-import Politicas from './pages/Politicas'
-import QuienesSomos from './pages/QuienesSomos'
+// Cada página se descarga solo cuando se visita su ruta — antes las 24
+// páginas iban en un único chunk de +1.1MB aunque el visitante solo mirara
+// el home (medido en el build de producción real).
+const Home = lazy(() => import('./pages/Home'))
+const Products = lazy(() => import('./pages/Products'))
+const ProductDetail = lazy(() => import('./pages/ProductDetail'))
+const Cart = lazy(() => import('./pages/Cart'))
+const Checkout = lazy(() => import('./pages/Checkout'))
+const OrderDetail = lazy(() => import('./pages/OrderDetail'))
+const SignIn = lazy(() => import('./pages/SignIn'))
+const Register = lazy(() => import('./pages/Register'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Account = lazy(() => import('./pages/Account'))
+const Comparar = lazy(() => import('./pages/Comparar'))
+const Contacto = lazy(() => import('./pages/Contacto'))
+const DefensaConsumidor = lazy(() => import('./pages/DefensaConsumidor'))
+const Privacidad = lazy(() => import('./pages/Privacidad'))
+const Terminos = lazy(() => import('./pages/Terminos'))
+const Cookies = lazy(() => import('./pages/Cookies'))
+const Devoluciones = lazy(() => import('./pages/Devoluciones'))
+const Favoritos = lazy(() => import('./pages/Favoritos'))
+const FAQ = lazy(() => import('./pages/FAQ'))
+const Ayuda = lazy(() => import('./pages/Ayuda'))
+const Politicas = lazy(() => import('./pages/Politicas'))
+const QuienesSomos = lazy(() => import('./pages/QuienesSomos'))
 
 declare global {
   interface Window {
@@ -67,6 +71,13 @@ type RouteMetaRule = {
   description: string
   end?: boolean
   noindex?: boolean
+  /**
+   * La página renderiza su propio <SEOHead> con datos reales (título,
+   * imagen, JSON-LD). RouteMeta no debe competir con eso — se omite del
+   * todo para esas rutas en vez de depender de que el orden de montaje
+   * de react-helmet-async elija el correcto (ver resolveRouteMeta()).
+   */
+  ownSEOHead?: boolean
 }
 
 const ROUTE_META_RULES: RouteMetaRule[] = [
@@ -75,27 +86,32 @@ const ROUTE_META_RULES: RouteMetaRule[] = [
     title: 'ArtDent Insumos Odontológicos',
     description: 'Shop de ArtDent con insumos odontológicos, novedades, destacados y ofertas para profesionales.',
     end: true,
+    ownSEOHead: true,
   },
   {
     path: '/productos',
     title: 'Productos',
     description: 'Catálogo de productos de ArtDent con insumos odontológicos, precios actualizados y opciones de compra online.',
     end: true,
+    ownSEOHead: true,
   },
   {
     path: '/productos/:slug',
     title: 'Producto',
     description: 'Detalle del producto en el shop de ArtDent con imágenes, precio, stock y opciones de compra.',
+    ownSEOHead: true,
   },
   {
     path: '/nosotros',
     title: 'Nosotros',
     description: 'Conocé ArtDent, nuestra visión, experiencia y compromiso con profesionales de la odontología.',
+    ownSEOHead: true,
   },
   {
     path: '/contacto',
     title: 'Contacto',
     description: 'Contactate con ArtDent para consultas comerciales, soporte y atención del shop odontológico.',
+    ownSEOHead: true,
   },
   {
     path: '/defensa-consumidor',
@@ -126,16 +142,19 @@ const ROUTE_META_RULES: RouteMetaRule[] = [
     path: '/preguntas-frecuentes',
     title: 'Preguntas Frecuentes',
     description: 'Respuestas a las consultas más comunes sobre pedidos, pagos, envíos y funcionamiento del shop de ArtDent.',
+    ownSEOHead: true,
   },
   {
     path: '/ayuda',
     title: 'Ayuda',
     description: 'Centro de ayuda de ArtDent con asistencia para navegar, comprar y gestionar pedidos.',
+    ownSEOHead: true,
   },
   {
     path: '/politicas',
     title: 'Políticas',
     description: 'Resumen de políticas comerciales, operativas y legales del e-commerce de ArtDent.',
+    ownSEOHead: true,
   },
   {
     path: '/comparar',
@@ -208,6 +227,7 @@ function resolveRouteMeta(pathname: string) {
       title: 'Página no encontrada | ArtDent',
       description: 'La página solicitada no existe o fue movida dentro del e-commerce de ArtDent.',
       noindex: true,
+      ownSEOHead: false,
     }
   }
 
@@ -217,18 +237,28 @@ function resolveRouteMeta(pathname: string) {
       : `${match.title} | ArtDent`,
     description: match.description,
     noindex: Boolean(match.noindex),
+    ownSEOHead: Boolean(match.ownSEOHead),
   }
 }
 
 const SITE_URL = 'https://shop.artdent.com.ar'
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.jpg`
 
+/**
+ * Fallback de <title>/meta/OG/canonical para rutas que no renderizan su
+ * propio <SEOHead> (ver components/SEOHead.tsx). Las que sí lo hacen quedan
+ * marcadas con ownSEOHead en ROUTE_META_RULES y no se pisan entre sí — antes
+ * ambos sistemas montaban siempre y dependían implícitamente del orden de
+ * react-helmet-async para no competir.
+ */
 function RouteMeta() {
   const { pathname } = useLocation()
   const pageMeta = useMemo(() => resolveRouteMeta(pathname), [pathname])
   // canonical siempre sin query params para evitar duplicados por filtros
   const canonicalUrl = useMemo(() => `${SITE_URL}${pathname}`, [pathname])
   const robots = pageMeta.noindex ? 'noindex, nofollow' : 'index, follow'
+
+  if (pageMeta.ownSEOHead) return null
 
   return (
     <Helmet>
@@ -306,6 +336,7 @@ export default function App() {
           <RouteMeta />
           <ScrollToTop />
           <RouteAnalytics />
+          <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><LoadingSpinner size="lg" /></div>}>
           <Routes>
             <Route path="/" element={<Home />} />
 
@@ -361,6 +392,7 @@ export default function App() {
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
 
           <LiveChat />
           <WhatsAppButton />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useCart } from '../store/cart'
 import { usePwaInstall } from '../hooks/usePwaInstall'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 function useIsActive() {
   const location = useLocation()
@@ -29,6 +30,19 @@ export default function BottomNav() {
   const cart = useCart()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  const drawerRef = useRef<HTMLDivElement>(null)
+  const drawerTitleId = useId()
+
+  useEffect(() => {
+    if (!moreOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [moreOpen])
+
+  useFocusTrap(drawerRef, moreOpen)
 
   const totalItems = cart.items.reduce((acc, it) => acc + it.qty, 0)
 
@@ -118,16 +132,22 @@ export default function BottomNav() {
             onClick={() => setMoreOpen(false)}
           />
           <div
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl md:hidden"
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={drawerTitleId}
+            tabIndex={-1}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl md:hidden outline-none"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
           >
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-              <p className="font-bold text-gray-900">Menú</p>
+              <p id={drawerTitleId} className="font-bold text-gray-900">Menú</p>
               <button
                 onClick={() => setMoreOpen(false)}
+                aria-label="Cerrar menú"
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500"
               >
                 <X size={16} />

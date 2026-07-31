@@ -204,43 +204,45 @@ function StepCustomer({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-1">
-          <label className="text-xs font-semibold text-gray-600">Nombre y apellido *</label>
-          <input className={`mt-1.5 ${inp}`} value={name} onChange={e => setName(e.target.value)} placeholder="Juan Pérez" />
+          <label htmlFor="checkout-name" className="text-xs font-semibold text-gray-600">Nombre y apellido *</label>
+          <input id="checkout-name" className={`mt-1.5 ${inp}`} value={name} onChange={e => setName(e.target.value)} placeholder="Juan Pérez" />
         </div>
         <div className="sm:col-span-1">
-          <label className="text-xs font-semibold text-gray-600">Email *</label>
-          <input type="email" className={`mt-1.5 ${inp}`} value={email} onChange={e => setEmail(e.target.value)} placeholder="juan@mail.com" />
+          <label htmlFor="checkout-email" className="text-xs font-semibold text-gray-600">Email *</label>
+          <input id="checkout-email" type="email" className={`mt-1.5 ${inp}`} value={email} onChange={e => setEmail(e.target.value)} placeholder="juan@mail.com" />
         </div>
-        
+
         <div>
-          <label className="text-xs font-semibold text-gray-600">DNI o CUIT *</label>
-          <input className={`mt-1.5 ${inp}`} value={dni} onChange={e => setDni(e.target.value.replace(/\D/g, ''))} placeholder="20-12345678-9" />
+          <label htmlFor="checkout-dni" className="text-xs font-semibold text-gray-600">DNI o CUIT *</label>
+          <input id="checkout-dni" className={`mt-1.5 ${inp}`} value={dni} onChange={e => setDni(e.target.value.replace(/\D/g, ''))} placeholder="20-12345678-9" />
           <p className="text-[10px] text-gray-400 mt-1">Requerido por Mercado Pago para asegurar la transacción.</p>
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-600">Teléfono *</label>
+          <label htmlFor="checkout-phone-number" className="text-xs font-semibold text-gray-600">Teléfono *</label>
           <div className="flex gap-2 mt-1.5">
-            <input 
-              className={`${inp} !w-24`} 
-              value={phoneArea} 
-              onChange={e => setPhoneArea(e.target.value.replace(/\D/g, ''))} 
-              placeholder="Cód (11)" 
+            <input
+              aria-label="Código de área"
+              className={`${inp} !w-24`}
+              value={phoneArea}
+              onChange={e => setPhoneArea(e.target.value.replace(/\D/g, ''))}
+              placeholder="Cód (11)"
               maxLength={4}
             />
-            <input 
-              className={inp} 
-              value={phoneNumber} 
-              onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ''))} 
-              placeholder="Número (12345678)" 
+            <input
+              id="checkout-phone-number"
+              className={inp}
+              value={phoneNumber}
+              onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+              placeholder="Número (12345678)"
               maxLength={10}
             />
           </div>
         </div>
 
         <div className="sm:col-span-2">
-          <label className="text-xs font-semibold text-gray-600">Notas (opcional)</label>
-          <textarea className={`mt-1.5 ${inp}`} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Horarios, observaciones..." />
+          <label htmlFor="checkout-notes" className="text-xs font-semibold text-gray-600">Notas (opcional)</label>
+          <textarea id="checkout-notes" className={`mt-1.5 ${inp}`} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Horarios, observaciones..." />
         </div>
       </div>
 
@@ -390,12 +392,12 @@ function StepShipping({
         {/* City/province for moto availability */}
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-xs font-semibold text-gray-600">Ciudad</label>
-            <input className={`mt-1.5 ${inp}`} value={city} onChange={e => setCity(e.target.value)} placeholder="Formosa" />
+            <label htmlFor="checkout-city" className="text-xs font-semibold text-gray-600">Ciudad</label>
+            <input id="checkout-city" className={`mt-1.5 ${inp}`} value={city} onChange={e => setCity(e.target.value)} placeholder="Formosa" />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-600">Provincia</label>
-            <input className={`mt-1.5 ${inp}`} value={province} onChange={e => setProvince(e.target.value)} placeholder="Formosa" />
+            <label htmlFor="checkout-province" className="text-xs font-semibold text-gray-600">Provincia</label>
+            <input id="checkout-province" className={`mt-1.5 ${inp}`} value={province} onChange={e => setProvince(e.target.value)} placeholder="Formosa" />
           </div>
         </div>
 
@@ -440,13 +442,13 @@ function StepShipping({
           </h3>
           <div className="grid gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-600">Dirección *</label>
-              <input className={`mt-1.5 ${inp}`} value={address} onChange={e => setAddress(e.target.value)} placeholder="Calle, número, piso/dpto" />
+              <label htmlFor="checkout-address" className="text-xs font-semibold text-gray-600">Dirección *</label>
+              <input id="checkout-address" className={`mt-1.5 ${inp}`} value={address} onChange={e => setAddress(e.target.value)} placeholder="Calle, número, piso/dpto" />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold text-gray-600">Código Postal</label>
-                <input className={`mt-1.5 ${inp}`} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="3600" />
+                <label htmlFor="checkout-postal" className="text-xs font-semibold text-gray-600">Código Postal</label>
+                <input id="checkout-postal" className={`mt-1.5 ${inp}`} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="3600" />
               </div>
             </div>
             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
@@ -538,8 +540,8 @@ function StepShipping({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-600">Dirección de entrega *</label>
-            <input className={`mt-1.5 ${inp}`} value={address} onChange={e => setAddress(e.target.value)} placeholder="Calle, número, piso/dpto" />
+            <label htmlFor="checkout-address" className="text-xs font-semibold text-gray-600">Dirección de entrega *</label>
+            <input id="checkout-address" className={`mt-1.5 ${inp}`} value={address} onChange={e => setAddress(e.target.value)} placeholder="Calle, número, piso/dpto" />
           </div>
         </div>
       )}

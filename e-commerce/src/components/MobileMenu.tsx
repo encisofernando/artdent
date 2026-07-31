@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu, X, ChevronRight, Home, Package, ShoppingBag, Sparkles, Mail } from 'lucide-react'
 import { useAuth } from '../store/auth'
 import { listCategories, type Category } from '../api/categories'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface MobileMenuProps {
   isOpen: boolean
@@ -13,6 +14,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const { user, isAuthenticated, signOut } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [expandedSection, setExpandedSection] = useState<'productos' | 'marcas' | null>(null)
+  const panelRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -26,6 +28,17 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       document.body.style.overflow = ''
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
+  useFocusTrap(panelRef, isOpen)
 
   const loadCategories = async () => {
     try {
@@ -54,7 +67,9 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
       {/* Panel lateral */}
       <aside
-        className="fixed top-0 left-0 bottom-0 w-[85vw] max-w-[320px] bg-white z-[101] shadow-2xl animate-slide-in-left overflow-hidden flex flex-col"
+        ref={panelRef}
+        tabIndex={-1}
+        className="fixed top-0 left-0 bottom-0 w-[85vw] max-w-[320px] bg-white z-[101] shadow-2xl animate-slide-in-left overflow-hidden flex flex-col outline-none"
         role="dialog"
         aria-modal="true"
         aria-label="Menú de navegación"

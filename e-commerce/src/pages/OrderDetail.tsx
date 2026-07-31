@@ -251,12 +251,19 @@ export default function OrderDetail() {
   const [cancelSuccess, setCancelSuccess] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
 
+  // No tiene sentido seguir preguntando cada 30s una vez que el pedido llegó
+  // a un estado terminal — antes seguía sondeando indefinidamente mientras
+  // la pestaña quedara abierta, incluso con el pedido ya entregado.
+  const TERMINAL_STATUSES = ['delivered', 'cancelled', 'refunded']
+  const pollIfActive = (query: { state: { data?: { status?: string } } }) =>
+    query.state.data && TERMINAL_STATUSES.includes(query.state.data.status ?? '') ? false : 30_000
+
   const authQuery = useQuery({
     queryKey: ['customer_order', code],
     queryFn: () => getCustomerOrder(code),
     enabled: Boolean(code) && isAuthenticated,
     retry: false,
-    refetchInterval: 30_000,
+    refetchInterval: pollIfActive,
     staleTime: 0,
   })
 
@@ -265,7 +272,7 @@ export default function OrderDetail() {
     queryFn: () => getOrder(code, email ? { email } : {}),
     enabled: Boolean(code) && !isAuthenticated && Boolean(email),
     retry: false,
-    refetchInterval: 30_000,
+    refetchInterval: pollIfActive,
     staleTime: 0,
   })
 
