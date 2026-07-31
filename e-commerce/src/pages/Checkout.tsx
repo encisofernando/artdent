@@ -5,16 +5,14 @@ import { useQuery } from '@tanstack/react-query'
 import { checkout, trackCart } from '../api/orders'
 import { getShippingOptions, type PickupPoint, type MotoCompany } from '../api/shipping'
 import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
+import { getAddresses, type CustomerAddress } from '../api/customer'
 import { useCart } from '../store/cart'
 import { useAuth } from '../store/auth'
 import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
 import { createNavePayment } from '../api/nave'
 import { analytics } from '../api/analytics'
 import CouponInput from '../components/CouponInput'
-
-function formatMoney(n: number) {
-  return `$${Number(n || 0).toLocaleString('es-AR')}`
-}
+import { formatMoney } from '../lib/format'
 
 const LS_LAST_EMAIL = 'artdent_last_checkout_email'
 const SS_CHECKOUT = 'artdent_checkout_draft'
@@ -280,6 +278,33 @@ function StepShipping({
   selectedMotoCompany: MotoCompany | null; setSelectedMotoCompany: (c: MotoCompany | null) => void
   onBack: () => void; onNext: () => void
 }) {
+  const { isAuthenticated } = useAuth()
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
+
+  const { data: savedAddresses = [] } = useQuery({
+    queryKey: ['addresses'],
+    queryFn: getAddresses,
+    enabled: isAuthenticated,
+  })
+
+  // Autoselecciona la dirección default la primera vez que llegan.
+  useEffect(() => {
+    if (savedAddresses.length > 0 && selectedAddressId === null && !address) {
+      const def = savedAddresses.find((a) => a.is_default) ?? savedAddresses[0]
+      pickAddress(def)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedAddresses])
+
+  function pickAddress(addr: CustomerAddress) {
+    setSelectedAddressId(addr.id)
+    setAddress(addr.address)
+    setCity(addr.city)
+    setProvince(addr.province)
+    setPostalCode(addr.postal_code ?? '')
+    if (!selectedMethod) setSelectedMethod('home_delivery')
+  }
+
   const { data: options, isLoading } = useQuery({
     queryKey: ['shipping_options', city, province],
     queryFn: () => getShippingOptions({ city, province }),
@@ -335,6 +360,32 @@ function StepShipping({
     <div className="space-y-5">
       <div className="card p-6 space-y-4">
         <h2 className="text-lg font-bold">Método de entrega</h2>
+
+        {savedAddresses.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tus direcciones guardadas</p>
+            {savedAddresses.map((addr) => (
+              <button
+                key={addr.id}
+                onClick={() => pickAddress(addr)}
+                className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all text-sm
+                  ${selectedAddressId === addr.id ? 'border-[var(--brand-primary)] bg-[var(--brand-soft)]' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800">{addr.recipient}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{addr.address}</p>
+                    <p className="text-xs text-gray-500">{addr.city}, {addr.province}{addr.postal_code ? ` (${addr.postal_code})` : ''}</p>
+                  </div>
+                  <div className={`h-5 w-5 rounded-full border-2 shrink-0 flex items-center justify-center
+                    ${selectedAddressId === addr.id ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]' : 'border-gray-300'}`}>
+                    {selectedAddressId === addr.id && <div className="h-2 w-2 rounded-full bg-white" />}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* City/province for moto availability */}
         <div className="grid gap-3 sm:grid-cols-2">
