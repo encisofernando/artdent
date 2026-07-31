@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\NavePosPaymentController;
 use App\Http\Controllers\ClientesController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\CouponUsageController;
@@ -32,6 +33,7 @@ Route::middleware('module:clientes')->group(function () {
     Route::get('customers-accounts', [CustomerAccountController::class, 'index'])->name('customers.accounts')->middleware('permission:customers.view');
     Route::get('customers/{customer}/account', [CustomerAccountController::class, 'show'])->name('customers.account')->middleware('permission:customers.view');
     Route::post('customers/{customer}/account/payments', [CustomerAccountController::class, 'storePayment'])->name('customers.account.payments')->middleware('permission:customers.view');
+    Route::post('customers/{customer}/account/nave-charge', [NavePosPaymentController::class, 'createForCustomerAccount'])->name('customers.account.nave-charge')->middleware('permission:customers.view');
     Route::post('customers/{customer}/account/adjustments', [CustomerAccountController::class, 'storeAdjustment'])->name('customers.account.adjustments')->middleware('permission:customers.edit');
     Route::post('customers/{customer}/account/send-statement', [CustomerAccountController::class, 'sendStatement'])->name('customers.account.send-statement')->middleware('permission:customers.view');
     Route::resource('customer-address', CustomerAddressController::class)->middleware('permission:customers.edit');

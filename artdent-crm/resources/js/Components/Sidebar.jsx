@@ -33,6 +33,7 @@ import {
     History,
     LifeBuoy,
     Layers,
+    Calculator,
 } from 'lucide-react';
 
 export default function Sidebar({ className = "" }) {
@@ -77,6 +78,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Cuentas Corrientes", path: "/customers-accounts" },
                     ],
                 },
+                { title: "Simulador de Cuotas", icon: Calculator, path: "/installments-simulator", permission: 'sales.view' },
             ],
         },
         {
@@ -275,6 +277,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Datos de la Empresa", path: "/settings", permission: 'settings.edit' },
                         { title: "Impresión", path: "/settings?tab=preferencias", permission: 'settings.edit' },
                         { title: "Acceso Kiosk", path: "/admin/kiosk-access", permission: 'settings.edit', module: ['laboratorio', 'rrhh'] },
+                        { title: "Tasas de Cuotas (Nave)", path: "/nave-installment-rates", permission: 'settings.edit' },
                         ...(billingEnabled ? [{ title: "Suscripción", path: "/subscription", permission: 'settings.edit' }] : []),
                     ],
                 },

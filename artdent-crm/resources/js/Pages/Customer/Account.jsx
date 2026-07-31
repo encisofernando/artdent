@@ -5,10 +5,11 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import SearchableSelect from '@/Components/SearchableSelect';
 import {
     ArrowLeft, CreditCard, TrendingDown, TrendingUp, Plus, Check,
-    Mail, Banknote, Wallet, SlidersHorizontal,
+    Mail, Banknote, Wallet, SlidersHorizontal, QrCode, Link2,
 } from 'lucide-react';
 import { DatePicker } from '@/Components/_appkit';
 import axios from 'axios';
+import QrPaymentModal from '@/Components/Nave/QrPaymentModal';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', red: '#E63946', amber: '#F59E0B' };
 const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
@@ -23,7 +24,7 @@ const FILTER_TABS = [
     { key: 'adjustment', label: 'Ajustes' },
 ];
 
-export default function Account({ auth, customer, account, moves, openSales = [], paymentMethods }) {
+export default function Account({ auth, customer, account, moves, openSales = [], paymentMethods, companyId }) {
     const { isDark } = useTheme();
     const card = isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/60';
     const muted = isDark ? 'text-slate-400' : 'text-slate-500';
@@ -59,6 +60,13 @@ export default function Account({ auth, customer, account, moves, openSales = []
     const [adjForm, setAdjForm]   = useState({
         amount: '', description: '', move_date: new Date().toISOString().slice(0, 10),
     });
+
+    // Cobro Nave (QR físico / link de pago)
+    const [naveOpen, setNaveOpen]   = useState(false);
+    const [naveSaving, setNaveSaving] = useState(false);
+    const [naveError, setNaveError] = useState('');
+    const [naveForm, setNaveForm]   = useState({ type: 'static_qr', amount: '', sale_id: '' });
+    const [naveIntent, setNaveIntent] = useState(null);
 
     // Send statement
     const [stmtOpen, setStmtOpen]     = useState(false);
@@ -135,6 +143,48 @@ export default function Account({ auth, customer, account, moves, openSales = []
         } finally {
             setAdjSaving(false);
         }
+    };
+
+    const handleNaveSubmit = async () => {
+        if (!naveForm.amount || Number(naveForm.amount) <= 0) {
+            setNaveError('Ingresá un monto válido.');
+            return;
+        }
+        setNaveSaving(true);
+        setNaveError('');
+        try {
+            const res = await axios.post(
+                route('customers.account.nave-charge', customer.id),
+                { type: naveForm.type, amount: naveForm.amount, sale_id: naveForm.sale_id || null },
+                { headers: { Accept: 'application/json' } }
+            );
+            setNaveIntent({
+                intentId: res.data.intent_id,
+                type: naveForm.type,
+                qrData: res.data.qr_data,
+                checkoutUrl: res.data.checkout_url,
+                amount: naveForm.amount,
+                companyId,
+            });
+            setNaveOpen(false);
+        } catch (e) {
+            setNaveError(e.response?.data?.message || 'Error al generar el cobro con Nave.');
+        } finally {
+            setNaveSaving(false);
+        }
+    };
+
+    const handleNaveApproved = () => {
+        router.reload({
+            only: ['account', 'moves', 'openSales'],
+            onSuccess: (page) => {
+                setBalance(page.props.account.balance);
+                setMoveList(page.props.moves);
+                setOpenSaleOptions(page.props.openSales || []);
+            },
+        });
+        setNaveIntent(null);
+        setNaveForm({ type: 'static_qr', amount: '', sale_id: '' });
     };
 
     const handleSendStatement = async () => {
@@ -254,7 +304,7 @@ export default function Account({ auth, customer, account, moves, openSales = []
                 {/* Actions row */}
                 <div className="flex gap-3 flex-wrap">
                     <button
-                        onClick={() => { setPayOpen(o => !o); setAdjOpen(false); setPayError(''); setPaySuccess(''); }}
+                        onClick={() => { setPayOpen(o => !o); setAdjOpen(false); setNaveOpen(false); setPayError(''); setPaySuccess(''); }}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
                         style={{ background: `linear-gradient(135deg, ${B.teal}, ${B.blue})` }}
                     >
@@ -262,12 +312,28 @@ export default function Account({ auth, customer, account, moves, openSales = []
                         Registrar pago
                     </button>
                     <button
-                        onClick={() => { setAdjOpen(o => !o); setPayOpen(false); setAdjError(''); }}
+                        onClick={() => { setAdjOpen(o => !o); setPayOpen(false); setNaveOpen(false); setAdjError(''); }}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold border transition-colors
                             ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                     >
                         <SlidersHorizontal size={15} />
                         Ajuste manual
+                    </button>
+                    <button
+                        onClick={() => { setNaveOpen(o => !o); setPayOpen(false); setAdjOpen(false); setNaveError(''); setNaveForm(f => ({ ...f, type: 'static_qr' })); }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold border transition-colors
+                            ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                        <QrCode size={15} />
+                        Cobrar con QR
+                    </button>
+                    <button
+                        onClick={() => { setNaveOpen(o => !o); setPayOpen(false); setAdjOpen(false); setNaveError(''); setNaveForm(f => ({ ...f, type: 'payment_link' })); }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold border transition-colors
+                            ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                        <Link2 size={15} />
+                        Enviar link de pago
                     </button>
                 </div>
 
@@ -397,6 +463,49 @@ export default function Account({ auth, customer, account, moves, openSales = []
                     </div>
                 )}
 
+                {/* Nave (QR/link) form */}
+                {naveOpen && (
+                    <div className={`rounded-2xl border p-5 shadow-sm space-y-4 ${card}`}>
+                        <h3 className={`text-sm font-bold ${text}`}>
+                            {naveForm.type === 'static_qr' ? 'Cobrar con QR (Nave)' : 'Enviar link de pago (Nave)'}
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className={`block text-[10.5px] font-bold tracking-widest mb-1 ${muted}`}>MONTO *</label>
+                                <div className="relative">
+                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-bold text-sm ${muted}`}>$</span>
+                                    <input type="number" value={naveForm.amount}
+                                        onChange={e => setNaveForm(f => ({ ...f, amount: e.target.value }))}
+                                        placeholder="0,00" className="outline-none"
+                                        style={{ ...inputStyle, paddingLeft: 24 }} />
+                                </div>
+                            </div>
+                            <div className="sm:col-span-2">
+                                <label className={`block text-[10.5px] font-bold tracking-widest mb-1 ${muted}`}>COMPROBANTE CON DEUDA (opcional)</label>
+                                <SearchableSelect
+                                    value={String(naveForm.sale_id || '')}
+                                    onChange={v => setNaveForm(f => ({ ...f, sale_id: v }))}
+                                    placeholder={openSaleOptions.length ? 'Seleccionar comprobante (opcional)' : 'No hay comprobantes con deuda'}
+                                    disabled={openSaleOptions.length === 0}
+                                    options={openSaleOptions.map(sale => ({ value: String(sale.id), label: sale.label }))}
+                                />
+                            </div>
+                        </div>
+                        {naveError && <p className="text-[12px] text-red-400">{naveError}</p>}
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setNaveOpen(false)}
+                                className={`px-4 py-2 rounded-lg text-[12.5px] font-semibold ${muted}`}>
+                                Cancelar
+                            </button>
+                            <button onClick={handleNaveSubmit} disabled={naveSaving}
+                                className="px-5 py-2 rounded-lg text-[12.5px] font-bold text-white transition-opacity"
+                                style={{ background: `linear-gradient(135deg, ${B.teal}, ${B.blue})`, opacity: naveSaving ? 0.6 : 1 }}>
+                                {naveSaving ? 'Generando...' : (naveForm.type === 'static_qr' ? 'Generar QR' : 'Generar link')}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Movements */}
                 <div className={`rounded-2xl border shadow-sm overflow-hidden ${card}`}>
                     {/* Header + filter */}
@@ -518,6 +627,19 @@ export default function Account({ auth, customer, account, moves, openSales = []
                     </>)}
                 </div>
             </div>
+
+            {naveIntent && (
+                <QrPaymentModal
+                    intentId={naveIntent.intentId}
+                    type={naveIntent.type}
+                    qrData={naveIntent.qrData}
+                    checkoutUrl={naveIntent.checkoutUrl}
+                    companyId={naveIntent.companyId}
+                    amount={naveIntent.amount}
+                    onApproved={handleNaveApproved}
+                    onClose={() => setNaveIntent(null)}
+                />
+            )}
         </AuthenticatedLayout>
     );
 }

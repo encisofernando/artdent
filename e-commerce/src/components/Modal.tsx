@@ -6,7 +6,7 @@ interface ModalProps {
   onClose: () => void
   title?: string
   children: React.ReactNode
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 }
 
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
@@ -28,14 +28,15 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className={`relative w-full ${sizes[size]} rounded-2xl bg-white p-6 shadow-xl`}>
+      <div className={`relative w-full ${sizes[size]} max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl`}>
         {title && (
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between sticky top-0 bg-white -mt-1 pt-1">
             <h2 className="text-xl font-bold">{title}</h2>
             <button onClick={onClose} className="rounded-full p-1 hover:bg-gray-100">
               <X size={20} />

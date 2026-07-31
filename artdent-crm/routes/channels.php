@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\EcommerceOrder;
+use App\Models\NaveChargeIntent;
 use App\Models\Ticket;
 use App\Support\CompanyContext;
 use App\Support\CrmMode;
@@ -26,6 +27,15 @@ Broadcast::channel('tenant.{tenantId}.company.{companyId}.orders.{orderId}', fun
 
     return (string) CompanyContext::id() === $companyId
         && EcommerceOrder::where('id', $orderId)->where('company_id', $companyId)->exists();
+});
+
+Broadcast::channel('tenant.{tenantId}.company.{companyId}.nave-intents.{intentId}', function ($user, string $tenantId, string $companyId, string $intentId) {
+    if ((string) (CrmMode::tenantInfo()['id'] ?? '') !== $tenantId) {
+        return false;
+    }
+
+    return (string) CompanyContext::id() === $companyId
+        && NaveChargeIntent::where('id', $intentId)->where('company_id', $companyId)->exists();
 });
 
 // Cross-app: también se define en artdent-admin/routes/channels.php. El

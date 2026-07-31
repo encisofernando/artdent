@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\NavePosPaymentController;
 use App\Http\Controllers\HeldSaleController;
+use App\Http\Controllers\InstallmentsSimulatorController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
@@ -26,6 +28,7 @@ Route::get('sales/{sale}/edit', [SaleController::class, 'edit'])->name('sales.ed
 Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update')->middleware('permission:sales.edit');
 Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy')->middleware('permission:sales.delete');
 Route::post('sales/{sale}/pay', [SaleController::class, 'pay'])->name('sales.pay')->middleware('permission:sales.edit');
+Route::post('sales/{sale}/nave-charge', [NavePosPaymentController::class, 'createForSale'])->name('sales.nave-charge')->middleware('permission:sales.edit');
 Route::post('sales/{sale}/generate-pdf', [SaleController::class, 'generatePdf'])->name('sales.generate-pdf')->middleware('permission:sales.view');
 Route::post('sales/{sale}/send-email', [SaleController::class, 'sendEmail'])->name('sales.send-email')->middleware('permission:sales.view');
 Route::post('sales/{sale}/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store')->middleware('permission:sales.edit');
@@ -39,6 +42,16 @@ Route::delete('held-sales/{heldSale}', [HeldSaleController::class, 'destroy'])->
 // Sub-recursos de venta (items y pagos)
 Route::resource('sale-items', SaleItemController::class)->middleware('permission:sales.edit');
 Route::resource('sale-payments', SalePaymentController::class)->middleware('permission:sales.edit');
+
+// Estado de una intención de cobro Nave — compartido por el POS y por
+// cuentas corrientes de clientes (routes/modules/ecommerce.php), no
+// depende de ningún permiso puntual: NavePosPaymentController::status()
+// ya valida que el intent pertenezca a la empresa activa.
+Route::get('nave-charge-intents/{intent}/status', [NavePosPaymentController::class, 'status'])->name('nave-charge-intents.status');
+
+// ── Simulador de cuotas Nave (solo lectura — la tabla de tasas se edita en
+// Sistema → Administración, ver routes/modules/settings.php) ───────────────────
+Route::get('installments-simulator', [InstallmentsSimulatorController::class, 'index'])->name('installments-simulator.index')->middleware('permission:sales.view');
 
 // ── POS legado ────────────────────────────────────────────────────────────────
 Route::get('ventas/pos', [VentasController::class, 'pos'])->name('ventas.pos')->middleware('permission:sales.view');

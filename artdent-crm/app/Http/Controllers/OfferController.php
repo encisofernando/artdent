@@ -44,7 +44,7 @@ class OfferController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:discount_percent,discount_fixed,two_for_one,combo,installments'],
+            'type' => ['required', 'in:discount_percent,discount_fixed,combo,installments'],
             'value' => ['nullable', 'numeric'],
             'badge_text' => ['nullable', 'string', 'max:100'],
             'badge_color' => ['required', 'in:red,orange,green,blue,purple'],
@@ -96,7 +96,7 @@ class OfferController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:discount_percent,discount_fixed,two_for_one,combo,installments'],
+            'type' => ['required', 'in:discount_percent,discount_fixed,combo,installments'],
             'value' => ['nullable', 'numeric'],
             'badge_text' => ['nullable', 'string', 'max:100'],
             'badge_color' => ['required', 'in:red,orange,green,blue,purple'],

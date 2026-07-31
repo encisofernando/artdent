@@ -13,6 +13,7 @@ import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
 import { getAddresses } from '../api/customer'
 import { checkout } from '../api/orders'
 import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
+import { createNavePayment } from '../api/nave'
 import CouponInput from '../components/CouponInput'
 
 function formatMoney(n: number) {
@@ -26,6 +27,7 @@ const PAYMENT_ICONS: Record<string, React.ReactNode> = {
   bank_transfer: <Landmark size={17} />,
   qr: <QrCode size={17} />,
   cash: <Banknote size={17} />,
+  nave: <QrCode size={17} />,
 }
 
 // ── Radio bullet ─────────────────────────────────────────────────────────────
@@ -104,6 +106,7 @@ export default function Cart() {
   const [error, setError] = useState<string | null>(null)
   const [orderCode, setOrderCode] = useState<string | null>(null)
   const [mpLoading, setMpLoading] = useState(false)
+  const [naveLoading, setNaveLoading] = useState(false)
 
   // Prefill from user
   useEffect(() => {
@@ -230,6 +233,18 @@ export default function Cart() {
     }
   }
 
+  async function payWithNave() {
+    if (!orderCode) return
+    setNaveLoading(true)
+    try {
+      const intent = await createNavePayment(orderCode)
+      window.location.href = intent.checkout_url
+    } catch {
+      setError('No se pudo iniciar el pago con Nave.')
+      setNaveLoading(false)
+    }
+  }
+
   // ── Post-checkout ─────────────────────────────────────────────────────────
   if (orderCode) {
     const pm = selectedPayment
@@ -254,6 +269,19 @@ export default function Cart() {
               <button onClick={payWithMp} disabled={mpLoading} className="btn btn-primary w-full py-3 gap-2">
                 <CreditCard size={18} />
                 {mpLoading ? 'Redirigiendo…' : 'Pagar con MercadoPago'}
+              </button>
+              <button onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)} className="btn btn-outline w-full py-3">
+                Pagar después / Ver pedido
+              </button>
+            </div>
+          )}
+
+          {pm?.type === 'nave' && (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 text-center">¿Querés pagar ahora con Nave (QR o tarjeta)?</p>
+              <button onClick={payWithNave} disabled={naveLoading} className="btn btn-primary w-full py-3 gap-2">
+                <QrCode size={18} />
+                {naveLoading ? 'Redirigiendo…' : 'Pagar con Nave'}
               </button>
               <button onClick={() => navigate(`/pedido/${encodeURIComponent(orderCode)}`)} className="btn btn-outline w-full py-3">
                 Pagar después / Ver pedido
@@ -739,6 +767,7 @@ export default function Cart() {
               <CouponInput
                 cartTotal={cart.subtotal}
                 cartItems={cart.items}
+                email={email}
                 onCouponApplied={setAppliedCoupon}
                 onCouponRemoved={() => setAppliedCoupon(null)}
               />

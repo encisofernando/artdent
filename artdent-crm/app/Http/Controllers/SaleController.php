@@ -18,6 +18,7 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\CustomerAccountSaleAllocator;
 use App\Services\EmailTemplateService;
+use App\Services\SalePaymentService;
 use App\Services\StockAlertService;
 use App\Support\Auditor;
 use App\Support\CompanyContext;
@@ -37,7 +38,14 @@ class SaleController extends Controller
         'credit' => 'Crédito',
         'transfer' => 'Transferencia',
         'cuenta_corriente' => 'Cuenta Corriente',
+        'nave_qr' => 'QR (Nave)',
     ];
+
+    // Métodos que no se cobran en el momento de crear la venta — la venta
+    // queda 'pending' por ese monto hasta que se confirme aparte
+    // (cuenta_corriente: es deuda; nave_qr: se confirma por webhook de Nave
+    // vía NavePosPaymentController, ver SalePaymentService).
+    private const UNSETTLED_PAYMENT_METHODS = ['cuenta_corriente', 'nave_qr'];
 
     public function index(Request $request, CustomerAccountSaleAllocator $allocator)
     {
@@ -243,7 +251,7 @@ class SaleController extends Controller
             ->where('method', 'cuenta_corriente')
             ->sum('amount'), 2);
         $settledAmount = round(collect($payments)
-            ->reject(fn (array $payment) => $payment['method'] === 'cuenta_corriente')
+            ->reject(fn (array $payment) => in_array($payment['method'], self::UNSETTLED_PAYMENT_METHODS, true))
             ->sum('amount'), 2);
         $isSingleCashPayment = count($payments) === 1 && $payments[0]['method'] === 'cash';
         $tenderedAmount = $isSingleCashPayment
@@ -300,7 +308,7 @@ class SaleController extends Controller
             }
 
             foreach ($payments as $payment) {
-                if ($payment['method'] === 'cuenta_corriente') {
+                if (in_array($payment['method'], self::UNSETTLED_PAYMENT_METHODS, true)) {
                     continue;
                 }
 
@@ -578,7 +586,7 @@ class SaleController extends Controller
      * Registra un cobro parcial o total sobre la venta, actualiza paid_amount/status
      * y acredita la cuenta corriente del cliente si corresponde.
      */
-    public function pay(Request $request, Sale $sale, CustomerAccountSaleAllocator $allocator)
+    public function pay(Request $request, Sale $sale, SalePaymentService $salePaymentService)
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -586,64 +594,16 @@ class SaleController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $amount = (float) $validated['amount'];
-        $remainingAmount = $allocator->outstandingAmount($sale);
-
-        if ($remainingAmount <= 0.0) {
-            return response()->json(['message' => 'La venta ya no tiene saldo pendiente.'], 422);
-        }
-
-        if ($amount > $remainingAmount + 0.009) {
-            return response()->json([
-                'message' => 'El monto supera el saldo pendiente del comprobante.',
-            ], 422);
-        }
-
-        DB::beginTransaction();
         try {
-            $paymentReference = null;
-
-            if ($sale->customer_id) {
-                $account = CustomerAccount::firstOrCreate(
-                    ['customer_id' => $sale->customer_id],
-                    ['balance' => 0]
-                );
-
-                $description = $validated['description']
-                    ?? "Pago venta {$sale->sale_number}";
-
-                $newBalance = $account->balance - $amount;
-                $move = CustomerAccountMove::create([
-                    'customer_account_id' => $account->id,
-                    'user_id' => auth()->id(),
-                    'type' => CustomerAccountMove::TYPE_PAYMENT,
-                    'amount' => $amount,
-                    'balance_after' => $newBalance,
-                    'description' => $description,
-                    'payment_method_id' => $validated['payment_method_id'] ?? null,
-                    'reference_type' => 'sale',
-                    'reference_id' => $sale->id,
-                    'move_date' => now()->toDateString(),
-                ]);
-                $account->applyMove($move);
-
-                $paymentReference = $allocator->salePaymentReference($move, $sale);
-            }
-
-            SalePayment::create([
-                'sale_id' => $sale->id,
-                'payment_method_id' => $validated['payment_method_id'] ?? null,
-                'amount' => $amount,
-                'reference' => $paymentReference,
-                'paid_at' => now(),
-            ]);
-
-            $allocator->syncSale($sale, round((float) $sale->paid_amount + $amount, 2));
-
-            DB::commit();
+            $salePaymentService->registerPayment(
+                $sale,
+                (float) $validated['amount'],
+                $validated['payment_method_id'] ?? null,
+                $validated['description'] ?? null,
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            DB::rollBack();
-
             return response()->json(['message' => 'Error al registrar el pago: '.$e->getMessage()], 500);
         }
 

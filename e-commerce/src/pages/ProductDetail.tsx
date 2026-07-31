@@ -10,6 +10,8 @@ import WishlistButton from '../components/WishlistButton'
 import SEOHead from '../components/SEOHead'
 import CountdownTimer from '../components/CountdownTimer'
 import { analytics } from '../api/analytics'
+import { getPaymentOptions } from '../api/paymentOptions'
+import NaveInstallmentsModal from '../components/NaveInstallmentsModal'
 
 const LOW_STOCK_THRESHOLD = 5
 
@@ -36,6 +38,14 @@ export default function ProductDetail() {
   const [zoomPosition, setZoomPosition] = useState({ x: 50, y: 50 })
   const thumbnailsRef = useRef<HTMLDivElement>(null)
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const [isInstallmentsModalOpen, setIsInstallmentsModalOpen] = useState(false)
+
+  const { data: paymentOptions = [] } = useQuery({
+    queryKey: ['payment_options'],
+    queryFn: getPaymentOptions,
+    staleTime: 5 * 60_000,
+  })
+  const naveEnabled = paymentOptions.some((o) => o.type === 'nave')
 
   // Group variant attributes for the selector UI
   const variantAttributeGroups = useMemo(() => {
@@ -515,6 +525,15 @@ export default function ProductDetail() {
                     <CountdownTimer endsAt={product.offer.ends_at} className="text-sm" />
                   </div>
                 )}
+                {naveEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => setIsInstallmentsModalOpen(true)}
+                    className="text-sm font-semibold text-purple-700 hover:text-purple-800 underline underline-offset-2"
+                  >
+                    Ver cuotas Nave
+                  </button>
+                )}
               </div>
 
               {/* Selector de variantes */}
@@ -761,6 +780,12 @@ export default function ProductDetail() {
           </div>
         )}
       </div>
+
+      <NaveInstallmentsModal
+        isOpen={isInstallmentsModalOpen}
+        onClose={() => setIsInstallmentsModalOpen(false)}
+        amount={price * quantity}
+      />
     </>
   )
 }

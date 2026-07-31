@@ -8,6 +8,7 @@ use App\Models\CustomerAccount;
 use App\Models\CustomerAccountMove;
 use App\Models\PaymentMethod;
 use App\Models\Sale;
+use App\Services\CustomerAccountPaymentService;
 use App\Services\CustomerAccountSaleAllocator;
 use App\Services\EmailTemplateService;
 use App\Support\CompanyContext;
@@ -129,13 +130,15 @@ class CustomerAccountController extends Controller
             'moves' => $moves,
             'openSales' => $this->formatOpenSales($customer, $companyId, $allocator),
             'paymentMethods' => $paymentMethods,
+            'companyId' => $companyId,
         ]);
     }
 
     public function storePayment(
         Request $request,
         Customer $customer,
-        CustomerAccountSaleAllocator $allocator
+        CustomerAccountSaleAllocator $allocator,
+        CustomerAccountPaymentService $paymentService
     ): JsonResponse|RedirectResponse {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -147,93 +150,29 @@ class CustomerAccountController extends Controller
         ]);
 
         $companyId = CompanyContext::id();
-        $preferredSale = null;
 
-        if (! empty($validated['sale_id'])) {
-            $preferredSale = Sale::query()
-                ->whereKey($validated['sale_id'])
-                ->where('customer_id', $customer->id)
-                ->where('company_id', $companyId)
-                ->first();
-
-            if (! $preferredSale) {
-                return response()->json([
-                    'message' => 'El comprobante seleccionado no pertenece a este cliente.',
-                ], 422);
-            }
-
-            if ($allocator->outstandingAmount($preferredSale) <= 0.0) {
-                return response()->json([
-                    'message' => 'El comprobante seleccionado ya no tiene deuda pendiente.',
-                ], 422);
-            }
-        }
-
-        $account = CustomerAccount::firstOrCreate(
-            ['customer_id' => $customer->id],
-            ['balance' => 0]
-        );
-
-        $pm = $validated['payment_method_id']
-            ? PaymentMethod::find($validated['payment_method_id'])
-            : null;
-
-        $appliedSales = collect();
-        $move = null;
-
-        DB::beginTransaction();
         try {
-            $newBalance = $account->balance - (float) $validated['amount'];
-
-            $move = CustomerAccountMove::create([
-                'customer_account_id' => $account->id,
-                'user_id' => auth()->id(),
-                'type' => CustomerAccountMove::TYPE_PAYMENT,
-                'amount' => $validated['amount'],
-                'balance_after' => $newBalance,
-                'description' => $validated['description']
-                    ?? ($preferredSale ? "Pago aplicado a {$preferredSale->sale_number}" : 'Pago a cuenta'),
-                'reference_type' => $preferredSale ? 'sale' : null,
-                'reference_id' => $preferredSale?->id,
-                'payment_method_id' => $validated['payment_method_id'] ?? null,
-                'move_date' => $validated['move_date'] ?? now()->toDateString(),
-            ]);
-
-            $account->applyMove($move);
-
-            $appliedSales = $allocator->applyMoveToSales(
-                $move,
-                $preferredSale,
+            $result = $paymentService->registerPayment(
+                $customer,
                 $companyId,
-                true,
-                ! $preferredSale
+                (float) $validated['amount'],
+                $validated['payment_method_id'] ?? null,
+                $validated['sale_id'] ?? null,
+                $validated['description'] ?? null,
+                $validated['move_date'] ?? null,
+                (bool) ($validated['send_email'] ?? false),
             );
-
-            DB::commit();
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            DB::rollBack();
-
             return response()->json([
                 'message' => 'Error al registrar el pago: '.$e->getMessage(),
             ], 500);
         }
 
-        $move->load('paymentMethod:id,name');
-        $account = $account->fresh();
-
-        if (! empty($validated['send_email']) && $customer->email) {
-            $company = Company::findOrFail(CompanyContext::id());
-
-            $vars = [
-                'empresa' => $company->fantasy_name ?: $company->name,
-                'cliente' => $customer->name,
-                'monto' => '$'.number_format((float) $validated['amount'], 2, ',', '.'),
-                'fecha' => now()->format('d/m/Y'),
-                'metodo' => $pm?->name ?? 'Efectivo',
-            ];
-
-            app(EmailTemplateService::class)->send('payment', $customer->email, $company, $vars);
-        }
+        $move = $result['move'];
+        $account = $result['account'];
+        $appliedSales = $result['applied_sales'];
 
         if ($request->wantsJson()) {
             return response()->json([

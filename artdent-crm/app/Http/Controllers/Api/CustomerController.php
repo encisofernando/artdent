@@ -133,7 +133,7 @@ class CustomerController extends Controller
     public function changePaymentMethod(Request $request, string $code): JsonResponse
     {
         $validated = $request->validate([
-            'selected_payment_method' => ['required', 'string', 'in:mercadopago,bank_transfer,qr,cash'],
+            'selected_payment_method' => ['required', 'string', 'in:mercadopago,bank_transfer,qr,cash,nave'],
         ]);
 
         $order = $request->user()

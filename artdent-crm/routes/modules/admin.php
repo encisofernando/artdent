@@ -6,6 +6,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceItemController;
 use App\Http\Controllers\InvoiceTypeController;
+use App\Http\Controllers\NaveInstallmentRateSettingsController;
 use App\Http\Controllers\NewsletterSubscriberController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentMethodController;
@@ -47,6 +48,10 @@ Route::post('subscription/cancel', [SubscriptionController::class, 'cancel'])->n
 
 Route::get('settings', [CompanyController::class, 'edit'])->name('settings.edit');
 Route::put('settings', [CompanyController::class, 'update'])->name('settings.update');
+
+// Tasas de cuotas Nave (usadas por el simulador de Ventas, ver routes/modules/sales.php)
+Route::get('nave-installment-rates', [NaveInstallmentRateSettingsController::class, 'index'])->name('nave-installment-rates.index')->middleware('permission:settings.edit');
+Route::post('nave-installment-rates', [NaveInstallmentRateSettingsController::class, 'store'])->name('nave-installment-rates.store')->middleware('permission:settings.edit');
 
 // Multi-empresa: listado/alta + selector de compañía activa (companies.switch)
 Route::get('companies', [CompanyController::class, 'index'])->name('companies.index')->middleware('permission:companies.switch');

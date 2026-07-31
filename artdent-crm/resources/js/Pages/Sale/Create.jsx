@@ -23,6 +23,7 @@ import {
     Badge,
 } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
+import QrPaymentModal from '@/Components/Nave/QrPaymentModal';
 import {
     buildPrintHtml,
     getThermalPrintZoom,
@@ -79,6 +80,7 @@ const PAYMENT_METHODS = [
     { id: 'credit',            name: 'Crédito',         requiresCustomer: false },
     { id: 'transfer',          name: 'Transferencia',   requiresCustomer: false },
     { id: 'cuenta_corriente',  name: 'Cta. Corriente',  requiresCustomer: true  },
+    { id: 'nave_qr',           name: 'QR (Nave)',       requiresCustomer: false },
 ];
 
 const PAYMENT_METHOD_BY_ID = Object.fromEntries(PAYMENT_METHODS.map((method) => [method.id, method]));
@@ -236,6 +238,10 @@ export default function Create({ auth, products, customers = [], company = null 
     // Post-sale modal
     const [postSale, setPostSale]         = useState(null);  // sale object returned from server
     const [postSaleOpen, setPostSaleOpen] = useState(false);
+
+    // Cobro con QR (Nave) — se abre después de crear la venta si quedó
+    // pending por un split nave_qr
+    const [naveIntent, setNaveIntent] = useState(null);
     const [printMode, setPrintMode]       = useState(() => getStoredTicketFormat('80mm'));
     const [printView, setPrintView]       = useState('actions'); // 'actions' | 'print' (kept for WhatsApp flow compat)
     const [waPhone, setWaPhone]           = useState('');
@@ -572,6 +578,11 @@ export default function Create({ auth, products, customers = [], company = null 
             return;
         }
 
+        if (paymentSplits.some((s) => s.method === 'nave_qr') && paymentSplits.length > 1) {
+            toast.warning('QR (Nave) no se puede combinar con otros medios de pago todavía.');
+            return;
+        }
+
         const normalizedPayments = paymentSplits.map((split) => ({
             method: split.method,
             amount: Number(split.amount || 0),
@@ -629,6 +640,24 @@ export default function Create({ auth, products, customers = [], company = null 
                 setWaPhone('');
                 setPdfUrl(null);
                 setPostSaleOpen(true);
+
+                const naveSplit = normalizedPayments.find((p) => p.method === 'nave_qr');
+                if (naveSplit && sale.status === 'pending' && sale.id) {
+                    axios.post(route('sales.nave-charge', sale.id), { type: 'static_qr' })
+                        .then(({ data }) => {
+                            setNaveIntent({
+                                intentId: data.intent_id,
+                                type: 'static_qr',
+                                qrData: data.qr_data,
+                                checkoutUrl: data.checkout_url,
+                                amount: naveSplit.amount,
+                                companyId: sale.company_id,
+                            });
+                        })
+                        .catch(() => {
+                            toast.error('No se pudo generar el QR de Nave. Cobrá con otro medio.');
+                        });
+                }
             },
             onError: (errs) => {
                 setProcessing(false);
@@ -2290,6 +2319,23 @@ export default function Create({ auth, products, customers = [], company = null 
                     </div>
                 );
             })()}
+
+            {naveIntent && (
+                <QrPaymentModal
+                    intentId={naveIntent.intentId}
+                    type={naveIntent.type}
+                    qrData={naveIntent.qrData}
+                    checkoutUrl={naveIntent.checkoutUrl}
+                    companyId={naveIntent.companyId}
+                    amount={naveIntent.amount}
+                    onApproved={() => {
+                        setPostSale((prev) => (prev ? { ...prev, status: 'completed' } : prev));
+                        setNaveIntent(null);
+                        toast.success('Pago con QR confirmado.');
+                    }}
+                    onClose={() => setNaveIntent(null)}
+                />
+            )}
 
         </AuthenticatedLayout>
     );

@@ -5,7 +5,7 @@ export type Coupon = {
   code: string
   name: string
   description?: string | null
-  type: 'percentage' | 'fixed' | 'free_shipping'
+  type: 'percentage' | 'fixed'
   discount_value: number
   valid_until?: string | null
 }
@@ -22,6 +22,7 @@ export async function validateCoupon(params: {
   code: string
   cart_total: number
   cart_items?: any[]
+  email?: string
 }): Promise<CouponValidation> {
   const { data } = await http.post('/coupons/validate', params)
   return data

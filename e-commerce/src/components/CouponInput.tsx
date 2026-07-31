@@ -6,6 +6,7 @@ import { validateCoupon } from '../api/coupons'
 interface CouponInputProps {
   cartTotal: number
   cartItems?: any[]
+  email?: string
   onCouponApplied: (couponData: any) => void
   onCouponRemoved: () => void
 }
@@ -13,6 +14,7 @@ interface CouponInputProps {
 export default function CouponInput({
   cartTotal,
   cartItems = [],
+  email,
   onCouponApplied,
   onCouponRemoved,
 }: CouponInputProps) {
@@ -21,11 +23,12 @@ export default function CouponInput({
   const [error, setError] = useState<string | null>(null)
 
   const validateMutation = useMutation({
-    mutationFn: (couponCode: string) => 
+    mutationFn: (couponCode: string) =>
       validateCoupon({
         code: couponCode,
         cart_total: cartTotal,
         cart_items: cartItems,
+        email: email || undefined,
       }),
     onSuccess: (data) => {
       if (data.valid) {

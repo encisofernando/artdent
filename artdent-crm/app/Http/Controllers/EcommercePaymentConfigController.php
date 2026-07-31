@@ -53,6 +53,7 @@ class EcommercePaymentConfigController extends Controller
             'config.client_secret' => ['nullable', 'string', 'max:255'],
             'config.audience' => ['nullable', 'string', 'max:255'],
             'config.pos_id' => ['nullable', 'string', 'max:60'],
+            'config.pos_id_qr' => ['nullable', 'string', 'max:60'],
             'config.sandbox_mode' => ['nullable', 'boolean'],
         ]);
 

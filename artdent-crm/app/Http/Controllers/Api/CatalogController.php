@@ -315,7 +315,7 @@ class CatalogController extends Controller
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'coupon_code' => ['nullable', 'string'],
-            'selected_payment_method' => ['nullable', 'string', 'in:mercadopago,bank_transfer,qr,cash'],
+            'selected_payment_method' => ['nullable', 'string', 'in:mercadopago,bank_transfer,qr,cash,nave'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
@@ -345,14 +345,24 @@ class CatalogController extends Controller
                 })
                 ->first();
 
-            // Check per-customer usage limit
-            if ($coupon && $coupon->max_uses_per_customer && $customerId) {
-                $customerUses = CouponUsage::query()
-                    ->where('coupon_id', $coupon->id)
-                    ->where('customer_id', $customerId)
-                    ->count();
+            // Check per-customer usage limit. Los compradores invitados
+            // (sin sesión) no tienen customer_id — se identifican por email,
+            // igual que un cliente logueado, para que el límite no se pueda
+            // evadir simplemente no iniciando sesión.
+            if ($coupon && $coupon->max_uses_per_customer) {
+                $customerEmail = strtolower(trim($validated['customer_email']));
 
-                if ($customerUses >= $coupon->max_uses_per_customer) {
+                $usesQuery = CouponUsage::query()->where('coupon_id', $coupon->id);
+
+                if ($customerId) {
+                    $usesQuery->where('customer_id', $customerId);
+                } else {
+                    $usesQuery->whereIn('order_id', EcommerceOrder::query()
+                        ->whereRaw('LOWER(guest_email) = ?', [$customerEmail])
+                        ->pluck('id'));
+                }
+
+                if ($usesQuery->count() >= $coupon->max_uses_per_customer) {
                     $coupon = null; // Invalidate coupon silently — discount won't apply
                 }
             }
@@ -615,6 +625,7 @@ class CatalogController extends Controller
         $request->validate([
             'code' => ['required', 'string'],
             'cart_total' => ['required', 'numeric', 'min:0'],
+            'email' => ['nullable', 'email'],
         ]);
 
         $coupon = Coupon::query()
@@ -635,15 +646,25 @@ class CatalogController extends Controller
             return response()->json(['valid' => false, 'message' => 'Cupón inválido o expirado.']);
         }
 
-        // Check per-customer usage limit for authenticated customers
+        // Check per-customer usage limit — por customer_id si hay sesión, si
+        // no por email (mismo criterio que checkout(), para que esta
+        // previsualización no muestre "válido" y después el cupón se caiga
+        // silenciosamente al confirmar el pedido).
         $customerId = auth('sanctum')->id();
-        if ($coupon->max_uses_per_customer && $customerId) {
-            $customerUses = CouponUsage::query()
-                ->where('coupon_id', $coupon->id)
-                ->where('customer_id', $customerId)
-                ->count();
+        $email = $request->string('email')->toString();
 
-            if ($customerUses >= $coupon->max_uses_per_customer) {
+        if ($coupon->max_uses_per_customer && ($customerId || $email)) {
+            $usesQuery = CouponUsage::query()->where('coupon_id', $coupon->id);
+
+            if ($customerId) {
+                $usesQuery->where('customer_id', $customerId);
+            } else {
+                $usesQuery->whereIn('order_id', EcommerceOrder::query()
+                    ->whereRaw('LOWER(guest_email) = ?', [strtolower(trim($email))])
+                    ->pluck('id'));
+            }
+
+            if ($usesQuery->count() >= $coupon->max_uses_per_customer) {
                 return response()->json([
                     'valid' => false,
                     'message' => 'Ya alcanzaste el límite de usos de este cupón.',
@@ -711,6 +732,13 @@ class CatalogController extends Controller
 
     /**
      * Apply the best offer discount to a base price.
+     *
+     * 'installments' es intencionalmente un badge informativo (ej. "3 Cuotas
+     * sin interés") y no toca el precio — el descuento real por cuotas, si
+     * corresponde, lo determina Nave en su propio checkout, no una oferta de
+     * catálogo. 'two_for_one' no está soportado todavía (ver Offer/Create.jsx,
+     * se sacó de las opciones seleccionables) — si en el futuro se agrega acá,
+     * también hay que volver a habilitarlo ahí.
      *
      * @param  \Illuminate\Support\Collection<int, \App\Models\Offer>  $offers
      */

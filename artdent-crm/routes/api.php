@@ -9,7 +9,9 @@
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\NaveInstallmentRateApiController;
 use App\Http\Controllers\Api\NavePaymentController;
+use App\Http\Controllers\Api\NavePosPaymentController;
 use App\Http\Controllers\Api\NewsletterApiController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentOptionsController;
@@ -98,6 +100,10 @@ Route::prefix('payment')->name('api.payment.')->group(function (): void {
     Route::post('mp/webhook', [PaymentController::class, 'webhook'])->name('mp.webhook');
     Route::post('nave/create', [NavePaymentController::class, 'create'])->name('nave.create');
     Route::post('nave/webhook', [NavePaymentController::class, 'webhook'])->name('nave.webhook');
+
+    // Cobro presencial/remoto (QR físico + link de pago) desde el POS y
+    // cuentas corrientes — distinto del checkout online de arriba.
+    Route::post('nave/pos/webhook', [NavePosPaymentController::class, 'webhook'])->name('nave.pos.webhook');
 });
 
 /*
@@ -150,6 +156,7 @@ Route::post('coupons/validate', [CatalogController::class, 'validateCoupon'])->n
 |--------------------------------------------------------------------------
 */
 Route::get('payment-options', [PaymentOptionsController::class, 'index'])->name('api.payment-options');
+Route::get('nave/installment-rates', [NaveInstallmentRateApiController::class, 'index'])->name('api.nave.installment-rates');
 
 /*
 |--------------------------------------------------------------------------

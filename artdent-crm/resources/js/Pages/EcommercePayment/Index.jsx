@@ -270,8 +270,9 @@ function PaymentCard({ config, pickupPoints, isDark }) {
                             <p className={`font-semibold mb-1 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Credenciales proporcionadas por Galicia / Nave</p>
                             <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
                                 Para obtenerlas: Nave {'>'} Integraciones {'>'} Tienda Online Propia.
-                                El <strong>pos_id</strong> lo descargás desde Nave {'>'} Integraciones {'>'} Sistema de gestión.
-                                La URL del webhook para Nave es: <code className="font-mono text-xs bg-black/10 px-1 rounded">/api/payment/nave/webhook</code>
+                                Los <strong>POS ID</strong> se descargan desde Nave {'>'} Integraciones {'>'} Sistema de gestión
+                                (checkout online) y Nave {'>'} Negocios {'>'} Agregar medios de cobro {'>'} QR (QR físico presencial).
+                                La URL del webhook para checkout online es: <code className="font-mono text-xs bg-black/10 px-1 rounded">/api/payment/nave/webhook</code>
                             </p>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -304,13 +305,23 @@ function PaymentCard({ config, pickupPoints, isDark }) {
                                 />
                             </div>
                             <div>
-                                <label className={lbl}>POS ID (Punto de Venta)</label>
+                                <label className={lbl}>POS ID — Checkout online</label>
                                 <input
                                     className={inp}
                                     value={form.config.pos_id ?? ''}
                                     onChange={e => setConfigField('pos_id', e.target.value)}
                                     placeholder="f71ba756-1d80-4ab3-9f43-5dc247fd6c4a"
                                 />
+                            </div>
+                            <div>
+                                <label className={lbl}>POS ID — QR físico presencial</label>
+                                <input
+                                    className={inp}
+                                    value={form.config.pos_id_qr ?? ''}
+                                    onChange={e => setConfigField('pos_id_qr', e.target.value)}
+                                    placeholder="e5ff6103-bcdf-4f17-b18b-a45f3d0932c2"
+                                />
+                                <p className="text-xs text-slate-400 mt-1">Usado para el cobro con QR en el POS y en cuentas corrientes.</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">

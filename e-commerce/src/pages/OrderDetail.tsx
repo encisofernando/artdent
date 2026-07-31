@@ -14,6 +14,7 @@ import { getOrder } from '../api/orders'
 import { useAuth } from '../store/auth'
 import { getCustomerOrder, cancelOrder, changePaymentMethod } from '../api/customer'
 import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
+import { createNavePayment } from '../api/nave'
 import { getPaymentOptions, PaymentOption } from '../api/paymentOptions'
 
 const LS_LAST_EMAIL = 'artdent_last_checkout_email'
@@ -36,7 +37,7 @@ const PAY_COLOR: Record<string, string> = {
 }
 
 const PAYMENT_METHOD_ICONS: Record<string, string> = {
-  mercadopago: '💳', bank_transfer: '🏦', qr: '📱', cash: '💵',
+  mercadopago: '💳', bank_transfer: '🏦', qr: '📱', cash: '💵', nave: '🔲',
 }
 
 function StatusTimeline({ status }: { status: string }) {
@@ -276,6 +277,11 @@ export default function OrderDetail() {
     onSuccess: (pref) => { window.location.href = getMpCheckoutUrl(pref) },
   })
 
+  const naveMut = useMutation({
+    mutationFn: () => createNavePayment(code),
+    onSuccess: (intent) => { window.location.href = intent.checkout_url },
+  })
+
   const cancelMut = useMutation({
     mutationFn: () => cancelOrder(code),
     onSuccess: () => {
@@ -446,7 +452,7 @@ export default function OrderDetail() {
                     <span>Método</span>
                     <span className="font-medium text-gray-800">
                       {PAYMENT_METHOD_ICONS[order.selected_payment_method]}{' '}
-                      {({ mercadopago: 'MercadoPago', bank_transfer: 'Transferencia', qr: 'QR', cash: 'Efectivo' } as Record<string, string>)[order.selected_payment_method] ?? order.selected_payment_method}
+                      {({ mercadopago: 'MercadoPago', bank_transfer: 'Transferencia', qr: 'QR', cash: 'Efectivo', nave: 'Nave' } as Record<string, string>)[order.selected_payment_method] ?? order.selected_payment_method}
                     </span>
                   </div>
                 )}
@@ -477,6 +483,23 @@ export default function OrderDetail() {
               )}
               {mpMut.isError && (
                 <p className="mt-2 text-xs text-red-600">{(mpMut.error as any)?.response?.data?.message ?? 'Error al iniciar el pago.'}</p>
+              )}
+
+              {/* Pay button — Nave */}
+              {order.payment_status === 'pending'
+                && order.status !== 'cancelled'
+                && order.selected_payment_method === 'nave' && (
+                <button
+                  onClick={() => naveMut.mutate()}
+                  disabled={naveMut.isPending}
+                  className="mt-4 btn btn-primary w-full py-2.5 gap-2"
+                >
+                  <CreditCard size={16} />
+                  {naveMut.isPending ? 'Redirigiendo…' : 'Pagar con Nave'}
+                </button>
+              )}
+              {naveMut.isError && (
+                <p className="mt-2 text-xs text-red-600">{(naveMut.error as any)?.response?.data?.message ?? 'Error al iniciar el pago.'}</p>
               )}
 
               {/* Change payment method */}

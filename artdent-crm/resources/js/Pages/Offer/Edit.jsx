@@ -8,12 +8,14 @@ import SearchableSelect from '@/Components/SearchableSelect';
 
 const B = { blue: '#397B9C', teal: '#49949C' };
 
+// "2x1" no está en la lista: todavía no tiene lógica de precio implementada
+// en el checkout (ver CatalogController::applyBestOffer) — se sacó para no
+// poder publicar una oferta que muestre el badge sin aplicar el descuento.
 const TYPE_OPTIONS = [
     { value: 'discount_percent', label: '% Descuento' },
     { value: 'discount_fixed', label: '$ Descuento fijo' },
-    { value: 'two_for_one', label: '2x1' },
     { value: 'combo', label: 'Combo' },
-    { value: 'installments', label: 'Cuotas' },
+    { value: 'installments', label: 'Cuotas (badge informativo, no cambia el precio)' },
 ];
 
 const COLOR_OPTIONS = [
