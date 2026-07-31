@@ -3,8 +3,15 @@
     RewriteBase /
 
     RewriteRule ^index\.html$ - [L]
+    RewriteRule ^shell\.html$ - [L]
 
+    # Rutas prerenderizadas (home, nosotros, contacto, etc. — ver
+    # scripts/prerender.mjs) tienen su propio index.html real bajo un
+    # subdirectorio y los sirve Apache directamente (no entran acá porque
+    # !-d falla). Cualquier otra ruta (carrito, checkout, cuenta, producto
+    # dinámico...) cae a shell.html, el CSR vacío — nunca al index.html de
+    # home, para no mostrar un flash del contenido de otra página.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule . /index.html [L]
+    RewriteRule . /shell.html [L]
 </IfModule>

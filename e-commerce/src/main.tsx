@@ -35,7 +35,8 @@ const remoteConfig = await fetchRemoteConfig()
 // Almacena IDs — los scripts se cargan solo tras consentimiento (ver CookieConsent)
 analytics.storeRemoteIds(remoteConfig.analytics)
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootEl = document.getElementById('root')!
+const app = (
   <React.StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -50,3 +51,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>
 )
+
+// Las rutas prerenderizadas (ver scripts/prerender.mjs) llegan al navegador
+// con #root ya lleno de HTML real — hay que hidratar ese contenido en vez
+// de descartarlo y re-renderizar de cero.
+if (rootEl.hasChildNodes()) {
+  ReactDOM.hydrateRoot(rootEl, app)
+} else {
+  ReactDOM.createRoot(rootEl).render(app)
+}
