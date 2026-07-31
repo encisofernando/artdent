@@ -25,13 +25,19 @@ use App\Http\Controllers\CollaboratorAssignController;
 use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\SidebarBannerController;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 /*
 |--------------------------------------------------------------------------
 | E-commerce: Auth pública
 |--------------------------------------------------------------------------
+| Necesita sesión/cookie (login vía guard "customer" + Sanctum) — a
+| diferencia del resto de este archivo, que sigue siendo stateless a
+| propósito (ver comentario arriba). Mismo criterio en customer/*,
+| wishlist/* y el POST de reviews más abajo — el checkout de invitado y
+| todo lo demás quedan sin tocar, nunca deberían depender de una sesión.
 */
-Route::prefix('auth')->name('api.auth.')->group(function (): void {
+Route::middleware(EnsureFrontendRequestsAreStateful::class)->prefix('auth')->name('api.auth.')->group(function (): void {
     Route::post('login', [AuthApiController::class, 'login'])->name('login');
     Route::post('register', [AuthApiController::class, 'register'])->name('register');
     Route::post('social-login', [SocialAuthApiController::class, 'loginWithSocial'])->name('social.login');
@@ -73,7 +79,7 @@ Route::prefix('catalog')->name('api.catalog.')->group(function (): void {
 | E-commerce: Panel del cliente (requiere auth)
 |--------------------------------------------------------------------------
 */
-Route::prefix('customer')->name('api.customer.')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('customer')->name('api.customer.')->middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum'])->group(function (): void {
     Route::get('profile', [CustomerController::class, 'profile'])->name('profile');
     Route::put('profile', [CustomerController::class, 'updateProfile'])->name('profile.update');
     Route::post('password', [CustomerController::class, 'changePassword'])->name('password');
@@ -127,7 +133,7 @@ Route::get('hero-slides', [HeroSlideController::class, 'apiIndex'])->name('api.h
 |--------------------------------------------------------------------------
 */
 Route::get('products/{productId}/reviews', [ReviewController::class, 'index'])->name('api.reviews.index');
-Route::post('products/{productId}/reviews', [ReviewController::class, 'store'])->name('api.reviews.store')->middleware('auth:sanctum');
+Route::post('products/{productId}/reviews', [ReviewController::class, 'store'])->name('api.reviews.store')->middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum']);
 Route::post('reviews/{reviewId}/helpful', [ReviewController::class, 'markHelpful'])->name('api.reviews.helpful');
 Route::post('reviews/{reviewId}/not-helpful', [ReviewController::class, 'markNotHelpful'])->name('api.reviews.not-helpful');
 
@@ -136,7 +142,7 @@ Route::post('reviews/{reviewId}/not-helpful', [ReviewController::class, 'markNot
 | Wishlist (requiere auth)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:sanctum')->prefix('wishlist')->name('api.wishlist.')->group(function (): void {
+Route::middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum'])->prefix('wishlist')->name('api.wishlist.')->group(function (): void {
     Route::get('/', [WishlistController::class, 'index'])->name('index');
     Route::post('/', [WishlistController::class, 'store'])->name('store');
     Route::delete('/{id}', [WishlistController::class, 'destroy'])->name('destroy');

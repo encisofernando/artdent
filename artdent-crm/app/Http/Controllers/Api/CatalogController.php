@@ -92,6 +92,14 @@ class CatalogController extends Controller
             $query->where('brand', $brand);
         }
 
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', $request->float('min_price'));
+        }
+
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', $request->float('max_price'));
+        }
+
         if ($request->boolean('has_offer')) {
             $activeOfferProductIds = Offer::query()
                 ->where('company_id', $companyId)

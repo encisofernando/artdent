@@ -21,13 +21,6 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Solo activa sesión/cookie para requests que llegan con Origin/Referer
-        // de un dominio listado en sanctum.stateful (ver config/sanctum.php) —
-        // no-op para el resto (apps móviles con Bearer token, webhooks, etc.),
-        // que siguen exactamente igual que antes. Habilita el login de
-        // customers del e-commerce vía cookie httpOnly en vez de localStorage.
-        $middleware->statefulApi();
-
         // El terminal HikVision hace POST directo al webhook sin sesión de
         // navegador (no hay forma de que envíe un token CSRF).
         $middleware->validateCsrfTokens(except: [

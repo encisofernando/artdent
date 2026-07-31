@@ -120,6 +120,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Carrusel Hero", path: "/hero-slides", permission: 'ecommerce.edit' },
                         { title: "Banners", path: "/sidebar-banners", permission: 'ecommerce.edit' },
                         { title: "Reseñas", path: "/reviews" },
+                        { title: "Newsletter", path: "/newsletter-subscribers" },
                         { title: "Puntos de Retiro", path: "/shipping-pickup-points", permission: 'ecommerce.edit' },
                         { title: "Moto Mandados", path: "/shipping-moto-companies", permission: 'ecommerce.edit' },
                         { title: "Métodos de Pago", path: "/ecommerce-payment-configs", permission: 'settings.edit' },

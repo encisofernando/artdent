@@ -12,6 +12,7 @@ use App\Http\Controllers\EcommerceOrderController;
 use App\Http\Controllers\EcommerceOrderItemController;
 use App\Http\Controllers\EcommercePaymentConfigController;
 use App\Http\Controllers\HeroSlideController;
+use App\Http\Controllers\NewsletterSubscriberController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ShippingMotoCompanyController;
@@ -60,6 +61,9 @@ Route::middleware('module:ecommerce')->group(function () {
     Route::resource('reviews', ReviewController::class)->middleware('permission:ecommerce.view');
     Route::resource('sidebar-banners', SidebarBannerController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('permission:ecommerce.edit');
     Route::resource('hero-slides', HeroSlideController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('permission:ecommerce.edit');
+    Route::get('newsletter-subscribers', [NewsletterSubscriberController::class, 'index'])->name('newsletter-subscribers.index')->middleware('permission:ecommerce.view');
+    Route::get('newsletter-subscribers/export', [NewsletterSubscriberController::class, 'exportCsv'])->name('newsletter-subscribers.export')->middleware('permission:ecommerce.view');
+    Route::delete('newsletter-subscribers/{newsletter_subscriber}', [NewsletterSubscriberController::class, 'destroy'])->name('newsletter-subscribers.destroy')->middleware('permission:ecommerce.delete');
 
     // Configuraciones y Logística E-commerce
     Route::resource('shipping-pickup-points', ShippingPickupPointController::class)->except(['show'])->middleware('permission:ecommerce.edit');
