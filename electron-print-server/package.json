@@ -42,6 +42,10 @@
         "AppImage",
         "deb"
       ],
+      "arch": [
+        "x64",
+        "arm64"
+      ],
       "category": "Utility",
       "maintainer": "ArtDent",
       "synopsis": "Servidor de Impresion ArtDent"

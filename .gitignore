@@ -36,6 +36,13 @@ electron-print-server/dist/
 
 # --- Android (Capacitor) ---
 artdent-android/node_modules/
+artdent-android/android/build/
+artdent-android/android/app/build/
+artdent-android/android/capacitor-cordova-android-plugins/build/
+artdent-android/android/.gradle/
+artdent-android/android/local.properties
+*.keystore
+*.jks
 
 # --- Carpetas/archivos personales de trabajo, nunca al repo ---
 # (dumps SQL con datos reales, recibos/comprobantes personales, credenciales
