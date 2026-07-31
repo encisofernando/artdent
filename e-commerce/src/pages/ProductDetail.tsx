@@ -12,6 +12,7 @@ import CountdownTimer from '../components/CountdownTimer'
 import { analytics } from '../api/analytics'
 import { getPaymentOptions } from '../api/paymentOptions'
 import NaveInstallmentsModal from '../components/NaveInstallmentsModal'
+import { sanitizeHtml } from '../lib/sanitizeHtml'
 
 const LOW_STOCK_THRESHOLD = 5
 
@@ -669,7 +670,7 @@ export default function ProductDetail() {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Descripción del producto</h2>
               <div
                 className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: product.description }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
               />
             </div>
           )}

@@ -7,6 +7,7 @@ type AuthState = {
   isAuthenticated: boolean
   signIn: (email: string, password: string) => Promise<void>
   signInWithSocial: (provider: 'google' | 'facebook', accessToken: string) => Promise<void>
+  signUp: (payload: Parameters<typeof AuthAPI.register>[0]) => Promise<void>
   signOut: () => Promise<void>
   refreshMe: () => Promise<void>
 }
@@ -17,18 +18,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthAPI.User | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
+  // La sesión vive en una cookie httpOnly (ver api/http.ts) — no hay nada que
+  // leer en localStorage, así que siempre se pregunta al backend.
   async function refreshMe() {
-    const token = localStorage.getItem('artdent_token')
-    if (!token) {
-      setUser(null)
-      setIsLoading(false)
-      return
-    }
     try {
       const me = await AuthAPI.me()
       setUser(me)
     } catch {
-      localStorage.removeItem('artdent_token')
       setUser(null)
     } finally {
       setIsLoading(false)
@@ -36,22 +32,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signIn(email: string, password: string) {
-    const { token } = await AuthAPI.login(email, password)
-    localStorage.setItem('artdent_token', token)
-    await refreshMe()
+    const { user: loggedIn } = await AuthAPI.login(email, password)
+    setUser(loggedIn)
   }
 
   async function signInWithSocial(provider: 'google' | 'facebook', accessToken: string) {
-    const { token } = await AuthAPI.socialLogin(provider, accessToken)
-    localStorage.setItem('artdent_token', token)
-    await refreshMe()
+    const { user: loggedIn } = await AuthAPI.socialLogin(provider, accessToken)
+    setUser(loggedIn)
+  }
+
+  async function signUp(payload: Parameters<typeof AuthAPI.register>[0]) {
+    const { user: created } = await AuthAPI.register(payload)
+    setUser(created)
   }
 
   async function signOut() {
     try {
       await AuthAPI.logout()
     } finally {
-      localStorage.removeItem('artdent_token')
       setUser(null)
     }
   }
@@ -67,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!user,
     signIn,
     signInWithSocial,
+    signUp,
     signOut,
     refreshMe
   }), [user, isLoading])

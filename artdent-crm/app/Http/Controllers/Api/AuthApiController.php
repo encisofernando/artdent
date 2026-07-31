@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\EcommerceOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
@@ -35,10 +36,10 @@ class AuthApiController extends Controller
 
         $this->linkGuestOrders($customer);
 
-        $token = $customer->createToken('ecommerce')->plainTextToken;
+        Auth::guard('customer')->login($customer, true);
+        $request->session()->regenerate();
 
         return response()->json([
-            'token' => $token,
             'user' => $this->customerData($customer),
         ]);
     }
@@ -70,10 +71,10 @@ class AuthApiController extends Controller
 
         $this->linkGuestOrders($customer);
 
-        $token = $customer->createToken('ecommerce')->plainTextToken;
+        Auth::guard('customer')->login($customer, true);
+        $request->session()->regenerate();
 
         return response()->json([
-            'token' => $token,
             'user' => $this->customerData($customer),
         ], 201);
     }
@@ -87,7 +88,9 @@ class AuthApiController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        Auth::guard('customer')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json(['message' => 'Sesión cerrada.']);
     }

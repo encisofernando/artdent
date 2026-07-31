@@ -15,7 +15,7 @@ export type User = {
   has_password?: boolean
 }
 
-export async function login(email: string, password: string): Promise<{ token: string }> {
+export async function login(email: string, password: string): Promise<{ user: User }> {
   const { data } = await http.post('/auth/login', { email, password })
   return data
 }
@@ -23,7 +23,7 @@ export async function login(email: string, password: string): Promise<{ token: s
 export async function socialLogin(
   provider: 'google' | 'facebook',
   accessToken: string,
-): Promise<{ token: string; user: User }> {
+): Promise<{ user: User }> {
   const { data } = await http.post('/auth/social-login', { provider, access_token: accessToken })
   return data
 }
@@ -35,8 +35,9 @@ export async function register(payload: {
   password_confirmation: string
   phone?: string
   dni?: string
+  cuit?: string
   accepts_marketing?: boolean
-}): Promise<any> {
+}): Promise<{ user: User }> {
   const { data } = await http.post('/auth/register', payload)
   return data
 }

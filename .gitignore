@@ -26,6 +26,10 @@ e-commerce/.DS_Store
 e-commerce/npm-debug.log*
 e-commerce/yarn-error.log*
 e-commerce/pnpm-lock.yaml
+e-commerce/.env
+e-commerce/.env.production
+e-commerce/.env.local
+e-commerce/.env.*.local
 
 # --- Backend (Laravel) ---
 artdent-crm/vendor/

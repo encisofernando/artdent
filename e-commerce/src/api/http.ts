@@ -8,32 +8,28 @@ export const backendOrigin = baseURL.replace(/\/api\/?$/, '')
 
 export const http = axios.create({
   baseURL,
+  // La sesión de customer viaja en una cookie httpOnly (Sanctum SPA), no en
+  // localStorage — withCredentials envía/recibe esa cookie en cada request,
+  // withXSRFToken hace que axios adjunte el header X-XSRF-TOKEN aunque el
+  // backend esté en otro subdominio (shop.artdent.com.ar → pos.artdent.com.ar).
+  withCredentials: true,
+  withXSRFToken: true,
   headers: {
     'Accept': 'application/json',
     ...(usesLocalTunnel ? { 'bypass-tunnel-reminder': 'true' } : {}),
   }
 })
 
-http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('artdent_token')
-  if (token) {
-    config.headers = config.headers || {}
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-http.interceptors.response.use(
-  (r) => r,
-  (err) => {
-    const status = err?.response?.status
-    if (status === 401) {
-      // Token inválido/expirado
-      localStorage.removeItem('artdent_token')
-    }
-    return Promise.reject(err)
-  }
-)
+/**
+ * Pide la cookie CSRF (XSRF-TOKEN) al backend — hay que llamarla antes del
+ * primer request que mute estado (login, register, checkout, etc.) para que
+ * Sanctum acepte la sesión. Laravel renueva esa cookie en cada respuesta
+ * mientras la sesión está activa, así que alcanza con pedirla una vez al
+ * arrancar la app.
+ */
+export function ensureCsrfCookie(): Promise<unknown> {
+  return axios.get(`${backendOrigin}/sanctum/csrf-cookie`, { withCredentials: true })
+}
 
 /**
  * Convierte una ruta relativa de storage (/storage/...) en URL absoluta

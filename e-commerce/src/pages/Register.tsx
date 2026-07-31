@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../store/auth'
-import { http } from '../api/http'
 import SocialButtons from '../components/SocialButtons'
 import { analytics } from '../api/analytics'
 
 export default function Register() {
-  const { signIn } = useAuth()
+  const { signUp } = useAuth()
 
   const [form, setForm] = useState({
     name: '',
@@ -37,7 +36,7 @@ export default function Register() {
       const cleanDoc = form.dni.replace(/\D/g, '')
       const isCuit = cleanDoc.length === 11
 
-      await http.post('/auth/register', {
+      await signUp({
         name: form.name,
         email: form.email,
         password: form.password,
@@ -48,7 +47,6 @@ export default function Register() {
         accepts_marketing: form.accepts_marketing,
       })
       analytics.signup('email')
-      await signIn(form.email, form.password)
       window.location.replace('/mi-cuenta')
     } catch (err: any) {
       const msg = err?.response?.data?.errors

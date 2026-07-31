@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\EcommerceOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
 class SocialAuthApiController extends Controller
@@ -17,8 +18,8 @@ class SocialAuthApiController extends Controller
      * Frontend sends a short-lived access_token obtained from the provider SDK
      * (Google Identity Services or Facebook JS SDK).
      * Backend verifies the token against the provider's API, finds or creates
-     * a Customer, links accounts if the email already exists, and returns a
-     * Sanctum token.
+     * a Customer, links accounts if the email already exists, and logs the
+     * customer in via cookie de sesión (guard "customer").
      *
      * POST /api/auth/social-login
      * Body: { provider: "google"|"facebook", access_token: "..." }
@@ -81,11 +82,11 @@ class SocialAuthApiController extends Controller
         // 5. Link any guest orders by email / dni
         $this->linkGuestOrders($customer);
 
-        // 6. Issue Sanctum token
-        $token = $customer->createToken('ecommerce-social')->plainTextToken;
+        // 6. Log the customer in via cookie de sesión
+        Auth::guard('customer')->login($customer, true);
+        $request->session()->regenerate();
 
         return response()->json([
-            'token' => $token,
             'user' => $this->customerData($customer),
         ]);
     }
