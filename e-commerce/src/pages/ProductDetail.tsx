@@ -361,6 +361,8 @@ export default function ProductDetail() {
                         src={img.url}
                         alt={`${product.name} vista ${idx + 1}`}
                         className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                       />
                     </button>
                   ))}
@@ -466,6 +468,8 @@ export default function ProductDetail() {
                         src={img.url}
                         alt={`${product.name} vista ${idx + 1}`}
                         className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                       />
                     </button>
                   ))}
