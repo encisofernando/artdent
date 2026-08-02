@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\EcommerceOrder;
+use App\Models\EcommerceOrderItem;
 use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -94,8 +95,8 @@ class ReportesController extends Controller
             ->sum('amount');
         $prevCashFlow = $prevRevenue - $prevExpenses;
 
-        // ── Top products ──────────────────────────────────────────────────────
-        $topProducts = SaleItem::select(
+        // ── Top products (POS + e-commerce combinados) ─────────────────────────
+        $posTopProducts = SaleItem::select(
             'product_name',
             DB::raw('SUM(quantity) as qty_sold'),
             DB::raw('SUM(total) as revenue')
@@ -106,14 +107,30 @@ class ReportesController extends Controller
                 ->whereBetween('sold_at', [$start, $end])
             )
             ->groupBy('product_name')
-            ->orderByDesc('revenue')
-            ->limit(5)
-            ->get()
-            ->map(fn ($row) => [
-                'name' => $row->product_name,
-                'qty' => (float) $row->qty_sold,
-                'revenue' => (float) $row->revenue,
+            ->get();
+
+        $ecoTopProducts = EcommerceOrderItem::select(
+            'product_name',
+            DB::raw('SUM(quantity) as qty_sold'),
+            DB::raw('SUM(total) as revenue')
+        )
+            ->whereHas('ecommerce_order', fn ($q) => $q
+                ->where('payment_status', 'paid')
+                ->whereBetween('created_at', [$start, $end])
+            )
+            ->groupBy('product_name')
+            ->get();
+
+        $topProducts = $posTopProducts->concat($ecoTopProducts)
+            ->groupBy('product_name')
+            ->map(fn ($rows, $name) => [
+                'name' => $name,
+                'qty' => (float) $rows->sum('qty_sold'),
+                'revenue' => (float) $rows->sum('revenue'),
             ])
+            ->sortByDesc('revenue')
+            ->take(5)
+            ->values()
             ->toArray();
 
         // ── Top customers ─────────────────────────────────────────────────────
