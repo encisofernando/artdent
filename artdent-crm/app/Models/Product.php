@@ -31,6 +31,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property bool|null $has_variants
  * @property bool|null $track_stock
  * @property float|null $weight
+ * @property int|null $width_cm
+ * @property int|null $height_cm
+ * @property int|null $depth_cm
  * @property bool|null $is_active
  * @property bool|null $is_featured
  * @property string|null $meta_title
@@ -71,6 +74,9 @@ class Product extends Model
         'has_variants' => 'bool',
         'track_stock' => 'bool',
         'weight' => 'float',
+        'width_cm' => 'int',
+        'height_cm' => 'int',
+        'depth_cm' => 'int',
         'is_active' => 'bool',
         'is_featured' => 'bool',
         'internal_use' => 'bool',
@@ -101,6 +107,9 @@ class Product extends Model
         'track_stock',
         'min_stock',
         'weight',
+        'width_cm',
+        'height_cm',
+        'depth_cm',
         'is_active',
         'is_featured',
         'meta_title',

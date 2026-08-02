@@ -4,6 +4,7 @@ import { CreditCard, MapPin, Bike, Home, ChevronRight, Check, Package, Landmark,
 import { useQuery } from '@tanstack/react-query'
 import { checkout, trackCart } from '../api/orders'
 import { getShippingOptions, type PickupPoint, type MotoCompany } from '../api/shipping'
+import { useDebounce } from '../hooks/useDebounce'
 import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
 import { getAddresses, type CustomerAddress } from '../api/customer'
 import { useCart } from '../store/cart'
@@ -324,7 +325,9 @@ function StepShipping({
   onBack: () => void; onNext: () => void
 }) {
   const { isAuthenticated } = useAuth()
+  const cart = useCart()
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
+  const debouncedPostalCode = useDebounce(postalCode, 500)
 
   const { data: savedAddresses = [] } = useQuery({
     queryKey: ['addresses'],
@@ -350,9 +353,14 @@ function StepShipping({
     if (!selectedMethod) setSelectedMethod('home_delivery')
   }
 
+  const quoteItems = useMemo(
+    () => cart.items.map((it) => ({ product_id: it.product.id, qty: it.qty })),
+    [cart.items]
+  )
+
   const { data: options, isLoading } = useQuery({
-    queryKey: ['shipping_options', city, province],
-    queryFn: () => getShippingOptions({ city, province }),
+    queryKey: ['shipping_options', city, province, debouncedPostalCode, quoteItems],
+    queryFn: () => getShippingOptions({ city, province, postal_code: debouncedPostalCode || undefined, items: quoteItems }),
     staleTime: 60_000,
   })
 
@@ -728,10 +736,25 @@ export default function Checkout() {
     saveDraft({ step, name, email, phone, dni, notes, city, province, address, postalCode })
   }, [step, name, email, phone, dni, notes, city, province, address, postalCode])
 
+  const debouncedPostalCodeForQuote = useDebounce(postalCode, 500)
+  const quoteItemsForCost = useMemo(
+    () => cart.items.map((it) => ({ product_id: it.product.id, qty: it.qty })),
+    [cart.items]
+  )
+  // Mismo queryKey que usa StepShipping — React Query reutiliza el resultado
+  // ya en caché en vez de duplicar el pedido a la API.
+  const { data: shippingOptionsForCost } = useQuery({
+    queryKey: ['shipping_options', city, province, debouncedPostalCodeForQuote, quoteItemsForCost],
+    queryFn: () => getShippingOptions({ city, province, postal_code: debouncedPostalCodeForQuote || undefined, items: quoteItemsForCost }),
+    staleTime: 60_000,
+    enabled: selectedMethod === 'home_delivery',
+  })
+
   const shippingCost = useMemo(() => {
     if (selectedMethod === 'moto' && selectedMotoCompany) return selectedMotoCompany.price
+    if (selectedMethod === 'home_delivery') return shippingOptionsForCost?.home_delivery.cost ?? 0
     return 0
-  }, [selectedMethod, selectedMotoCompany])
+  }, [selectedMethod, selectedMotoCompany, shippingOptionsForCost])
 
   const shippingLabel = useMemo(() => {
     if (selectedMethod === 'home_delivery') return 'Domicilio'

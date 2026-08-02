@@ -124,6 +124,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Puntos de Retiro", path: "/shipping-pickup-points", permission: 'ecommerce.edit' },
                         { title: "Moto Mandados", path: "/shipping-moto-companies", permission: 'ecommerce.edit' },
                         { title: "Métodos de Pago", path: "/ecommerce-payment-configs", permission: 'settings.edit' },
+                        { title: "Transportistas", path: "/shipping-carrier-configs", permission: 'settings.edit' },
                         { title: "Reportes MP", path: "/ecommerce-reports", permission: 'reports.view' },
                     ],
                 },

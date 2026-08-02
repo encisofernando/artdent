@@ -8,8 +8,10 @@ use App\Models\CrmNotification;
 use App\Models\EcommerceOrder;
 use App\Models\Invoice;
 use App\Models\Stock;
+use App\Services\AndreaniService;
 use App\Services\MercadoPagoRefundService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Inertia\Inertia;
 
 class EcommerceOrderController extends Controller
@@ -250,6 +252,161 @@ class EcommerceOrderController extends Controller
         $ecommerceOrder->delete();
 
         return redirect()->route('ecommerce-orders.index')->with('success', 'Pedido eliminado.');
+    }
+
+    /**
+     * Da de alta el envío real en Andreani para este pedido. Tiene efecto en
+     * el mundo real (Andreani planifica el retiro), por eso solo se dispara
+     * desde una acción explícita del admin, nunca automáticamente.
+     */
+    public function createAndreaniShipment(EcommerceOrder $ecommerceOrder)
+    {
+        if ($ecommerceOrder->shipping_method_type !== 'home_delivery') {
+            return back()->withErrors(['andreani' => 'Este pedido no es de envío a domicilio.']);
+        }
+
+        $existing = $ecommerceOrder->shipments()->where('carrier', 'andreani')->first();
+        if ($existing) {
+            return back()->withErrors(['andreani' => 'Este pedido ya tiene un envío de Andreani creado.']);
+        }
+
+        $resultado = (new AndreaniService)->crearOrdenParaPedido($ecommerceOrder);
+
+        if (! $resultado['ok']) {
+            return back()->withErrors(['andreani' => $resultado['message']]);
+        }
+
+        // El identificador que devuelve la orden (pedidoId) todavía no es un
+        // número de tracking público válido — Andreani lo resuelve recién
+        // cuando asigna el envío a un reparto real. Hasta entonces se guarda
+        // como tracking_code (sirve para saber que la orden existe) pero sin
+        // tracking_url, porque el link público no va a resolver todavía.
+        $ecommerceOrder->shipments()->create([
+            'carrier' => 'andreani',
+            'tracking_code' => $resultado['numero'],
+            'status' => 'preparing',
+            'shipped_at' => now(),
+        ]);
+
+        return back()->with('success', 'Envío creado en Andreani correctamente.');
+    }
+
+    /**
+     * Descarga la etiqueta PDF del envío de Andreani ya creado para este
+     * pedido. La etiqueta se pide con el número de tracking real, no con el
+     * pedidoId de la orden — hay que resolverlo primero contra /Shipments.
+     */
+    public function downloadAndreaniLabel(EcommerceOrder $ecommerceOrder): Response
+    {
+        $shipment = $ecommerceOrder->shipments()->where('carrier', 'andreani')->first();
+
+        abort_unless($shipment && $shipment->tracking_code, 404, 'Este pedido no tiene un envío de Andreani creado.');
+
+        $service = new AndreaniService;
+        $trackingNumber = $this->resolveAndreaniTrackingNumber($service, $ecommerceOrder, $shipment);
+
+        abort_unless($trackingNumber !== null, 409, 'Andreani todavía no asignó el envío a un reparto — todavía no se puede descargar la etiqueta. Probá de nuevo más tarde o actualizá el estado.');
+
+        $pdf = $service->getEtiqueta($trackingNumber);
+
+        abort_unless($pdf !== null, 502, 'No se pudo obtener la etiqueta de Andreani.');
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="etiqueta-'.$ecommerceOrder->order_number.'.pdf"',
+        ]);
+    }
+
+    /**
+     * Consulta contra Andreani el estado real del envío y actualiza el
+     * tracking local — reemplaza la carga manual para pedidos con envío de
+     * Andreani ya creado. Se consulta por el número de pedido de ArtDent
+     * (el "remito" que se mandó al crear la orden), no por el pedidoId.
+     */
+    public function refreshAndreaniTracking(EcommerceOrder $ecommerceOrder)
+    {
+        $shipment = $ecommerceOrder->shipments()->where('carrier', 'andreani')->first();
+
+        if (! $shipment || ! $shipment->tracking_code) {
+            return back()->withErrors(['andreani' => 'Este pedido no tiene un envío de Andreani creado.']);
+        }
+
+        $info = (new AndreaniService)->consultarEnvio($ecommerceOrder->order_number);
+
+        if ($info === null) {
+            return back()->withErrors(['andreani' => 'No se pudo consultar el estado del envío en Andreani.']);
+        }
+
+        $trackingNumber = $info['trackingNumber'] ?? null;
+        $mappedStatus = $this->mapAndreaniStatus($info['status'] ?? null);
+
+        $update = array_filter([
+            'status' => $mappedStatus,
+        ], fn ($v) => $v !== null);
+
+        if ($trackingNumber && $trackingNumber !== $shipment->tracking_code) {
+            $update['tracking_code'] = $trackingNumber;
+            $update['tracking_url'] = (new AndreaniService)->trackingUrl($trackingNumber);
+        }
+
+        if ($mappedStatus === 'delivered' && ! $shipment->delivered_at) {
+            $update['delivered_at'] = now();
+        }
+
+        if (! empty($update)) {
+            $shipment->update($update);
+        }
+
+        return back()->with('success', 'Estado del envío actualizado desde Andreani.');
+    }
+
+    /**
+     * Resuelve el número de tracking real para pedir la etiqueta: si ya lo
+     * tenemos guardado (post actualización de estado) lo usa directo; si no,
+     * hace una consulta puntual contra /Shipments y lo persiste si aparece.
+     */
+    private function resolveAndreaniTrackingNumber(AndreaniService $service, EcommerceOrder $order, $shipment): ?string
+    {
+        $info = $service->consultarEnvio($order->order_number);
+        $trackingNumber = $info['trackingNumber'] ?? null;
+
+        if (! $trackingNumber) {
+            return null;
+        }
+
+        if ($trackingNumber !== $shipment->tracking_code) {
+            $shipment->update([
+                'tracking_code' => $trackingNumber,
+                'tracking_url' => $service->trackingUrl($trackingNumber),
+            ]);
+        }
+
+        return $trackingNumber;
+    }
+
+    /**
+     * Andreani no documenta públicamente los valores exactos de "status"
+     * para /api/v1/Shipments — confirmado en vivo que el estado inicial es
+     * "created" (en inglés). Se mapea de forma defensiva por palabra clave,
+     * en español e inglés, y se deja sin tocar (null) el resto para no pisar
+     * una carga manual con un valor no reconocido.
+     */
+    private function mapAndreaniStatus(?string $status): ?string
+    {
+        if (! $status) {
+            return null;
+        }
+
+        $normalized = strtolower($status);
+
+        return match (true) {
+            str_contains($normalized, 'entreg'), str_contains($normalized, 'deliver') => 'delivered',
+            str_contains($normalized, 'devuel'), str_contains($normalized, 'rechaz'), str_contains($normalized, 'return') => 'returned',
+            str_contains($normalized, 'transito'), str_contains($normalized, 'tránsito'), str_contains($normalized, 'camino'), str_contains($normalized, 'transit') => 'in_transit',
+            str_contains($normalized, 'retir'), str_contains($normalized, 'despach'), str_contains($normalized, 'enviad'), str_contains($normalized, 'shipped'), str_contains($normalized, 'dispatch') => 'shipped',
+            str_contains($normalized, 'created'), str_contains($normalized, 'creado'), str_contains($normalized, 'pending') => 'preparing',
+            default => null,
+        };
     }
 
     // Kept for route completeness — not used

@@ -15,6 +15,7 @@ use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\NewsletterSubscriberController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ShippingCarrierConfigController;
 use App\Http\Controllers\ShippingMotoCompanyController;
 use App\Http\Controllers\ShippingPickupPointController;
 use App\Http\Controllers\SidebarBannerController;
@@ -49,6 +50,9 @@ Route::middleware('module:ecommerce')->group(function () {
     Route::put('ecommerce-orders/{ecommerce_order}', [EcommerceOrderController::class, 'update'])->name('ecommerce-orders.update')->middleware('permission:ecommerce.edit');
     Route::post('ecommerce-orders/{ecommerce_order}/generate-invoice', [EcommerceOrderController::class, 'generateInvoice'])->name('ecommerce-orders.generate-invoice')->middleware('permission:ecommerce.edit');
     Route::delete('ecommerce-orders/{ecommerce_order}', [EcommerceOrderController::class, 'destroy'])->name('ecommerce-orders.destroy')->middleware('permission:ecommerce.delete');
+    Route::post('ecommerce-orders/{ecommerce_order}/andreani/shipment', [EcommerceOrderController::class, 'createAndreaniShipment'])->name('ecommerce-orders.andreani.shipment')->middleware('permission:ecommerce.edit');
+    Route::get('ecommerce-orders/{ecommerce_order}/andreani/label', [EcommerceOrderController::class, 'downloadAndreaniLabel'])->name('ecommerce-orders.andreani.label')->middleware('permission:ecommerce.view');
+    Route::post('ecommerce-orders/{ecommerce_order}/andreani/tracking', [EcommerceOrderController::class, 'refreshAndreaniTracking'])->name('ecommerce-orders.andreani.tracking')->middleware('permission:ecommerce.edit');
     Route::resource('ecommerce-order-items', EcommerceOrderItemController::class)->middleware('permission:ecommerce.view');
 
     // Cupones y Ofertas
@@ -70,6 +74,10 @@ Route::middleware('module:ecommerce')->group(function () {
     Route::resource('shipping-moto-companies', ShippingMotoCompanyController::class)->except(['show'])->middleware('permission:ecommerce.edit');
     Route::get('ecommerce-payment-configs', [EcommercePaymentConfigController::class, 'index'])->name('ecommerce-payment-configs.index')->middleware('permission:settings.edit');
     Route::put('ecommerce-payment-configs/{type}', [EcommercePaymentConfigController::class, 'update'])->name('ecommerce-payment-configs.update')->middleware('permission:settings.edit');
+
+    Route::get('shipping-carrier-configs', [ShippingCarrierConfigController::class, 'index'])->name('shipping-carrier-configs.index')->middleware('permission:settings.edit');
+    Route::put('shipping-carrier-configs/{type}', [ShippingCarrierConfigController::class, 'update'])->name('shipping-carrier-configs.update')->middleware('permission:settings.edit');
+    Route::post('shipping-carrier-configs/{type}/test', [ShippingCarrierConfigController::class, 'testConnection'])->name('shipping-carrier-configs.test')->middleware('permission:settings.edit');
 
     // Reportes Financieros / Mercado Pago
     Route::prefix('ecommerce-reports')->name('ecommerce-reports.')->group(function () {

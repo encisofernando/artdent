@@ -29,6 +29,9 @@ export type ShippingOptions = {
     available: boolean
     label: string
     description: string
+    /** Costo real cotizado con Andreani — null si todavía no se puede cotizar (falta CP, carrito, o algún producto sin dimensiones cargadas). */
+    cost: number | null
+    quote_pending: boolean
   }
   pickup_points: {
     available: boolean
@@ -44,7 +47,14 @@ export type ShippingOptions = {
   }
 }
 
-export async function getShippingOptions(params: { city?: string; province?: string } = {}): Promise<ShippingOptions> {
+export type ShippingQuoteItem = { product_id: number; qty: number }
+
+export async function getShippingOptions(params: {
+  city?: string
+  province?: string
+  postal_code?: string
+  items?: ShippingQuoteItem[]
+} = {}): Promise<ShippingOptions> {
   const { data } = await http.get('/shipping/options', { params })
   return data
 }

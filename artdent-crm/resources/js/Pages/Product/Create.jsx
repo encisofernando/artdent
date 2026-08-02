@@ -4,7 +4,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import {
     ArrowLeft, Save, Package, DollarSign, Image, Tag, Loader2,
-    Star, X, Video, GripVertical, AlertTriangle, RefreshCcw,
+    Star, X, Video, GripVertical, AlertTriangle, RefreshCcw, Truck,
 } from 'lucide-react';
 import VariantGenerator from '@/Components/VariantGenerator';
 import RichTextEditor from '@/Components/RichTextEditor';
@@ -317,6 +317,10 @@ export default function Create({ auth, categories = [], vendors = [], usdExchang
         track_stock: 1,
         stock_quantity: '',
         min_stock: '',
+        weight: '',
+        width_cm: '',
+        height_cm: '',
+        depth_cm: '',
         images: [],
         video: null,
     });
@@ -705,6 +709,41 @@ export default function Create({ auth, categories = [], vendors = [], usdExchang
                                     </p>
                                 </div>
                             )}
+                        </div>
+                    </SectionCard>
+
+                    {/* ── envío ── */}
+                    <SectionCard icon={Truck} title="Envío" isDark={isDark}>
+                        <div className="flex flex-col gap-3">
+                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                Peso y dimensiones del bulto — los usa la cotización automática de envío (Andreani). Sin estos datos no se puede cotizar el producto.
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <Field label="Peso (kg)" error={errors.weight}>
+                                    <Input isDark={isDark} type="number" step="0.001" value={data.weight}
+                                        onChange={e => setData('weight', e.target.value)}
+                                        placeholder="0.5" className="font-mono"
+                                    />
+                                </Field>
+                                <Field label="Ancho (cm)" error={errors.width_cm}>
+                                    <Input isDark={isDark} type="number" value={data.width_cm}
+                                        onChange={e => setData('width_cm', e.target.value)}
+                                        placeholder="10" className="font-mono"
+                                    />
+                                </Field>
+                                <Field label="Alto (cm)" error={errors.height_cm}>
+                                    <Input isDark={isDark} type="number" value={data.height_cm}
+                                        onChange={e => setData('height_cm', e.target.value)}
+                                        placeholder="10" className="font-mono"
+                                    />
+                                </Field>
+                                <Field label="Largo (cm)" error={errors.depth_cm}>
+                                    <Input isDark={isDark} type="number" value={data.depth_cm}
+                                        onChange={e => setData('depth_cm', e.target.value)}
+                                        placeholder="10" className="font-mono"
+                                    />
+                                </Field>
+                            </div>
                         </div>
                     </SectionCard>
 
