@@ -45,7 +45,13 @@ Route::middleware(EnsureFrontendRequestsAreStateful::class)->prefix('auth')->nam
     Route::post('password/forgot', [AuthApiController::class, 'forgotPassword'])->name('password.forgot');
     Route::post('password/reset', [AuthApiController::class, 'resetPassword'])->name('password.reset');
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    // auth:customer (no auth:sanctum): Sanctum acepta sesión de "web" o
+    // "customer" (config/sanctum.php), probando "web" primero — si hay una
+    // sesión de staff activa en el mismo dominio de cookie sin sesión de
+    // cliente, "auth:sanctum" autenticaba igual y el controller crasheaba al
+    // pedir explícitamente el guard "customer" (que daba null). Esta ruta es
+    // específicamente para clientes del e-commerce, así que exige ese guard.
+    Route::middleware('auth:customer')->group(function (): void {
         Route::get('me', [AuthApiController::class, 'me'])->name('me');
         Route::post('logout', [AuthApiController::class, 'logout'])->name('logout');
     });
@@ -80,7 +86,7 @@ Route::prefix('catalog')->name('api.catalog.')->group(function (): void {
 | E-commerce: Panel del cliente (requiere auth)
 |--------------------------------------------------------------------------
 */
-Route::prefix('customer')->name('api.customer.')->middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum'])->group(function (): void {
+Route::prefix('customer')->name('api.customer.')->middleware([EnsureFrontendRequestsAreStateful::class, 'auth:customer'])->group(function (): void {
     Route::get('profile', [CustomerController::class, 'profile'])->name('profile');
     Route::put('profile', [CustomerController::class, 'updateProfile'])->name('profile.update');
     Route::post('password', [CustomerController::class, 'changePassword'])->name('password');
@@ -136,7 +142,7 @@ Route::get('hero-slides', [HeroSlideController::class, 'apiIndex'])->name('api.h
 |--------------------------------------------------------------------------
 */
 Route::get('products/{productId}/reviews', [ReviewController::class, 'index'])->name('api.reviews.index');
-Route::post('products/{productId}/reviews', [ReviewController::class, 'store'])->name('api.reviews.store')->middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum']);
+Route::post('products/{productId}/reviews', [ReviewController::class, 'store'])->name('api.reviews.store')->middleware([EnsureFrontendRequestsAreStateful::class, 'auth:customer']);
 Route::post('reviews/{reviewId}/helpful', [ReviewController::class, 'markHelpful'])->name('api.reviews.helpful');
 Route::post('reviews/{reviewId}/not-helpful', [ReviewController::class, 'markNotHelpful'])->name('api.reviews.not-helpful');
 
@@ -145,7 +151,7 @@ Route::post('reviews/{reviewId}/not-helpful', [ReviewController::class, 'markNot
 | Wishlist (requiere auth)
 |--------------------------------------------------------------------------
 */
-Route::middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum'])->prefix('wishlist')->name('api.wishlist.')->group(function (): void {
+Route::middleware([EnsureFrontendRequestsAreStateful::class, 'auth:customer'])->prefix('wishlist')->name('api.wishlist.')->group(function (): void {
     Route::get('/', [WishlistController::class, 'index'])->name('index');
     Route::post('/', [WishlistController::class, 'store'])->name('store');
     Route::delete('/{id}', [WishlistController::class, 'destroy'])->name('destroy');
