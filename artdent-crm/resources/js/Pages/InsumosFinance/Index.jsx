@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import {
     ArrowDownCircle,
     ArrowUpCircle,
     Calendar,
+    Eye,
     MinusCircle,
     Plus,
     Search,
@@ -144,7 +145,7 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
                     </div>
                     <div>
                         <h1 className={`text-2xl font-extrabold ${text}`}>Ingresos y Egresos de Insumos</h1>
-                        <p className={`text-sm mt-1 ${sub}`}>Movimientos manuales que no vienen de ventas ni de pagos a proveedores.</p>
+                        <p className={`text-sm mt-1 ${sub}`}>Ventas y pagos a proveedores automáticos, más los ingresos y egresos que cargues a mano.</p>
                     </div>
                 </div>
 
@@ -276,7 +277,7 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
                                         <div className="flex items-start justify-between gap-3 mb-2">
                                             <div className="min-w-0">
                                                 <p className={`font-bold truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{item.description}</p>
-                                                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{fmtDate(item.date)}</p>
+                                                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{fmtDate(item.date)}{item.party ? ` · ${item.party}` : ''}</p>
                                                 {item.notes && <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.notes}</p>}
                                             </div>
                                             <span className={`font-extrabold text-base shrink-0 ${item.flow === 'income' ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -287,11 +288,18 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
                                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${item.flow === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                                                 {item.category}
                                             </span>
-                                            {item.can_delete && (
-                                                <button type="button" onClick={() => handleDelete(item)} className={isDark ? 'text-red-300' : 'text-red-600'}>
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {item.route && (
+                                                    <Link href={item.route} className={isDark ? 'text-sky-300' : 'text-sky-600'}>
+                                                        <Eye size={16} />
+                                                    </Link>
+                                                )}
+                                                {item.can_delete && (
+                                                    <button type="button" onClick={() => handleDelete(item)} className={isDark ? 'text-red-300' : 'text-red-600'}>
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -306,6 +314,7 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
                                         <th className="px-4 py-3 text-left whitespace-nowrap">Fecha</th>
                                         <th className="px-4 py-3 text-left">Origen</th>
                                         <th className="px-4 py-3 text-left">Detalle</th>
+                                        <th className="px-4 py-3 text-left">Tercero</th>
                                         <th className="px-4 py-3 text-left">Pago</th>
                                         <th className="px-4 py-3 text-right">Monto</th>
                                         <th className="px-4 py-3 text-center">Acciones</th>
@@ -328,12 +337,18 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
                                                 <div className={text}>{item.description}</div>
                                                 {item.notes && <div className={`text-xs ${sub}`}>{item.notes}</div>}
                                             </td>
+                                            <td className="px-4 py-3">{item.party || '—'}</td>
                                             <td className="px-4 py-3">{item.payment_method || '—'}</td>
                                             <td className={`px-4 py-3 text-right font-extrabold ${item.flow === 'income' ? 'text-emerald-500' : 'text-red-500'}`}>
                                                 {item.flow === 'income' ? '+' : '-'}{fmtMoney(item.amount)}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center justify-center gap-2">
+                                                    {item.route && (
+                                                        <Link href={item.route} className={isDark ? 'text-sky-300' : 'text-sky-600'}>
+                                                            <Eye size={16} />
+                                                        </Link>
+                                                    )}
                                                     {item.can_delete && (
                                                         <button type="button" onClick={() => handleDelete(item)} className={isDark ? 'text-red-300' : 'text-red-600'}>
                                                             <Trash2 size={16} />
