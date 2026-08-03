@@ -67,7 +67,7 @@ class ReviewController extends Controller
             'comment' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $customer = $request->user();
+        $customer = $request->user('customer');
 
         $orderId = EcommerceOrder::query()
             ->where('customer_id', $customer->id)

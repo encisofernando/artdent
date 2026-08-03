@@ -102,7 +102,7 @@ class AuthApiController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $this->customerData($request->user()),
+            'user' => $this->customerData($request->user('customer')),
         ]);
     }
 

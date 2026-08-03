@@ -21,15 +21,15 @@ class CustomerController extends Controller
 {
     public function profile(Request $request): JsonResponse
     {
-        return response()->json($this->formatCustomer($request->user()));
+        return response()->json($this->formatCustomer($request->user('customer')));
     }
 
     public function updateProfile(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->ignore($request->user()->id)->whereNotNull('phone')],
-            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->ignore($request->user()->id)->whereNotNull('dni')],
+            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->ignore($request->user('customer')->id)->whereNotNull('phone')],
+            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->ignore($request->user('customer')->id)->whereNotNull('dni')],
             'address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'],
             'province' => ['nullable', 'string', 'max:100'],
@@ -37,9 +37,9 @@ class CustomerController extends Controller
             'accepts_marketing' => ['nullable', 'boolean'],
         ]);
 
-        $request->user()->update($validated);
+        $request->user('customer')->update($validated);
 
-        return response()->json($this->formatCustomer($request->user()->fresh()));
+        return response()->json($this->formatCustomer($request->user('customer')->fresh()));
     }
 
     public function changePassword(Request $request): JsonResponse
@@ -49,20 +49,20 @@ class CustomerController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (! Hash::check($request->current_password, $request->user()->password)) {
+        if (! Hash::check($request->current_password, $request->user('customer')->password)) {
             throw ValidationException::withMessages([
                 'current_password' => ['La contraseña actual no es correcta.'],
             ]);
         }
 
-        $request->user()->update(['password' => Hash::make($request->password)]);
+        $request->user('customer')->update(['password' => Hash::make($request->password)]);
 
         return response()->json(['message' => 'Contraseña actualizada.']);
     }
 
     public function orders(Request $request): JsonResponse
     {
-        $orders = $request->user()
+        $orders = $request->user('customer')
             ->ecommerce_orders()
             ->with(['ecommerce_order_items', 'shipments', 'paymentReport'])
             ->orderByDesc('created_at')
@@ -74,7 +74,7 @@ class CustomerController extends Controller
 
     public function orderDetail(Request $request, string $code): JsonResponse
     {
-        $order = $request->user()
+        $order = $request->user('customer')
             ->ecommerce_orders()
             ->with(['ecommerce_order_items', 'shipments', 'paymentReport'])
             ->where('order_number', $code)
@@ -85,7 +85,7 @@ class CustomerController extends Controller
 
     public function storePaymentReport(Request $request, string $code): JsonResponse
     {
-        $order = $request->user()
+        $order = $request->user('customer')
             ->ecommerce_orders()
             ->where('order_number', $code)
             ->firstOrFail();
@@ -136,7 +136,7 @@ class CustomerController extends Controller
             'selected_payment_method' => ['required', 'string', 'in:mercadopago,bank_transfer,qr,cash,nave'],
         ]);
 
-        $order = $request->user()
+        $order = $request->user('customer')
             ->ecommerce_orders()
             ->with(['ecommerce_order_items', 'shipments'])
             ->where('order_number', $code)
@@ -168,7 +168,7 @@ class CustomerController extends Controller
 
     public function cancelOrder(Request $request, string $code): JsonResponse
     {
-        $order = $request->user()
+        $order = $request->user('customer')
             ->ecommerce_orders()
             ->with(['ecommerce_order_items', 'shipments'])
             ->where('order_number', $code)
@@ -253,7 +253,7 @@ class CustomerController extends Controller
 
     public function addresses(Request $request): JsonResponse
     {
-        return response()->json($request->user()->customer_addresses()->get());
+        return response()->json($request->user('customer')->customer_addresses()->get());
     }
 
     public function storeAddress(Request $request): JsonResponse
@@ -270,17 +270,17 @@ class CustomerController extends Controller
         ]);
 
         if (! empty($validated['is_default'])) {
-            $request->user()->customer_addresses()->update(['is_default' => false]);
+            $request->user('customer')->customer_addresses()->update(['is_default' => false]);
         }
 
-        $address = $request->user()->customer_addresses()->create($validated);
+        $address = $request->user('customer')->customer_addresses()->create($validated);
 
         return response()->json($address, 201);
     }
 
     public function updateAddress(Request $request, int $id): JsonResponse
     {
-        $address = $request->user()->customer_addresses()->findOrFail($id);
+        $address = $request->user('customer')->customer_addresses()->findOrFail($id);
 
         $validated = $request->validate([
             'label' => ['nullable', 'string', 'max:64'],
@@ -294,7 +294,7 @@ class CustomerController extends Controller
         ]);
 
         if (! empty($validated['is_default'])) {
-            $request->user()->customer_addresses()->where('id', '!=', $id)->update(['is_default' => false]);
+            $request->user('customer')->customer_addresses()->where('id', '!=', $id)->update(['is_default' => false]);
         }
 
         $address->update($validated);
@@ -304,7 +304,7 @@ class CustomerController extends Controller
 
     public function destroyAddress(Request $request, int $id): JsonResponse
     {
-        $request->user()->customer_addresses()->findOrFail($id)->delete();
+        $request->user('customer')->customer_addresses()->findOrFail($id)->delete();
 
         return response()->json(['message' => 'Dirección eliminada.']);
     }

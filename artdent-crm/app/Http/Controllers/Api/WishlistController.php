@@ -12,7 +12,7 @@ class WishlistController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = Wishlist::query()
-            ->where('customer_id', $request->user()->id)
+            ->where('customer_id', $request->user('customer')->id)
             ->with(['product.product_images'])
             ->get()
             ->map(fn (Wishlist $item): array => $this->format($item));
@@ -25,7 +25,7 @@ class WishlistController extends Controller
         $request->validate(['product_id' => ['required', 'integer', 'exists:products,id']]);
 
         $item = Wishlist::firstOrCreate([
-            'customer_id' => $request->user()->id,
+            'customer_id' => $request->user('customer')->id,
             'product_id' => $request->integer('product_id'),
         ]);
 
@@ -36,7 +36,7 @@ class WishlistController extends Controller
     {
         Wishlist::query()
             ->where('id', $id)
-            ->where('customer_id', $request->user()->id)
+            ->where('customer_id', $request->user('customer')->id)
             ->delete();
 
         return response()->json(['ok' => true]);
@@ -45,7 +45,7 @@ class WishlistController extends Controller
     public function check(Request $request, int $productId): JsonResponse
     {
         $item = Wishlist::query()
-            ->where('customer_id', $request->user()->id)
+            ->where('customer_id', $request->user('customer')->id)
             ->where('product_id', $productId)
             ->first();
 

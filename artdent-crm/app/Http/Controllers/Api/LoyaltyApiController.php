@@ -12,7 +12,7 @@ class LoyaltyApiController extends Controller
 {
     public function show(Request $request, LoyaltyService $loyalty): JsonResponse
     {
-        $customer = $request->user();
+        $customer = $request->user('customer');
         $settings = LoyaltySetting::forCompany($customer->company_id);
 
         return response()->json([
