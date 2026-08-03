@@ -323,6 +323,7 @@ class CatalogController extends Controller
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'coupon_code' => ['nullable', 'string'],
+            'loyalty_redeem_amount' => ['nullable', 'numeric', 'min:0.01'],
             'selected_payment_method' => ['nullable', 'string', 'in:mercadopago,bank_transfer,qr,cash,nave'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
@@ -450,7 +451,32 @@ class CatalogController extends Controller
         }
 
         $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
-        $total = max(0.0, round($subtotal - $discountAmount + $shippingCost, 2));
+
+        // Canje de puntos — solo para clientes logueados (checkout invitado
+        // no puede canjear, ver LoyaltyService). El front nunca manda el
+        // descuento real, solo la intención: se recalcula y se clampea acá
+        // contra el saldo real y el tope configurado, mismo criterio que un
+        // cupón inválido — nunca bloquea el checkout, solo se ajusta.
+        $loyaltyRedeemAmount = 0.0;
+        if ($customerId && ! empty($validated['loyalty_redeem_amount'])) {
+            $customer = \App\Models\Customer::find($customerId);
+            if ($customer) {
+                $loyaltySettings = \App\Models\LoyaltySetting::forCompany($companyId);
+                if ($loyaltySettings->is_enabled) {
+                    $maxByPercentage = $loyaltySettings->max_redemption_percentage
+                        ? $subtotal * $loyaltySettings->max_redemption_percentage / 100
+                        : PHP_FLOAT_MAX;
+                    $loyaltyRedeemAmount = round(min(
+                        (float) $validated['loyalty_redeem_amount'],
+                        app(\App\Services\LoyaltyService::class)->balanceFor($customer),
+                        $maxByPercentage,
+                        max(0.0, $subtotal - $discountAmount + $shippingCost),
+                    ), 2);
+                }
+            }
+        }
+
+        $total = max(0.0, round($subtotal - $discountAmount - $loyaltyRedeemAmount + $shippingCost, 2));
 
         // Create order
         $order = EcommerceOrder::create([
@@ -480,6 +506,10 @@ class CatalogController extends Controller
             'customer_notes' => $validated['notes'] ?? null,
             'selected_payment_method' => $validated['selected_payment_method'] ?? null,
         ]);
+
+        if ($loyaltyRedeemAmount > 0.0) {
+            app(\App\Services\LoyaltyService::class)->redeemForOrder($order, $loyaltyRedeemAmount);
+        }
 
         foreach ($orderItems as $item) {
             $order->ecommerce_order_items()->create($item);

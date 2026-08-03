@@ -11,7 +11,10 @@ use RuntimeException;
 
 class SalePaymentService
 {
-    public function __construct(private readonly CustomerAccountSaleAllocator $allocator) {}
+    public function __construct(
+        private readonly CustomerAccountSaleAllocator $allocator,
+        private readonly LoyaltyService $loyalty,
+    ) {}
 
     /**
      * Registra un cobro (parcial o total) sobre una venta, actualiza
@@ -75,6 +78,10 @@ class SalePaymentService
             ]);
 
             $this->allocator->syncSale($sale, round((float) $sale->paid_amount + $amount, 2));
+
+            if ($sale->status === 'completed') {
+                $this->loyalty->accrueForSale($sale);
+            }
 
             return $payment;
         });

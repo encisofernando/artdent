@@ -258,6 +258,12 @@ class NavePaymentController extends Controller
 
                 \App\Services\StockAlertService::checkAndNotify($item->product_id, $item->variant_id, $warehouseId);
             }
+
+            try {
+                app(\App\Services\LoyaltyService::class)->accrueForOrder($order);
+            } catch (\Throwable $e) {
+                Log::channel('nave')->error('Nave: fallo al acreditar puntos.', ['error' => $e->getMessage()]);
+            }
         } else {
             Log::channel('nave')->warning('Nave: stock insuficiente para orden pagada.', ['order' => $order->order_number]);
             $order->update([

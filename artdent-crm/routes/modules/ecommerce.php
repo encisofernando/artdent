@@ -8,6 +8,7 @@ use App\Http\Controllers\CrmClientController;
 use App\Http\Controllers\CustomerAccountController;
 use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerLoyaltyController;
 use App\Http\Controllers\EcommerceOrderController;
 use App\Http\Controllers\EcommerceOrderItemController;
 use App\Http\Controllers\EcommercePaymentConfigController;
@@ -38,6 +39,8 @@ Route::middleware('module:clientes')->group(function () {
     Route::post('customers/{customer}/account/nave-charge', [NavePosPaymentController::class, 'createForCustomerAccount'])->name('customers.account.nave-charge')->middleware('permission:customers.view');
     Route::post('customers/{customer}/account/adjustments', [CustomerAccountController::class, 'storeAdjustment'])->name('customers.account.adjustments')->middleware('permission:customers.edit');
     Route::post('customers/{customer}/account/send-statement', [CustomerAccountController::class, 'sendStatement'])->name('customers.account.send-statement')->middleware('permission:customers.view');
+    Route::get('customers/{customer}/loyalty', [CustomerLoyaltyController::class, 'show'])->name('customers.loyalty')->middleware('permission:customers.view');
+    Route::post('customers/{customer}/loyalty/adjustments', [CustomerLoyaltyController::class, 'storeAdjustment'])->name('customers.loyalty.adjustments')->middleware('permission:customers.edit');
     Route::resource('customer-address', CustomerAddressController::class)->middleware('permission:customers.edit');
     Route::resource('clientes', ClientesController::class)->middleware('permission:customers.view');
     Route::resource('crm-clients', CrmClientController::class)->middleware('permission:customers.view');

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\InsumosFinanceController;
 use App\Http\Controllers\LabWithdrawalController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\StockMovementController;
@@ -41,5 +42,17 @@ Route::middleware('module:insumos')->group(function () {
     Route::middleware('permission:inventory.manage')->group(function () {
         Route::post('stocks/adjust', [StockController::class, 'adjust'])->name('stocks.adjust');
         Route::post('stocks/transfer', [StockController::class, 'transfer'])->name('stocks.transfer');
+    });
+
+    // ── Ingresos y egresos manuales de Insumos (scope='insumos', ver LabFinance) ───
+    Route::middleware('permission:inventory.view')->group(function () {
+        Route::get('insumos-finance', [InsumosFinanceController::class, 'index'])->name('insumos-finance.index');
+    });
+
+    Route::middleware('permission:inventory.edit')->group(function () {
+        Route::post('insumos-finance/incomes', [InsumosFinanceController::class, 'storeIncome'])->name('insumos-finance.incomes.store');
+        Route::post('insumos-finance/expenses', [InsumosFinanceController::class, 'storeExpense'])->name('insumos-finance.expenses.store');
+        Route::delete('insumos-finance/incomes/{incomeRecord}', [InsumosFinanceController::class, 'destroyIncome'])->name('insumos-finance.incomes.destroy');
+        Route::delete('insumos-finance/expenses/{expense}', [InsumosFinanceController::class, 'destroyExpense'])->name('insumos-finance.expenses.destroy');
     });
 });

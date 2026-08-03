@@ -46,17 +46,30 @@ class AuthApiController extends Controller
 
     public function register(Request $request): JsonResponse
     {
+        // Puede existir una cuenta "cáscara" (sin password) creada por la
+        // acreditación automática de puntos de un checkout invitado — en ese
+        // caso el registro la reclama en vez de fallar por email/dni duplicado.
+        $shell = Customer::query()
+            ->whereNull('password')
+            ->where(function ($query) use ($request): void {
+                $query->where('email', $request->input('email'));
+                if ($request->filled('dni')) {
+                    $query->orWhere('dni', $request->input('dni'));
+                }
+            })
+            ->first();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:customers,email'],
+            'email' => ['required', 'email', Rule::unique('customers', 'email')->ignore($shell?->id)],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->whereNotNull('phone')],
-            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->whereNotNull('dni')],
+            'phone' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'phone')->ignore($shell?->id)->whereNotNull('phone')],
+            'dni' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'dni')->ignore($shell?->id)->whereNotNull('dni')],
             'cuit' => ['nullable', 'string', 'max:20'],
             'accepts_marketing' => ['nullable', 'boolean'],
         ]);
 
-        $customer = Customer::create([
+        $attributes = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -65,7 +78,14 @@ class AuthApiController extends Controller
             'cuit' => $validated['cuit'] ?? null,
             'accepts_marketing' => $validated['accepts_marketing'] ?? false,
             'is_active' => true,
-        ]);
+        ];
+
+        if ($shell) {
+            $shell->update($attributes);
+            $customer = $shell;
+        } else {
+            $customer = Customer::create($attributes);
+        }
 
         Mail::to($customer->email)->queue(new WelcomeCustomer($customer));
 

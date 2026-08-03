@@ -81,6 +81,7 @@ const PAYMENT_METHODS = [
     { id: 'transfer',          name: 'Transferencia',   requiresCustomer: false },
     { id: 'cuenta_corriente',  name: 'Cta. Corriente',  requiresCustomer: true  },
     { id: 'nave_qr',           name: 'QR (Nave)',       requiresCustomer: false },
+    { id: 'loyalty_points',    name: 'Puntos',          requiresCustomer: true  },
 ];
 
 const PAYMENT_METHOD_BY_ID = Object.fromEntries(PAYMENT_METHODS.map((method) => [method.id, method]));

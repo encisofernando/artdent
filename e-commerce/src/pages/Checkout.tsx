@@ -13,6 +13,7 @@ import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
 import { createNavePayment } from '../api/nave'
 import { analytics } from '../api/analytics'
 import CouponInput from '../components/CouponInput'
+import LoyaltyRedemption from '../components/LoyaltyRedemption'
 import { formatMoney } from '../lib/format'
 import { getApiErrorMessage } from '../lib/apiError'
 
@@ -81,12 +82,18 @@ function OrderSummary({
   appliedCoupon,
   onCouponApplied,
   onCouponRemoved,
+  appliedLoyaltyRedemption,
+  onLoyaltyRedemptionApplied,
+  onLoyaltyRedemptionRemoved,
   shippingLabel,
 }: {
   shippingCost: number
   appliedCoupon: any
   onCouponApplied: (d: any) => void
   onCouponRemoved: () => void
+  appliedLoyaltyRedemption: number
+  onLoyaltyRedemptionApplied: (amount: number) => void
+  onLoyaltyRedemptionRemoved: () => void
   shippingLabel?: string
 }) {
   const cart = useCart()
@@ -94,9 +101,9 @@ function OrderSummary({
   const totals = useMemo(() => {
     const subtotal = cart.subtotal
     const discount = appliedCoupon?.discount ?? 0
-    const total = Math.max(0, subtotal - discount + shippingCost)
+    const total = Math.max(0, subtotal - discount - appliedLoyaltyRedemption + shippingCost)
     return { subtotal, discount, total }
-  }, [cart.subtotal, appliedCoupon, shippingCost])
+  }, [cart.subtotal, appliedCoupon, appliedLoyaltyRedemption, shippingCost])
 
   return (
     <div className="card p-6 h-fit space-y-5">
@@ -135,6 +142,13 @@ function OrderSummary({
           </div>
         )}
 
+        {appliedLoyaltyRedemption > 0 && (
+          <div className="flex justify-between text-amber-600">
+            <span className="flex items-center gap-1">Puntos aplicados</span>
+            <span className="font-bold">-{formatMoney(appliedLoyaltyRedemption)}</span>
+          </div>
+        )}
+
         {shippingCost > 0 && (
           <div className="flex justify-between text-gray-600">
             <span>Envío {shippingLabel ? `(${shippingLabel})` : ''}</span>
@@ -162,6 +176,15 @@ function OrderSummary({
           cartItems={cart.items}
           onCouponApplied={onCouponApplied}
           onCouponRemoved={onCouponRemoved}
+        />
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="text-sm font-bold mb-3">Tus puntos</h3>
+        <LoyaltyRedemption
+          cartTotal={Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0))}
+          onRedemptionApplied={onLoyaltyRedemptionApplied}
+          onRedemptionRemoved={onLoyaltyRedemptionRemoved}
         />
       </div>
     </div>
@@ -716,6 +739,7 @@ export default function Checkout() {
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(null)
 
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
+  const [appliedLoyaltyRedemption, setAppliedLoyaltyRedemption] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [orderCode, setOrderCode] = useState<string | null>(null)
@@ -787,6 +811,7 @@ export default function Checkout() {
         shipping_cost: shippingCost || undefined,
         notes: notes.trim() || undefined,
         coupon_code: appliedCoupon?.coupon?.code || undefined,
+        loyalty_redeem_amount: appliedLoyaltyRedemption || undefined,
         selected_payment_method: selectedPayment?.type ?? undefined,
         items: cart.items.map((it) => ({
           product_id: it.product.id,
@@ -799,7 +824,7 @@ export default function Checkout() {
       localStorage.setItem(LS_LAST_EMAIL, email.trim())
 
       // purchase event — fired once order is created in the backend
-      const cartTotal = Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0) + shippingCost)
+      const cartTotal = Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0) - appliedLoyaltyRedemption + shippingCost)
       analytics.purchase({
         id: res.code,
         value: cartTotal,
@@ -1061,7 +1086,7 @@ export default function Checkout() {
                     unit_price: Number(it.variant_price ?? it.product.price_final ?? it.product.price ?? 0),
                     qty: it.qty,
                   })),
-                  Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0) + shippingCost),
+                  Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0) - appliedLoyaltyRedemption + shippingCost),
                 )
                 setStep(4)
               }}
@@ -1139,6 +1164,9 @@ export default function Checkout() {
             appliedCoupon={appliedCoupon}
             onCouponApplied={setAppliedCoupon}
             onCouponRemoved={() => setAppliedCoupon(null)}
+            appliedLoyaltyRedemption={appliedLoyaltyRedemption}
+            onLoyaltyRedemptionApplied={setAppliedLoyaltyRedemption}
+            onLoyaltyRedemptionRemoved={() => setAppliedLoyaltyRedemption(0)}
           />
         </div>
       </div>

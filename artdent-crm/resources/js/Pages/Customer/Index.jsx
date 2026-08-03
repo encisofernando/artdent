@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Edit, CreditCard, Download, Upload, UserCheck } from 'lucide-react';
+import { Search, Plus, Edit, CreditCard, Download, Upload, UserCheck, Gift } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { Button } from '@/Components/ui/button';
@@ -141,6 +141,11 @@ export default function Index({ auth, items, filters }) {
                                             <CreditCard size={13} /> Cta. Cte.
                                         </button>
                                     </Link>
+                                    <Link href={route('customers.loyalty', item.id)}>
+                                        <button className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
+                                            <Gift size={13} /> Puntos
+                                        </button>
+                                    </Link>
                                     <Link href={route('customers.edit', item.id)}>
                                         <button className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                                             <Edit size={13} /> Editar
@@ -228,6 +233,14 @@ export default function Index({ auth, items, filters }) {
                                                         ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-teal-400' : 'text-slate-500 hover:bg-slate-100 hover:text-teal-600'}
                                                     `}>
                                                         <CreditCard size={18} />
+                                                    </button>
+                                                </Link>
+                                                <Link href={route('customers.loyalty', item.id)}
+                                                    title="Puntos de Fidelización">
+                                                    <button className={`p-1.5 rounded-lg transition-colors
+                                                        ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-400' : 'text-slate-500 hover:bg-slate-100 hover:text-amber-600'}
+                                                    `}>
+                                                        <Gift size={18} />
                                                     </button>
                                                 </Link>
                                                 <Link href={route('customers.edit', item.id)}>

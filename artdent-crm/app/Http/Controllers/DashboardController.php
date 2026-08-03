@@ -12,6 +12,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Stock;
 use App\Models\User;
+use App\Models\VendorPayment;
 use App\Support\CompanyContext;
 use App\Support\PeriodRangeResolver;
 use App\Support\TenantModuleResolver;
@@ -56,11 +57,8 @@ class DashboardController extends Controller
         $avgTicket = $totalSales > 0 ? round($revenue / $totalSales, 2) : 0.0;
         $newCustomers = Customer::whereBetween('created_at', [$start, $end])->count();
 
-        // ── Expenses (Gestión only, exclude lab scope) ────────────────────────
-        $expenses = (float) Expense::where('company_id', $companyId)
-            ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
-            ->whereBetween('expense_date', [$start, $end])
-            ->sum('amount');
+        // ── Expenses (Gestión only, exclude lab scope) + pagos a proveedores ───
+        $expenses = $this->expensesFor($companyId, $start, $end);
 
         // ── Cash flow ─────────────────────────────────────────────────────────
         $cashFlow = $revenue - $expenses;
@@ -94,10 +92,7 @@ class DashboardController extends Controller
         $prevTotalSales = $prevPosCount + $prevEcoCount;
         $prevAvgTicket = $prevTotalSales > 0 ? round($prevRevenue / $prevTotalSales, 2) : 0.0;
         $prevNewCustomers = Customer::whereBetween('created_at', [$prevStart, $prevEnd])->count();
-        $prevExpenses = (float) Expense::where('company_id', $companyId)
-            ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
-            ->whereBetween('expense_date', [$prevStart, $prevEnd])
-            ->sum('amount');
+        $prevExpenses = $this->expensesFor($companyId, $prevStart, $prevEnd);
         $prevCashFlow = $prevRevenue - $prevExpenses;
 
         // ── Top products (POS + e-commerce combinados) ─────────────────────────
@@ -261,6 +256,26 @@ class DashboardController extends Controller
         return round(($current - $previous) / $previous * 100, 1);
     }
 
+    /**
+     * Gastos operativos (Expense, excluye scope 'lab') + pagos a proveedores
+     * (VendorPayment, plata que realmente salió de caja) — las compras a
+     * insumos/proveedores nunca escriben en `expenses`, viven aparte en la
+     * cuenta corriente del proveedor, por eso se suman acá explícitamente.
+     */
+    private function expensesFor(int $companyId, $start, $end): float
+    {
+        $opExpenses = (float) Expense::where('company_id', $companyId)
+            ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
+            ->whereBetween('expense_date', [$start, $end])
+            ->sum('amount');
+
+        $vendorPayments = (float) VendorPayment::where('company_id', $companyId)
+            ->whereBetween('payment_date', [$start, $end])
+            ->sum('amount');
+
+        return $opExpenses + $vendorPayments;
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function buildChartData(string $period, Carbon $start, Carbon $end, int $companyId): array
     {
@@ -281,10 +296,7 @@ class DashboardController extends Controller
                     ->whereBetween('created_at', [$hStart, $hEnd])
                     ->sum('total');
 
-                $exp = (float) Expense::where('company_id', $companyId)
-                    ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
-                    ->whereBetween('expense_date', [$hStart, $hEnd])
-                    ->sum('amount');
+                $exp = $this->expensesFor($companyId, $hStart, $hEnd);
 
                 $points[] = [
                     'label' => $cursor->format('H:00'),
@@ -314,10 +326,7 @@ class DashboardController extends Controller
                     ->whereBetween('created_at', [$mStart, $mEnd])
                     ->sum('total');
 
-                $exp = (float) Expense::where('company_id', $companyId)
-                    ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
-                    ->whereBetween('expense_date', [$mStart, $mEnd])
-                    ->sum('amount');
+                $exp = $this->expensesFor($companyId, $mStart, $mEnd);
 
                 $points[] = [
                     'label' => $cursor->translatedFormat('M'),
@@ -347,10 +356,7 @@ class DashboardController extends Controller
                 ->whereBetween('created_at', [$dStart, $dEnd])
                 ->sum('total');
 
-            $exp = (float) Expense::where('company_id', $companyId)
-                ->where(fn ($q) => $q->whereNull('scope')->orWhere('scope', '!=', 'lab'))
-                ->whereBetween('expense_date', [$dStart, $dEnd])
-                ->sum('amount');
+            $exp = $this->expensesFor($companyId, $dStart, $dEnd);
 
             $points[] = [
                 'label' => $cursor->format('d/m'),

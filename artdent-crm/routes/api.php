@@ -9,6 +9,7 @@
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\LoyaltyApiController;
 use App\Http\Controllers\Api\NaveInstallmentRateApiController;
 use App\Http\Controllers\Api\NavePaymentController;
 use App\Http\Controllers\Api\NavePosPaymentController;
@@ -94,6 +95,8 @@ Route::prefix('customer')->name('api.customer.')->middleware([EnsureFrontendRequ
     Route::post('addresses', [CustomerController::class, 'storeAddress'])->name('addresses.store');
     Route::put('addresses/{id}', [CustomerController::class, 'updateAddress'])->name('addresses.update');
     Route::delete('addresses/{id}', [CustomerController::class, 'destroyAddress'])->name('addresses.destroy');
+
+    Route::get('loyalty', [LoyaltyApiController::class, 'show'])->name('loyalty.show');
 });
 
 /*

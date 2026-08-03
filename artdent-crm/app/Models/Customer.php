@@ -109,6 +109,11 @@ class Customer extends Authenticatable
         return $this->hasOne(CustomerAccount::class);
     }
 
+    public function loyalty_account()
+    {
+        return $this->hasOne(LoyaltyAccount::class);
+    }
+
     public function sales()
     {
         return $this->hasMany(Sale::class);

@@ -306,6 +306,12 @@ class PaymentController extends Controller
 
                             \App\Services\StockAlertService::checkAndNotify($item->product_id, $item->variant_id, $warehouseId);
                         }
+
+                        try {
+                            app(\App\Services\LoyaltyService::class)->accrueForOrder($order);
+                        } catch (\Throwable $e) {
+                            Log::channel('mercadopago')->error('Loyalty accrual failed: '.$e->getMessage(), ['order' => $order->order_number]);
+                        }
                     } else {
                         Log::channel('mercadopago')->warning('Stock insufficient for paid order. Marking as failed & refunding.', ['order' => $order->order_number]);
                         $order->update([

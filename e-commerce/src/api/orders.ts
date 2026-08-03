@@ -22,6 +22,7 @@ export type CheckoutPayload = {
   shipping_cost?: number
   notes?: string
   coupon_code?: string
+  loyalty_redeem_amount?: number
   items: CheckoutItem[]
 }
 

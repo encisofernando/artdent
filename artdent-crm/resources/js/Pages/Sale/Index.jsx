@@ -5,6 +5,18 @@ import { Search, Plus, Eye, Receipt, TrendingUp, TrendingDown, Store, ShoppingBa
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
 import { Button } from '@/Components/ui/button';
+import { DatePicker } from '@/Components/_appkit';
+
+function DateRangePicker({ from, to, onFromChange, onToChange, isDark }) {
+    const inputCls = `text-sm px-3 py-1.5 rounded-xl border outline-none ${isDark ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"}`;
+    return (
+        <div className="flex items-center gap-2 flex-wrap">
+            <DatePicker value={from} onChange={onFromChange} className={inputCls} />
+            <span className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>al</span>
+            <DatePicker value={to} onChange={onToChange} className={inputCls} />
+        </div>
+    );
+}
 
 export default function Index({ auth, items, filters }) {
     const { isDark, sidebarCollapsed } = useTheme();
@@ -12,6 +24,8 @@ export default function Index({ auth, items, filters }) {
 
     const [search, setSearch] = useState(filters?.search || '');
     const [status, setStatus] = useState(filters?.status || 'all');
+    const [from, setFrom] = useState(filters?.from || '');
+    const [to, setTo] = useState(filters?.to || '');
     const [debouncedSearch, setDebouncedSearch] = useState(search);
 
     const B = {
@@ -28,14 +42,19 @@ export default function Index({ auth, items, filters }) {
     }, [search]);
 
     useEffect(() => {
-        if (debouncedSearch !== (filters?.search || '') || status !== (filters?.status || 'all')) {
+        if (
+            debouncedSearch !== (filters?.search || '') ||
+            status !== (filters?.status || 'all') ||
+            from !== (filters?.from || '') ||
+            to !== (filters?.to || '')
+        ) {
             router.get(
                 route('sales.index'),
-                { search: debouncedSearch, status },
+                { search: debouncedSearch, status, from: from || undefined, to: to || undefined },
                 { preserveState: true, preserveScroll: true, replace: true }
             );
         }
-    }, [debouncedSearch, status, filters?.search, filters?.status]);
+    }, [debouncedSearch, status, from, to, filters?.search, filters?.status, filters?.from, filters?.to]);
 
     const StatusBadge = ({ status }) => {
         const config = {
@@ -141,6 +160,9 @@ export default function Index({ auth, items, filters }) {
                                     />
                                 </div>
 
+                                {/* Rango de fechas */}
+                                <DateRangePicker from={from} to={to} onFromChange={setFrom} onToChange={setTo} isDark={isDark} />
+
                                 {/* Status tabs — desktop */}
                                 <div className={`hidden md:flex items-center p-1 rounded-xl border
                                     ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-slate-50 border-slate-200'}
@@ -189,7 +211,7 @@ export default function Index({ auth, items, filters }) {
 
                         {/* ══ KPI Strip — original intacto ══ */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <KpiCard title="Operaciones"     value={items?.total || 0}                          subtitle="en este período"        color={B.blue}                        icon={Store}      />
+                            <KpiCard title="Operaciones"     value={items?.total || 0}                          subtitle={from || to ? "en el rango filtrado" : "sin filtro de fecha"} color={B.blue}                        icon={Store}      />
                             <KpiCard title="Facturado"       value={`$${pageTotal.toLocaleString('es-AR')}`}    subtitle="total en esta página"   color={B.green}                       icon={Receipt}    />
                             <KpiCard title="Cobrado"         value={`$${pagePaid.toLocaleString('es-AR')}`}     subtitle="pagado en esta página"  color={B.teal}                        icon={TrendingUp} />
                             <KpiCard title="Saldo Pendiente" value={`$${pageDue.toLocaleString('es-AR')}`}      subtitle={pageDue > 0 ? "por cobrar" : "todo cobrado"} color={pageDue > 0 ? B.red : B.mint} icon={pageDue > 0 ? TrendingDown : TrendingUp} />

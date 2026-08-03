@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   User, ShoppingBag, Lock, ChevronRight, Plus, Trash2, Edit2,
   Check, Package, Clock, CheckCircle2, Truck, XCircle, AlertTriangle,
-  RefreshCw, MapPinned, RotateCcw, Phone, Mail, Home, IdCard, LogOut,
+  RefreshCw, MapPinned, RotateCcw, Phone, Mail, Home, IdCard, LogOut, Gift,
 } from 'lucide-react'
 import { useAuth } from '../store/auth'
 import {
@@ -13,6 +13,7 @@ import {
   cancelOrder,
   type CustomerProfile, type CustomerAddress, type CustomerOrder,
 } from '../api/customer'
+import { getLoyaltyBalance } from '../api/loyalty'
 import PaymentReportButton from '../components/PaymentReportButton'
 import { getApiErrorMessage } from '../lib/apiError'
 
@@ -103,7 +104,7 @@ function AddressForm({ initial, onSave, onCancel, saving }: {
 }
 
 /* ── Tabs ────────────────────────────────────────────────────────────── */
-type Tab = 'profile' | 'orders' | 'security'
+type Tab = 'profile' | 'orders' | 'loyalty' | 'security'
 
 /* ══════════════════════════════════════════════════════════════════════ */
 export default function Account() {
@@ -127,6 +128,7 @@ export default function Account() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'profile',  label: 'Mi perfil',     icon: <User size={16} /> },
     { id: 'orders',   label: 'Mis pedidos',   icon: <ShoppingBag size={16} /> },
+    { id: 'loyalty',  label: 'Mis puntos',    icon: <Gift size={16} /> },
     { id: 'security', label: 'Seguridad',     icon: <Lock size={16} /> },
   ]
 
@@ -179,6 +181,7 @@ export default function Account() {
         <div className="flex-1 min-w-0">
           {tab === 'profile'  && <ProfilePage qc={qc} user={user} onChangePwd={() => setTab('security')} />}
           {tab === 'orders'   && <OrdersTab qc={qc} />}
+          {tab === 'loyalty'  && <LoyaltyTab />}
           {tab === 'security' && <SecurityTab />}
         </div>
       </div>
@@ -640,6 +643,45 @@ function CancelButton({ order, onCancelled }: { order: CustomerOrder; onCancelle
         </button>
         <button onClick={() => setConfirm(false)} disabled={loading} className="btn btn-outline text-sm px-4">No</button>
       </div>
+    </div>
+  )
+}
+
+/* ── LoyaltyTab ──────────────────────────────────────────────────────── */
+function LoyaltyTab() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['loyalty_balance'],
+    queryFn: getLoyaltyBalance,
+    staleTime: 0,
+  })
+
+  if (isLoading) return <div className="text-sm text-gray-500 py-8 text-center">Cargando puntos…</div>
+  if (isError)   return <div className="text-sm text-red-600 py-8 text-center">Error al cargar tus puntos.</div>
+
+  if (!data?.enabled) {
+    return (
+      <div className="card p-10 text-center">
+        <Gift size={40} className="mx-auto text-gray-300 mb-3" />
+        <p className="text-gray-500 font-medium">Todavía no hay un programa de puntos activo.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-gray-900">Mis puntos</h2>
+      <div className="card p-6 flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--brand-primary)' }}>
+          <Gift size={22} className="text-white" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Saldo disponible</p>
+          <p className="text-3xl font-bold text-gray-900">{fmt(data.balance)}</p>
+        </div>
+      </div>
+      <p className="text-sm text-gray-500">
+        Acumulás un {data.accrual_percentage}% de cada compra (en el local o acá) como puntos, y los podés usar como descuento en tu próxima compra.
+      </p>
     </div>
   )
 }

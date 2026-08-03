@@ -105,6 +105,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Categorías", path: "/categorys", permission: 'products.edit' },
                     ],
                 },
+                { title: "Ingresos y Egresos", icon: Wallet, path: "/insumos-finance", permission: 'inventory.view', module: 'insumos' },
             ],
         },
         {
@@ -156,11 +157,6 @@ export default function Sidebar({ className = "" }) {
                 },
                 { title: "Aranceles y Costos", icon: DollarSign, path: "/tariffs", permission: 'products.view', module: 'laboratorio' },
                 { title: "Catálogo de Fases", icon: Layers, path: "/phase-templates", permission: 'products.view', module: 'laboratorio' },
-            ],
-        },
-        {
-            label: "RRHH",
-            items: [
                 {
                     title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
                     permission: 'staff.view', module: 'rrhh',
@@ -172,6 +168,12 @@ export default function Sidebar({ className = "" }) {
                         { title: "Recibos", path: "/collaborator-receipts", permission: 'staff.edit' },
                     ],
                 },
+                { title: "Analítica Lab", icon: BarChart3, path: "/analytics/lab", permission: 'reports.view', module: 'laboratorio' },
+            ],
+        },
+        {
+            label: "RRHH",
+            items: [
                 {
                     title: "Empleados", icon: UserCheck, key: "personal",
                     permission: 'staff.view', module: 'rrhh',
@@ -246,7 +248,6 @@ export default function Sidebar({ className = "" }) {
         {
             label: "Análisis",
             items: [
-                { title: "Analítica Lab", icon: BarChart3, path: "/analytics/lab", permission: 'reports.view', module: 'laboratorio' },
                 { title: "Estadísticas", icon: TrendingUp, path: "/estadisticas", permission: 'reports.view' },
                 { title: "Reportes", icon: Receipt, path: "/reportes", permission: 'reports.view', module: 'reportes' },
                 { title: "Costos y Ganancias", icon: DollarSign, path: "/reportes/costos-ganancias", permission: 'reports.view', module: 'reportes' },
@@ -280,6 +281,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Impresión", path: "/settings?tab=preferencias", permission: 'settings.edit' },
                         { title: "Acceso Kiosk", path: "/admin/kiosk-access", permission: 'settings.edit', module: ['laboratorio', 'rrhh'] },
                         { title: "Tasas de Cuotas (Nave)", path: "/nave-installment-rates", permission: 'settings.edit' },
+                        { title: "Puntos de Fidelización", path: "/loyalty-settings", permission: 'settings.edit' },
                         ...(billingEnabled ? [{ title: "Suscripción", path: "/subscription", permission: 'settings.edit' }] : []),
                     ],
                 },

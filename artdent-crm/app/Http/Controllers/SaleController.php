@@ -18,6 +18,7 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\CustomerAccountSaleAllocator;
 use App\Services\EmailTemplateService;
+use App\Services\LoyaltyService;
 use App\Services\SalePaymentService;
 use App\Services\StockAlertService;
 use App\Support\Auditor;
@@ -39,6 +40,7 @@ class SaleController extends Controller
         'transfer' => 'Transferencia',
         'cuenta_corriente' => 'Cuenta Corriente',
         'nave_qr' => 'QR (Nave)',
+        'loyalty_points' => 'Puntos',
     ];
 
     // Métodos que no se cobran en el momento de crear la venta — la venta
@@ -51,6 +53,8 @@ class SaleController extends Controller
     {
         $search = $request->input('search');
         $status = $request->input('status', 'all');
+        $from = $request->input('from');
+        $to = $request->input('to');
 
         $query = Sale::with(['sale_items', 'customer:id,name'])
             ->where('company_id', CompanyContext::id());
@@ -63,6 +67,13 @@ class SaleController extends Controller
             $query->whereIn('status', ['paid', 'completed']);
         } elseif ($status !== 'all') {
             $query->where('status', $status);
+        }
+
+        if ($from) {
+            $query->whereDate('sold_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('sold_at', '<=', $to);
         }
 
         $items = $query->orderByDesc('id')->paginate(20)->withQueryString();
@@ -98,7 +109,7 @@ class SaleController extends Controller
 
         return Inertia::render('Sale/Index', [
             'items' => $items,
-            'filters' => ['search' => $search, 'status' => $status],
+            'filters' => ['search' => $search, 'status' => $status, 'from' => $from, 'to' => $to],
         ]);
     }
 
@@ -307,6 +318,13 @@ class SaleController extends Controller
                 $account->applyMove($move);
             }
 
+            $loyaltyRedeemAmount = round(collect($payments)
+                ->where('method', 'loyalty_points')
+                ->sum('amount'), 2);
+            if ($loyaltyRedeemAmount > 0.0) {
+                app(LoyaltyService::class)->redeemForSale($sale, $loyaltyRedeemAmount, $userId);
+            }
+
             foreach ($payments as $payment) {
                 if (in_array($payment['method'], self::UNSETTLED_PAYMENT_METHODS, true)) {
                     continue;
@@ -380,6 +398,10 @@ class SaleController extends Controller
 
                     StockAlertService::checkAndNotify($productId, $variantId, $warehouse->id);
                 }
+            }
+
+            if ($status === 'completed' && $sale->customer_id) {
+                app(LoyaltyService::class)->accrueForSale($sale);
             }
 
             DB::commit();
@@ -729,6 +751,23 @@ class SaleController extends Controller
             throw ValidationException::withMessages([
                 'customer_id' => 'Seleccioná un cliente para poder usar cuenta corriente.',
             ]);
+        }
+
+        $loyaltyPayment = $payments->firstWhere('method', 'loyalty_points');
+        if ($loyaltyPayment) {
+            if (! $request->filled('customer_id')) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'Seleccioná un cliente para poder canjear puntos.',
+                ]);
+            }
+
+            $customer = Customer::find($request->integer('customer_id'));
+            $available = $customer ? app(LoyaltyService::class)->balanceFor($customer) : 0.0;
+            if ($loyaltyPayment['amount'] > $available + 0.009) {
+                throw ValidationException::withMessages([
+                    'payments' => 'El cliente no tiene saldo de puntos suficiente.',
+                ]);
+            }
         }
 
         return $payments->all();
