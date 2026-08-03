@@ -247,9 +247,16 @@ class HikVisionEventProcessor
             ->first();
 
         if ($attendanceStatus === null) {
-            // Firmware sin attendanceStatus: entrada si no hay fichaje hoy, salida si hay uno abierto.
+            // Sin attendanceStatus del equipo: sólo se infiere la ENTRADA (primer
+            // escaneo del día, sin ambigüedad posible). La salida nunca se infiere
+            // de un escaneo suelto sin estado — un reconocimiento facial incidental
+            // (alguien que simplemente pasa cerca del sensor) no significa que la
+            // persona se está retirando. La salida sólo se registra ante un
+            // attendanceStatus explícito (checkOut/breakOut/overtimeOut) del
+            // dispositivo — si nunca llega, el fichaje queda abierto en vez de
+            // cerrarse mal.
             $isEntry = ! $attendance;
-            $isExit = $attendance && ! $attendance->time_out;
+            $isExit = false;
         } else {
             $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
             $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
@@ -314,9 +321,11 @@ class HikVisionEventProcessor
             ->first();
 
         if ($attendanceStatus === null) {
-            // Firmware sin attendanceStatus: entrada si no hay fichaje hoy, salida si hay uno abierto.
+            // Ver comentario equivalente en recordCollaboratorAttendance(): sólo
+            // se infiere la entrada, nunca la salida, sin un attendanceStatus
+            // explícito del dispositivo.
             $isEntry = ! $attendance;
-            $isExit = $attendance && ! $attendance->time_out;
+            $isExit = false;
         } else {
             $isEntry = in_array($attendanceStatus, ['checkIn', 'breakIn', 'overtimeIn'], true);
             $isExit = in_array($attendanceStatus, ['checkOut', 'breakOut', 'overtimeOut'], true);
