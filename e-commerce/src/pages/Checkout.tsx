@@ -48,6 +48,17 @@ function clearDraft(): void {
   try { sessionStorage.removeItem(SS_CHECKOUT) } catch { /* noop */ }
 }
 
+// El teléfono del CRM llega como un solo string sin separador (ej.
+// "3704211436"), sin forma confiable de saber dónde termina el código de
+// área (varía 2-4 dígitos según provincia). Si no viene con espacio, todo
+// va al campo "número" y se deja "área" en blanco para que el cliente lo
+// complete — nunca se adivina un corte que puede quedar mal.
+function splitPhone(raw: string): [area: string, number: string] {
+  if (!raw) return ['', '']
+  const [area, ...rest] = raw.split(' ')
+  return rest.length ? [area, rest.join(' ')] : ['', area]
+}
+
 // ── Step indicator ─────────────────────────────────────────────────────────────
 function StepBar({ step }: { step: number }) {
   const steps = ['Datos', 'Envío', 'Pago', 'Confirmar']
@@ -207,17 +218,17 @@ function StepCustomer({
   notes: string; setNotes: (v: string) => void
   onNext: () => void
 }) {
-  const [phoneArea, setPhoneArea] = useState(() => phone.split(' ')[0] || '')
-  const [phoneNumber, setPhoneNumber] = useState(() => phone.split(' ')[1] || '')
+  const [phoneArea, setPhoneArea] = useState(() => splitPhone(phone)[0])
+  const [phoneNumber, setPhoneNumber] = useState(() => splitPhone(phone)[1])
 
   // El prefill del usuario logueado (CRM) llega de forma asíncrona, después de
   // que este componente ya montó con `phone` vacío — sin este efecto, el valor
   // nunca se refleja en los inputs de área/número aunque `phone` cambie arriba.
   useEffect(() => {
     if (phone && !phoneArea && !phoneNumber) {
-      const [area, ...rest] = phone.split(' ')
-      setPhoneArea(rest.length ? area : '')
-      setPhoneNumber(rest.length ? rest.join(' ') : area)
+      const [area, number] = splitPhone(phone)
+      setPhoneArea(area)
+      setPhoneNumber(number)
     }
   }, [phone]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -358,12 +369,12 @@ function StepShipping({
   selectedMotoCompany: MotoCompany | null; setSelectedMotoCompany: (c: MotoCompany | null) => void
   onBack: () => void; onNext: () => void
 }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const cart = useCart()
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const debouncedPostalCode = useDebounce(postalCode, 500)
 
-  const { data: savedAddresses = [] } = useQuery({
+  const { data: savedAddresses = [], isSuccess: addressesLoaded } = useQuery({
     queryKey: ['addresses'],
     queryFn: getAddresses,
     enabled: isAuthenticated,
@@ -377,6 +388,22 @@ function StepShipping({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedAddresses])
+
+  // Si el cliente no tiene ninguna dirección guardada (nunca usó "Mis
+  // direcciones"), cae en los datos de domicilio que ya tiene cargados en el
+  // CRM (Customer.address/city/province/postal_code) en vez de dejar todo
+  // vacío. Espera a que la query de direcciones guardadas termine para no
+  // pisar una dirección real que esté por llegar.
+  useEffect(() => {
+    if (addressesLoaded && savedAddresses.length === 0 && !address && user?.address) {
+      setAddress(user.address)
+      setCity(user.city ?? '')
+      setProvince(user.province ?? '')
+      setPostalCode(user.postal_code ?? '')
+      if (!selectedMethod) setSelectedMethod('home_delivery')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addressesLoaded, savedAddresses, user])
 
   function pickAddress(addr: CustomerAddress) {
     setSelectedAddressId(addr.id)
