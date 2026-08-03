@@ -14,6 +14,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ShippingMethodController;
+use App\Http\Controllers\ShippingSettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaxController;
 use App\Http\Controllers\UserController;
@@ -56,6 +57,8 @@ Route::post('nave-installment-rates', [NaveInstallmentRateSettingsController::cl
 // Puntos de fidelización (POS + e-commerce, ver app/Services/LoyaltyService.php)
 Route::get('loyalty-settings', [LoyaltySettingsController::class, 'index'])->name('loyalty-settings.index')->middleware('permission:settings.edit');
 Route::put('loyalty-settings', [LoyaltySettingsController::class, 'update'])->name('loyalty-settings.update')->middleware('permission:settings.edit');
+Route::get('shipping-settings', [ShippingSettingsController::class, 'index'])->name('shipping-settings.index')->middleware('permission:settings.edit');
+Route::put('shipping-settings', [ShippingSettingsController::class, 'update'])->name('shipping-settings.update')->middleware('permission:settings.edit');
 
 // Multi-empresa: listado/alta + selector de compañía activa (companies.switch)
 Route::get('companies', [CompanyController::class, 'index'])->name('companies.index')->middleware('permission:companies.switch');

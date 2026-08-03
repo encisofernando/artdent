@@ -9,6 +9,7 @@ import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
 import { getAddresses, type CustomerAddress } from '../api/customer'
 import { useCart } from '../store/cart'
 import { useAuth } from '../store/auth'
+import { useConfig } from '../contexts/ConfigContext'
 import { createMpPreference, getMpCheckoutUrl } from '../api/payment'
 import { createNavePayment } from '../api/nave'
 import { analytics } from '../api/analytics'
@@ -97,6 +98,7 @@ function OrderSummary({
   onLoyaltyRedemptionApplied,
   onLoyaltyRedemptionRemoved,
   shippingLabel,
+  freeShipping,
 }: {
   shippingCost: number
   appliedCoupon: any
@@ -106,6 +108,7 @@ function OrderSummary({
   onLoyaltyRedemptionApplied: (amount: number) => void
   onLoyaltyRedemptionRemoved: () => void
   shippingLabel?: string
+  freeShipping?: boolean
 }) {
   const cart = useCart()
 
@@ -167,7 +170,14 @@ function OrderSummary({
           </div>
         )}
 
-        {shippingCost === 0 && shippingLabel && (
+        {shippingCost === 0 && freeShipping && (
+          <div className="flex justify-between text-green-600">
+            <span>Envío {shippingLabel ? `(${shippingLabel})` : ''}</span>
+            <span className="font-bold">¡Gratis!</span>
+          </div>
+        )}
+
+        {shippingCost === 0 && shippingLabel && !freeShipping && (
           <div className="flex justify-between text-green-600">
             <span>Envío</span>
             <span className="font-bold text-green-600">A coordinar</span>
@@ -755,6 +765,7 @@ export default function Checkout() {
   const cart = useCart()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const config = useConfig()
 
   const [step, setStep] = useState(() => loadDraft().step ?? 1)
 
@@ -813,11 +824,24 @@ export default function Checkout() {
     enabled: selectedMethod === 'home_delivery',
   })
 
-  const shippingCost = useMemo(() => {
+  const rawShippingCost = useMemo(() => {
     if (selectedMethod === 'moto' && selectedMotoCompany) return selectedMotoCompany.price
     if (selectedMethod === 'home_delivery') return shippingOptionsForCost?.home_delivery.cost ?? 0
     return 0
   }, [selectedMethod, selectedMotoCompany, shippingOptionsForCost])
+
+  // Envío gratis a partir de un monto (Sistema → Administración → Envío
+  // Gratis en el CRM). Se calcula sobre el total ya con cupón y puntos
+  // aplicados — el backend vuelve a decidir esto de forma autoritativa en
+  // checkout(), acá solo es para mostrarlo antes de confirmar.
+  const qualifiesForFreeShipping = useMemo(() => {
+    if (!config.shipping.free_shipping_enabled || config.shipping.free_shipping_minimum_amount == null) return false
+    if (rawShippingCost <= 0) return false
+    const preShippingTotal = cart.subtotal - (appliedCoupon?.discount ?? 0) - appliedLoyaltyRedemption
+    return preShippingTotal >= config.shipping.free_shipping_minimum_amount
+  }, [config.shipping, rawShippingCost, cart.subtotal, appliedCoupon, appliedLoyaltyRedemption])
+
+  const shippingCost = qualifiesForFreeShipping ? 0 : rawShippingCost
 
   const shippingLabel = useMemo(() => {
     if (selectedMethod === 'home_delivery') return 'Domicilio'
@@ -1162,6 +1186,12 @@ export default function Checkout() {
                     <span className="text-[var(--brand-primary)] font-semibold">{formatMoney(shippingCost)}</span>
                   </div>
                 )}
+                {shippingCost === 0 && qualifiesForFreeShipping && (
+                  <div className="flex flex-col sm:flex-row sm:gap-2 text-gray-700">
+                    <span className="font-semibold sm:w-24 sm:shrink-0 text-gray-500">Costo envío:</span>
+                    <span className="text-green-600 font-semibold">¡Gratis!</span>
+                  </div>
+                )}
               </div>
 
               {error && (
@@ -1200,6 +1230,7 @@ export default function Checkout() {
           <OrderSummary
             shippingCost={shippingCost}
             shippingLabel={shippingLabel}
+            freeShipping={qualifiesForFreeShipping}
             appliedCoupon={appliedCoupon}
             onCouponApplied={setAppliedCoupon}
             onCouponRemoved={() => setAppliedCoupon(null)}

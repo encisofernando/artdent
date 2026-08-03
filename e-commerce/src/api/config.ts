@@ -25,6 +25,10 @@ export type RemoteConfig = {
     mp_public_key: string | null
     mp_sandbox: boolean
   }
+  shipping: {
+    free_shipping_enabled: boolean
+    free_shipping_minimum_amount: number | null
+  }
 }
 
 const CACHE_KEY = 'artdent_remote_config'
@@ -55,6 +59,7 @@ export async function fetchRemoteConfig(): Promise<RemoteConfig> {
       company: { name: null, fantasy_name: null, logo_url: null, email: null, phone: null, whatsapp: null, address: null, city: null, province: null, country: null, website: null },
       analytics: { ga4_id: null, meta_pixel_id: null, hotjar_id: null, gtm_id: null },
       payment: { mp_enabled: false, mp_public_key: null, mp_sandbox: false },
+      shipping: { free_shipping_enabled: false, free_shipping_minimum_amount: null },
     }
   }
 }

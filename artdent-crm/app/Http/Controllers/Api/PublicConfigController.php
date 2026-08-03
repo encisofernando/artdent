@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\EcommercePaymentConfig;
+use App\Models\ShippingSetting;
 use Illuminate\Http\JsonResponse;
 
 class PublicConfigController extends Controller
@@ -16,6 +17,8 @@ class PublicConfigController extends Controller
         $mp = EcommercePaymentConfig::where('type', 'mercadopago')->first();
         $mpConfig = $mp?->config ?? [];
         $mpEnabled = $mp?->is_enabled ?? false;
+
+        $shippingSettings = $company ? ShippingSetting::forCompany($company->id) : null;
 
         return response()->json([
             'company' => [
@@ -41,6 +44,10 @@ class PublicConfigController extends Controller
                 'mp_enabled' => $mpEnabled,
                 'mp_public_key' => $mpEnabled ? ($mpConfig['public_key'] ?? null) : null,
                 'mp_sandbox' => isset($mpConfig['sandbox_mode']) && $mpConfig['sandbox_mode'],
+            ],
+            'shipping' => [
+                'free_shipping_enabled' => $shippingSettings?->free_shipping_enabled ?? false,
+                'free_shipping_minimum_amount' => $shippingSettings?->free_shipping_minimum_amount,
             ],
         ])->withHeaders([
             'Cache-Control' => 'public, max-age=300',

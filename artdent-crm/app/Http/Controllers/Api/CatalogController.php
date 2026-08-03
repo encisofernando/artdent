@@ -476,6 +476,18 @@ class CatalogController extends Controller
             }
         }
 
+        // Envío gratis a partir de un monto (Sistema → Administración → Envío
+        // Gratis). Se evalúa sobre el total ya con cupón y puntos aplicados —
+        // se calcula después de $loyaltyRedeemAmount a propósito, para no
+        // regalar el envío por un canje que todavía no se aplicó.
+        $shippingSettings = \App\Models\ShippingSetting::forCompany($companyId);
+        if ($shippingSettings->free_shipping_enabled
+            && $shippingSettings->free_shipping_minimum_amount !== null
+            && ($subtotal - $discountAmount - $loyaltyRedeemAmount) >= $shippingSettings->free_shipping_minimum_amount
+        ) {
+            $shippingCost = 0.0;
+        }
+
         $total = max(0.0, round($subtotal - $discountAmount - $loyaltyRedeemAmount + $shippingCost, 2));
 
         // Create order
