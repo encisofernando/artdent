@@ -210,6 +210,17 @@ function StepCustomer({
   const [phoneArea, setPhoneArea] = useState(() => phone.split(' ')[0] || '')
   const [phoneNumber, setPhoneNumber] = useState(() => phone.split(' ')[1] || '')
 
+  // El prefill del usuario logueado (CRM) llega de forma asíncrona, después de
+  // que este componente ya montó con `phone` vacío — sin este efecto, el valor
+  // nunca se refleja en los inputs de área/número aunque `phone` cambie arriba.
+  useEffect(() => {
+    if (phone && !phoneArea && !phoneNumber) {
+      const [area, ...rest] = phone.split(' ')
+      setPhoneArea(rest.length ? area : '')
+      setPhoneNumber(rest.length ? rest.join(' ') : area)
+    }
+  }, [phone]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     setPhone(`${phoneArea} ${phoneNumber}`.trim())
   }, [phoneArea, phoneNumber, setPhone])
@@ -752,6 +763,7 @@ export default function Checkout() {
       if (user.name && !name) setName(user.name)
       if (user.email && !email) setEmail(user.email)
       if (user.phone && !phone) setPhone(user.phone)
+      if (user.dni && !dni) setDni(user.dni)
     }
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
