@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\ShippingCarrierConfig;
 use App\Models\ShippingMotoCompany;
 use App\Models\ShippingPickupPoint;
 use App\Services\AndreaniService;
@@ -64,67 +62,19 @@ class ShippingController extends Controller
      */
     private function buildHomeDelivery(Request $request): array
     {
-        $base = [
-            'available' => true,
-            'label' => 'Envío a domicilio',
-            'description' => 'Recibí tu pedido en tu domicilio (Andreani)',
-            'cost' => null,
-            'quote_pending' => true,
-        ];
-
         $postalCode = trim($request->string('postal_code')->toString());
         $items = $request->input('items', []);
 
-        if ($postalCode === '' || empty($items) || ! is_array($items)) {
-            return $base;
-        }
+        $cost = is_array($items)
+            ? app(AndreaniService::class)->quoteHomeDelivery($postalCode, $items)
+            : null;
 
-        $andreani = ShippingCarrierConfig::query()->where('type', 'andreani')->first();
-        if (! $andreani || ! $andreani->is_enabled) {
-            return $base;
-        }
-
-        $productIds = collect($items)->pluck('product_id')->filter()->unique()->all();
-        if (empty($productIds)) {
-            return $base;
-        }
-
-        $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
-
-        $bultos = [];
-        foreach ($items as $item) {
-            $product = $products->get($item['product_id'] ?? null);
-            if (! $product || ! $product->weight || ! $product->width_cm || ! $product->height_cm || ! $product->depth_cm) {
-                // Falta peso/dimensiones en algún producto del carrito — Andreani
-                // no puede cotizar sin esto, no tiene sentido intentar la llamada.
-                return $base;
-            }
-
-            $bultos[] = [
-                'quantity' => max(1, (int) ($item['qty'] ?? 1)),
-                'price' => (float) $product->price,
-                'width' => (int) $product->width_cm,
-                'height' => (int) $product->height_cm,
-                'depth' => (int) $product->depth_cm,
-                'grams' => (int) round($product->weight * 1000),
-            ];
-        }
-
-        $rates = (new AndreaniService)->cotizar($postalCode, $bultos);
-
-        if ($rates === null) {
-            return $base;
-        }
-
-        $estandar = collect($rates)->first(fn (array $r): bool => ($r['code'] ?? '') === 'estándar');
-
-        if (! $estandar) {
-            return array_merge($base, ['quote_pending' => false]);
-        }
-
-        return array_merge($base, [
-            'cost' => (float) $estandar['total'],
-            'quote_pending' => false,
-        ]);
+        return [
+            'available' => true,
+            'label' => 'Envío a domicilio',
+            'description' => 'Recibí tu pedido en tu domicilio (Andreani)',
+            'cost' => $cost,
+            'quote_pending' => $cost === null,
+        ];
     }
 }

@@ -62,31 +62,34 @@ export default function LoyaltyRedemption({
   return (
     <div className="space-y-3">
       {applied === null ? (
-        <form onSubmit={handleApply} className="flex gap-2">
-          <div className="relative flex-1">
-            <Gift className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-            <input
-              type="number"
-              min={0.01}
-              max={maxRedeemable}
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={`Usar puntos (disp. $${data.balance.toLocaleString('es-AR')})`}
-              className="w-full rounded-xl border px-10 py-2 text-sm outline-none focus:ring-2"
-            />
-          </div>
+        <div className="space-y-1.5">
+          <p className="text-xs text-gray-500">Disponible: ${data.balance.toLocaleString('es-AR')}</p>
+          <form onSubmit={handleApply} className="flex gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Gift className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+              <input
+                type="number"
+                min={0.01}
+                max={maxRedeemable}
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Monto a usar"
+                className="w-full rounded-xl border px-10 py-2 text-sm outline-none focus:ring-2"
+              />
+            </div>
+            <button type="submit" disabled={!amount} className="btn btn-outline whitespace-nowrap shrink-0">
+              Aplicar
+            </button>
+          </form>
           <button
             type="button"
             onClick={() => setAmount(String(maxRedeemable))}
-            className="btn btn-outline whitespace-nowrap text-xs"
+            className="text-xs font-semibold text-amber-600 hover:underline"
           >
-            Usar todo
+            Usar el máximo (${maxRedeemable.toLocaleString('es-AR')})
           </button>
-          <button type="submit" disabled={!amount} className="btn btn-outline whitespace-nowrap">
-            Aplicar
-          </button>
-        </form>
+        </div>
       ) : (
         <div className="flex items-center justify-between rounded-xl border-2 border-amber-500 bg-amber-50 px-4 py-3">
           <div className="flex items-center gap-2">

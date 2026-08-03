@@ -320,7 +320,6 @@ class CatalogController extends Controller
             'shipping_method_type' => ['nullable', 'string', 'in:home_delivery,pickup_point,moto'],
             'pickup_point_id' => ['nullable', 'integer', 'exists:shipping_pickup_points,id'],
             'moto_company_id' => ['nullable', 'integer', 'exists:shipping_moto_companies,id'],
-            'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'coupon_code' => ['nullable', 'string'],
             'loyalty_redeem_amount' => ['nullable', 'numeric', 'min:0.01'],
@@ -450,7 +449,25 @@ class CatalogController extends Controller
             }
         }
 
-        $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
+        // El costo de envío NUNCA se toma del payload del cliente — se
+        // recalcula acá contra la fuente real (cotización de Andreani para
+        // domicilio, precio real de ShippingMotoCompany para moto), igual
+        // que ya se hace con el cupón y los puntos de fidelización más
+        // abajo. Si no se puede cotizar (falta CP, o falta peso/dimensiones
+        // en algún producto — pasa hoy con TODO el catálogo), el costo
+        // queda en 0 y se coordina manualmente, mismo criterio que ya
+        // muestra el frontend como "A coordinar".
+        $shippingCost = match ($validated['shipping_method_type'] ?? null) {
+            'home_delivery' => (float) (app(\App\Services\AndreaniService::class)->quoteHomeDelivery(
+                (string) ($validated['shipping_postal'] ?? ''),
+                $validated['items'],
+            ) ?? 0),
+            'moto' => (float) (\App\Models\ShippingMotoCompany::query()
+                ->where('id', $validated['moto_company_id'] ?? null)
+                ->where('is_active', true)
+                ->value('price') ?? 0),
+            default => 0.0,
+        };
 
         // Canje de puntos — solo para clientes logueados (checkout invitado
         // no puede canjear, ver LoyaltyService). El front nunca manda el

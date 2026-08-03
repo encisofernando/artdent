@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EcommerceOrder;
+use App\Models\Product;
 use App\Models\ShippingCarrierConfig;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -231,6 +232,62 @@ class AndreaniService
         }
 
         return $rates;
+    }
+
+    /**
+     * Cotiza el envío a domicilio para un carrito real ($items: array de
+     * ['product_id' => int, 'qty' => int|float]) y devuelve el costo final
+     * de la tarifa "estándar", o null si no se pudo cotizar (falta CP,
+     * Andreani deshabilitado, falta peso/dimensiones en algún producto, o
+     * error de la API) — mismo criterio que usa ShippingController para
+     * mostrar "A coordinar" en el frontend. Compartido entre el preview de
+     * ShippingController::options() y la validación autoritativa de
+     * CatalogController::checkout(), para no duplicar ni desincronizar la
+     * lógica de armado de bultos entre los dos lugares.
+     */
+    public function quoteHomeDelivery(string $postalCode, array $items): ?float
+    {
+        if ($postalCode === '' || empty($items)) {
+            return null;
+        }
+
+        $andreani = ShippingCarrierConfig::query()->where('type', 'andreani')->first();
+        if (! $andreani || ! $andreani->is_enabled) {
+            return null;
+        }
+
+        $productIds = collect($items)->pluck('product_id')->filter()->unique()->all();
+        if (empty($productIds)) {
+            return null;
+        }
+
+        $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
+
+        $bultos = [];
+        foreach ($items as $item) {
+            $product = $products->get($item['product_id'] ?? null);
+            if (! $product || ! $product->weight || ! $product->width_cm || ! $product->height_cm || ! $product->depth_cm) {
+                return null;
+            }
+
+            $bultos[] = [
+                'quantity' => max(1, (int) ($item['qty'] ?? 1)),
+                'price' => (float) $product->price,
+                'width' => (int) $product->width_cm,
+                'height' => (int) $product->height_cm,
+                'depth' => (int) $product->depth_cm,
+                'grams' => (int) round($product->weight * 1000),
+            ];
+        }
+
+        $rates = $this->cotizar($postalCode, $bultos);
+        if ($rates === null) {
+            return null;
+        }
+
+        $estandar = collect($rates)->first(fn (array $r): bool => ($r['code'] ?? '') === 'estándar');
+
+        return $estandar ? (float) $estandar['total'] : null;
     }
 
     /**
