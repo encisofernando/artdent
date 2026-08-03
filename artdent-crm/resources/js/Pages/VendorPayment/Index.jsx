@@ -38,7 +38,7 @@ export default function Index({ auth, items, vendors, filters }) {
     };
 
     const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n ?? 0);
-    const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('es-AR') : '—';
+    const fmtDate = (d) => d ? new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('es-AR') : '—';
 
     const totalPagado = data.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
 
