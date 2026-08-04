@@ -105,7 +105,7 @@ function OrderSummary({
   onCouponApplied: (d: any) => void
   onCouponRemoved: () => void
   appliedLoyaltyRedemption: number
-  onLoyaltyRedemptionApplied: (amount: number) => void
+  onLoyaltyRedemptionApplied: (rewardId: number, discountAmount: number) => void
   onLoyaltyRedemptionRemoved: () => void
   shippingLabel?: string
   freeShipping?: boolean
@@ -203,7 +203,6 @@ function OrderSummary({
       <div className="border-t pt-4">
         <h3 className="text-sm font-bold mb-3">Tus puntos</h3>
         <LoyaltyRedemption
-          cartTotal={Math.max(0, cart.subtotal - (appliedCoupon?.discount ?? 0))}
           onRedemptionApplied={onLoyaltyRedemptionApplied}
           onRedemptionRemoved={onLoyaltyRedemptionRemoved}
         />
@@ -789,6 +788,7 @@ export default function Checkout() {
 
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
   const [appliedLoyaltyRedemption, setAppliedLoyaltyRedemption] = useState<number>(0)
+  const [appliedLoyaltyRewardId, setAppliedLoyaltyRewardId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [orderCode, setOrderCode] = useState<string | null>(null)
@@ -874,7 +874,7 @@ export default function Checkout() {
         shipping_cost: shippingCost || undefined,
         notes: notes.trim() || undefined,
         coupon_code: appliedCoupon?.coupon?.code || undefined,
-        loyalty_redeem_amount: appliedLoyaltyRedemption || undefined,
+        loyalty_reward_id: appliedLoyaltyRewardId || undefined,
         selected_payment_method: selectedPayment?.type ?? undefined,
         items: cart.items.map((it) => ({
           product_id: it.product.id,
@@ -1235,8 +1235,14 @@ export default function Checkout() {
             onCouponApplied={setAppliedCoupon}
             onCouponRemoved={() => setAppliedCoupon(null)}
             appliedLoyaltyRedemption={appliedLoyaltyRedemption}
-            onLoyaltyRedemptionApplied={setAppliedLoyaltyRedemption}
-            onLoyaltyRedemptionRemoved={() => setAppliedLoyaltyRedemption(0)}
+            onLoyaltyRedemptionApplied={(rewardId, discountAmount) => {
+              setAppliedLoyaltyRewardId(rewardId)
+              setAppliedLoyaltyRedemption(discountAmount)
+            }}
+            onLoyaltyRedemptionRemoved={() => {
+              setAppliedLoyaltyRewardId(null)
+              setAppliedLoyaltyRedemption(0)
+            }}
           />
         </div>
       </div>

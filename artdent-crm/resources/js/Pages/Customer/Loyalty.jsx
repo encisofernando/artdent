@@ -6,7 +6,7 @@ import { ArrowLeft, Gift, Plus, TrendingUp, TrendingDown, SlidersHorizontal } fr
 import axios from 'axios';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', red: '#E63946' };
-const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+const fmt = (v) => Number(v || 0).toLocaleString('es-AR');
 
 const TYPE_LABELS = { accrual: 'Acreditación', redemption: 'Canje', manual_adjustment: 'Ajuste' };
 const TYPE_COLORS = { accrual: B.green, redemption: B.red, manual_adjustment: B.teal };
@@ -106,7 +106,7 @@ export default function CustomerLoyalty({ auth, customer, account, moves }) {
                     </div>
                     <div>
                         <p className={`text-xs font-semibold uppercase tracking-wider ${muted}`}>Saldo disponible</p>
-                        <p className={`text-3xl font-extrabold ${text}`}>$ {fmt(balance)}</p>
+                        <p className={`text-3xl font-extrabold ${text}`}>{fmt(balance)} pts</p>
                     </div>
                 </div>
 
@@ -141,9 +141,9 @@ export default function CustomerLoyalty({ auth, customer, account, moves }) {
                                 </div>
                                 <div className="text-right shrink-0">
                                     <p className="text-sm font-extrabold" style={{ color: TYPE_COLORS[m.type] }}>
-                                        {m.amount >= 0 ? '+' : ''}$ {fmt(m.amount)}
+                                        {m.amount >= 0 ? '+' : ''}{fmt(m.amount)} pts
                                     </p>
-                                    <p className={`text-[11px] ${muted}`}>Saldo: $ {fmt(m.balance_after)}</p>
+                                    <p className={`text-[11px] ${muted}`}>Saldo: {fmt(m.balance_after)} pts</p>
                                 </div>
                             </div>
                         ))}
@@ -159,8 +159,8 @@ export default function CustomerLoyalty({ auth, customer, account, moves }) {
                     >
                         <h3 className={`text-sm font-bold ${text}`}>Ajuste manual de puntos</h3>
                         <div>
-                            <label className={`block text-xs font-semibold mb-1 ${muted}`}>Monto (positivo suma, negativo descuenta)</label>
-                            <input type="number" step="0.01" style={inputStyle} value={adjForm.amount}
+                            <label className={`block text-xs font-semibold mb-1 ${muted}`}>Puntos (positivo suma, negativo descuenta)</label>
+                            <input type="number" step="1" style={inputStyle} value={adjForm.amount}
                                 onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))} placeholder="Ej: 500 o -200" />
                         </div>
                         <div>

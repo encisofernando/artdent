@@ -17,7 +17,7 @@ class LoyaltyAccount extends Model
     protected $casts = [
         'customer_id' => 'int',
         'company_id' => 'int',
-        'balance' => 'float',
+        'balance' => 'integer',
     ];
 
     public function customer(): BelongsTo

@@ -72,7 +72,7 @@ export default function LoyaltySettingsIndex({ auth, settings }) {
                                     value={data.accrual_percentage}
                                     onChange={e => setData('accrual_percentage', e.target.value)} placeholder="5" />
                                 {errors.accrual_percentage && <p className="text-xs text-red-500 mt-1">{errors.accrual_percentage}</p>}
-                                <p className="text-xs text-slate-400 mt-1">Porcentaje del total de la compra que se acredita como puntos (en pesos).</p>
+                                <p className="text-xs text-slate-400 mt-1">Porcentaje del total de la compra que se acredita como puntos. Definí cuánto vale cada punto en Recompensas de Puntos.</p>
                             </div>
                             <div>
                                 <label className={lbl}>Compra mínima para acumular</label>

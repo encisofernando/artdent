@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\CustomerAccountMove;
+use App\Models\LoyaltyReward;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
@@ -222,6 +223,7 @@ class SaleController extends Controller
             'payments' => 'nullable|array|min:1',
             'payments.*.method' => 'required_with:payments|string',
             'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
+            'loyalty_reward_id' => 'nullable|integer|exists:loyalty_rewards,id',
         ]);
 
         $companyId = CompanyContext::id();
@@ -318,11 +320,10 @@ class SaleController extends Controller
                 $account->applyMove($move);
             }
 
-            $loyaltyRedeemAmount = round(collect($payments)
-                ->where('method', 'loyalty_points')
-                ->sum('amount'), 2);
-            if ($loyaltyRedeemAmount > 0.0) {
-                app(LoyaltyService::class)->redeemForSale($sale, $loyaltyRedeemAmount, $userId);
+            $hasLoyaltyPayment = collect($payments)->contains('method', 'loyalty_points');
+            if ($hasLoyaltyPayment) {
+                $reward = LoyaltyReward::findOrFail($request->input('loyalty_reward_id'));
+                app(LoyaltyService::class)->redeemForSale($sale, $reward, $userId);
             }
 
             foreach ($payments as $payment) {
@@ -740,6 +741,39 @@ class SaleController extends Controller
             ]);
         }
 
+        // El canje de puntos ya no es un monto libre — el cliente elige una
+        // recompensa del catálogo, y el descuento sale de ahí, nunca de lo
+        // que mande el navegador. Esto tiene que correr ANTES del chequeo de
+        // suma-total de abajo, porque acá se corrige el amount del split.
+        $loyaltyPayment = $payments->firstWhere('method', 'loyalty_points');
+        if ($loyaltyPayment) {
+            if (! $request->filled('customer_id')) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'Seleccioná un cliente para poder canjear puntos.',
+                ]);
+            }
+
+            $reward = LoyaltyReward::where('company_id', CompanyContext::id())
+                ->where('is_active', true)
+                ->find($request->input('loyalty_reward_id'));
+            if (! $reward) {
+                throw ValidationException::withMessages([
+                    'payments' => 'Elegí una recompensa válida para canjear puntos.',
+                ]);
+            }
+
+            $customer = Customer::find($request->integer('customer_id'));
+            $error = $customer ? app(LoyaltyService::class)->validateRedemption($customer, $reward, $total) : 'Seleccioná un cliente para poder canjear puntos.';
+            if ($error) {
+                throw ValidationException::withMessages(['payments' => $error]);
+            }
+
+            $payments = $payments->map(fn (array $payment) => $payment['method'] === 'loyalty_points'
+                ? [...$payment, 'amount' => round((float) $reward->discount_amount, 2)]
+                : $payment
+            );
+        }
+
         $distributedTotal = round((float) $payments->sum('amount'), 2);
         if (abs($distributedTotal - $total) > 0.01) {
             throw ValidationException::withMessages([
@@ -751,23 +785,6 @@ class SaleController extends Controller
             throw ValidationException::withMessages([
                 'customer_id' => 'Seleccioná un cliente para poder usar cuenta corriente.',
             ]);
-        }
-
-        $loyaltyPayment = $payments->firstWhere('method', 'loyalty_points');
-        if ($loyaltyPayment) {
-            if (! $request->filled('customer_id')) {
-                throw ValidationException::withMessages([
-                    'customer_id' => 'Seleccioná un cliente para poder canjear puntos.',
-                ]);
-            }
-
-            $customer = Customer::find($request->integer('customer_id'));
-            $available = $customer ? app(LoyaltyService::class)->balanceFor($customer) : 0.0;
-            if ($loyaltyPayment['amount'] > $available + 0.009) {
-                throw ValidationException::withMessages([
-                    'payments' => 'El cliente no tiene saldo de puntos suficiente.',
-                ]);
-            }
         }
 
         return $payments->all();

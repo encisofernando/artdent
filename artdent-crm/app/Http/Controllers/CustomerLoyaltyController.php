@@ -50,7 +50,7 @@ class CustomerLoyaltyController extends Controller
     public function storeAdjustment(Request $request, Customer $customer): JsonResponse
     {
         $validated = $request->validate([
-            'amount' => ['required', 'numeric'],
+            'amount' => ['required', 'integer'],
             'description' => ['required', 'string', 'max:255'],
             'move_date' => ['nullable', 'date'],
         ]);
@@ -60,8 +60,8 @@ class CustomerLoyaltyController extends Controller
             ['company_id' => $customer->company_id, 'balance' => 0]
         );
 
-        $amount = (float) $validated['amount'];
-        $newBalance = round($account->balance + $amount, 2);
+        $amount = (int) $validated['amount'];
+        $newBalance = $account->balance + $amount;
 
         $move = LoyaltyMove::create([
             'loyalty_account_id' => $account->id,

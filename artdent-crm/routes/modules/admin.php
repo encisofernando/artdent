@@ -6,6 +6,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceItemController;
 use App\Http\Controllers\InvoiceTypeController;
+use App\Http\Controllers\LoyaltyRewardController;
 use App\Http\Controllers\LoyaltySettingsController;
 use App\Http\Controllers\NaveInstallmentRateSettingsController;
 use App\Http\Controllers\NotificationController;
@@ -57,6 +58,7 @@ Route::post('nave-installment-rates', [NaveInstallmentRateSettingsController::cl
 // Puntos de fidelización (POS + e-commerce, ver app/Services/LoyaltyService.php)
 Route::get('loyalty-settings', [LoyaltySettingsController::class, 'index'])->name('loyalty-settings.index')->middleware('permission:settings.edit');
 Route::put('loyalty-settings', [LoyaltySettingsController::class, 'update'])->name('loyalty-settings.update')->middleware('permission:settings.edit');
+Route::resource('loyalty-rewards', LoyaltyRewardController::class)->except(['show'])->middleware('permission:settings.edit');
 Route::get('shipping-settings', [ShippingSettingsController::class, 'index'])->name('shipping-settings.index')->middleware('permission:settings.edit');
 Route::put('shipping-settings', [ShippingSettingsController::class, 'update'])->name('shipping-settings.update')->middleware('permission:settings.edit');
 

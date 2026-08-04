@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\NavePosPaymentController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\InstallmentsSimulatorController;
+use App\Http\Controllers\LoyaltyRewardController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
@@ -32,6 +33,11 @@ Route::post('sales/{sale}/nave-charge', [NavePosPaymentController::class, 'creat
 Route::post('sales/{sale}/generate-pdf', [SaleController::class, 'generatePdf'])->name('sales.generate-pdf')->middleware('permission:sales.view');
 Route::post('sales/{sale}/send-email', [SaleController::class, 'sendEmail'])->name('sales.send-email')->middleware('permission:sales.view');
 Route::post('sales/{sale}/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store')->middleware('permission:sales.edit');
+
+// Recompensas de puntos disponibles para un cliente — selector de "Puntos"
+// como medio de pago en Sale/Create.jsx (ver LoyaltyReward/*.jsx en
+// Sistema → Administración para el CRUD del catálogo).
+Route::get('customers/{customer}/loyalty-rewards', [LoyaltyRewardController::class, 'forCustomer'])->name('customers.loyalty-rewards')->middleware('permission:sales.create');
 
 // Ventas en espera (carritos guardados sin confirmar)
 Route::get('held-sales', [HeldSaleController::class, 'index'])->name('held-sales.index')->middleware('permission:sales.create');

@@ -322,7 +322,7 @@ class CatalogController extends Controller
             'moto_company_id' => ['nullable', 'integer', 'exists:shipping_moto_companies,id'],
             'notes' => ['nullable', 'string'],
             'coupon_code' => ['nullable', 'string'],
-            'loyalty_redeem_amount' => ['nullable', 'numeric', 'min:0.01'],
+            'loyalty_reward_id' => ['nullable', 'integer', 'exists:loyalty_rewards,id'],
             'selected_payment_method' => ['nullable', 'string', 'in:mercadopago,bank_transfer,qr,cash,nave'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
@@ -469,27 +469,25 @@ class CatalogController extends Controller
             default => 0.0,
         };
 
-        // Canje de puntos — solo para clientes logueados (checkout invitado
-        // no puede canjear, ver LoyaltyService). El front nunca manda el
-        // descuento real, solo la intención: se recalcula y se clampea acá
-        // contra el saldo real y el tope configurado, mismo criterio que un
-        // cupón inválido — nunca bloquea el checkout, solo se ajusta.
+        // Canje de una recompensa de puntos — solo para clientes logueados
+        // (checkout invitado no puede canjear, ver LoyaltyService). El front
+        // nunca manda el descuento real, solo qué recompensa eligió: se
+        // valida acá contra el saldo real y el tope configurado. Mismo
+        // criterio que un cupón inválido — una recompensa que no se puede
+        // aplicar simplemente no se aplica, nunca bloquea el checkout.
+        $loyaltyReward = null;
         $loyaltyRedeemAmount = 0.0;
-        if ($customerId && ! empty($validated['loyalty_redeem_amount'])) {
+        if ($customerId && ! empty($validated['loyalty_reward_id'])) {
             $customer = \App\Models\Customer::find($customerId);
-            if ($customer) {
-                $loyaltySettings = \App\Models\LoyaltySetting::forCompany($companyId);
-                if ($loyaltySettings->is_enabled) {
-                    $maxByPercentage = $loyaltySettings->max_redemption_percentage
-                        ? $subtotal * $loyaltySettings->max_redemption_percentage / 100
-                        : PHP_FLOAT_MAX;
-                    $loyaltyRedeemAmount = round(min(
-                        (float) $validated['loyalty_redeem_amount'],
-                        app(\App\Services\LoyaltyService::class)->balanceFor($customer),
-                        $maxByPercentage,
-                        max(0.0, $subtotal - $discountAmount + $shippingCost),
-                    ), 2);
-                }
+            $reward = \App\Models\LoyaltyReward::where('company_id', $companyId)
+                ->where('is_active', true)
+                ->find($validated['loyalty_reward_id']);
+
+            if ($customer && $reward
+                && ! app(\App\Services\LoyaltyService::class)->validateRedemption($customer, $reward, max(0.0, $subtotal - $discountAmount))
+            ) {
+                $loyaltyReward = $reward;
+                $loyaltyRedeemAmount = (float) $reward->discount_amount;
             }
         }
 
@@ -536,8 +534,8 @@ class CatalogController extends Controller
             'selected_payment_method' => $validated['selected_payment_method'] ?? null,
         ]);
 
-        if ($loyaltyRedeemAmount > 0.0) {
-            app(\App\Services\LoyaltyService::class)->redeemForOrder($order, $loyaltyRedeemAmount);
+        if ($loyaltyReward) {
+            app(\App\Services\LoyaltyService::class)->redeemForOrder($order, $loyaltyReward);
         }
 
         foreach ($orderItems as $item) {

@@ -17,6 +17,7 @@ class LoyaltyMove extends Model
         'loyalty_account_id',
         'company_id',
         'user_id',
+        'loyalty_reward_id',
         'type',
         'amount',
         'balance_after',
@@ -30,8 +31,9 @@ class LoyaltyMove extends Model
         'loyalty_account_id' => 'int',
         'company_id' => 'int',
         'user_id' => 'int',
-        'amount' => 'float',
-        'balance_after' => 'float',
+        'loyalty_reward_id' => 'int',
+        'amount' => 'integer',
+        'balance_after' => 'integer',
         'reference_id' => 'int',
         'move_date' => 'date',
     ];
@@ -44,5 +46,10 @@ class LoyaltyMove extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reward(): BelongsTo
+    {
+        return $this->belongsTo(LoyaltyReward::class, 'loyalty_reward_id');
     }
 }

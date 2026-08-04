@@ -215,6 +215,24 @@ export default function Create({ auth, products, customers = [], company = null 
     const [receivedAmount, setReceivedAmount] = useState('');
     const [issueDate, setIssueDate] = useState(() => todayIso());
 
+    // Recompensas de puntos disponibles para el cliente seleccionado — se
+    // usan en el split "Puntos" en vez de un monto libre.
+    const [loyaltyRewards, setLoyaltyRewards] = useState([]);
+    const [loyaltyBalance, setLoyaltyBalance] = useState(0);
+    useEffect(() => {
+        if (!customerId) {
+            setLoyaltyRewards([]);
+            setLoyaltyBalance(0);
+            return;
+        }
+        axios.get(route('customers.loyalty-rewards', customerId))
+            .then(({ data }) => {
+                setLoyaltyRewards(data.rewards || []);
+                setLoyaltyBalance(data.balance || 0);
+            })
+            .catch(() => { setLoyaltyRewards([]); setLoyaltyBalance(0); });
+    }, [customerId]);
+
     // Alta rápida producto
     const [newProd, setNewProd]           = useState({ name: '', sku: '', price: '', tax_rate: '21' });
     const [savingProd, setSavingProd]     = useState(false);
@@ -600,12 +618,15 @@ export default function Create({ auth, products, customers = [], company = null 
             };
         });
 
+        const loyaltySplit = paymentSplits.find((s) => s.method === 'loyalty_points');
+
         const payload = {
             customer_id: customerId,
             customer_name: customerName,
             notes,
             issue_date: issueDate,
             payments: normalizedPayments,
+            loyalty_reward_id: loyaltySplit?.loyalty_reward_id || undefined,
             items: saleItems,
             subtotal: totals.neto,
             discount_amount: 0,
@@ -1784,28 +1805,67 @@ export default function Create({ auth, products, customers = [], company = null 
                                                 ))}
                                             </select>
 
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold" style={{ color: D.muted }}>$</span>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={split.amount}
-                                                    onChange={(e) => updatePaymentSplit(split.id, { amount: e.target.value })}
+                                            {split.method === 'loyalty_points' ? (
+                                                <select
+                                                    value={split.loyalty_reward_id || ''}
+                                                    onChange={(e) => {
+                                                        const reward = loyaltyRewards.find((r) => String(r.id) === e.target.value);
+                                                        updatePaymentSplit(split.id, {
+                                                            loyalty_reward_id: reward?.id || '',
+                                                            amount: reward ? String(reward.discount_amount) : '',
+                                                        });
+                                                    }}
                                                     className="w-full outline-none"
                                                     style={{
-                                                        padding: '10px 12px 10px 24px',
+                                                        height: 42,
+                                                        padding: '0 8px',
                                                         borderRadius: 10,
                                                         background: D.input,
                                                         border: `1.5px solid ${D.inputBorder}`,
                                                         color: D.text,
-                                                        fontSize: 13.5,
+                                                        fontSize: 12.5,
                                                         fontWeight: 700,
                                                         fontFamily: 'inherit',
                                                     }}
-                                                    placeholder="0,00"
-                                                />
-                                            </div>
+                                                >
+                                                    <option value="">
+                                                        {loyaltyRewards.length === 0 ? 'Sin recompensas' : `Elegir (${loyaltyBalance} pts)`}
+                                                    </option>
+                                                    {loyaltyRewards.map((r) => (
+                                                        <option
+                                                            key={r.id}
+                                                            value={r.id}
+                                                            disabled={r.points_cost > loyaltyBalance}
+                                                            style={{ background: isDark ? '#1e293b' : '#ffffff', color: isDark ? '#e2e8f0' : '#0f172a' }}
+                                                        >
+                                                            {r.name} — {r.points_cost} pts
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold" style={{ color: D.muted }}>$</span>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={split.amount}
+                                                        onChange={(e) => updatePaymentSplit(split.id, { amount: e.target.value })}
+                                                        className="w-full outline-none"
+                                                        style={{
+                                                            padding: '10px 12px 10px 24px',
+                                                            borderRadius: 10,
+                                                            background: D.input,
+                                                            border: `1.5px solid ${D.inputBorder}`,
+                                                            color: D.text,
+                                                            fontSize: 13.5,
+                                                            fontWeight: 700,
+                                                            fontFamily: 'inherit',
+                                                        }}
+                                                        placeholder="0,00"
+                                                    />
+                                                </div>
+                                            )}
 
                                             <button
                                                 type="button"

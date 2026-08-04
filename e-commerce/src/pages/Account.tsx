@@ -676,7 +676,7 @@ function LoyaltyTab() {
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Saldo disponible</p>
-          <p className="text-3xl font-bold text-gray-900">{fmt(data.balance)}</p>
+          <p className="text-3xl font-bold text-gray-900">{data.balance.toLocaleString('es-AR')} pts</p>
         </div>
       </div>
       <p className="text-sm text-gray-500">

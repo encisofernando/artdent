@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\EcommerceOrder;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyMove;
+use App\Models\LoyaltyReward;
 use App\Models\LoyaltySetting;
 use App\Models\Sale;
 use Illuminate\Database\QueryException;
@@ -22,9 +23,34 @@ use RuntimeException;
  */
 class LoyaltyService
 {
-    public function balanceFor(Customer $customer): float
+    public function balanceFor(Customer $customer): int
     {
-        return (float) (LoyaltyAccount::where('customer_id', $customer->id)->value('balance') ?? 0);
+        return (int) (LoyaltyAccount::where('customer_id', $customer->id)->value('balance') ?? 0);
+    }
+
+    /**
+     * Valida si una recompensa se puede canjear para este cliente y este
+     * total de compra (pre-descuento) — saldo de puntos suficiente y, si
+     * hay un tope configurado, que el descuento de la recompensa no supere
+     * ese % del total. No debita nada, solo valida — pensado para que los
+     * controllers (POS y checkout) rechacen el canje ANTES de crear la
+     * venta/pedido, con el total real pre-descuento (una vez creada la
+     * venta/pedido, el total ya viene descontado y no sirve para este
+     * chequeo). Devuelve null si es válida, o un mensaje de error si no.
+     */
+    public function validateRedemption(Customer $customer, LoyaltyReward $reward, float $preDiscountTotal): ?string
+    {
+        if ($reward->points_cost > $this->balanceFor($customer)) {
+            return 'El cliente no tiene saldo de puntos suficiente.';
+        }
+
+        $settings = LoyaltySetting::forCompany($reward->company_id);
+        if ($settings->max_redemption_percentage
+            && $reward->discount_amount > $preDiscountTotal * $settings->max_redemption_percentage / 100) {
+            return 'Esta recompensa no se puede aplicar a una compra de este monto.';
+        }
+
+        return null;
     }
 
     /**
@@ -49,10 +75,7 @@ class LoyaltyService
             return;
         }
 
-        $redeemedOnThis = (float) LoyaltyMove::where('reference_type', 'sale')
-            ->where('reference_id', $sale->id)
-            ->where('type', LoyaltyMove::TYPE_REDEMPTION)
-            ->sum('amount');
+        $redeemedOnThis = $this->pesosRedeemedOn('sale', $sale->id);
 
         $this->accrue(
             customer: $sale->customer,
@@ -86,10 +109,7 @@ class LoyaltyService
             return;
         }
 
-        $redeemedOnThis = (float) LoyaltyMove::where('reference_type', 'ecommerce_order')
-            ->where('reference_id', $order->id)
-            ->where('type', LoyaltyMove::TYPE_REDEMPTION)
-            ->sum('amount');
+        $redeemedOnThis = $this->pesosRedeemedOn('ecommerce_order', $order->id);
 
         $this->accrue(
             customer: $customer,
@@ -128,14 +148,16 @@ class LoyaltyService
                 return;
             }
 
-            // redeemedOnThis ya viene negativo (es un TYPE_REDEMPTION).
-            $base = max(0.0, round($total + $redeemedOnThis, 2));
-            $amount = round($base * $settings->accrual_percentage / 100, 2);
-            if ($amount <= 0.0) {
+            // redeemedOnThis son los pesos ya descontados por una recompensa
+            // canjeada sobre esta misma venta/pedido — no se acredita puntos
+            // sobre plata que el cliente ya pagó con puntos.
+            $base = max(0.0, $total - $redeemedOnThis);
+            $amount = (int) floor($base * $settings->accrual_percentage / 100);
+            if ($amount <= 0) {
                 return;
             }
 
-            $newBalance = round($account->balance + $amount, 2);
+            $newBalance = $account->balance + $amount;
 
             try {
                 $move = LoyaltyMove::create([
@@ -162,50 +184,57 @@ class LoyaltyService
     }
 
     /**
-     * Canje de puntos como medio de pago en una venta POS.
+     * Canje de una recompensa como medio de pago en una venta POS. Debita
+     * $reward->points_cost puntos y devuelve $reward->discount_amount (el
+     * descuento en pesos que el caller aplica al total). El controller ya
+     * debería haber validado con validateRedemption() antes de llegar acá
+     * con el total pre-descuento real — este método solo revalida el saldo
+     * como defensa adicional (mismo criterio que la doble-idempotencia de
+     * accrue()).
      */
-    public function redeemForSale(Sale $sale, float $amount, ?int $userId): LoyaltyMove
+    public function redeemForSale(Sale $sale, LoyaltyReward $reward, ?int $userId): float
     {
         if (! $sale->customer) {
             throw new RuntimeException('El canje de puntos requiere un cliente identificado.');
         }
 
-        return $this->redeem($sale->customer, $sale->company_id, $amount, 'sale', $sale->id, "Canje venta POS {$sale->sale_number}", $userId);
+        return $this->redeem($sale->customer, $sale->company_id, $reward, 'sale', $sale->id, "Canje venta POS {$sale->sale_number}: {$reward->name}", $userId);
     }
 
     /**
-     * Canje de puntos como descuento en el checkout online.
+     * Canje de una recompensa como descuento en el checkout online.
      */
-    public function redeemForOrder(EcommerceOrder $order, float $amount, ?int $userId = null): LoyaltyMove
+    public function redeemForOrder(EcommerceOrder $order, LoyaltyReward $reward, ?int $userId = null): float
     {
         if (! $order->customer) {
             throw new RuntimeException('El canje de puntos requiere un cliente identificado.');
         }
 
-        return $this->redeem($order->customer, $order->company_id, $amount, 'ecommerce_order', $order->id, "Canje pedido {$order->order_number}", $userId);
+        return $this->redeem($order->customer, $order->company_id, $reward, 'ecommerce_order', $order->id, "Canje pedido {$order->order_number}: {$reward->name}", $userId);
     }
 
-    private function redeem(Customer $customer, int $companyId, float $amount, string $referenceType, int $referenceId, string $description, ?int $userId): LoyaltyMove
+    private function redeem(Customer $customer, int $companyId, LoyaltyReward $reward, string $referenceType, int $referenceId, string $description, ?int $userId): float
     {
-        return DB::transaction(function () use ($customer, $companyId, $amount, $referenceType, $referenceId, $description, $userId): LoyaltyMove {
+        return DB::transaction(function () use ($customer, $companyId, $reward, $referenceType, $referenceId, $description, $userId): float {
             $account = LoyaltyAccount::firstOrCreate(
                 ['customer_id' => $customer->id],
                 ['company_id' => $companyId, 'balance' => 0]
             );
             $account = LoyaltyAccount::whereKey($account->id)->lockForUpdate()->first();
 
-            if ($amount > $account->balance + 0.009) {
+            if ($reward->points_cost > $account->balance) {
                 throw new RuntimeException('El cliente no tiene saldo de puntos suficiente.');
             }
 
-            $newBalance = round($account->balance - $amount, 2);
+            $newBalance = $account->balance - $reward->points_cost;
 
             $move = LoyaltyMove::create([
                 'loyalty_account_id' => $account->id,
                 'company_id' => $companyId,
                 'user_id' => $userId,
+                'loyalty_reward_id' => $reward->id,
                 'type' => LoyaltyMove::TYPE_REDEMPTION,
-                'amount' => -$amount,
+                'amount' => -$reward->points_cost,
                 'balance_after' => $newBalance,
                 'description' => $description,
                 'reference_type' => $referenceType,
@@ -215,8 +244,24 @@ class LoyaltyService
 
             $account->applyMove($move);
 
-            return $move;
+            return (float) $reward->discount_amount;
         });
+    }
+
+    /**
+     * Pesos ya descontados por una recompensa canjeada sobre esta misma
+     * venta/pedido — usado por accrue() para no acreditar puntos sobre
+     * plata que el cliente ya pagó con puntos. A diferencia de sumar
+     * LoyaltyMove.amount directo (que hoy son puntos, no pesos), hay que
+     * resolver el discount_amount de la recompensa real vinculada al move.
+     */
+    private function pesosRedeemedOn(string $referenceType, int $referenceId): float
+    {
+        return (float) LoyaltyMove::where('reference_type', $referenceType)
+            ->where('reference_id', $referenceId)
+            ->where('type', LoyaltyMove::TYPE_REDEMPTION)
+            ->join('loyalty_rewards', 'loyalty_rewards.id', '=', 'loyalty_moves.loyalty_reward_id')
+            ->sum('loyalty_rewards.discount_amount');
     }
 
     /**
