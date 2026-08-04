@@ -55,17 +55,19 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
-        className={`relative w-full ${sizes[size]} max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none`}
+        className={`relative w-full ${sizes[size]} max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-xl outline-none`}
       >
         {title && (
-          <div className="mb-4 flex items-center justify-between sticky top-0 bg-white -mt-1 pt-1">
+          <div className="sticky top-0 z-10 flex items-center justify-between bg-white px-6 pt-6 pb-4">
             <h2 id={titleId} className="text-xl font-bold">{title}</h2>
             <button onClick={onClose} className="rounded-full p-1 hover:bg-gray-100" aria-label="Cerrar">
               <X size={20} />
             </button>
           </div>
         )}
-        {children}
+        <div className={title ? 'px-6 pb-6' : 'p-6'}>
+          {children}
+        </div>
       </div>
     </div>
   )
