@@ -4,7 +4,7 @@ import { Building2, Check, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 
 export default function CompanySwitcher() {
-    const { company } = usePage().props;
+    const { companyContext: company } = usePage().props;
     const { isDark } = useTheme();
     const [open, setOpen] = useState(false);
     const ref = useRef(null);

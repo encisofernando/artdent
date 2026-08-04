@@ -41,7 +41,7 @@ export default function Sidebar({ className = "" }) {
     const auth = props.auth;
     const billingEnabled = props.app_context?.billing_enabled !== false;
     const enabledModules = props.enabled_modules || [];
-    const company = props.company?.active ?? null;
+    const company = props.companyContext?.active ?? null;
     const hasCustomLogo = Boolean(getCompanyLogoUrl(company, 'general'));
 
     const NAV_SECTIONS = [

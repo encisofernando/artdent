@@ -48,7 +48,16 @@ class HandleInertiaRequests extends Middleware
                 'billing_enabled' => CrmMode::billingEnabled(),
             ],
             'tenant_info' => fn () => CrmMode::tenantInfo(),
-            'company' => fn () => $request->user() ? [
+            // Ojo: NO se llama "company" a propósito — más de 20 controllers
+            // (CompanyController, SaleController, ProductController, etc.)
+            // pasan su propio prop de página llamado "company" con formas
+            // totalmente distintas (el modelo Company crudo, datos fiscales
+            // parciales, etc.). En Inertia, un prop de página con el mismo
+            // nombre PISA al prop compartido — el Sidebar/CompanySwitcher
+            // quedaban sin datos (company=null) en cualquier pantalla que
+            // definiera su propio "company", cayendo al logo/nombre de
+            // fallback "ArtCode" en vez del real del tenant.
+            'companyContext' => fn () => $request->user() ? [
                 'active' => Company::find(CompanyContext::id(), ['id', 'name', 'fantasy_name', 'logo_url', 'lab_logo_url']),
                 'available' => CompanyContext::availableFor($request->user()),
             ] : null,
