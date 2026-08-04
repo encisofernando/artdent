@@ -10,6 +10,7 @@ import {
 } from '@/lib/print';
 import { CompanyLogo, getCompanyLogoUrl } from '@/lib/companyBranding';
 import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
+import PrinterConfigModal from '@/Components/PrinterConfigModal';
 import { buildPhaseTicket, buildJobOrderTicket, mapFinalTicketToJobOrder } from '@/lib/escpos/buildJobOrderTicket';
 
 // El número ya viene precedido por la palabra "Orden" en el encabezado, así que
@@ -152,6 +153,7 @@ export default function JobKioskIndex({ collaborators = [], company = null, tena
     const [lastSync, setLastSync]       = useState(null);
     const [search, setSearch]           = useState('');
     const [attendanceEvent, setAttendanceEvent] = useState(null);
+    const [printerModalOpen, setPrinterModalOpen] = useState(false);
 
     const POLL_INTERVAL = 20_000; // ms
 
@@ -337,6 +339,11 @@ export default function JobKioskIndex({ collaborators = [], company = null, tena
         <>
             <Head title="Órdenes" />
             <AttendanceWelcomeOverlay event={attendanceEvent} onClose={() => setAttendanceEvent(null)} />
+            <PrinterConfigModal
+                open={printerModalOpen}
+                onClose={() => setPrinterModalOpen(false)}
+                companyName={company?.fantasy_name || company?.name || 'ArtDent'}
+            />
             <div className="min-h-screen flex flex-col" style={{ background: '#0f172a', color: '#e2e8f0' }}>
 
                 {/* Header */}
@@ -384,6 +391,13 @@ export default function JobKioskIndex({ collaborators = [], company = null, tena
                             title="Actualizar"
                         >
                             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} color="#94a3b8" />
+                        </button>
+                        <button
+                            onClick={() => setPrinterModalOpen(true)}
+                            className="p-2 rounded-lg transition-colors hover:bg-slate-700"
+                            title="Configurar impresora"
+                        >
+                            <Printer size={15} color="#94a3b8" />
                         </button>
                         <FullscreenToggle />
                     </div>
@@ -598,7 +612,6 @@ export default function JobKioskIndex({ collaborators = [], company = null, tena
                     {screen === SCREEN.TICKET_PRINT && lastTicket && (
                         <TicketPrintScreen
                             ticket={lastTicket}
-                            collaborators={selectedCollabs}
                             onDone={() => {
                                 setLastTicket(null);
                                 setScreen(finalTicket ? SCREEN.FINAL_TICKET : SCREEN.DASHBOARD);
@@ -791,8 +804,10 @@ function ConfirmCard({ title, body, confirmLabel, confirmStyle, onConfirm, onCan
     );
 }
 
-// ─── Ticket térmico de fase — mismo diseño que Job/Ticket ────────────────────
-function PhaseTicketThermal({ ticket, collabNames, widthMM = 80 }) {
+// ─── Ticket térmico de fase — mismo diseño byte a byte que FinalTicketThermal,
+// solo cambia que el detalle trae un único ítem (la fase recién completada)
+// en vez de todas las fases de la orden.
+function PhaseTicketThermal({ ticket, widthMM = 80 }) {
     const is54 = widthMM === 54 || widthMM === 57;
     const company = ticket.company ?? {};
     const ticketWidth = getThermalZoneWidth(is54 ? '57mm' : '80mm');
@@ -827,12 +842,11 @@ function PhaseTicketThermal({ ticket, collabNames, widthMM = 80 }) {
 
             <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
                 <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                    Orden N° {stripOrdPrefix(ticket.ticket_number)}
+                    Orden N° {stripOrdPrefix(ticket.job_number)}
                 </div>
             </div>
 
             <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
-                <InfoRow label="Orden" value={stripOrdPrefix(ticket.job_number)} />
                 <InfoRow label="Fecha" value={fmtD(ticket.received_at)} />
                 {ticket.patient_name && <InfoRow label="Paciente" value={ticket.patient_name} />}
                 {ticket.dentist_name && <InfoRow label="Profesional" value={ticket.dentist_name} />}
@@ -840,19 +854,22 @@ function PhaseTicketThermal({ ticket, collabNames, widthMM = 80 }) {
             </div>
 
             <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 0', marginBottom: 4 }}>
-                Fase de trabajo
+                Detalle del trabajo
             </div>
 
             <div style={{ marginBottom: is54 ? 6 : 8 }}>
                 <div style={{ borderBottom: '1px dotted #000', padding: '4px 0' }}>
                     <div style={{ fontSize: `${F.body}pt`, fontWeight: 700, marginBottom: 2 }}>{ticket.phase_name}</div>
-                    <div style={{ fontSize: `${F.label}pt`, color: '#555' }}>Técnico(s): {collabNames}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt` }}>
+                        <span>1 x ${fmt(ticket.amount)}</span>
+                        <span style={{ fontWeight: 800 }}>${fmt(ticket.amount)}</span>
+                    </div>
                 </div>
             </div>
 
             <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>Importe fase</span>
+                    <span style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>Total orden</span>
                     <span style={{ fontSize: `${F.total}pt`, fontWeight: 900 }}>${fmt(ticket.amount)}</span>
                 </div>
             </div>
@@ -866,8 +883,7 @@ function PhaseTicketThermal({ ticket, collabNames, widthMM = 80 }) {
     );
 }
 
-function TicketPrintScreen({ ticket, collaborators, onDone }) {
-    const collabNames = collaborators.map((c) => c.name).join(', ') || '—';
+function TicketPrintScreen({ ticket, onDone }) {
     const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
     const ticketRef = useRef(null);
     const [printStatus, setPrintStatus] = useState(null); // 'printing' | 'ok' | 'error'
@@ -878,7 +894,7 @@ function TicketPrintScreen({ ticket, collaborators, onDone }) {
         setPrintStatus('printing');
 
         if (isNativePrintAvailable()) {
-            const bytes = await buildPhaseTicket(ticket, collabNames, { widthMM });
+            const bytes = await buildPhaseTicket(ticket, { widthMM });
             const result = await printRawBytes(bytes);
             setPrintStatus(result.ok ? 'ok' : 'error');
             return;
@@ -911,7 +927,7 @@ function TicketPrintScreen({ ticket, collaborators, onDone }) {
 
             {/* Ticket preview */}
             <div ref={ticketRef} className="overflow-auto rounded-xl" style={{ background: '#fff', padding: 0, display: 'flex', justifyContent: 'center' }}>
-                <PhaseTicketThermal ticket={ticket} collabNames={collabNames} widthMM={widthMM} />
+                <PhaseTicketThermal ticket={ticket} widthMM={widthMM} />
             </div>
 
             {/* Summary row */}

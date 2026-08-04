@@ -127,10 +127,12 @@ export function mapFinalTicketToJobOrder(ticket) {
 }
 
 // Ticket de fase individual (parcial, se imprime al completar UNA fase del
-// trabajo, antes de que la orden esté terminada) — contenido distinto del
-// ticket de orden completa, pero con la misma línea visual (mismas cajas,
-// mismos rótulos en mayúscula, mismo pie).
-export async function buildPhaseTicket(ticket, collabNames, { widthMM = 80 } = {}) {
+// trabajo, antes de que la orden esté terminada) — mismo diseño byte a byte
+// que buildJobOrderTicket: el paciente/profesional lo reciben en mano y no
+// tiene sentido distinguir visualmente que es una fase, solo importa el
+// detalle y el monto (a pedido del cliente, que veía el ticket de fase con
+// una estética distinta y más pobre que la orden completa).
+export async function buildPhaseTicket(ticket, { widthMM = 80 } = {}) {
     const columns = COLUMNS_BY_WIDTH[widthMM] || 32;
     const company = ticket.company || {};
 
@@ -151,11 +153,10 @@ export async function buildPhaseTicket(ticket, collabNames, { widthMM = 80 } = {
     wrapText('Documento interno. No válido como factura.', columns).forEach((line) => builder.line(line));
     builder.hr('─', columns);
 
-    builder.bold(true).box([center(`ORDEN N° ${stripOrdPrefix(ticket.ticket_number)}`, columns - 2)], columns).bold(false);
+    builder.bold(true).box([center(`ORDEN N° ${stripOrdPrefix(ticket.job_number)}`, columns - 2)], columns).bold(false);
     builder.hr('─', columns);
 
     builder.align(ALIGN.LEFT);
-    builder.line(justify('ORDEN', stripOrdPrefix(ticket.job_number) || '—', columns));
     builder.line(justify('FECHA', fmtDate(ticket.received_at), columns));
 
     if (ticket.patient_name) {
@@ -172,12 +173,13 @@ export async function buildPhaseTicket(ticket, collabNames, { widthMM = 80 } = {
 
     builder.hr('─', columns);
 
-    builder.bold(true).line('FASE DE TRABAJO').bold(false);
+    builder.bold(true).line('DETALLE DEL TRABAJO').bold(false);
     wrapText(ticket.phase_name || '', columns).forEach((line) => builder.line(line));
-    wrapText(`Técnico(s): ${collabNames || '—'}`, columns).forEach((line) => builder.line(line));
+    builder.line(justify(`1 x $${fmt(ticket.amount)}`, `$${fmt(ticket.amount)}`, columns));
+
     builder.hr('─', columns);
 
-    totalBox(builder, 'IMPORTE FASE', `$${fmt(ticket.amount)}`, columns);
+    totalBox(builder, 'TOTAL ORDEN', `$${fmt(ticket.amount)}`, columns);
 
     builder.align(ALIGN.CENTER).line('Tu sonrisa, es nuestra prioridad.').align(ALIGN.LEFT);
     builder.feed(1).cut(true);
