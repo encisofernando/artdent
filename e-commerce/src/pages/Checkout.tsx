@@ -448,10 +448,12 @@ function StepShipping({
   })()
 
   function selectBranch(branch: AndreaniBranch) {
+    // OJO: no tocar address/city/province acá — ese estado es compartido
+    // con "Envío a domicilio" (mismos inputs), pisarlo hace que la
+    // dirección de la sucursal quede pegada si el cliente vuelve a
+    // domicilio después. El payload arma la dirección de la sucursal por
+    // separado a partir de selectedAndreaniBranch, ver onSubmit().
     setSelectedAndreaniBranch(branch)
-    setAddress(`${branch.name} — ${branch.address}`)
-    setCity(branch.city)
-    setProvince(branch.province)
     setBranchModalOpen(false)
   }
 
@@ -945,9 +947,15 @@ export default function Checkout() {
         customer_phone: phone.trim() || undefined,
         customer_dni: !isCuit && cleanDoc ? cleanDoc : undefined,
         customer_cuit: isCuit ? cleanDoc : undefined,
-        shipping_address: address.trim() || undefined,
-        shipping_city: city.trim() || undefined,
-        shipping_province: province.trim() || undefined,
+        shipping_address: selectedMethod === 'andreani_branch' && selectedAndreaniBranch
+          ? `${selectedAndreaniBranch.name} — ${selectedAndreaniBranch.address}`
+          : address.trim() || undefined,
+        shipping_city: selectedMethod === 'andreani_branch' && selectedAndreaniBranch
+          ? selectedAndreaniBranch.city
+          : city.trim() || undefined,
+        shipping_province: selectedMethod === 'andreani_branch' && selectedAndreaniBranch
+          ? selectedAndreaniBranch.province
+          : province.trim() || undefined,
         shipping_postal: postalCode.trim() || undefined,
         shipping_method_type: selectedMethod ?? undefined,
         pickup_point_id: selectedPickupPoint?.id,
