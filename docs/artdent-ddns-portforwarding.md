@@ -1,5 +1,16 @@
 # ArtDent: sacar la PC con Tailscale del medio (DDNS + port forwarding)
 
+**ACTUALIZACIÓN 2026-08-04: la subred `192.168.0.0/24` de este documento ya
+no existe.** El TP-Link pasó a modo Access Point (ya no hace NAT/DHCP
+propio) — todo el consultorio corre ahora en `192.168.1.0/24`, el rango del
+router de Starlink. La reserva DHCP, el port forwarding del puerto 8899 y la
+IP `192.168.0.100` del terminal descriptos abajo son historia vieja; si se
+retoma este plan hay que rehacerlo todo desde cero en la subred nueva —
+partiendo del mismo problema de fondo (doble NAT / Starlink sin bypass) que
+ya lo había bloqueado antes de este cambio, así que sigue sin ser viable sin
+resolver eso primero. Detalle completo del cambio de topología:
+`docs/handoff-2026-08-04.md` §8.
+
 **ACTUALIZACIÓN 2026-07-30: plan bloqueado por doble NAT de Starlink — no
 reintentar sin resolver eso primero.** Se hicieron los pasos 1-4 (puerto
 8899 en el terminal, reserva DHCP, port forwarding en el TP-Link, DDNS con
