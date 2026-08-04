@@ -92,22 +92,47 @@ class RestrictToLabNetwork
         return false;
     }
 
+    /**
+     * Soporta IP exacta e IP/CIDR para IPv4 y para IPv6 (necesario en la red
+     * del consultorio: el ISP asigna IPv6 pública por dispositivo y Android
+     * rota el sufijo por las extensiones de privacidad, así que una IP
+     * exacta se vence sola — hay que poder cargar el /64 del prefijo, que
+     * es estable). `inet_pton` da la representación binaria en ambos casos,
+     * así que la comparación de máscara es la misma para las dos familias.
+     */
     private function ipMatches(string $clientIp, string $allowed): bool
     {
         if ($clientIp === $allowed) {
             return true;
         }
 
-        // CIDR support: 192.168.1.0/24
-        if (str_contains($allowed, '/')) {
-            [$subnet, $bits] = explode('/', $allowed);
-            $ip = ip2long($clientIp);
-            $sub = ip2long($subnet);
-            $mask = -1 << (32 - (int) $bits);
-
-            return ($ip & $mask) === ($sub & $mask);
+        if (! str_contains($allowed, '/')) {
+            return false;
         }
 
-        return false;
+        [$subnet, $bits] = explode('/', $allowed);
+        $bits = (int) $bits;
+
+        $clientBin = @inet_pton($clientIp);
+        $subnetBin = @inet_pton($subnet);
+
+        if ($clientBin === false || $subnetBin === false || strlen($clientBin) !== strlen($subnetBin)) {
+            return false;
+        }
+
+        $fullBytes = intdiv($bits, 8);
+        $remainderBits = $bits % 8;
+
+        if ($fullBytes > 0 && strncmp($clientBin, $subnetBin, $fullBytes) !== 0) {
+            return false;
+        }
+
+        if ($remainderBits === 0) {
+            return true;
+        }
+
+        $mask = (0xFF << (8 - $remainderBits)) & 0xFF;
+
+        return (ord($clientBin[$fullBytes]) & $mask) === (ord($subnetBin[$fullBytes]) & $mask);
     }
 }
