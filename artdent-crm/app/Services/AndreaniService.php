@@ -247,6 +247,96 @@ class AndreaniService
      */
     public function quoteHomeDelivery(string $postalCode, array $items): ?float
     {
+        $rates = $this->cotizarSiHabilitado($postalCode, $items);
+        if ($rates === null) {
+            return null;
+        }
+
+        $estandar = collect($rates)->first(fn (array $r): bool => ($r['code'] ?? '') === 'estándar');
+
+        return $estandar ? (float) $estandar['total'] : null;
+    }
+
+    /**
+     * Cotiza el retiro en sucursal — mismo cotizar() que domicilio, pero
+     * filtrando la tarifa "sucursal" (siempre más barata, Andreani la
+     * devuelve una vez por cada sucursal del CP con el mismo total).
+     */
+    public function quoteBranchPickup(string $postalCode, array $items): ?float
+    {
+        $rates = $this->cotizarSiHabilitado($postalCode, $items);
+        if ($rates === null) {
+            return null;
+        }
+
+        $sucursal = collect($rates)->first(fn (array $r): bool => ($r['code'] ?? '') === 'sucursal');
+
+        return $sucursal ? (float) $sucursal['total'] : null;
+    }
+
+    /**
+     * Lista las sucursales de Andreani para un código postal, con el costo
+     * de retiro en sucursal ya cotizado (mismo valor para todas — Andreani
+     * no varía el precio por sucursal puntual dentro de un mismo CP). null
+     * si no se pudo cotizar/listar (Andreani deshabilitado, falta CP, falta
+     * peso/dimensiones en algún producto, o error de la API).
+     *
+     * @return array{cost: float, branches: array<int, array{code: string, name: string, address: string, city: string, province: string, postal_code: string}>}|null
+     */
+    public function branchPickupOptions(string $postalCode, array $items): ?array
+    {
+        $cost = $this->quoteBranchPickup($postalCode, $items);
+        if ($cost === null) {
+            return null;
+        }
+
+        $token = $this->accessToken();
+        if (! $token) {
+            return null;
+        }
+
+        $response = Http::withHeaders(['X-Auth-Token' => $token])
+            ->get($this->endpoint('sucursales'), ['postalCode' => $postalCode]);
+
+        if (! $response->successful()) {
+            Log::channel('andreani')->error('Andreani: error al listar sucursales.', [
+                'postal_code' => $postalCode,
+                'status' => $response->status(),
+            ]);
+
+            return null;
+        }
+
+        $branches = collect($response->json('response.data') ?? [])
+            ->map(fn (array $b): array => [
+                'code' => (string) ($b['Codigo'] ?? ''),
+                'name' => (string) ($b['Descripcion'] ?? ''),
+                'address' => trim(($b['Direccion']['Calle'] ?? '').' '.($b['Direccion']['Numero'] ?? '')),
+                'city' => (string) ($b['Direccion']['Localidad'] ?? ''),
+                'province' => (string) ($b['Direccion']['Provincia'] ?? ''),
+                'postal_code' => (string) ($b['Direccion']['CodigoPostal'] ?? ''),
+            ])
+            ->filter(fn (array $b): bool => $b['code'] !== '')
+            ->values()
+            ->all();
+
+        if (empty($branches)) {
+            return null;
+        }
+
+        return ['cost' => $cost, 'branches' => $branches];
+    }
+
+    /**
+     * Arma los bultos y cotiza — comparte la validación de "¿tiene sentido
+     * intentar la llamada?" (Andreani habilitado, CP presente, peso/
+     * dimensiones cargados en todos los productos) entre domicilio y
+     * sucursal, que usan el mismo cotizar() pero filtran códigos distintos.
+     *
+     * @return array{code: string, total: float}[]|null
+     */
+    private function cotizarSiHabilitado(string $postalCode, array $items): ?array
+    {
         if ($postalCode === '' || empty($items)) {
             return null;
         }
@@ -280,14 +370,7 @@ class AndreaniService
             ];
         }
 
-        $rates = $this->cotizar($postalCode, $bultos);
-        if ($rates === null) {
-            return null;
-        }
-
-        $estandar = collect($rates)->first(fn (array $r): bool => ($r['code'] ?? '') === 'estándar');
-
-        return $estandar ? (float) $estandar['total'] : null;
+        return $this->cotizar($postalCode, $bultos);
     }
 
     /**

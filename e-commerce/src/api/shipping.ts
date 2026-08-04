@@ -24,6 +24,15 @@ export type MotoCompany = {
   notes: string | null
 }
 
+export type AndreaniBranch = {
+  code: string
+  name: string
+  address: string
+  city: string
+  province: string
+  postal_code: string
+}
+
 export type ShippingOptions = {
   home_delivery: {
     available: boolean
@@ -32,6 +41,13 @@ export type ShippingOptions = {
     /** Costo real cotizado con Andreani — null si todavía no se puede cotizar (falta CP, carrito, o algún producto sin dimensiones cargadas). */
     cost: number | null
     quote_pending: boolean
+  }
+  andreani_branches: {
+    available: boolean
+    label: string
+    description: string
+    cost: number | null
+    branches: AndreaniBranch[]
   }
   pickup_points: {
     available: boolean

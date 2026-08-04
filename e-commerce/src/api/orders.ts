@@ -16,9 +16,10 @@ export type CheckoutPayload = {
   shipping_city?: string
   shipping_province?: string
   shipping_postal?: string
-  shipping_method_type?: 'home_delivery' | 'pickup_point' | 'moto'
+  shipping_method_type?: 'home_delivery' | 'pickup_point' | 'moto' | 'andreani_branch'
   pickup_point_id?: number
   moto_company_id?: number
+  andreani_branch_code?: string
   shipping_cost?: number
   notes?: string
   coupon_code?: string

@@ -37,6 +37,7 @@ class ShippingController extends Controller
 
         return response()->json([
             'home_delivery' => $this->buildHomeDelivery($request),
+            'andreani_branches' => $this->buildAndreaniBranches($request),
             'pickup_points' => [
                 'available' => $pickupPoints->isNotEmpty(),
                 'label' => 'Retiro en punto de entrega',
@@ -75,6 +76,32 @@ class ShippingController extends Controller
             'description' => 'Recibí tu pedido en tu domicilio (Andreani)',
             'cost' => $cost,
             'quote_pending' => $cost === null,
+        ];
+    }
+
+    /**
+     * Retiro en una sucursal real de Andreani (no confundir con
+     * "pickup_points", que son puntos propios cargados a mano) — mismos
+     * requisitos que domicilio (CP + peso/dimensiones de los productos),
+     * más una llamada a la API de sucursales para listar las disponibles.
+     *
+     * @return array{available: bool, label: string, description: string, cost: float|null, branches: array}
+     */
+    private function buildAndreaniBranches(Request $request): array
+    {
+        $postalCode = trim($request->string('postal_code')->toString());
+        $items = $request->input('items', []);
+
+        $options = is_array($items)
+            ? app(AndreaniService::class)->branchPickupOptions($postalCode, $items)
+            : null;
+
+        return [
+            'available' => $options !== null,
+            'label' => 'Retiro en sucursal de Andreani',
+            'description' => 'Retirá tu pedido en la sucursal de Andreani que elijas',
+            'cost' => $options['cost'] ?? null,
+            'branches' => $options['branches'] ?? [],
         ];
     }
 }

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { CreditCard, MapPin, Bike, Home, ChevronRight, Check, Package, Landmark, QrCode, Banknote } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { checkout, trackCart } from '../api/orders'
-import { getShippingOptions, type PickupPoint, type MotoCompany } from '../api/shipping'
+import { getShippingOptions, type PickupPoint, type MotoCompany, type AndreaniBranch } from '../api/shipping'
 import { useDebounce } from '../hooks/useDebounce'
 import { getPaymentOptions, type PaymentOption } from '../api/paymentOptions'
 import { getAddresses, type CustomerAddress } from '../api/customer'
@@ -15,6 +15,7 @@ import { createNavePayment } from '../api/nave'
 import { analytics } from '../api/analytics'
 import CouponInput from '../components/CouponInput'
 import LoyaltyRedemption from '../components/LoyaltyRedemption'
+import AndreaniBranchModal from '../components/AndreaniBranchModal'
 import { formatMoney } from '../lib/format'
 import { getApiErrorMessage } from '../lib/apiError'
 
@@ -315,7 +316,7 @@ function StepCustomer({
 }
 
 // ── Step 2: Shipping method ─────────────────────────────────────────────────────
-type ShippingMethod = 'home_delivery' | 'pickup_point' | 'moto'
+type ShippingMethod = 'home_delivery' | 'pickup_point' | 'moto' | 'andreani_branch'
 
 // Componente de módulo (no definido dentro de StepShipping) para que su
 // identidad no cambie en cada render — si se redefine en cada render de un
@@ -367,6 +368,7 @@ function StepShipping({
   selectedMethod, setSelectedMethod,
   selectedPickupPoint, setSelectedPickupPoint,
   selectedMotoCompany, setSelectedMotoCompany,
+  selectedAndreaniBranch, setSelectedAndreaniBranch,
   onBack, onNext,
 }: {
   city: string; setCity: (v: string) => void
@@ -376,8 +378,10 @@ function StepShipping({
   selectedMethod: ShippingMethod | null; setSelectedMethod: (m: ShippingMethod) => void
   selectedPickupPoint: PickupPoint | null; setSelectedPickupPoint: (p: PickupPoint | null) => void
   selectedMotoCompany: MotoCompany | null; setSelectedMotoCompany: (c: MotoCompany | null) => void
+  selectedAndreaniBranch: AndreaniBranch | null; setSelectedAndreaniBranch: (b: AndreaniBranch | null) => void
   onBack: () => void; onNext: () => void
 }) {
+  const [branchModalOpen, setBranchModalOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const cart = useCart()
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
@@ -439,8 +443,17 @@ function StepShipping({
     if (selectedMethod === 'home_delivery') return address.trim().length > 3
     if (selectedMethod === 'pickup_point') return selectedPickupPoint !== null
     if (selectedMethod === 'moto') return selectedMotoCompany !== null && address.trim().length > 3
+    if (selectedMethod === 'andreani_branch') return selectedAndreaniBranch !== null
     return false
   })()
+
+  function selectBranch(branch: AndreaniBranch) {
+    setSelectedAndreaniBranch(branch)
+    setAddress(`${branch.name} — ${branch.address}`)
+    setCity(branch.city)
+    setProvince(branch.province)
+    setBranchModalOpen(false)
+  }
 
   const inp = 'w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--brand-primary)]'
 
@@ -503,6 +516,17 @@ function StepShipping({
               available={options?.home_delivery.available ?? true}
             />
             <MethodCard
+              selected={selectedMethod === 'andreani_branch'}
+              onSelect={() => {
+                setSelectedMethod('andreani_branch')
+                setBranchModalOpen(true)
+              }}
+              icon={<MapPin size={20} />}
+              title={options?.andreani_branches.label ?? 'Retiro en sucursal de Andreani'}
+              description={options?.andreani_branches.available ? options.andreani_branches.description : 'A coordinar (código postal pendiente de cotizar)'}
+              available={options?.andreani_branches.available ?? false}
+            />
+            <MethodCard
               selected={selectedMethod === 'pickup_point'}
               onSelect={() => setSelectedMethod('pickup_point')}
               icon={<Package size={20} />}
@@ -545,6 +569,49 @@ function StepShipping({
             </p>
           </div>
         </div>
+      )}
+
+      {/* Andreani branch selection */}
+      {selectedMethod === 'andreani_branch' && (
+        <div className="card p-6 space-y-3">
+          <h3 className="font-bold text-gray-800 flex items-center gap-2">
+            <MapPin size={16} className="text-[var(--brand-primary)]" /> Sucursal de retiro
+          </h3>
+          {selectedAndreaniBranch ? (
+            <div className="flex items-start justify-between gap-3 rounded-xl border-2 border-[var(--brand-primary)] bg-[var(--brand-soft)] px-4 py-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-sm text-gray-900">{selectedAndreaniBranch.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{selectedAndreaniBranch.address}</p>
+                <p className="text-xs text-gray-500">{selectedAndreaniBranch.city}, {selectedAndreaniBranch.province}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBranchModalOpen(true)}
+                className="shrink-0 text-xs font-semibold text-[var(--brand-primary)] hover:underline"
+              >
+                Cambiar
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setBranchModalOpen(true)}
+              disabled={!options?.andreani_branches.available}
+              className="btn btn-outline w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {options?.andreani_branches.available ? 'Elegir sucursal' : 'Completá tu código postal para ver sucursales'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {branchModalOpen && options?.andreani_branches.branches && (
+        <AndreaniBranchModal
+          branches={options.andreani_branches.branches}
+          selected={selectedAndreaniBranch}
+          onSelect={selectBranch}
+          onClose={() => setBranchModalOpen(false)}
+        />
       )}
 
       {/* Pickup point selection */}
@@ -783,6 +850,7 @@ export default function Checkout() {
   const [selectedMethod, setSelectedMethod] = useState<ShippingMethod | null>(null)
   const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null)
   const [selectedMotoCompany, setSelectedMotoCompany] = useState<MotoCompany | null>(null)
+  const [selectedAndreaniBranch, setSelectedAndreaniBranch] = useState<AndreaniBranch | null>(null)
 
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(null)
 
@@ -821,12 +889,13 @@ export default function Checkout() {
     queryKey: ['shipping_options', city, province, debouncedPostalCodeForQuote, quoteItemsForCost],
     queryFn: () => getShippingOptions({ city, province, postal_code: debouncedPostalCodeForQuote || undefined, items: quoteItemsForCost }),
     staleTime: 60_000,
-    enabled: selectedMethod === 'home_delivery',
+    enabled: selectedMethod === 'home_delivery' || selectedMethod === 'andreani_branch',
   })
 
   const rawShippingCost = useMemo(() => {
     if (selectedMethod === 'moto' && selectedMotoCompany) return selectedMotoCompany.price
     if (selectedMethod === 'home_delivery') return shippingOptionsForCost?.home_delivery.cost ?? 0
+    if (selectedMethod === 'andreani_branch') return shippingOptionsForCost?.andreani_branches.cost ?? 0
     return 0
   }, [selectedMethod, selectedMotoCompany, shippingOptionsForCost])
 
@@ -847,8 +916,9 @@ export default function Checkout() {
     if (selectedMethod === 'home_delivery') return 'Domicilio'
     if (selectedMethod === 'pickup_point' && selectedPickupPoint) return selectedPickupPoint.name
     if (selectedMethod === 'moto' && selectedMotoCompany) return selectedMotoCompany.name
+    if (selectedMethod === 'andreani_branch' && selectedAndreaniBranch) return selectedAndreaniBranch.name
     return undefined
-  }, [selectedMethod, selectedPickupPoint, selectedMotoCompany])
+  }, [selectedMethod, selectedPickupPoint, selectedMotoCompany, selectedAndreaniBranch])
 
   async function onSubmit() {
     if (loading) return
@@ -871,6 +941,7 @@ export default function Checkout() {
         shipping_method_type: selectedMethod ?? undefined,
         pickup_point_id: selectedPickupPoint?.id,
         moto_company_id: selectedMotoCompany?.id,
+        andreani_branch_code: selectedAndreaniBranch?.code,
         shipping_cost: shippingCost || undefined,
         notes: notes.trim() || undefined,
         coupon_code: appliedCoupon?.coupon?.code || undefined,
@@ -1122,6 +1193,7 @@ export default function Checkout() {
                 setSelectedMethod(m)
                 setSelectedPickupPoint(null)
                 setSelectedMotoCompany(null)
+                setSelectedAndreaniBranch(null)
                 setSelectedPayment(null)
               }}
               selectedPickupPoint={selectedPickupPoint} setSelectedPickupPoint={(p) => {
@@ -1129,6 +1201,10 @@ export default function Checkout() {
                 setSelectedPayment(null)
               }}
               selectedMotoCompany={selectedMotoCompany} setSelectedMotoCompany={setSelectedMotoCompany}
+              selectedAndreaniBranch={selectedAndreaniBranch} setSelectedAndreaniBranch={(b) => {
+                setSelectedAndreaniBranch(b)
+                setSelectedPayment(null)
+              }}
               onBack={() => setStep(1)}
               onNext={() => setStep(3)}
             />
@@ -1178,6 +1254,7 @@ export default function Checkout() {
                     {selectedMethod === 'home_delivery' && `Domicilio: ${address}${city ? `, ${city}` : ''}`}
                     {selectedMethod === 'pickup_point' && `Retiro en ${selectedPickupPoint?.name} — ${selectedPickupPoint?.address}`}
                     {selectedMethod === 'moto' && `Moto Mandados (${selectedMotoCompany?.name}) — ${address}`}
+                    {selectedMethod === 'andreani_branch' && `Retiro en sucursal Andreani: ${selectedAndreaniBranch?.name} — ${selectedAndreaniBranch?.address}`}
                   </span>
                 </div>
                 {shippingCost > 0 && (

@@ -69,6 +69,7 @@ class EcommerceOrder extends Model
         'shipping_method_type',
         'pickup_point_id',
         'moto_company_id',
+        'andreani_branch_code',
         'order_number',
         'status',
         'payment_status',

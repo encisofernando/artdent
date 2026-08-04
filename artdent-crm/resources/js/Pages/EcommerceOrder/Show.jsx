@@ -10,9 +10,10 @@ import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
 const SHIPPING_METHOD_LABELS = {
-    home_delivery: 'Envío a domicilio',
-    pickup_point:  'Retiro en punto de entrega',
-    moto:          'Moto Mandados',
+    home_delivery:    'Envío a domicilio',
+    pickup_point:     'Retiro en punto de entrega',
+    moto:             'Moto Mandados',
+    andreani_branch:  'Retiro en sucursal de Andreani',
 };
 
 const PAYMENT_METHOD_LABELS = {

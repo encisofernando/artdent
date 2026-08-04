@@ -317,9 +317,10 @@ class CatalogController extends Controller
             'shipping_city' => ['nullable', 'string', 'max:100'],
             'shipping_province' => ['nullable', 'string', 'max:100'],
             'shipping_postal' => ['nullable', 'string', 'max:10'],
-            'shipping_method_type' => ['nullable', 'string', 'in:home_delivery,pickup_point,moto'],
+            'shipping_method_type' => ['nullable', 'string', 'in:home_delivery,pickup_point,moto,andreani_branch'],
             'pickup_point_id' => ['nullable', 'integer', 'exists:shipping_pickup_points,id'],
             'moto_company_id' => ['nullable', 'integer', 'exists:shipping_moto_companies,id'],
+            'andreani_branch_code' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string'],
             'coupon_code' => ['nullable', 'string'],
             'loyalty_reward_id' => ['nullable', 'integer', 'exists:loyalty_rewards,id'],
@@ -466,6 +467,10 @@ class CatalogController extends Controller
                 ->where('id', $validated['moto_company_id'] ?? null)
                 ->where('is_active', true)
                 ->value('price') ?? 0),
+            'andreani_branch' => (float) (app(\App\Services\AndreaniService::class)->quoteBranchPickup(
+                (string) ($validated['shipping_postal'] ?? ''),
+                $validated['items'],
+            ) ?? 0),
             default => 0.0,
         };
 
@@ -530,6 +535,7 @@ class CatalogController extends Controller
             'shipping_method_type' => $validated['shipping_method_type'] ?? null,
             'pickup_point_id' => $validated['pickup_point_id'] ?? null,
             'moto_company_id' => $validated['moto_company_id'] ?? null,
+            'andreani_branch_code' => $validated['andreani_branch_code'] ?? null,
             'customer_notes' => $validated['notes'] ?? null,
             'selected_payment_method' => $validated['selected_payment_method'] ?? null,
         ]);
