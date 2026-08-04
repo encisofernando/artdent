@@ -577,6 +577,17 @@ function StepShipping({
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
             <MapPin size={16} className="text-[var(--brand-primary)]" /> Sucursal de retiro
           </h3>
+          <div>
+            <label htmlFor="checkout-postal-branch" className="text-xs font-semibold text-gray-600">Código Postal *</label>
+            <input
+              id="checkout-postal-branch"
+              className={`mt-1.5 ${inp}`}
+              value={postalCode}
+              onChange={e => setPostalCode(e.target.value)}
+              placeholder="3600"
+            />
+            <p className="text-xs text-gray-500 mt-1">Lo usamos para mostrarte las sucursales más cercanas.</p>
+          </div>
           {selectedAndreaniBranch ? (
             <div className="flex items-start justify-between gap-3 rounded-xl border-2 border-[var(--brand-primary)] bg-[var(--brand-soft)] px-4 py-3">
               <div className="min-w-0">
