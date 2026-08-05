@@ -249,7 +249,10 @@ export async function renderJobTicketCanvas(job, { widthMM = 80 } = {}) {
 // El ticket de "Orden Completa" del kiosco de producción
 // (JobPhaseKioskController) llega con esta forma (job_number, phases[],
 // total, company, patient_name, dentist_name, shade, received_at) en vez
-// de un objeto Job completo.
+// de un objeto Job completo. "phases" es un nombre heredado (viene de
+// JobPhaseService::buildJobTicketSummary()) pero son los job_items
+// facturados reales (description/quantity/unit_price/total), no las fases
+// de producción — ver comentario en ese método.
 export function mapFinalTicketToJobOrder(ticket) {
     return {
         job_number: ticket.job_number,
@@ -259,11 +262,11 @@ export function mapFinalTicketToJobOrder(ticket) {
         company: ticket.company || {},
         patient: ticket.patient_name ? { name: ticket.patient_name } : {},
         dentist: ticket.dentist_name ? { name: ticket.dentist_name } : {},
-        job_items: (ticket.phases || []).map((phase) => ({
-            description: phase.phase_name,
-            quantity: 1,
-            unit_price: phase.amount,
-            total: phase.amount,
+        job_items: (ticket.phases || []).map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.total,
         })),
     };
 }

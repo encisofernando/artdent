@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Job;
+use App\Models\JobPhaseProgress;
 use App\Models\LabAccount;
 use App\Models\LabAccountMove;
 use App\Support\CompanyContext;
@@ -120,9 +121,33 @@ class LabAccountController extends Controller
             ->filter(fn (LabAccountMove $move) => (float) $move->signed_amount > 0)
             ->values();
 
-        $jobIds = $chargeMoves
-            ->filter(fn (LabAccountMove $move) => $this->isJobReference($move))
+        // Los cargos por fase (JobPhaseService::billPhaseIfNeeded) referencian
+        // un JobPhaseProgress, no el Job directamente — hay que pasar por esa
+        // tabla para llegar al job_id real. Sin este mapeo, cualquier cargo
+        // por fase se mostraba con la descripción cruda ("Orden X — Fase")
+        // sin estado ni paciente, ya que isJobReference() no lo reconocía.
+        $phaseMoveIds = $chargeMoves
+            ->filter(fn (LabAccountMove $move) => $move->reference_type === JobPhaseProgress::class)
             ->pluck('reference_id')
+            ->filter()
+            ->unique();
+
+        $jobIdByPhaseId = $phaseMoveIds->isEmpty()
+            ? collect()
+            : JobPhaseProgress::whereIn('id', $phaseMoveIds)->pluck('job_id', 'id');
+
+        $jobIds = $chargeMoves
+            ->map(function (LabAccountMove $move) use ($jobIdByPhaseId) {
+                if ($this->isJobReference($move)) {
+                    return $move->reference_id;
+                }
+
+                if ($move->reference_type === JobPhaseProgress::class) {
+                    return $jobIdByPhaseId->get($move->reference_id);
+                }
+
+                return null;
+            })
             ->filter()
             ->unique()
             ->values();
@@ -142,7 +167,7 @@ class LabAccountController extends Controller
                 ->keyBy('id');
 
         return $chargeMoves
-            ->map(function (LabAccountMove $move) use (&$remainingCredit, $jobsById) {
+            ->map(function (LabAccountMove $move) use (&$remainingCredit, $jobsById, $jobIdByPhaseId) {
                 $amount = (float) $move->amount;
                 $paidAmount = min($remainingCredit, $amount);
                 $remainingCredit = max(0, $remainingCredit - $paidAmount);
@@ -152,9 +177,11 @@ class LabAccountController extends Controller
                     return null;
                 }
 
-                $job = $this->isJobReference($move)
-                    ? $jobsById->get($move->reference_id)
-                    : null;
+                $job = match (true) {
+                    $this->isJobReference($move) => $jobsById->get($move->reference_id),
+                    $move->reference_type === JobPhaseProgress::class => $jobsById->get($jobIdByPhaseId->get($move->reference_id)),
+                    default => null,
+                };
 
                 return [
                     'move_id' => $move->id,

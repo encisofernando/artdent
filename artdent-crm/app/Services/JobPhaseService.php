@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Job;
+use App\Models\JobItem;
 use App\Models\JobPhaseCollaborator;
 use App\Models\JobPhaseProgress;
 use App\Models\JobPhaseTicket;
@@ -153,27 +154,32 @@ class JobPhaseService
     }
 
     /**
-     * Itemized summary of every completed phase ticket for a job, with a grand total.
-     * Used to print a consolidated "orden completa" ticket once the last phase finishes.
+     * Itemized summary of the job's billed items, with the grand total. Used
+     * to print a consolidated "orden completa" ticket once the last phase
+     * finishes.
      *
-     * @return array{phases: array<int, array{phase_name: string, amount: float}>, total: float}
+     * Ojo: NO son los JobPhaseTicket (esos son certificados de producción
+     * internos por fase/técnico, usados para comisiones — su "amount" no es
+     * el precio de venta, por eso el ticket salía con "Fase 1 x $0,00" en vez
+     * del detalle facturado real). Esto tiene que reflejar job_items, lo
+     * mismo que ve el cliente en la orden.
+     *
+     * @return array{phases: array<int, array{description: string, quantity: float, unit_price: float, total: float}>, total: float}
      */
     public function buildJobTicketSummary(Job $job): array
     {
-        $tickets = JobPhaseTicket::where('job_id', $job->id)
-            ->with('phaseProgress.tariffPhase')
-            ->get()
-            ->sortBy(fn (JobPhaseTicket $t) => $t->phaseProgress?->tariffPhase?->sort_order ?? 0)
-            ->values();
+        $job->loadMissing('job_items');
 
-        $phases = $tickets->map(fn (JobPhaseTicket $t) => [
-            'phase_name' => $t->phase_name,
-            'amount' => (float) $t->amount,
+        $items = $job->job_items->map(fn (JobItem $item) => [
+            'description' => $item->description,
+            'quantity' => (float) $item->quantity,
+            'unit_price' => (float) $item->unit_price,
+            'total' => (float) $item->total,
         ])->all();
 
         return [
-            'phases' => $phases,
-            'total' => round($tickets->sum('amount'), 2),
+            'phases' => $items,
+            'total' => (float) $job->total,
         ];
     }
 
