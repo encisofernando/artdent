@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSidebarBannerRequest;
 use App\Models\SidebarBanner;
+use App\Support\TenantStorageUrl;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -23,7 +24,7 @@ class SidebarBannerController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('image')) {
-            $data['image_url'] = '/storage/'.$request->file('image')->store('sidebar-banners', 'public');
+            $data['image_url'] = TenantStorageUrl::publicUrl($request->file('image')->store('sidebar-banners', 'public'));
         }
 
         SidebarBanner::create($data);
@@ -38,12 +39,12 @@ class SidebarBannerController extends Controller
         if ($request->hasFile('image')) {
             // Borrar imagen anterior
             if ($sidebarBanner->image_url) {
-                $relative = ltrim(str_replace('/storage/', '', $sidebarBanner->image_url), '/');
+                $relative = TenantStorageUrl::relativePath($sidebarBanner->image_url);
                 if (Storage::disk('public')->exists($relative)) {
                     Storage::disk('public')->delete($relative);
                 }
             }
-            $data['image_url'] = '/storage/'.$request->file('image')->store('sidebar-banners', 'public');
+            $data['image_url'] = TenantStorageUrl::publicUrl($request->file('image')->store('sidebar-banners', 'public'));
         }
 
         $sidebarBanner->update($data);
@@ -54,7 +55,7 @@ class SidebarBannerController extends Controller
     public function destroy(SidebarBanner $sidebarBanner): \Illuminate\Http\RedirectResponse
     {
         if ($sidebarBanner->image_url) {
-            $relative = ltrim(str_replace('/storage/', '', $sidebarBanner->image_url), '/');
+            $relative = TenantStorageUrl::relativePath($sidebarBanner->image_url);
             if (Storage::disk('public')->exists($relative)) {
                 Storage::disk('public')->delete($relative);
             }

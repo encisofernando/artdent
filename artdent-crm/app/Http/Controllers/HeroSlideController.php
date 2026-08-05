@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreHeroSlideRequest;
 use App\Models\HeroSlide;
+use App\Support\TenantStorageUrl;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -23,7 +24,7 @@ class HeroSlideController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('image')) {
-            $data['image_url'] = '/storage/'.$request->file('image')->store('hero-slides', 'public');
+            $data['image_url'] = TenantStorageUrl::publicUrl($request->file('image')->store('hero-slides', 'public'));
         }
 
         HeroSlide::create($data);
@@ -37,12 +38,12 @@ class HeroSlideController extends Controller
 
         if ($request->hasFile('image')) {
             if ($heroSlide->image_url) {
-                $relative = ltrim(str_replace('/storage/', '', $heroSlide->image_url), '/');
+                $relative = TenantStorageUrl::relativePath($heroSlide->image_url);
                 if (Storage::disk('public')->exists($relative)) {
                     Storage::disk('public')->delete($relative);
                 }
             }
-            $data['image_url'] = '/storage/'.$request->file('image')->store('hero-slides', 'public');
+            $data['image_url'] = TenantStorageUrl::publicUrl($request->file('image')->store('hero-slides', 'public'));
         }
 
         $heroSlide->update($data);
@@ -53,7 +54,7 @@ class HeroSlideController extends Controller
     public function destroy(HeroSlide $heroSlide): \Illuminate\Http\RedirectResponse
     {
         if ($heroSlide->image_url) {
-            $relative = ltrim(str_replace('/storage/', '', $heroSlide->image_url), '/');
+            $relative = TenantStorageUrl::relativePath($heroSlide->image_url);
             if (Storage::disk('public')->exists($relative)) {
                 Storage::disk('public')->delete($relative);
             }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\TenantStorageUrl;
 use Illuminate\Support\Facades\Storage;
 
 class ImageResizeService
@@ -24,7 +25,7 @@ class ImageResizeService
             // Fallback: guardar original sin procesar
             $path = $file->store($folder, $disk);
 
-            return ['url' => '/storage/'.$path, 'thumb_url' => '/storage/'.$path];
+            return ['url' => TenantStorageUrl::publicUrl($path), 'thumb_url' => TenantStorageUrl::publicUrl($path)];
         }
 
         [$origW, $origH] = [imagesx($gdImage), imagesy($gdImage)];
@@ -44,8 +45,8 @@ class ImageResizeService
         imagedestroy($gdImage);
 
         return [
-            'url' => '/storage/'.$fullPath,
-            'thumb_url' => '/storage/'.$thumbPath,
+            'url' => TenantStorageUrl::publicUrl($fullPath),
+            'thumb_url' => TenantStorageUrl::publicUrl($thumbPath),
         ];
     }
 

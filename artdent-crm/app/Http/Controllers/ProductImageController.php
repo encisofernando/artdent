@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductImage;
+use App\Support\TenantStorageUrl;
 use Illuminate\Support\Facades\Storage;
 
 class ProductImageController extends Controller
@@ -19,7 +20,7 @@ class ProductImageController extends Controller
         $product = $productImage->product;
 
         // Borrar archivo físico
-        $relativePath = ltrim(str_replace('/storage/', '', $productImage->url), '/');
+        $relativePath = TenantStorageUrl::relativePath($productImage->url);
         if (Storage::disk('public')->exists($relativePath)) {
             Storage::disk('public')->delete($relativePath);
         }

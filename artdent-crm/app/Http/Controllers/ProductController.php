@@ -10,6 +10,7 @@ use App\Services\ImageResizeService;
 use App\Support\Auditor;
 use App\Support\CompanyContext;
 use App\Support\PlanLimitService;
+use App\Support\TenantStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -239,7 +240,7 @@ class ProductController extends Controller
             // ── Video ─────────────────────────────────────────────────────────────
             if ($request->hasFile('video')) {
                 $videoPath = $request->file('video')->store('products/videos', 'public');
-                $product->update(['video_url' => '/storage/'.$videoPath]);
+                $product->update(['video_url' => TenantStorageUrl::publicUrl($videoPath)]);
             }
 
             // ── Stock inicial ─────────────────────────────────────────────────────
@@ -551,7 +552,7 @@ class ProductController extends Controller
                 if ($product->video_url) {
                     $this->deleteStorageFile($product->video_url);
                 }
-                $product->update(['video_url' => '/storage/'.$uploadedVideo]);
+                $product->update(['video_url' => TenantStorageUrl::publicUrl($uploadedVideo)]);
             }
 
             // ── Stock base (sin variante) ──────────────────────────────────────
@@ -699,8 +700,7 @@ class ProductController extends Controller
      */
     private function deleteStorageFile(string $publicUrl): void
     {
-        // '/storage/xxx' → 'xxx'
-        $relativePath = ltrim(str_replace('/storage/', '', $publicUrl), '/');
+        $relativePath = TenantStorageUrl::relativePath($publicUrl);
 
         if (Storage::disk('public')->exists($relativePath)) {
             Storage::disk('public')->delete($relativePath);

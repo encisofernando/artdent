@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Support\AccountingSettings;
 use App\Support\CompanyContext;
+use App\Support\TenantStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -138,20 +139,20 @@ class CompanyController extends Controller
 
         if ($request->hasFile('logo')) {
             if ($company->logo_url) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $company->logo_url));
+                Storage::disk('public')->delete(TenantStorageUrl::relativePath($company->logo_url));
             }
 
             $path = $request->file('logo')->store('logos', 'public');
-            $validated['logo_url'] = '/storage/'.$path;
+            $validated['logo_url'] = TenantStorageUrl::publicUrl($path);
         }
 
         if ($request->hasFile('lab_logo')) {
             if ($company->lab_logo_url) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $company->lab_logo_url));
+                Storage::disk('public')->delete(TenantStorageUrl::relativePath($company->lab_logo_url));
             }
 
             $path = $request->file('lab_logo')->store('logos', 'public');
-            $validated['lab_logo_url'] = '/storage/'.$path;
+            $validated['lab_logo_url'] = TenantStorageUrl::publicUrl($path);
         }
 
         unset($validated['logo']);
