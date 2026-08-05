@@ -35,8 +35,13 @@ function PointOfSaleForm({ isDark, branches, initial, onCancel, onSubmit, saving
         : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm'}`;
     const lbl = `block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
 
+    // No es un <form> a propósito: este componente se renderiza dentro del
+    // <form> grande de "Perfil de Empresa" (más abajo en este archivo), y
+    // HTML no permite formularios anidados — el navegador termina mandando
+    // el submit al formulario equivocado (el de perfil de empresa), que
+    // hace su propio POST a /settings sin tocar el punto de venta.
     return (
-        <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className={`p-4 rounded-xl border grid gap-4 sm:grid-cols-2 ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <div className={`p-4 rounded-xl border grid gap-4 sm:grid-cols-2 ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'}`}>
             <div>
                 <label className={lbl}>Número de punto de venta</label>
                 <input type="number" min="1" max="99999" className={inp} value={form.point_sale}
@@ -72,11 +77,11 @@ function PointOfSaleForm({ isDark, branches, initial, onCancel, onSubmit, saving
                 <Button type="button" variant="outline" onClick={onCancel} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
                     Cancelar
                 </Button>
-                <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white gap-2 min-w-32">
+                <Button type="button" onClick={() => onSubmit(form)} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white gap-2 min-w-32">
                     {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar
                 </Button>
             </div>
-        </form>
+        </div>
     );
 }
 
