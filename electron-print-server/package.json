@@ -1,6 +1,6 @@
 {
   "name": "artdent-print-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Servidor de Impresion ArtDent",
   "main": "main.js",
   "author": "ArtDent",
@@ -39,12 +39,8 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
-      ],
-      "arch": [
-        "x64",
-        "arm64"
+        { "target": "AppImage", "arch": ["x64", "arm64"] },
+        { "target": "deb", "arch": ["x64", "arm64"] }
       ],
       "category": "Utility",
       "maintainer": "ArtDent",
