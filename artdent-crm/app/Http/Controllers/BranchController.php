@@ -3,63 +3,84 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Support\CompanyContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): JsonResponse
     {
-        //
+        return response()->json([
+            'branches' => Branch::where('company_id', CompanyContext::id())
+                ->orderBy('name')
+                ->get(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $companyId = CompanyContext::id();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'code' => ['required', 'string', 'max:32', \Illuminate\Validation\Rule::unique('branches')->where('company_id', $companyId)],
+            'address' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        Branch::create([...$validated, 'company_id' => $companyId]);
+
+        return response()->json(['success' => true, 'message' => 'Sucursal creada.']);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Branch $branch)
     {
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Branch $branch)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Branch $branch)
+    public function update(Request $request, Branch $branch): JsonResponse
     {
-        //
+        abort_unless($branch->company_id === CompanyContext::id(), 404);
+
+        $companyId = $branch->company_id;
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'code' => ['required', 'string', 'max:32', \Illuminate\Validation\Rule::unique('branches')->where('company_id', $companyId)->ignore($branch->id)],
+            'address' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $branch->update($validated);
+
+        return response()->json(['success' => true, 'message' => 'Sucursal actualizada.']);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Branch $branch)
+    public function destroy(Branch $branch): JsonResponse
     {
-        //
+        abort_unless($branch->company_id === CompanyContext::id(), 404);
+
+        if ($branch->afipPointsOfSale()->exists()) {
+            return response()->json(['success' => false, 'error' => 'No se puede eliminar: hay puntos de venta AFIP asignados a esta sucursal.'], 422);
+        }
+
+        $branch->delete();
+
+        return response()->json(['success' => true, 'message' => 'Sucursal eliminada.']);
     }
 }

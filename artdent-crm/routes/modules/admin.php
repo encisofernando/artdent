@@ -67,7 +67,7 @@ Route::get('companies', [CompanyController::class, 'index'])->name('companies.in
 Route::post('companies', [CompanyController::class, 'store'])->name('companies.store')->middleware('permission:companies.switch');
 Route::post('companies/active', [CompanyController::class, 'setActive'])->name('companies.set-active');
 
-Route::resource('branchs', BranchController::class);
+Route::resource('branchs', BranchController::class)->except(['create', 'show', 'edit'])->middleware('permission:settings.edit');
 
 Route::resource('vendors', VendorController::class);
 

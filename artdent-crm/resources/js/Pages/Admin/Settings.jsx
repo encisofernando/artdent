@@ -85,6 +85,214 @@ function PointOfSaleForm({ isDark, branches, initial, onCancel, onSubmit, saving
     );
 }
 
+function BranchForm({ isDark, initial, onCancel, onSubmit, saving, error }) {
+    const [form, setForm] = useState(initial);
+
+    const inp = `w-full rounded-xl border text-sm font-medium px-3.5 py-2.5 transition-colors focus:ring-0 ${isDark
+        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm'}`;
+    const lbl = `block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+    // No es un <form>: si en el futuro se anida dentro de otro <form> (como
+    // pasó con PointOfSaleForm), HTML no permite formularios anidados y el
+    // submit termina yendo al formulario equivocado. Ver project_nested_form_points_of_sale_bug.
+    return (
+        <div className={`p-4 rounded-xl border grid gap-4 sm:grid-cols-2 ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div>
+                <label className={lbl}>Nombre</label>
+                <input className={inp} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: Casa Central" />
+            </div>
+            <div>
+                <label className={lbl}>Código</label>
+                <input className={inp} value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="Ej: CENTRAL" />
+            </div>
+            <div className="sm:col-span-2">
+                <label className={lbl}>Dirección</label>
+                <input className={inp} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="Ej: Av. Corrientes 1234" />
+            </div>
+            <div>
+                <label className={lbl}>Teléfono</label>
+                <input className={inp} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="Ej: +54 9 3704-123456" />
+            </div>
+            <div>
+                <label className={lbl}>Email</label>
+                <input type="email" className={inp} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="Ej: sucursal@empresa.com" />
+            </div>
+            <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                    <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" />
+                    Activa
+                </label>
+            </div>
+
+            {error && <div className="sm:col-span-2 text-red-500 text-xs font-bold bg-red-500/10 px-3 py-2 rounded-lg">{error}</div>}
+
+            <div className="sm:col-span-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={onCancel} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                    Cancelar
+                </Button>
+                <Button type="button" onClick={() => onSubmit(form)} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white gap-2 min-w-32">
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function BranchesManager({ isDark }) {
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showCreate, setShowCreate] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get(route('branchs.index'));
+            setItems(data.branches);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []);
+
+    const blankForm = () => ({ name: '', code: '', address: '', phone: '', email: '', is_active: true });
+
+    const submitCreate = async (form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.post(route('branchs.store'), form);
+            setShowCreate(false);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const submitUpdate = async (id, form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.put(route('branchs.update', id), form);
+            setEditingId(null);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const destroy = async (id) => {
+        if (!window.confirm('¿Eliminar esta sucursal?')) return;
+        try {
+            await axios.delete(route('branchs.destroy', id));
+            await load();
+        } catch (e) {
+            alert(e.response?.data?.error || 'Error al eliminar.');
+        }
+    };
+
+    return (
+        <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="flex items-center justify-between gap-3 mb-1">
+                <div className="flex items-center gap-2">
+                    <Building2 size={18} className={isDark ? 'text-teal-400' : 'text-teal-600'} />
+                    <h3 className={`text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        Sucursales
+                    </h3>
+                </div>
+                {!showCreate && (
+                    <Button type="button" size="sm" onClick={() => { setShowCreate(true); setEditingId(null); }} className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white">
+                        <Plus size={14} /> Nueva
+                    </Button>
+                )}
+            </div>
+            <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Cada sucursal puede tener su propio punto de venta AFIP asignado, más abajo.
+            </p>
+
+            {showCreate && (
+                <div className="mb-4">
+                    <BranchForm
+                        isDark={isDark}
+                        initial={blankForm()}
+                        onCancel={() => { setShowCreate(false); setError(''); }}
+                        onSubmit={submitCreate}
+                        saving={saving}
+                        error={error}
+                    />
+                </div>
+            )}
+
+            {loading ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cargando…</div>
+            ) : items.length === 0 && !showCreate ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No hay sucursales configuradas.</div>
+            ) : (
+                <div className="space-y-2">
+                    {items.map((branch) => (
+                        <div key={branch.id}>
+                            {editingId === branch.id ? (
+                                <BranchForm
+                                    isDark={isDark}
+                                    initial={{
+                                        name: branch.name,
+                                        code: branch.code,
+                                        address: branch.address ?? '',
+                                        phone: branch.phone ?? '',
+                                        email: branch.email ?? '',
+                                        is_active: branch.is_active,
+                                    }}
+                                    onCancel={() => { setEditingId(null); setError(''); }}
+                                    onSubmit={(form) => submitUpdate(branch.id, form)}
+                                    saving={saving}
+                                    error={error}
+                                />
+                            ) : (
+                                <div className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-900/40 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center font-black text-[10px] ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                            {branch.code}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className={`text-sm font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                {branch.name}
+                                            </p>
+                                            <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {branch.address || 'Sin dirección'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {branch.is_active ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500">Activa</span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400">Inactiva</span>
+                                        )}
+                                        <Button type="button" size="sm" variant="outline" onClick={() => { setEditingId(branch.id); setShowCreate(false); setError(''); }} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                                            <Edit size={13} />
+                                        </Button>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => destroy(branch.id)} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20">
+                                            <Trash2 size={13} />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function PointsOfSaleManager({ isDark }) {
     const [items, setItems] = useState([]);
     const [branches, setBranches] = useState([]);
@@ -1477,6 +1685,9 @@ export default function Settings({ company, accountingSettings }) {
                                         {afipSaving ? <><Loader2 size={16} className="animate-spin" /> Guardando…</> : <><Save size={16} /> Guardar configuración AFIP</>}
                                     </Button>
                                 </div>
+
+                                {/* Sucursales */}
+                                <BranchesManager isDark={isDark} />
 
                                 {/* Puntos de venta */}
                                 <PointsOfSaleManager isDark={isDark} />

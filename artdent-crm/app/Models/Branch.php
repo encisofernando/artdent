@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Branch
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property string $name
@@ -25,51 +25,54 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
- * 
  * @property Company $company
  * @property Collection|CashDrawer[] $cash_drawers
  * @property Collection|Employee[] $employees
  * @property Collection|Sale[] $sales
- *
- * @package App\Models
  */
 class Branch extends Model
 {
-	use SoftDeletes;
-	protected $table = 'branches';
+    use SoftDeletes;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'is_active' => 'bool'
-	];
+    protected $table = 'branches';
 
-	protected $fillable = [
-		'company_id',
-		'name',
-		'code',
-		'address',
-		'phone',
-		'email',
-		'is_active'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'is_active' => 'bool',
+    ];
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    protected $fillable = [
+        'company_id',
+        'name',
+        'code',
+        'address',
+        'phone',
+        'email',
+        'is_active',
+    ];
 
-	public function cash_drawers()
-	{
-		return $this->hasMany(CashDrawer::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function employees()
-	{
-		return $this->hasMany(Employee::class);
-	}
+    public function cash_drawers()
+    {
+        return $this->hasMany(CashDrawer::class);
+    }
 
-	public function sales()
-	{
-		return $this->hasMany(Sale::class);
-	}
+    public function employees()
+    {
+        return $this->hasMany(Employee::class);
+    }
+
+    public function sales()
+    {
+        return $this->hasMany(Sale::class);
+    }
+
+    public function afipPointsOfSale()
+    {
+        return $this->hasMany(AfipPointOfSale::class, 'branch_id');
+    }
 }
