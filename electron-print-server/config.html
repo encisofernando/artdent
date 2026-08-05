@@ -184,7 +184,7 @@
             <label for="printerInput">Impresora de Tickets:</label>
             <input type="text" id="printerInput" list="printerList" placeholder="Predeterminada del sistema (dejar vacío)" autocomplete="off">
             <datalist id="printerList"></datalist>
-            <div class="input-hint">Escribí el nombre CUPS de la impresora o dejá vacío para usar la predeterminada.</div>
+            <div class="input-hint">Escribí el nombre del sistema de la impresora, dejá vacío para usar la predeterminada, o poné <b>IP:puerto</b> (ej. <code>192.168.1.62:9100</code>) si es una impresora de red — este modo manda los tickets directo por TCP, sin pasar por el driver de Windows, evitando que salgan con zoom de A4.</div>
         </div>
 
         <details>
