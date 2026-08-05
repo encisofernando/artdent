@@ -11,11 +11,8 @@ import {
 import { CompanyLogo, getCompanyLogoUrl } from '@/lib/companyBranding';
 import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
 import PrinterConfigModal from '@/Components/PrinterConfigModal';
-import { buildPhaseTicket, buildJobOrderTicket, mapFinalTicketToJobOrder } from '@/lib/escpos/buildJobOrderTicket';
-
-// El número ya viene precedido por la palabra "Orden" en el encabezado, así que
-// el prefijo "ORD-" es redundante ahí (se ve como una palabra repetida/cortada).
-const stripOrdPrefix = (value) => String(value ?? '').replace(/^ORD-/i, '');
+import { buildPhaseTicket, buildJobOrderTicket, mapFinalTicketToJobOrder, mapPhaseTicketToJobOrder } from '@/lib/escpos/buildJobOrderTicket';
+import { renderJobTicketCanvas } from '@/lib/escpos/renderJobTicket';
 import {
     CheckCircle2,
     ChevronRight,
@@ -804,83 +801,37 @@ function ConfirmCard({ title, body, confirmLabel, confirmStyle, onConfirm, onCan
     );
 }
 
-// ─── Ticket térmico de fase — mismo diseño byte a byte que FinalTicketThermal,
-// solo cambia que el detalle trae un único ítem (la fase recién completada)
-// en vez de todas las fases de la orden.
-function PhaseTicketThermal({ ticket, widthMM = 80 }) {
-    const is54 = widthMM === 54 || widthMM === 57;
-    const company = ticket.company ?? {};
-    const ticketWidth = getThermalZoneWidth(is54 ? '57mm' : '80mm');
-    const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
-    const fmtD = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+// ─── Preview del ticket de fase/orden completa ──────────────────────────
+// Preview del ticket — dibuja el mismo canvas que se manda a la impresora
+// (ver renderJobTicket.js) y lo muestra como <img>, en vez de un componente
+// CSS aparte. Así lo que se ve en pantalla es literalmente el mismo bitmap
+// que sale impreso, tanto por ESC/POS (Android) como por el fallback de
+// impresión de escritorio (Electron/navegador, que también clona este
+// elemento).
+function RasterTicketPreview({ job, widthMM = 80, zoneId }) {
+    const [src, setSrc] = useState(null);
+    const ticketWidth = getThermalZoneWidth(widthMM === 54 || widthMM === 57 ? '57mm' : '80mm');
 
-    const F = {
-        caption: is54 ? 7.2 : 8.1,
-        label: is54 ? 7.6 : 8.4,
-        body: is54 ? 8.2 : 9.2,
-        total: is54 ? 11.2 : 13.8,
-        number: is54 ? 13 : 16,
-        small: is54 ? 6.8 : 7.6,
-        logo: is54 ? 54 : 62,
-    };
+    useEffect(() => {
+        let cancelled = false;
+        setSrc(null);
 
-    const InfoRow = ({ label, value }) => (
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt`, lineHeight: 1.3, marginBottom: 3 }}>
-            <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</span>
-            <span style={{ fontWeight: 600, textAlign: 'right', flex: 1 }}>{value || '—'}</span>
-        </div>
-    );
+        renderJobTicketCanvas(job, { widthMM }).then((canvas) => {
+            if (!cancelled) setSrc(canvas.toDataURL('image/png'));
+        });
 
-    return (
-        <div id="phase-ticket-zone" style={{ width: ticketWidth, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: `${F.body}pt`, color: '#000', padding: is54 ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm', background: '#fff', lineHeight: 1.35, boxSizing: 'border-box' }}>
-            <div style={{ borderTop: '3px solid #000', marginBottom: is54 ? 5 : 7 }} />
+        return () => { cancelled = true; };
+    }, [job, widthMM]);
 
-            <div style={{ textAlign: 'center', marginBottom: is54 ? 6 : 8 }}>
-                <CompanyLogo company={company} scope="lab" thermal height={F.logo} maxWidth={is54 ? 140 : 180} style={{ margin: '0 auto' }} />
-                <div style={{ fontSize: `${F.small}pt`, marginTop: 4 }}>Documento interno. No válido como factura.</div>
+    if (!src) {
+        return (
+            <div style={{ width: ticketWidth, aspectRatio: '1 / 1.4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Loader2 size={20} className="animate-spin" style={{ color: '#94a3b8' }} />
             </div>
+        );
+    }
 
-            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
-                <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                    Orden N° {stripOrdPrefix(ticket.job_number)}
-                </div>
-            </div>
-
-            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
-                <InfoRow label="Fecha" value={fmtD(ticket.received_at)} />
-                {ticket.patient_name && <InfoRow label="Paciente" value={ticket.patient_name} />}
-                {ticket.dentist_name && <InfoRow label="Profesional" value={ticket.dentist_name} />}
-                {ticket.shade && <InfoRow label="Tono" value={ticket.shade} />}
-            </div>
-
-            <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 0', marginBottom: 4 }}>
-                Detalle del trabajo
-            </div>
-
-            <div style={{ marginBottom: is54 ? 6 : 8 }}>
-                <div style={{ borderBottom: '1px dotted #000', padding: '4px 0' }}>
-                    <div style={{ fontSize: `${F.body}pt`, fontWeight: 700, marginBottom: 2 }}>{ticket.phase_name}</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt` }}>
-                        <span>1 x ${fmt(ticket.amount)}</span>
-                        <span style={{ fontWeight: 800 }}>${fmt(ticket.amount)}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>Total orden</span>
-                    <span style={{ fontSize: `${F.total}pt`, fontWeight: 900 }}>${fmt(ticket.amount)}</span>
-                </div>
-            </div>
-
-            <div style={{ textAlign: 'center', fontSize: `${F.small}pt`, borderTop: '1px solid #000', paddingTop: 5 }}>
-                <div style={{ marginTop: 2 }}>Tu sonrisa, es nuestra prioridad.</div>
-            </div>
-
-            <div style={{ borderTop: '3px solid #000', marginTop: is54 ? 5 : 7 }} />
-        </div>
-    );
+    return <img id={zoneId} src={src} alt="Ticket" style={{ width: ticketWidth, display: 'block' }} />;
 }
 
 function TicketPrintScreen({ ticket, onDone }) {
@@ -889,6 +840,7 @@ function TicketPrintScreen({ ticket, onDone }) {
     const [printStatus, setPrintStatus] = useState(null); // 'printing' | 'ok' | 'error'
     const savedFormat = getStoredTicketFormat('80mm') === '57mm' ? '57mm' : '80mm';
     const widthMM = savedFormat === '57mm' ? 57 : 80;
+    const job = useMemo(() => mapPhaseTicketToJobOrder(ticket), [ticket]);
 
     const handlePrint = async () => {
         setPrintStatus('printing');
@@ -927,7 +879,7 @@ function TicketPrintScreen({ ticket, onDone }) {
 
             {/* Ticket preview */}
             <div ref={ticketRef} className="overflow-auto rounded-xl" style={{ background: '#fff', padding: 0, display: 'flex', justifyContent: 'center' }}>
-                <PhaseTicketThermal ticket={ticket} widthMM={widthMM} />
+                <RasterTicketPreview job={job} widthMM={widthMM} zoneId="phase-ticket-zone" />
             </div>
 
             {/* Summary row */}
@@ -963,96 +915,19 @@ function TicketPrintScreen({ ticket, onDone }) {
     );
 }
 
-function FinalTicketThermal({ ticket, widthMM = 80 }) {
-    const is54 = widthMM === 54 || widthMM === 57;
-    const company = ticket.company ?? {};
-    const phases = ticket.phases ?? [];
-    const ticketWidth = getThermalZoneWidth(is54 ? '57mm' : '80mm');
-    const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
-    const fmtD = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
-
-    const F = {
-        caption: is54 ? 7.2 : 8.1,
-        label: is54 ? 7.6 : 8.4,
-        body: is54 ? 8.2 : 9.2,
-        total: is54 ? 11.2 : 13.8,
-        small: is54 ? 6.8 : 7.6,
-        logo: is54 ? 54 : 62,
-    };
-
-    const InfoRow = ({ label, value }) => (
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt`, lineHeight: 1.3, marginBottom: 3 }}>
-            <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</span>
-            <span style={{ fontWeight: 600, textAlign: 'right', flex: 1 }}>{value || '—'}</span>
-        </div>
-    );
-
-    return (
-        <div id="final-ticket-zone" style={{ width: ticketWidth, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: `${F.body}pt`, color: '#000', padding: is54 ? '3mm 2.2mm 2.5mm' : '4mm 3mm 3.5mm', background: '#fff', lineHeight: 1.35, boxSizing: 'border-box' }}>
-            <div style={{ borderTop: '3px solid #000', marginBottom: is54 ? 5 : 7 }} />
-
-            <div style={{ textAlign: 'center', marginBottom: is54 ? 6 : 8 }}>
-                <CompanyLogo company={company} scope="lab" thermal height={F.logo} maxWidth={is54 ? 140 : 180} style={{ margin: '0 auto' }} />
-                <div style={{ fontSize: `${F.small}pt`, marginTop: 4 }}>Documento interno. No válido como factura.</div>
-            </div>
-
-            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8, textAlign: 'center' }}>
-                <div style={{ fontSize: `${F.body}pt`, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                    Orden N° {stripOrdPrefix(ticket.job_number)}
-                </div>
-            </div>
-
-            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 0 3px', marginBottom: is54 ? 6 : 8 }}>
-                <InfoRow label="Fecha" value={fmtD(ticket.received_at)} />
-                {ticket.patient_name && <InfoRow label="Paciente" value={ticket.patient_name} />}
-                {ticket.dentist_name && <InfoRow label="Profesional" value={ticket.dentist_name} />}
-                {ticket.shade && <InfoRow label="Tono" value={ticket.shade} />}
-            </div>
-
-            <div style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 0', marginBottom: 4 }}>
-                Detalle del trabajo
-            </div>
-
-            <div style={{ marginBottom: is54 ? 6 : 8 }}>
-                {phases.map((p, i) => (
-                    <div key={i} style={{ borderBottom: '1px dotted #000', padding: '4px 0' }}>
-                        <div style={{ fontSize: `${F.body}pt`, fontWeight: 700, marginBottom: 2 }}>{p.phase_name}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: `${F.label}pt` }}>
-                            <span>1 x ${fmt(p.amount)}</span>
-                            <span style={{ fontWeight: 800 }}>${fmt(p.amount)}</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <div style={{ border: '2px solid #000', padding: is54 ? '5px 6px' : '6px 8px', marginBottom: is54 ? 6 : 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: `${F.caption}pt`, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>Total orden</span>
-                    <span style={{ fontSize: `${F.total}pt`, fontWeight: 900 }}>${fmt(ticket.total)}</span>
-                </div>
-            </div>
-
-            <div style={{ textAlign: 'center', fontSize: `${F.small}pt`, borderTop: '1px solid #000', paddingTop: 5 }}>
-                <div style={{ marginTop: 2 }}>Tu sonrisa, es nuestra prioridad.</div>
-            </div>
-
-            <div style={{ borderTop: '3px solid #000', marginTop: is54 ? 5 : 7 }} />
-        </div>
-    );
-}
-
 function FinalTicketPrintScreen({ ticket, onDone }) {
     const fmt = (v) => Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
     const ticketRef = useRef(null);
     const [printStatus, setPrintStatus] = useState(null); // 'printing' | 'ok' | 'error'
     const savedFormat = getStoredTicketFormat('80mm') === '57mm' ? '57mm' : '80mm';
     const widthMM = savedFormat === '57mm' ? 57 : 80;
+    const job = useMemo(() => mapFinalTicketToJobOrder(ticket), [ticket]);
 
     const handlePrint = async () => {
         setPrintStatus('printing');
 
         if (isNativePrintAvailable()) {
-            const bytes = await buildJobOrderTicket(mapFinalTicketToJobOrder(ticket), { widthMM });
+            const bytes = await buildJobOrderTicket(job, { widthMM });
             const result = await printRawBytes(bytes);
             setPrintStatus(result.ok ? 'ok' : 'error');
             return;
@@ -1085,7 +960,7 @@ function FinalTicketPrintScreen({ ticket, onDone }) {
             <p className="text-sm text-slate-400">Todas las fases de {ticket.job_number} están terminadas.</p>
 
             <div ref={ticketRef} className="overflow-auto rounded-xl" style={{ background: '#fff', padding: 0, display: 'flex', justifyContent: 'center' }}>
-                <FinalTicketThermal ticket={ticket} widthMM={widthMM} />
+                <RasterTicketPreview job={job} widthMM={widthMM} zoneId="final-ticket-zone" />
             </div>
 
             <div className="flex justify-between items-baseline rounded-xl px-5 py-3"
