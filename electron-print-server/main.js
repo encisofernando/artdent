@@ -144,13 +144,26 @@ async function waitForWorkerAssets(timeoutMs = 4000) {
 
 /* ---------------- IMPRESION ---------------- */
 
+// "192.168.1.62:9100" — impresora térmica de red, mismo protocolo raw/JetDirect
+// que ya usa la app Android (ThermalPrinterPlugin::printRaw). Evita por completo
+// el spooler/driver de Windows, que en la práctica no soporta tamaños de página
+// arbitrarios en la mayoría de las impresoras térmicas y termina cayendo a A4.
+const NETWORK_PRINTER_RE = /^([\w.-]+):(\d+)$/;
+
 function executePrint(html, mode, res = null, done = null) {
     const widthMicrons = (mode === '57mm' || mode === '54mm') ? 50000 : 74000;
     const printerName = getPrinterName();
+    const networkMatch = printerName ? printerName.match(NETWORK_PRINTER_RE) : null;
 
-    // En Linux con dispositivo directo (/dev/...) usamos ESC/POS
+    // Dispositivo crudo (Linux, /dev/...) o impresora de red (cualquier plataforma):
+    // en ambos casos evitamos el spooler del SO y mandamos el raster directo.
     if (process.platform === 'linux' && printerName && printerName.startsWith('/dev/')) {
-        executePrintLinuxESCPOS(html, mode, printerName, res, done);
+        executePrintRasterESCPOS(html, mode, { transport: 'device', devicePath: printerName }, res, done);
+        return;
+    }
+
+    if (networkMatch) {
+        executePrintRasterESCPOS(html, mode, { transport: 'network', host: networkMatch[1], port: Number(networkMatch[2]) }, res, done);
         return;
     }
 
@@ -201,11 +214,47 @@ function executePrint(html, mode, res = null, done = null) {
     });
 }
 
-/* --------------- ESC/POS DIRECTO (Linux) --------------- */
+/* --------------- ESC/POS DIRECTO (dispositivo local o impresora de red) --------------- */
 
-async function executePrintLinuxESCPOS(html, mode, devicePath, res, done) {
-    // 388px = ~48.5mm @ 203dpi (-1.5mm respecto al anterior 400px)
-    const printWidthPx = (mode === '57mm' || mode === '54mm') ? 388 : 576;
+function sendRasterBuffer(escposBuffer, target, callback) {
+    if (target.transport === 'device') {
+        fs.writeFile(target.devicePath, escposBuffer, (err) => {
+            if (err) return callback(err);
+            callback(null, `dispositivo ${target.devicePath}`);
+        });
+        return;
+    }
+
+    // Mismo protocolo raw/JetDirect que ThermalPrinterPlugin::printRaw en Android:
+    // conectar, mandar los bytes, medio-cerrar la escritura y esperar un margen
+    // corto por si la impresora responde algo (la mayoría no responde nada).
+    const net = require('net');
+    const socket = new net.Socket();
+    let settled = false;
+
+    const finish = (err) => {
+        if (settled) return;
+        settled = true;
+        socket.destroy();
+        callback(err || null, `${target.host}:${target.port}`);
+    };
+
+    socket.setTimeout(5000);
+    socket.on('timeout', () => finish(new Error(`Timeout conectando a ${target.host}:${target.port}`)));
+    socket.on('error', (err) => finish(err));
+
+    socket.connect(target.port, target.host, () => {
+        socket.end(escposBuffer, () => {
+            setTimeout(() => finish(null), 300);
+        });
+    });
+}
+
+async function executePrintRasterESCPOS(html, mode, target, res, done) {
+    // 384px @ 203dpi — mismo ancho que usa el raster de la app Android
+    // (RASTER_WIDTH_BY_MM en resources/js/lib/escpos/renderJobTicket.js),
+    // para que ambos caminos de impresión apunten al mismo tamaño físico.
+    const printWidthPx = (mode === '57mm' || mode === '54mm') ? 384 : 576;
     const rasterHtml = normalizeHtmlForPrint(html);
     try {
         // 1. Cargar con alto amplio para medir contenido real
@@ -344,12 +393,12 @@ async function executePrintLinuxESCPOS(html, mode, devicePath, res, done) {
 
         const escposBuffer = Buffer.concat([header, imgBytes, footer]);
 
-        fs.writeFile(devicePath, escposBuffer, (err) => {
+        sendRasterBuffer(escposBuffer, target, (err, targetLabel) => {
             if (err) {
                 addLog(`Error ESC/POS: ${err.message}`, 'error');
                 if (res) res.status(500).json({ error: err.message });
             } else {
-                addLog(`Impresión ESC/POS exitosa en: ${devicePath}`);
+                addLog(`Impresión ESC/POS exitosa en: ${targetLabel}`);
                 if (res) res.json({ success: true });
             }
             if (done) done();
