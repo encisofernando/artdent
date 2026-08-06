@@ -210,6 +210,15 @@ class JobController extends Controller
                 'status' => \App\Models\JobPhaseProgress::STATUS_PENDING,
             ]);
         }
+
+        // A diferencia de JobPhaseService::initializePhases() (usada por el
+        // kiosco), este método no sacaba a la orden de "received" al crear
+        // las fases — una orden podía terminar con una fase "completed" y
+        // ya facturada mientras seguía figurando como "Pendiente" en el
+        // estado. Alinear con el mismo comportamiento acá.
+        if ($job->status === 'received') {
+            $job->update(['status' => 'in_progress']);
+        }
     }
 
     protected function chargeAccountIfNeeded(Job $job)

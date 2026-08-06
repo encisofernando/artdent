@@ -290,12 +290,15 @@ export default function JobKioskIndex({ collaborators = [], company = null, tena
         setLoading(true);
         setError(null);
         try {
-            await axios.post(route('job-kiosk.send-to-proof'), {
+            const res = await axios.post(route('job-kiosk.send-to-proof'), {
                 job_phase_progress_id: activePhase.phase.id,
             });
+            setLastTicket(res.data);
+            setFinalTicket(null);
             await loadData();
             setActivePhase(null);
-            setScreen(SCREEN.DASHBOARD);
+            setSelectedCollabs([]);
+            setScreen(SCREEN.TICKET_PRINT);
         } catch (e) {
             setError(e?.response?.data?.error ?? 'Error al enviar a prueba.');
         } finally {
@@ -698,6 +701,7 @@ function InProgressCard({ phase, onComplete, onProof }) {
     const patientName = job.patient
         ? job.patient.name ?? '—'
         : '—';
+    const workLabel = (job.job_items || []).map((i) => i.description).filter(Boolean).join(', ');
 
     return (
         <div className="rounded-xl p-4 flex items-center justify-between gap-3"
@@ -711,6 +715,9 @@ function InProgressCard({ phase, onComplete, onProof }) {
                     <span className="text-xs text-slate-400">{phase.tariff_phase?.name ?? 'Fase'}</span>
                 </div>
                 <p className="text-sm font-semibold text-white truncate">{patientName}</p>
+                {workLabel && (
+                    <p className="text-xs text-slate-400 truncate">{workLabel}</p>
+                )}
                 <p className="text-xs text-slate-500">{job.dentist?.name ?? ''}</p>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -738,6 +745,7 @@ function AvailableJobCard({ job, phase, onTake }) {
         ? job.patient.name ?? '—'
         : '—';
     const priority = job.priority ?? 'normal';
+    const workLabel = (job.job_items || []).map((i) => i.description).filter(Boolean).join(', ');
 
     return (
         <div className="rounded-xl p-4 flex items-center justify-between gap-3"
@@ -760,6 +768,9 @@ function AvailableJobCard({ job, phase, onTake }) {
                     )}
                 </div>
                 <p className="text-sm font-semibold text-white truncate">{patientName}</p>
+                {workLabel && (
+                    <p className="text-xs text-slate-400 truncate">{workLabel}</p>
+                )}
                 <p className="text-xs text-slate-500">
                     {job.dentist?.name ?? ''}
                     {phase && <span className="ml-2 text-slate-600">· {phase.tariff_phase?.name ?? 'Fase'}</span>}
@@ -875,7 +886,7 @@ function TicketPrintScreen({ ticket, onDone }) {
                 style={{ background: `${AD.green}22` }}>
                 <CheckCircle2 size={36} style={{ color: AD.green }} />
             </div>
-            <p className="text-xl font-bold text-white">¡Fase completada!</p>
+            <p className="text-xl font-bold text-white">{ticket.sent_to_proof ? 'Enviado a prueba' : '¡Fase completada!'}</p>
 
             {/* Ticket preview */}
             <div ref={ticketRef} className="overflow-auto rounded-xl" style={{ background: '#fff', padding: 0, display: 'flex', justifyContent: 'center' }}>

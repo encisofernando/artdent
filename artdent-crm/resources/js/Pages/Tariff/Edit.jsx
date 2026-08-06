@@ -59,7 +59,7 @@ function PhasesManager({ tariffId, phases, setPhases, phaseTemplates, margin, on
                 </span>
             </div>
             <p className={`text-xs mb-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                Asigná fases del catálogo. El precio final del arancel se calcula solo: suma de fases + margen. El cargo al odontólogo se genera al enviar cada fase a prueba (o al completarla, si nunca pasa por prueba).
+                Asigná fases del catálogo. El precio de "Datos del Trabajo" es siempre manual y no se modifica al agregar fases. El cargo al odontólogo se genera al enviar cada fase a prueba (o al completarla, si nunca pasa por prueba); la última fase ajusta contra el precio del arancel.
             </p>
 
             {/* Lista de fases existentes */}
@@ -174,16 +174,6 @@ export default function Edit({ auth, item, phaseTemplates = [] }) {
         }));
     };
 
-    // El precio final manda de las fases (si hay) por sobre la fórmula de costos o el
-    // valor manual — se recalcula solo (el servidor hace lo mismo al guardar).
-    useEffect(() => {
-        if (!hasPhases) return;
-        const phasesTotal = phases.reduce((s, p) => s + Number(p.price), 0);
-        const margin = parseFloat(data.margin_pct) || 0;
-        const finalPrice = Math.round(phasesTotal * (1 + margin / 100) * 100) / 100;
-        setData(prev => ({ ...prev, price: finalPrice }));
-    }, [phases, data.margin_pct]);
-
     const submit = (e) => {
         e.preventDefault();
         put(route('tariffs.update', item.id));
@@ -285,7 +275,7 @@ export default function Edit({ auth, item, phaseTemplates = [] }) {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClasses}>
-                                        {hasPhases ? 'Precio Final (Fases + Margen)' : 'Precio Final (Manual o Auto-Calculado)'} *
+                                        Precio Final (Manual o Auto-Calculado) *
                                     </label>
                                     <div className="relative">
                                         <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none
@@ -298,18 +288,13 @@ export default function Edit({ auth, item, phaseTemplates = [] }) {
                                             step="0.01"
                                             value={data.price}
                                             onChange={e => setData('price', e.target.value)}
-                                            readOnly={hasPhases || data.costs.length > 0}
-                                            className={`${inputClasses} pl-8 ${(hasPhases || data.costs.length > 0) ? (isDark ? 'bg-slate-800/80 text-teal-400 font-bold border-teal-500/30' : 'bg-teal-50 text-teal-700 font-bold border-teal-200') : ''}`}
+                                            readOnly={data.costs.length > 0}
+                                            className={`${inputClasses} pl-8 ${data.costs.length > 0 ? (isDark ? 'bg-slate-800/80 text-teal-400 font-bold border-teal-500/30' : 'bg-teal-50 text-teal-700 font-bold border-teal-200') : ''}`}
                                             placeholder="0.00"
                                             required
                                         />
                                     </div>
                                     {errors.price && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.price}</div>}
-                                    {hasPhases && (
-                                        <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            Se calcula solo a partir de las fases asignadas más abajo. Para cambiarlo, ajustá el margen o las fases.
-                                        </p>
-                                    )}
                                 </div>
                                 <div>
                                     <label className={labelClasses}>Unidad de Medida</label>

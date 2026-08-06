@@ -64,6 +64,7 @@ class JobPhaseKioskController extends Controller
                 'dentist:id,name',
                 'patient:id,name,name',
                 'phaseProgress' => fn ($q) => $q->with('tariffPhase'),
+                'job_items:id,job_id,description',
             ])
             ->orderBy('due_date')
             ->get(['id', 'job_number', 'status', 'due_date', 'priority', 'dentist_id', 'patient_id', 'description']);
@@ -91,6 +92,7 @@ class JobPhaseKioskController extends Controller
                 'job:id,job_number,status,due_date,priority,dentist_id,patient_id,description',
                 'job.dentist:id,name',
                 'job.patient:id,name,name',
+                'job.job_items:id,job_id,description',
             ])
             ->get();
 
@@ -196,7 +198,8 @@ class JobPhaseKioskController extends Controller
             'job_phase_progress_id' => ['required', 'integer', 'exists:job_phase_progress,id'],
         ]);
 
-        $phase = JobPhaseProgress::with('job')->findOrFail($data['job_phase_progress_id']);
+        $phase = JobPhaseProgress::with(['job.dentist', 'job.patient', 'job.company', 'tariffPhase'])
+            ->findOrFail($data['job_phase_progress_id']);
 
         if ($phase->status !== JobPhaseProgress::STATUS_IN_PROGRESS) {
             return response()->json(['error' => 'La fase debe estar en progreso para enviar a prueba.'], 422);
@@ -204,7 +207,33 @@ class JobPhaseKioskController extends Controller
 
         $this->phaseService->sendToProof($phase);
 
-        return response()->json(['success' => true]);
+        // sendToProof() ya factura la fase acá adentro (billPhaseIfNeeded),
+        // con el precio de la plantilla de fase — o el ajuste contra el
+        // total si es la última. El ticket tiene que reflejar ese monto
+        // real, no $0.
+        $phase->refresh()->load('labAccountMove');
+        $job = $phase->job;
+
+        return response()->json([
+            'success' => true,
+            'sent_to_proof' => true,
+            'ticket_number' => $job ? sprintf('%s-F%d', $job->job_number, $phase->tariffPhase?->sort_order ?? 1) : null,
+            'phase_name' => $phase->tariffPhase?->name ?? 'Fase',
+            'amount' => (float) ($phase->labAccountMove?->amount ?? 0),
+            'job_number' => $job?->job_number,
+            'received_at' => $job?->received_at,
+            'shade' => $job?->shade,
+            'dentist_name' => $job?->dentist?->name,
+            'patient_name' => $job?->patient?->name,
+            'company' => $job?->company ? [
+                'name' => $job->company->name,
+                'logo_url' => $job->company->logo_url,
+                'lab_logo_url' => $job->company->lab_logo_url,
+                'address' => $job->company->address,
+                'city' => $job->company->city,
+                'province' => $job->company->province,
+            ] : null,
+        ]);
     }
 
     /**

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\PhaseTemplate;
 use App\Models\Tariff;
-use App\Services\TariffPricingService;
 use App\Support\TariffNotesRenderer;
 use chillerlan\QRCode\Common\EccLevel;
 use chillerlan\QRCode\Output\QRMarkupSVG;
@@ -16,8 +15,6 @@ use Spatie\Browsershot\Browsershot;
 
 class TariffController extends Controller
 {
-    public function __construct(private readonly TariffPricingService $pricingService) {}
-
     /**
      * Display a listing of the resource.
      */
@@ -217,10 +214,6 @@ class TariffController extends Controller
         if (! empty($validated['costs'])) {
             $tariff->costs()->createMany($validated['costs']);
         }
-
-        // Si el arancel tiene fases del catálogo asignadas, su precio manda sobre
-        // el precio/costos recién guardados (recalculado con el margen actual).
-        $this->pricingService->syncPriceFromPhases($tariff);
 
         return redirect()->route('tariffs.index')->with('success', 'Arancel actualizado exitosamente.');
     }

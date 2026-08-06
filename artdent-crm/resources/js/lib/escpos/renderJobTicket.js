@@ -80,6 +80,11 @@ export async function renderJobTicketCanvas(job, { widthMM = 80 } = {}) {
     const company = job.company || {};
     const items = job.job_items || [];
     const total = Number(job.total || 0);
+    // Sólo en el ticket final de una orden con fases: si ya se pagó algo
+    // (ej. el Rodete), mostrar el desglose de pagado/saldo debajo del total
+    // en vez de dejar el ticket pidiendo el bruto de nuevo.
+    const hasPaidInfo = Number(job.paid || 0) > 0;
+    const outstanding = Number(job.outstanding ?? total);
     const patient = job.patient || {};
     const dentist = job.dentist || {};
     const patientName = [patient?.name, patient?.last_name].filter(Boolean).join(' ') || patient?.name || '—';
@@ -136,6 +141,9 @@ export async function renderJobTicketCanvas(job, { widthMM = 80 } = {}) {
     });
     y += GAP - 8;
     y += BOX_BORDER * 2 + Math.max(F.caption, F.total) + 20 + GAP;
+    if (hasPaidInfo) {
+        y += (F.label + 6) * 2 + GAP;
+    }
     y += RULE + GAP;
     y += F.small + 6 + GAP;
     y += RULE;
@@ -233,6 +241,22 @@ export async function renderJobTicketCanvas(job, { widthMM = 80 } = {}) {
     ctx.fillText(`$${fmt(total)}`, PAD + innerW - 14, totalBoxY + totalBoxH / 2 + F.total * 0.35);
     cy += totalBoxH + GAP;
 
+    if (hasPaidInfo) {
+        ctx.font = `${F.label}px Arial, Helvetica, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.fillText('Pagado', PAD, cy + F.label);
+        ctx.textAlign = 'right';
+        ctx.fillText(`$${fmt(job.paid)}`, PAD + innerW, cy + F.label);
+        cy += F.label + 6;
+
+        ctx.textAlign = 'left';
+        ctx.font = `bold ${F.label}px Arial, Helvetica, sans-serif`;
+        ctx.fillText('Saldo pendiente', PAD, cy + F.label);
+        ctx.textAlign = 'right';
+        ctx.fillText(`$${fmt(outstanding)}`, PAD + innerW, cy + F.label);
+        cy += F.label + 6 + GAP;
+    }
+
     ctx.fillRect(PAD, cy, innerW, RULE);
     cy += RULE + GAP;
 
@@ -259,6 +283,8 @@ export function mapFinalTicketToJobOrder(ticket) {
         received_at: ticket.received_at,
         shade: ticket.shade,
         total: ticket.total,
+        paid: ticket.paid,
+        outstanding: ticket.outstanding,
         company: ticket.company || {},
         patient: ticket.patient_name ? { name: ticket.patient_name } : {},
         dentist: ticket.dentist_name ? { name: ticket.dentist_name } : {},

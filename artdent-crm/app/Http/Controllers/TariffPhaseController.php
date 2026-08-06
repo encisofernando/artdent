@@ -5,15 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\PhaseTemplate;
 use App\Models\Tariff;
 use App\Models\TariffPhase;
-use App\Services\TariffPricingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class TariffPhaseController extends Controller
 {
-    public function __construct(private readonly TariffPricingService $pricingService) {}
-
     public function index(Tariff $tariff)
     {
         return response()->json($tariff->phases);
@@ -47,8 +44,6 @@ class TariffPhaseController extends Controller
             'sort_order' => $data['sort_order'],
         ]);
 
-        $this->pricingService->syncPriceFromPhases($tariff);
-
         return back()->with('success', 'Fase agregada.');
     }
 
@@ -70,8 +65,6 @@ class TariffPhaseController extends Controller
         abort_if($phase->tariff_id !== $tariff->id, 403);
 
         $phase->delete();
-
-        $this->pricingService->syncPriceFromPhases($tariff);
 
         return back()->with('success', 'Fase eliminada.');
     }

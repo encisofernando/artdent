@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Job;
-use App\Models\JobItem;
 use App\Models\JobPhaseCollaborator;
 use App\Models\JobPhaseProgress;
 use App\Models\JobPhaseTicket;
@@ -140,8 +139,12 @@ class JobPhaseService
                 ]);
             }
 
-            $this->issuePhaseTicket($phase);
+            // Facturar primero: issuePhaseTicket() necesita el monto real ya
+            // cobrado (que en la última fase es un ajuste contra el total
+            // del arancel, no el precio crudo de la plantilla) para que el
+            // ticket impreso coincida siempre con lo que se cobró.
             $this->billPhaseIfNeeded($phase);
+            $this->issuePhaseTicket($phase);
 
             $job = $phase->job()->with('phaseProgress')->first();
 
@@ -154,33 +157,89 @@ class JobPhaseService
     }
 
     /**
-     * Itemized summary of the job's billed items, with the grand total. Used
-     * to print a consolidated "orden completa" ticket once the last phase
-     * finishes.
+     * Itemized summary of the job's phase tickets (Rodete, Enfilado,
+     * Acrílico, etc.), with the grand total. Used to print a consolidated
+     * "orden completa" ticket once the last phase finishes — Rodete +
+     * Enfilado + Acrílico = precio del arancel, cada línea con lo que
+     * realmente se cobró en su momento (issuePhaseTicket() ahora usa el
+     * monto real facturado, incluido el ajuste de la última fase — ya no
+     * puede salir "Fase X $0,00").
      *
-     * Ojo: NO son los JobPhaseTicket (esos son certificados de producción
-     * internos por fase/técnico, usados para comisiones — su "amount" no es
-     * el precio de venta, por eso el ticket salía con "Fase 1 x $0,00" en vez
-     * del detalle facturado real). Esto tiene que reflejar job_items, lo
-     * mismo que ve el cliente en la orden.
+     * También incluye cuánto de esta orden ya se pagó (`paid`) y cuánto
+     * queda pendiente (`outstanding`) — si el odontólogo ya pagó, por
+     * ejemplo, el Rodete, el ticket final tiene que reflejar ese pago en
+     * vez de pedir el total bruto de nuevo.
      *
-     * @return array{phases: array<int, array{description: string, quantity: float, unit_price: float, total: float}>, total: float}
+     * @return array{phases: array<int, array{description: string, quantity: float, unit_price: float, total: float}>, total: float, paid: float, outstanding: float}
      */
     public function buildJobTicketSummary(Job $job): array
     {
-        $job->loadMissing('job_items');
+        $tickets = JobPhaseTicket::where('job_id', $job->id)
+            ->with('phaseProgress.tariffPhase')
+            ->get()
+            ->sortBy(fn (JobPhaseTicket $t) => $t->phaseProgress?->tariffPhase?->sort_order ?? 0)
+            ->values();
 
-        $items = $job->job_items->map(fn (JobItem $item) => [
-            'description' => $item->description,
-            'quantity' => (float) $item->quantity,
-            'unit_price' => (float) $item->unit_price,
-            'total' => (float) $item->total,
+        $items = $tickets->map(fn (JobPhaseTicket $t) => [
+            'description' => $t->phase_name,
+            'quantity' => 1.0,
+            'unit_price' => (float) $t->amount,
+            'total' => (float) $t->amount,
         ])->all();
+
+        $total = (float) $job->total;
+        $paid = $this->paidAmountForJob($job);
 
         return [
             'phases' => $items,
-            'total' => (float) $job->total,
+            'total' => $total,
+            'paid' => round($paid, 2),
+            'outstanding' => round($total - $paid, 2),
         ];
+    }
+
+    /**
+     * Cuánto de los cargos de esta orden ya se pagó, aplicando los pagos de
+     * la cuenta corriente en el mismo orden cronológico/FIFO que
+     * LabAccountController::buildOwedJobs() — así "Trabajos adeudados" y
+     * este ticket siempre coinciden en qué está pagado y qué no.
+     */
+    private function paidAmountForJob(Job $job): float
+    {
+        if (! $job->dentist_id) {
+            return 0.0;
+        }
+
+        $account = LabAccount::where('dentist_id', $job->dentist_id)->first();
+
+        if (! $account) {
+            return 0.0;
+        }
+
+        $moves = LabAccountMove::where('lab_account_id', $account->id)
+            ->orderBy('move_date')
+            ->orderBy('id')
+            ->get();
+
+        $phaseIds = $job->phaseProgress()->pluck('id');
+
+        $remainingCredit = $moves->sum(fn (LabAccountMove $m) => max(0, (float) -$m->signed_amount));
+        $paidForJob = 0.0;
+
+        foreach ($moves->filter(fn (LabAccountMove $m) => (float) $m->signed_amount > 0) as $move) {
+            $amount = (float) $move->amount;
+            $paidAmount = min($remainingCredit, $amount);
+            $remainingCredit = max(0, $remainingCredit - $paidAmount);
+
+            $belongsToJob = ($move->reference_type === Job::class && (int) $move->reference_id === $job->id)
+                || ($move->reference_type === JobPhaseProgress::class && $phaseIds->contains($move->reference_id));
+
+            if ($belongsToJob) {
+                $paidForJob += $paidAmount;
+            }
+        }
+
+        return $paidForJob;
     }
 
     /**
@@ -221,12 +280,18 @@ class JobPhaseService
 
     private function issuePhaseTicket(JobPhaseProgress $phase): JobPhaseTicket
     {
-        $phase->loadMissing(['job', 'tariffPhase']);
+        $phase->loadMissing(['job', 'tariffPhase', 'labAccountMove']);
 
         $job = $phase->job;
         $phaseName = $phase->tariffPhase?->name ?? 'Fase';
         $sortOrder = $phase->tariffPhase?->sort_order ?? 1;
-        $amount = (float) ($phase->tariffPhase?->price ?? 0);
+
+        // El monto tiene que ser el que realmente se cobró (billPhaseIfNeeded,
+        // llamado antes que esto), no el precio crudo de la plantilla — en la
+        // última fase ese cobro es un ajuste contra el total del arancel, y
+        // en una fase genérica sin plantilla real el precio de plantilla ni
+        // siquiera existe (quedaba en $0).
+        $amount = (float) ($phase->labAccountMove?->amount ?? $phase->tariffPhase?->price ?? 0);
 
         $ticketNumber = sprintf('%s-F%d', $job->job_number, $sortOrder);
 
@@ -263,6 +328,17 @@ class JobPhaseService
         $phase->loadMissing(['job', 'tariffPhase']);
 
         $job = $phase->job;
+
+        // Una orden "received" (Pendiente) nunca debe generar deuda, ni
+        // siquiera si alguna fase quedó marcada completada mientras el
+        // estado no avanzó (ver initializePhasesForJob() en JobController,
+        // que hasta hace poco no sacaba la orden de "received" al crear las
+        // fases). Freno explícito acá además del fix en el origen, para no
+        // depender de que todos los caminos que crean/avanzan fases
+        // recuerden actualizar el estado correctamente.
+        if ($job->status === 'received') {
+            return;
+        }
 
         if (! $job->dentist_id) {
             return;
