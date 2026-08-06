@@ -149,6 +149,7 @@ class JobPhaseService
             $job = $phase->job()->with('phaseProgress')->first();
 
             if ($this->allPhasesCompleted($job)) {
+                $this->settleArancelRemainder($job);
                 $this->finalizeJob($job);
             } else {
                 $this->updateJobStatus($job, 'in_progress');
@@ -185,6 +186,19 @@ class JobPhaseService
             'unit_price' => (float) $t->amount,
             'total' => (float) $t->amount,
         ])->all();
+
+        $remainderMove = LabAccountMove::where('reference_type', Job::class)
+            ->where('reference_id', $job->id)
+            ->first();
+
+        if ($remainderMove) {
+            $items[] = [
+                'description' => 'Arancel',
+                'quantity' => 1.0,
+                'unit_price' => (float) $remainderMove->amount,
+                'total' => (float) $remainderMove->amount,
+            ];
+        }
 
         $total = (float) $job->total;
         $paid = $this->paidAmountForJob($job);
@@ -377,6 +391,60 @@ class JobPhaseService
         $account->applyMove($move);
 
         $phase->update(['lab_account_move_id' => $move->id]);
+    }
+
+    /**
+     * Cuando la última fase de la orden se completa de verdad (no solo se
+     * manda a prueba), factura el resto del arancel que las fases
+     * individuales no cubrieron — así fase1 + fase2 + ... + remanente
+     * siempre cierra exactamente contra job.total, sin importar cómo estén
+     * configuradas las fases. Cargo adicional a la cuenta corriente (no una
+     * fase más), idempotente vía el propio LabAccountMove de referencia.
+     */
+    private function settleArancelRemainder(Job $job): void
+    {
+        if (! $job->dentist_id) {
+            return;
+        }
+
+        if ($job->status === 'received') {
+            return;
+        }
+
+        $alreadySettled = LabAccountMove::where('reference_type', Job::class)
+            ->where('reference_id', $job->id)
+            ->exists();
+
+        if ($alreadySettled) {
+            return;
+        }
+
+        $billedForPhases = (float) LabAccountMove::where('reference_type', JobPhaseProgress::class)
+            ->whereIn('reference_id', $job->phaseProgress()->pluck('id'))
+            ->sum('amount');
+
+        $remainder = round((float) $job->total - $billedForPhases, 2);
+
+        if ($remainder <= 0) {
+            return;
+        }
+
+        $account = LabAccount::firstOrCreate(['dentist_id' => $job->dentist_id]);
+        $userId = auth()->id() ?? 1;
+
+        $move = LabAccountMove::create([
+            'lab_account_id' => $account->id,
+            'user_id' => $userId,
+            'type' => LabAccountMove::TYPE_CHARGE,
+            'amount' => $remainder,
+            'balance_after' => $account->balance + $remainder,
+            'description' => sprintf('Orden %s — Arancel', $job->job_number),
+            'reference_type' => Job::class,
+            'reference_id' => $job->id,
+            'move_date' => Carbon::today(),
+        ]);
+
+        $account->applyMove($move);
     }
 
     private function updateJobStatus(Job $job, string $newStatus): void
