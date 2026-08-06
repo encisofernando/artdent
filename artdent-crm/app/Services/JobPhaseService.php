@@ -160,10 +160,9 @@ class JobPhaseService
      * Itemized summary of the job's phase tickets (Rodete, Enfilado,
      * Acrílico, etc.), with the grand total. Used to print a consolidated
      * "orden completa" ticket once the last phase finishes — Rodete +
-     * Enfilado + Acrílico = precio del arancel, cada línea con lo que
-     * realmente se cobró en su momento (issuePhaseTicket() ahora usa el
-     * monto real facturado, incluido el ajuste de la última fase — ya no
-     * puede salir "Fase X $0,00").
+     * Enfilado + Acrílico = precio del arancel, siempre y cuando el
+     * arancel tenga sus fases reales configuradas con precio (cada línea
+     * muestra exactamente lo que se facturó por esa fase, sin ajustes).
      *
      * También incluye cuánto de esta orden ya se pagó (`paid`) y cuánto
      * queda pendiente (`outstanding`) — si el odontólogo ya pagó, por
@@ -286,11 +285,9 @@ class JobPhaseService
         $phaseName = $phase->tariffPhase?->name ?? 'Fase';
         $sortOrder = $phase->tariffPhase?->sort_order ?? 1;
 
-        // El monto tiene que ser el que realmente se cobró (billPhaseIfNeeded,
-        // llamado antes que esto), no el precio crudo de la plantilla — en la
-        // última fase ese cobro es un ajuste contra el total del arancel, y
-        // en una fase genérica sin plantilla real el precio de plantilla ni
-        // siquiera existe (quedaba en $0).
+        // El monto es el precio real de la plantilla de fase (billPhaseIfNeeded,
+        // llamado antes que esto, cobra exactamente ese valor) — si la fase
+        // no llegó a facturar (precio $0), cae al precio de plantilla igual.
         $amount = (float) ($phase->labAccountMove?->amount ?? $phase->tariffPhase?->price ?? 0);
 
         $ticketNumber = sprintf('%s-F%d', $job->job_number, $sortOrder);
@@ -347,20 +344,15 @@ class JobPhaseService
         $account = LabAccount::firstOrCreate(['dentist_id' => $job->dentist_id]);
         $userId = auth()->id() ?? 1;
 
-        $unbilledSiblings = JobPhaseProgress::where('job_id', $job->id)
-            ->where('id', '!=', $phase->id)
-            ->whereNull('lab_account_move_id')
-            ->count();
-
-        if ($unbilledSiblings === 0) {
-            $alreadyBilled = (float) LabAccountMove::where('reference_type', JobPhaseProgress::class)
-                ->whereIn('reference_id', $job->phaseProgress()->pluck('id'))
-                ->sum('amount');
-
-            $amount = max(0, (float) $job->total - $alreadyBilled);
-        } else {
-            $amount = (float) ($phase->tariffPhase?->price ?? 0);
-        }
+        // Cada fase cobra exactamente su precio configurado en la plantilla
+        // — nunca un ajuste contra el total del arancel, ni siquiera siendo
+        // la última fase configurada. Si una fase (ej. Encerado) vale $0 en
+        // el catálogo, no genera cargo. Para que la suma cierre contra
+        // job.total, el arancel tiene que tener todas sus fases reales
+        // configuradas con precio (incluida la del producto terminado) — es
+        // responsabilidad de quien arma el arancel, no algo que el sistema
+        // deba inferir.
+        $amount = (float) ($phase->tariffPhase?->price ?? 0);
 
         if ($amount <= 0) {
             return;
