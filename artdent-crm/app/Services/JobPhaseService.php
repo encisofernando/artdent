@@ -193,7 +193,7 @@ class JobPhaseService
 
         if ($remainderMove) {
             $items[] = [
-                'description' => 'Arancel',
+                'description' => $this->tariffNameForJob($job),
                 'quantity' => 1.0,
                 'unit_price' => (float) $remainderMove->amount,
                 'total' => (float) $remainderMove->amount,
@@ -438,13 +438,27 @@ class JobPhaseService
             'type' => LabAccountMove::TYPE_CHARGE,
             'amount' => $remainder,
             'balance_after' => $account->balance + $remainder,
-            'description' => sprintf('Orden %s — Arancel', $job->job_number),
+            'description' => sprintf('Orden %s — %s', $job->job_number, $this->tariffNameForJob($job)),
             'reference_type' => Job::class,
             'reference_id' => $job->id,
             'move_date' => Carbon::today(),
         ]);
 
         $account->applyMove($move);
+    }
+
+    /**
+     * Nombre del arancel de la orden, para mostrar la línea del remanente
+     * con el nombre real (ej. "ACRILICO INYECTADO O FLEX 1 A 3 DIENTES") en
+     * vez de la palabra genérica "Arancel". Si la orden tiene más de un
+     * ítem/arancel, usa el primero — el caso normal es un solo arancel por
+     * orden.
+     */
+    private function tariffNameForJob(Job $job): string
+    {
+        $job->loadMissing('job_items.tariff');
+
+        return $job->job_items->first()?->tariff?->name ?? 'Arancel';
     }
 
     private function updateJobStatus(Job $job, string $newStatus): void
