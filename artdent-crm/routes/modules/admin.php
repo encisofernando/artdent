@@ -155,6 +155,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('kiosk-access/ips/{ip}', [KioskAccessController::class, 'destroyIp'])->name('kiosk-access.ips.destroy');
         Route::post('kiosk-access/tokens', [KioskAccessController::class, 'storeToken'])->name('kiosk-access.tokens.store');
         Route::delete('kiosk-access/tokens/{token}', [KioskAccessController::class, 'destroyToken'])->name('kiosk-access.tokens.destroy');
+        Route::post('kiosk-access/device-tokens', [KioskAccessController::class, 'storeDeviceToken'])->name('kiosk-access.device-tokens.store');
+        Route::patch('kiosk-access/device-tokens/{network}/toggle', [KioskAccessController::class, 'toggleDeviceToken'])->name('kiosk-access.device-tokens.toggle');
+        Route::delete('kiosk-access/device-tokens/{network}', [KioskAccessController::class, 'destroyDeviceToken'])->name('kiosk-access.device-tokens.destroy');
     });
 
     // Crear symlink storage en producción

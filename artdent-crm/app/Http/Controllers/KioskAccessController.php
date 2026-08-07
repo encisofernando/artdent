@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\KioskNetwork;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -32,6 +33,11 @@ class KioskAccessController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        $deviceTokens = KioskNetwork::where('tenant_id', $this->currentTenantId())
+            ->whereNotNull('token')
+            ->orderByDesc('created_at')
+            ->get(['id', 'label', 'is_active', 'created_at']);
+
         $tokens = $request->user()
             ->tokens()
             ->orderByDesc('created_at')
@@ -46,6 +52,7 @@ class KioskAccessController extends Controller
 
         return Inertia::render('Admin/KioskAccess', [
             'allowedIps' => $ips,
+            'deviceTokens' => $deviceTokens,
             'tokens' => $tokens,
             'currentIp' => $request->ip(),
         ]);
@@ -92,6 +99,55 @@ class KioskAccessController extends Controller
         $ip->delete();
 
         return back()->with('success', 'IP eliminada.');
+    }
+
+    /**
+     * POST /admin/kiosk-access/device-tokens
+     *
+     * Token de dispositivo para el Kiosk de Producción (`/job-kiosk?token=...`) —
+     * a diferencia de la IP/CIDR, no depende de la red, así que sobrevive
+     * cortes de luz, reconexiones y cambios de IP del ISP en la tablet.
+     * Verificado por `RestrictToLabNetwork` antes que cualquier IP.
+     */
+    public function storeDeviceToken(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'label' => ['required', 'string', 'max:100'],
+        ]);
+
+        $plainToken = Str::random(48);
+
+        KioskNetwork::create([
+            'tenant_id' => $this->currentTenantId(),
+            'label' => $request->label,
+            'token' => $plainToken,
+        ]);
+
+        return back()->with('new_device_token', $plainToken);
+    }
+
+    /**
+     * PATCH /admin/kiosk-access/device-tokens/{network}/toggle
+     */
+    public function toggleDeviceToken(KioskNetwork $network): RedirectResponse
+    {
+        abort_unless($network->tenant_id === $this->currentTenantId(), 404);
+
+        $network->update(['is_active' => ! $network->is_active]);
+
+        return back()->with('success', $network->is_active ? 'Token habilitado.' : 'Token deshabilitado.');
+    }
+
+    /**
+     * DELETE /admin/kiosk-access/device-tokens/{network}
+     */
+    public function destroyDeviceToken(KioskNetwork $network): RedirectResponse
+    {
+        abort_unless($network->tenant_id === $this->currentTenantId(), 404);
+
+        $network->delete();
+
+        return back()->with('success', 'Token revocado correctamente.');
     }
 
     /**

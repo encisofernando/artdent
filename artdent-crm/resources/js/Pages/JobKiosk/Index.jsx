@@ -131,7 +131,33 @@ const SCREEN = {
     FINAL_TICKET:    'final_ticket',
 };
 
+const KIOSK_TOKEN_STORAGE_KEY = 'job_kiosk_device_token';
+
+// El token viaja como ?token=... en el link que carga la tablet — pero como
+// no depende de la red (a diferencia de la IP/CIDR), lo persistimos acá para
+// que sobreviva recargas y cortes de luz aunque la URL después no lo lleve.
+// Todas las llamadas de este módulo usan el `axios` importado arriba, así
+// que basta con setear el header default una sola vez al montar.
+function useKioskDeviceToken() {
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const tokenFromUrl = params.get('token');
+
+        if (tokenFromUrl) {
+            localStorage.setItem(KIOSK_TOKEN_STORAGE_KEY, tokenFromUrl);
+        }
+
+        const token = tokenFromUrl || localStorage.getItem(KIOSK_TOKEN_STORAGE_KEY);
+
+        if (token) {
+            axios.defaults.headers.common['X-Kiosk-Token'] = token;
+        }
+    }, []);
+}
+
 export default function JobKioskIndex({ collaborators = [], company = null, tenant_id = null }) {
+    useKioskDeviceToken();
+
     const [screen, setScreen]           = useState(SCREEN.DASHBOARD);
     const [available, setAvailable]     = useState([]);
     const [inProgress, setInProgress]   = useState([]);

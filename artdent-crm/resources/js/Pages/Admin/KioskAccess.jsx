@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 
-export default function KioskAccess({ auth, allowedIps = [], tokens = [], currentIp }) {
+export default function KioskAccess({ auth, allowedIps = [], deviceTokens = [], tokens = [], currentIp }) {
     const { isDark } = useTheme();
     const confirmDialog = useConfirm();
     const { flash } = usePage().props;
@@ -51,6 +51,22 @@ export default function KioskAccess({ auth, allowedIps = [], tokens = [], curren
     const deleteIp = (ip) =>
         confirmDialog(`¿Eliminar la IP ${ip.ip_address}?`, () =>
             router.delete(route('admin.kiosk-access.ips.destroy', ip.id), { preserveScroll: true }),
+        );
+
+    /* ── Device token (Kiosk de Producción) form ── */
+    const deviceTokenForm = useForm({ label: '' });
+
+    const submitDeviceToken = (e) => {
+        e.preventDefault();
+        deviceTokenForm.post(route('admin.kiosk-access.device-tokens.store'), { onSuccess: () => deviceTokenForm.reset() });
+    };
+
+    const toggleDeviceToken = (t) =>
+        router.patch(route('admin.kiosk-access.device-tokens.toggle', t.id), {}, { preserveScroll: true });
+
+    const revokeDeviceToken = (t) =>
+        confirmDialog(`¿Revocar el token "${t.label}"? La tablet dejará de poder acceder al Kiosk de Producción con ese link.`, () =>
+            router.delete(route('admin.kiosk-access.device-tokens.destroy', t.id), { preserveScroll: true }),
         );
 
     /* ── Token form ── */
@@ -219,6 +235,115 @@ export default function KioskAccess({ auth, allowedIps = [], tokens = [], curren
                         <p className={`mt-2 text-xs ${muted}`}>
                             Soporta IP exacta (<code className="font-mono">192.168.1.50</code>) o rango CIDR (<code className="font-mono">192.168.1.0/24</code>).
                         </p>
+                    </div>
+                </div>
+
+                {/* Token recién creado — Kiosk de Producción */}
+                {flash?.new_device_token && (
+                    <div className={`rounded-2xl border p-5 ${isDark ? 'bg-green-900/20 border-green-700/50' : 'bg-green-50 border-green-200'}`}>
+                        <div className="flex items-center gap-2 mb-3">
+                            <ShieldCheck size={18} className={isDark ? 'text-green-400' : 'text-green-600'} />
+                            <span className={`font-bold text-sm ${isDark ? 'text-green-400' : 'text-green-700'}`}>
+                                Token de dispositivo creado — copiá el link ahora, no se mostrará de nuevo
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <code className={`flex-1 rounded-lg px-3 py-2 text-xs font-mono break-all ${
+                                isDark ? 'bg-slate-800 text-slate-200' : 'bg-white text-slate-800 border border-slate-200'
+                            }`}>
+                                {`${route('job-kiosk')}?token=${flash.new_device_token}`}
+                            </code>
+                            <button
+                                onClick={() => copyToken(`${route('job-kiosk')}?token=${flash.new_device_token}`)}
+                                className={`p-2 rounded-lg transition ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
+                            >
+                                {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                            </button>
+                        </div>
+                        <p className={`text-xs mt-2 ${muted}`}>
+                            Cargá este link en la app Android de la tablet (config del kiosk). Funciona sin importar la IP del dispositivo.
+                        </p>
+                    </div>
+                )}
+
+                {/* Tokens de dispositivo — Kiosk de Producción */}
+                <div className={`rounded-2xl border ${card}`}>
+                    <div className="px-6 py-5 border-b border-inherit">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck size={18} className={isDark ? 'text-teal-400' : 'text-teal-600'} />
+                            <span className={`font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                Tokens de dispositivo — Kiosk de Producción
+                            </span>
+                        </div>
+                        <p className={`text-xs mt-1 ${muted}`}>
+                            Alternativa a la IP para la tablet del taller: no depende de la red, así que sobrevive cortes de luz,
+                            reconexiones y cambios de IP. Se usa agregando <code className="font-mono">?token=...</code> al link del Kiosk.
+                        </p>
+                    </div>
+
+                    {deviceTokens.length === 0 ? (
+                        <div className={`px-6 py-8 text-center text-sm ${muted}`}>
+                            Ningún token configurado todavía.
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-slate-700/30">
+                            {deviceTokens.map((t) => (
+                                <li key={t.id} className="flex items-center gap-4 px-6 py-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                                {t.label}
+                                            </span>
+                                            {!t.is_active && (
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                                    isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                    deshabilitado
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => toggleDeviceToken(t)}
+                                        title={t.is_active ? 'Deshabilitar' : 'Habilitar'}
+                                        className={`p-2 rounded-lg transition ${
+                                            t.is_active
+                                                ? isDark ? 'text-teal-400 hover:bg-teal-900/30' : 'text-teal-600 hover:bg-teal-50'
+                                                : isDark ? 'text-slate-500 hover:bg-slate-800' : 'text-slate-400 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {t.is_active ? <Wifi size={16} /> : <WifiOff size={16} />}
+                                    </button>
+
+                                    <button
+                                        onClick={() => revokeDeviceToken(t)}
+                                        className={`p-2 rounded-lg transition ${
+                                            isDark ? 'text-red-400 hover:bg-red-900/30' : 'text-red-500 hover:bg-red-50'
+                                        }`}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    <div className="px-6 py-5 border-t border-inherit">
+                        <form onSubmit={submitDeviceToken} className="flex gap-3">
+                            <input
+                                className={inputCls}
+                                placeholder="Nombre del dispositivo (ej: Tablet taller)"
+                                value={deviceTokenForm.data.label}
+                                onChange={(e) => deviceTokenForm.setData('label', e.target.value)}
+                            />
+                            <Button type="submit" disabled={deviceTokenForm.processing} className="shrink-0">
+                                <Plus size={16} className="mr-1" /> Generar
+                            </Button>
+                        </form>
+                        {deviceTokenForm.errors.label && (
+                            <p className="mt-2 text-xs text-red-500">{deviceTokenForm.errors.label}</p>
+                        )}
                     </div>
                 </div>
 
