@@ -1,0 +1,22 @@
+{
+  "name": "artdent-crm-mobile",
+  "version": "1.0.0",
+  "description": "App móvil general de ArtDent CRM (sin pantalla fija, apunta al login normal) — distinta de artdent-android, que es el kiosco de producción fijado a /job-kiosk.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/keyboard": "^8.0.5"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.4.1"
+  }
+}

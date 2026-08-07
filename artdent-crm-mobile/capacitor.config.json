@@ -1,0 +1,18 @@
+{
+  "appId": "com.artdent.pos",
+  "appName": "ArtDent",
+  "webDir": "www",
+  "server": {
+    "url": "https://pos.artdent.com.ar",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
+  }
+}

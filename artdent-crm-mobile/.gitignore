@@ -1,0 +1,4 @@
+node_modules/
+keystore-DO-NOT-COMMIT/
+*.apk
+*.aab
