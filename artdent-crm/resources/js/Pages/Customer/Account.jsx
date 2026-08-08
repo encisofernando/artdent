@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { todayIso } from '@/lib/localDate';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
@@ -50,7 +51,7 @@ export default function Account({ auth, customer, account, moves, openSales = []
     const [paySuccess, setPaySuccess] = useState('');
     const [payForm, setPayForm]   = useState({
         amount: '', payment_method_id: '', sale_id: '', description: '',
-        move_date: new Date().toISOString().slice(0, 10), send_email: false,
+        move_date: todayIso(), send_email: false,
     });
 
     // Adjustment form
@@ -58,7 +59,7 @@ export default function Account({ auth, customer, account, moves, openSales = []
     const [adjSaving, setAdjSaving] = useState(false);
     const [adjError, setAdjError] = useState('');
     const [adjForm, setAdjForm]   = useState({
-        amount: '', description: '', move_date: new Date().toISOString().slice(0, 10),
+        amount: '', description: '', move_date: todayIso(),
     });
 
     // Cobro Nave (QR físico / link de pago)
@@ -108,7 +109,7 @@ export default function Account({ auth, customer, account, moves, openSales = []
             setMoveList(prev => [res.data.move, ...prev]);
             setOpenSaleOptions(res.data.open_sales || []);
             setPaySuccess('Pago registrado.' + (payForm.send_email && customer.email ? ' Email enviado.' : ''));
-            setPayForm({ amount: '', payment_method_id: '', sale_id: '', description: '', move_date: new Date().toISOString().slice(0, 10), send_email: false });
+            setPayForm({ amount: '', payment_method_id: '', sale_id: '', description: '', move_date: todayIso(), send_email: false });
             setPayOpen(false);
         } catch (e) {
             setPayError(e.response?.data?.message || 'Error al registrar pago.');
@@ -136,7 +137,7 @@ export default function Account({ auth, customer, account, moves, openSales = []
             );
             setBalance(res.data.balance);
             setMoveList(prev => [res.data.move, ...prev]);
-            setAdjForm({ amount: '', description: '', move_date: new Date().toISOString().slice(0, 10) });
+            setAdjForm({ amount: '', description: '', move_date: todayIso() });
             setAdjOpen(false);
         } catch (e) {
             setAdjError(e.response?.data?.message || 'Error al registrar ajuste.');

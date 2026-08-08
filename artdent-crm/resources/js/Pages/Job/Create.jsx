@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Odontogram from '@/Components/Odontogram';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso, toLocalDateIso } from '@/lib/localDate';
 
 export default function Create({ auth, dentists, patients, jobTypes, collaborators, tariffs }) {
     const { isDark } = useTheme();
@@ -26,8 +27,8 @@ export default function Create({ auth, dentists, patients, jobTypes, collaborato
         description: '',
         clinical_notes: '',
         shade: '',
-        received_at: new Date().toISOString().split('T')[0],
-        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        received_at: todayIso(),
+        due_date: toLocalDateIso(Date.now() + 7 * 24 * 60 * 60 * 1000),
         delivered_at: '',
         discount_amount: 0,
         notes: '',

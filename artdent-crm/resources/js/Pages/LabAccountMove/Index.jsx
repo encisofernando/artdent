@@ -20,6 +20,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { shiftReferenceDate, isCurrentPeriod, formatPeriodRangeLabel } from '@/lib/periodNav';
+import { toLocalDateIso as toLocalDateInput } from '@/lib/localDate';
 
 const PERIOD_OPTIONS = [
     { value: 'today', label: 'Hoy' },
@@ -28,11 +29,6 @@ const PERIOD_OPTIONS = [
     { value: 'year', label: 'Año' },
     { value: 'range', label: 'Rango' },
 ];
-
-const toLocalDateInput = (date) => {
-    const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offset).toISOString().slice(0, 10);
-};
 
 const parseDateValue = (value) => {
     if (!value) return null;

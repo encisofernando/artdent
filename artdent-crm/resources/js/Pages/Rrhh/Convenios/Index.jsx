@@ -4,6 +4,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 import { ScrollText, Layers, TrendingUp, Plus, Pencil, Trash2, X, Save, ChevronDown, ChevronRight, History } from 'lucide-react';
 
 const fmt = (n) => n == null ? '—' : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n);
@@ -26,7 +27,7 @@ function Modal({ open, onClose, title, isDark, children }) {
 }
 
 function currentScaleOf(category) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIso();
     return (category.salary_scales ?? [])
         .filter(s => s.effective_from <= today && (!s.effective_to || s.effective_to >= today))
         .sort((a, b) => (a.effective_from < b.effective_from ? 1 : -1))[0] ?? null;

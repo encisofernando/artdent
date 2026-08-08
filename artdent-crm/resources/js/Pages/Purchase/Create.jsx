@@ -6,6 +6,7 @@ import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, FileText, Package, Plus, Trash2, ShoppingCart, TrendingUp } from 'lucide-react';
 import { DatePicker, useD } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 
 const INVOICE_TYPES = ['FA', 'FB', 'FC', 'FE', 'FM', 'RA', 'RB', 'RC', 'X'];
 
@@ -30,7 +31,7 @@ export default function Create({ auth, vendors, warehouses, products }) {
     const D = useD(isDark);
     const B = { blue: '#397B9C', teal: '#49949C' };
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIso();
 
     const [form, setForm] = useState({
         vendor_id: '',

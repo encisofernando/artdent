@@ -7,6 +7,7 @@ import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', red: '#ef4444' };
 
@@ -97,7 +98,7 @@ export default function AdjustmentIndex({
     const { isDark } = useTheme();
     const confirmDialog = useConfirm();
     const data = items?.data || [];
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIso();
     const { routeBase, pageTitle, title, subtitle, createLabel, emptyTitle, emptyText, amountLabel, isDiscount, icon: HeaderIcon } = config;
 
     const [search, setSearch] = useState(filters?.search || '');

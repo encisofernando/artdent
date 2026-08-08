@@ -6,6 +6,7 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
+import { toLocalDateIso } from '@/lib/localDate';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -497,7 +498,7 @@ export default function Show({ auth, order, invoice }) {
 
     const shipment = order.shipments?.[0] ?? null;
 
-    const toDateInput = (v) => v ? new Date(v).toISOString().split('T')[0] : '';
+    const toDateInput = (v) => v ? toLocalDateIso(v) : '';
 
     const { data, setData, put, processing } = useForm({
         status:            order.status            || 'pending',

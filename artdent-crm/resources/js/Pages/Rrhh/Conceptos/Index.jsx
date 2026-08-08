@@ -4,6 +4,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
+import { todayIso } from '@/lib/localDate';
 import { Calculator, Variable, Plus, Pencil, Trash2, X, Save, History, PlayCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
 const fmtDate = (d) => { if (!d) { return '—'; } const [y, m, day] = String(d).split('T')[0].split('-'); return `${day}/${m}/${y}`; };
@@ -160,7 +161,7 @@ export default function Index({ auth, variables, concepts }) {
     const deleteVersion = (version) => confirmDialog('¿Eliminar esta versión de fórmula?', () => router.delete(route('payroll-concept-versions.destroy', version.id), { preserveScroll: true }));
 
     const currentVersionOf = (concept) => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = todayIso();
         return (concept.versions ?? []).filter(v => v.effective_from <= today && (!v.effective_to || v.effective_to >= today))
             .sort((a, b) => (a.effective_from < b.effective_from ? 1 : -1))[0] ?? null;
     };

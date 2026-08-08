@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { todayIso } from '@/lib/localDate';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
@@ -25,7 +26,7 @@ export default function CustomerLoyalty({ auth, customer, account, moves }) {
     const [adjSaving, setAdjSaving] = useState(false);
     const [adjError, setAdjError] = useState('');
     const [adjForm, setAdjForm] = useState({
-        amount: '', description: '', move_date: new Date().toISOString().slice(0, 10),
+        amount: '', description: '', move_date: todayIso(),
     });
 
     const inputStyle = {
@@ -55,7 +56,7 @@ export default function CustomerLoyalty({ auth, customer, account, moves }) {
             );
             setBalance(res.data.balance);
             setMoveList(prev => [res.data.move, ...prev]);
-            setAdjForm({ amount: '', description: '', move_date: new Date().toISOString().slice(0, 10) });
+            setAdjForm({ amount: '', description: '', move_date: todayIso() });
             setAdjOpen(false);
         } catch (e) {
             setAdjError(e.response?.data?.message || 'Error al registrar el ajuste.');

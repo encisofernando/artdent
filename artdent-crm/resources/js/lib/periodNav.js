@@ -2,14 +2,11 @@
 // de los dashboards. Recibe siempre fechas en formato local 'YYYY-MM-DD' para evitar
 // corrimientos de huso horario al construir/parsear objetos Date.
 
+import { toLocalDateIso as toLocalDateInput } from './localDate';
+
 function parseLocalDate(dateStr) {
     const [y, m, d] = dateStr.split('-').map(Number);
     return new Date(y, m - 1, d);
-}
-
-function toLocalDateInput(date) {
-    const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 }
 
 const MONTHS_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];

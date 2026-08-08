@@ -5,6 +5,7 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Building2, WalletCards, FileText } from 'lucide-react';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 
 export default function Create({ auth, dentists, paymentMethods, selectedDentistId = null }) {
     const { isDark } = useTheme();
@@ -14,7 +15,7 @@ export default function Create({ auth, dentists, paymentMethods, selectedDentist
         amount: '',
         payment_method_id: '',
         description: 'Pago a cuenta',
-        move_date: new Date().toISOString().split('T')[0]
+        move_date: todayIso()
     });
 
     const selectedDentist = dentists.find(d => d.id === parseInt(data.dentist_id));

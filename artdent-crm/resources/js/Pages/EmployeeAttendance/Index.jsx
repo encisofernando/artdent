@@ -7,6 +7,7 @@ import Pagination from '@/Components/Pagination';
 import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 
 const B = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C' };
 
@@ -127,7 +128,7 @@ export default function Index({ auth, items, employees, filters, summary }) {
     const canDelete = hasPermission('staff.delete');
     const showActions = canEdit || canDelete;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIso();
 
     const createForm = useForm({ employee_id: '', work_date: today, time_in: '', time_out: '', is_absent: false, absence_reason: '', method: 'manual', notes: '' });
     const editForm = useForm({ work_date: '', time_in: '', time_out: '', is_absent: false, absence_reason: '', method: 'manual', notes: '' });

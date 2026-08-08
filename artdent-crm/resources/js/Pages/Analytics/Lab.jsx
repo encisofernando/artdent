@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useState, useRef } from "react";
 import { shiftReferenceDate, isCurrentPeriod, formatPeriodRangeLabel } from "@/lib/periodNav";
+import { todayIso } from "@/lib/localDate";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const ARS = (v) =>
@@ -452,7 +453,7 @@ export default function AnalyticsLab({
     const [dentistTab, setDentistTab] = useState("revenue");
     const [period, setPeriod] = useState(filters?.period ?? "month");
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso();
     const [referenceDate, setReferenceDate] = useState(filters?.reference_date ?? today);
 
     const handlePeriod = (p) => {

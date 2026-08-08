@@ -5,6 +5,7 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { ArrowLeft, Save, Package, Plus, Trash2, PackageMinus, User } from 'lucide-react';
 import { DatePicker, useD } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 
 const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n ?? 0);
 
@@ -12,7 +13,7 @@ export default function Create({ auth, warehouses, collaborators, products }) {
     const { isDark } = useTheme();
     const D = useD(isDark);
     const B = { blue: '#397B9C', teal: '#49949C' };
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIso();
 
     const [form, setForm] = useState({
         warehouse_id: warehouses[0]?.id ?? '',

@@ -6,13 +6,14 @@ import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, CreditCard } from 'lucide-react';
 import { DatePicker, useD } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 
 export default function Create({ auth, vendors, paymentMethods }) {
     const { isDark } = useTheme();
     const D = useD(isDark);
     const B = { blue: '#397B9C', teal: '#49949C' };
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIso();
 
     const { data, setData, post, processing, errors } = useForm({
         vendor_id: '',

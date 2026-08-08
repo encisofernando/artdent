@@ -11,6 +11,7 @@ import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useToast } from '@/Contexts/ToastContext';
+import { todayIso } from '@/lib/localDate';
 import {
     ShoppingCart, User, Search, Plus, Minus, Trash2,
     CreditCard, X, Package, ReceiptText, Store,
@@ -96,7 +97,6 @@ const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE'
 const G_bar     = `linear-gradient(90deg, ${AD.blue}, ${AD.teal}, ${AD.green})`;
 const G_primary = `linear-gradient(135deg, ${AD.blue}, ${AD.teal})`;
 const fmtDate   = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
-const todayIso  = () => new Date().toISOString().slice(0, 10);
 const toMoney = (value) => {
     const number = Number(String(value ?? '').replace(',', '.'));
     if (!Number.isFinite(number)) return 0;

@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { DatePicker } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
+import { todayIso } from '@/lib/localDate';
 import {
     CreditCard, Search, TrendingUp, TrendingDown, Users,
     ChevronRight, Plus, Check, X, AlertCircle, BadgeCheck, Wallet,
@@ -41,7 +42,7 @@ export default function AccountsIndex({ auth, customers, filters, kpis, paymentM
 
     // Quick-pay modal
     const [payModal, setPayModal] = useState(null); // { customer }
-    const [payForm, setPayForm] = useState({ amount: '', payment_method_id: '', description: '', move_date: new Date().toISOString().slice(0, 10) });
+    const [payForm, setPayForm] = useState({ amount: '', payment_method_id: '', description: '', move_date: todayIso() });
     const [paying, setPaying] = useState(false);
     const [payError, setPayError] = useState('');
 
@@ -62,7 +63,7 @@ export default function AccountsIndex({ auth, customers, filters, kpis, paymentM
 
     const openPay = (customer) => {
         setPayModal(customer);
-        setPayForm({ amount: '', payment_method_id: '', description: '', move_date: new Date().toISOString().slice(0, 10) });
+        setPayForm({ amount: '', payment_method_id: '', description: '', move_date: todayIso() });
         setPayError('');
     };
 

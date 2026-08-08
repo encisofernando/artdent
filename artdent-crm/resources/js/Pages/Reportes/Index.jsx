@@ -4,9 +4,10 @@ import { useTheme } from "@/Contexts/ThemeContext";
 import { Download, FileText, BarChart2, ShoppingCart, Users, TrendingUp, BookOpen, ArrowRight, BarChart3 } from "lucide-react";
 import { useState } from "react";
 import { DatePicker } from "@/Components/_appkit";
+import { todayIso, toLocalDateIso } from "@/lib/localDate";
 
-const today = new Date().toISOString().slice(0, 10);
-const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+const today = todayIso();
+const firstOfMonth = toLocalDateIso(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
 function ReportCard({ title, description, icon: Icon, color, href, children, isDark }) {
     const card = isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100";
