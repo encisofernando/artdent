@@ -24,7 +24,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
   }, []);
 
   return (
-    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-300
+    <div className={`flex h-dvh overflow-hidden font-sans transition-colors duration-300
       ${isDark ? 'bg-slate-950 text-slate-300' : 'bg-artdent-bg text-slate-800'}
     `}>
 

@@ -17,10 +17,10 @@ const BgPattern = () => (
 
 export default function GuestLayout({ children, title = "Acceso" }) {
   return (
-    <div className="min-h-screen bg-[#0e1a24] text-white">
+    <div className="min-h-dvh bg-[#0e1a24] text-white">
       <Head title={title} />
 
-      <div className="min-h-screen flex">
+      <div className="min-h-dvh flex">
         {/* Panel izquierdo (desktop) */}
         <aside className="relative hidden md:flex md:w-[42%] md:min-w-[380px] flex-col justify-between overflow-hidden px-12 py-14
                           bg-[linear-gradient(145deg,#397B9C_0%,#49949C_55%,#5AAD9C_100%)]">

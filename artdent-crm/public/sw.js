@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026-08-04-v1';
+const CACHE_VERSION = '2026-08-07-v1';
 const CACHE_NAME = `artdent-crm-pwa-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const CORE_ASSETS = [
