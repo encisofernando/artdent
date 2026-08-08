@@ -192,12 +192,12 @@ export default function FacturaA4({ sale }) {
                         />
                     ) : companyFantasyName !== company.name && (
                         // Sin logo propio: el nombre de fantasía hace de "logo"
-                        <div style={{ fontWeight: 800, fontSize: 16, color: '#111', lineHeight: 1.2 }}>
+                        <div style={{ fontWeight: 800, fontSize: 19, color: '#111', lineHeight: 1.2 }}>
                             {companyFantasyName}
                         </div>
                     )}
                     {/* La razón social siempre se muestra */}
-                    <div style={{ fontWeight: 800, fontSize: configuredLogo || companyFantasyName !== company.name ? 9 : 16, color: '#111', lineHeight: 1.2, marginTop: configuredLogo ? 4 : 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: configuredLogo || companyFantasyName !== company.name ? 11 : 19, color: '#111', lineHeight: 1.2, marginTop: configuredLogo ? 4 : 0 }}>
                         {company.name}
                     </div>
                     <div style={{ fontSize: 7.5, color: '#444', lineHeight: 1.75, marginTop: 2 }}>

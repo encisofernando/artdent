@@ -82,7 +82,7 @@ function QuoteA4({ quote }) {
                 {configuredLogo ? (
                     <CompanyLogo company={company} scope="lab" height="22mm" maxWidth="78mm" />
                 ) : (
-                    <div style={{ fontWeight: 800, fontSize: 16, color: '#111', lineHeight: 1.2 }}>
+                    <div style={{ fontWeight: 800, fontSize: 19, color: '#111', lineHeight: 1.2 }}>
                         {companyFantasyName}
                     </div>
                 )}

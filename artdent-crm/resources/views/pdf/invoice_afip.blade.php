@@ -168,12 +168,12 @@ strong { font-weight: 700; }
             <img src="{{ $logoColorSrc }}" alt="{{ $company->name }}" style="height: 22mm; object-fit: contain; display: block; max-width: 78mm; margin-bottom: 4px;">
         @elseif($companyFantasyName !== $company->name)
             {{-- Sin logo propio: el nombre de fantasía hace de "logo" --}}
-            <div style="font-weight: 800; font-size: 16pt; color: #111; line-height: 1.2;">
+            <div style="font-weight: 800; font-size: 19pt; color: #111; line-height: 1.2;">
                 {{ $companyFantasyName }}
             </div>
         @endif
         {{-- La razón social (name) siempre se muestra --}}
-        <div style="font-weight: 800; font-size: {{ $logoColorSrc || $companyFantasyName !== $company->name ? '9pt' : '16pt' }}; color: #111; line-height: 1.2;">
+        <div style="font-weight: 800; font-size: {{ $logoColorSrc || $companyFantasyName !== $company->name ? '11pt' : '19pt' }}; color: #111; line-height: 1.2;">
             {{ $company->name }}
         </div>
         <div style="font-size: 7.5pt; color: #444; line-height: 1.75; margin-top: 2px;">
