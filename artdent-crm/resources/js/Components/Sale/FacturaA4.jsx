@@ -114,7 +114,8 @@ export default function FacturaA4({ sale }) {
 
     const company  = sale.company || {};
     const configuredLogo = getCompanyLogoUrl(company, 'general');
-    const companyDisplayName = company.name || getCompanyDisplayName(company, { preferFantasy: false });
+    const companyDisplayName = getCompanyDisplayName(company);
+    const companyFantasyName = company.fantasy_name || company.name;
     const receipt  = parseReceiptType(sale.receipt_type);
     const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
 
@@ -181,16 +182,23 @@ export default function FacturaA4({ sale }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 1fr', gap: 0, alignItems: 'start', padding: '6mm 15mm 5mm', borderBottom: '2px solid #222', flexShrink: 0 }}>
                 {/* Izquierda: datos del emisor */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <CompanyLogo
-                        company={company}
-                        scope="general"
-                        height="22mm"
-                        maxWidth="78mm"
-                        style={{ marginBottom: 2 }}
-                    />
-                    {/* Siempre razón social, nunca nombre de fantasía */}
-                    <div style={{ fontWeight: 800, fontSize: configuredLogo ? 9 : 16, color: '#111', lineHeight: 1.2, marginTop: configuredLogo ? 4 : 0 }}>
-                        {companyDisplayName}
+                    {configuredLogo ? (
+                        <CompanyLogo
+                            company={company}
+                            scope="general"
+                            height="22mm"
+                            maxWidth="78mm"
+                            style={{ marginBottom: 2 }}
+                        />
+                    ) : companyFantasyName !== company.name && (
+                        // Sin logo propio: el nombre de fantasía hace de "logo"
+                        <div style={{ fontWeight: 800, fontSize: 16, color: '#111', lineHeight: 1.2 }}>
+                            {companyFantasyName}
+                        </div>
+                    )}
+                    {/* La razón social siempre se muestra */}
+                    <div style={{ fontWeight: 800, fontSize: configuredLogo || companyFantasyName !== company.name ? 9 : 16, color: '#111', lineHeight: 1.2, marginTop: configuredLogo ? 4 : 0 }}>
+                        {company.name}
                     </div>
                     <div style={{ fontSize: 7.5, color: '#444', lineHeight: 1.75, marginTop: 2 }}>
                         {company.address && <div>{company.address}</div>}

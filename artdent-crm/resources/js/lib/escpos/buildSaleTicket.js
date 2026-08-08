@@ -25,7 +25,7 @@ export async function buildSaleTicket(sale, { widthMM = 80 } = {}) {
     const total = Number(sale.total || 0);
     const receipt = parseReceiptType(sale.receipt_type);
     const company = sale.company || {};
-    const companyDisplayName = getCompanyDisplayName(company, { preferFantasy: false });
+    const companyDisplayName = getCompanyDisplayName(company);
     const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
 
     const afipInvoice = sale.invoice;

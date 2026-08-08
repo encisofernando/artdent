@@ -16,7 +16,7 @@ import {
     Send, CheckCircle2, XCircle, Clock, FileText, Mail,
 } from 'lucide-react';
 import axios from 'axios';
-import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
+import { CompanyLogo, getCompanyDisplayName, getCompanyLogoUrl } from '@/lib/companyBranding';
 
 // ── Brand ──────────────────────────────────────────────────────────────────────
 const AD = { blue: '#397B9C', green: '#5AAD9C', teal: '#49949C', mint: '#ACD6CE', light: '#DAE6F0' };
@@ -53,7 +53,9 @@ function StatusBadge({ status }) {
 function QuoteA4({ quote }) {
     const items   = quote.invoice_items || [];
     const company = quote.company || {};
+    const configuredLogo = getCompanyLogoUrl(company, 'lab');
     const companyDisplayName = getCompanyDisplayName(company);
+    const companyFantasyName = company.fantasy_name || company.name;
     const subtotal = Number(quote.subtotal || 0);
     const discount = Number(quote.discount || 0);
     const taxAmt   = Number(quote.tax_amount || 0);
@@ -77,7 +79,13 @@ function QuoteA4({ quote }) {
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8mm 15mm 6mm', borderBottom: `1px solid ${AD.light}`, flexShrink: 0 }}>
-                <CompanyLogo company={company} scope="lab" height="22mm" maxWidth="78mm" />
+                {configuredLogo ? (
+                    <CompanyLogo company={company} scope="lab" height="22mm" maxWidth="78mm" />
+                ) : (
+                    <div style={{ fontWeight: 800, fontSize: 16, color: '#111', lineHeight: 1.2 }}>
+                        {companyFantasyName}
+                    </div>
+                )}
                 <div style={{ textAlign: 'center', border: '2.5px solid #222', padding: '6px 18px', minWidth: 108, alignSelf: 'center' }}>
                     <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1 }}>P</div>
                     <div style={{ borderTop: '1px solid #222', marginTop: 3, paddingTop: 3, fontSize: 7, fontWeight: 700, letterSpacing: 1 }}>PRESUPUESTO</div>

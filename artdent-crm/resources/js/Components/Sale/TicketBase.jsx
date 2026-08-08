@@ -12,7 +12,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
+import { CompanyLogo, getCompanyLogoUrl } from '@/lib/companyBranding';
 import {
     fmt, fmtDate,
     IVA_LABELS, parseReceiptType, buildAfipQrUrl,
@@ -38,7 +38,8 @@ function TicketBase({ sale, widthMM = 80 }) {
     const total  = Number(sale.total || 0);
     const receipt  = parseReceiptType(sale.receipt_type);
     const company  = sale.company || {};
-    const companyDisplayName = getCompanyDisplayName(company, { preferFantasy: false });
+    const configuredLogo = getCompanyLogoUrl(company, 'general');
+    const companyFantasyName = company.fantasy_name || company.name;
     const ivaLabel = IVA_LABELS[company.iva_condition] || 'Responsable Inscripto';
 
     // ── Número de comprobante ─────────────────────────────────────────────────
@@ -155,17 +156,24 @@ function TicketBase({ sale, widthMM = 80 }) {
 
             {/* ── Encabezado empresa ────────────────────────────────────────── */}
             <div style={{ textAlign: 'center', padding: '6px 6px 4px' }}>
-                <CompanyLogo
-                    company={company}
-                    scope="general"
-                    thermal
-                    height={logoH}
-                    maxWidth={is57 ? 112 : 156}
-                    style={{ margin: '0 auto 4px' }}
-                />
+                {configuredLogo && (
+                    <CompanyLogo
+                        company={company}
+                        scope="general"
+                        thermal
+                        height={logoH}
+                        maxWidth={is57 ? 112 : 156}
+                        style={{ margin: '0 auto 4px' }}
+                    />
+                )}
                 <div style={{ fontSize: F.lg, fontWeight: 800, letterSpacing: '-0.3px', lineHeight: 1.15 }}>
-                    {companyDisplayName}
+                    {configuredLogo ? company.name : companyFantasyName}
                 </div>
+                {!configuredLogo && companyFantasyName !== company.name && (
+                    <div style={{ fontSize: F.xs, color: C.muted, marginTop: 1 }}>
+                        {company.name}
+                    </div>
+                )}
                 {company.address && (
                     <div style={{ fontSize: F.xs, color: C.muted, marginTop: 1 }}>
                         {company.address}{company.city ? `, ${company.city}` : ''}
