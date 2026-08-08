@@ -44,15 +44,19 @@ Route::middleware('module:insumos')->group(function () {
         Route::post('stocks/transfer', [StockController::class, 'transfer'])->name('stocks.transfer');
     });
 
-    // ── Ingresos y egresos manuales de Insumos (scope='insumos', ver LabFinance) ───
-    Route::middleware('permission:inventory.view')->group(function () {
-        Route::get('insumos-finance', [InsumosFinanceController::class, 'index'])->name('insumos-finance.index');
-    });
+});
 
-    Route::middleware('permission:inventory.edit')->group(function () {
-        Route::post('insumos-finance/incomes', [InsumosFinanceController::class, 'storeIncome'])->name('insumos-finance.incomes.store');
-        Route::post('insumos-finance/expenses', [InsumosFinanceController::class, 'storeExpense'])->name('insumos-finance.expenses.store');
-        Route::delete('insumos-finance/incomes/{incomeRecord}', [InsumosFinanceController::class, 'destroyIncome'])->name('insumos-finance.incomes.destroy');
-        Route::delete('insumos-finance/expenses/{expense}', [InsumosFinanceController::class, 'destroyExpense'])->name('insumos-finance.expenses.destroy');
-    });
+// Ingresos y egresos manuales de Insumos (scope='insumos', ver LabFinance) —
+// fuera de module:insumos a propósito, igual criterio que Caja
+// (routes/modules/finance.php): disponible en cualquier plan, gateado sólo
+// por permiso, no por el módulo de plan.
+Route::middleware('permission:inventory.view')->group(function () {
+    Route::get('insumos-finance', [InsumosFinanceController::class, 'index'])->name('insumos-finance.index');
+});
+
+Route::middleware('permission:inventory.edit')->group(function () {
+    Route::post('insumos-finance/incomes', [InsumosFinanceController::class, 'storeIncome'])->name('insumos-finance.incomes.store');
+    Route::post('insumos-finance/expenses', [InsumosFinanceController::class, 'storeExpense'])->name('insumos-finance.expenses.store');
+    Route::delete('insumos-finance/incomes/{incomeRecord}', [InsumosFinanceController::class, 'destroyIncome'])->name('insumos-finance.incomes.destroy');
+    Route::delete('insumos-finance/expenses/{expense}', [InsumosFinanceController::class, 'destroyExpense'])->name('insumos-finance.expenses.destroy');
 });

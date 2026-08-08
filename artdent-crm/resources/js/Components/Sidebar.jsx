@@ -106,7 +106,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Categorías", path: "/categorys", permission: 'products.edit' },
                     ],
                 },
-                { title: "Ingresos y Egresos", icon: Wallet, path: "/insumos-finance", permission: 'inventory.view', module: 'insumos' },
+                { title: "Ingresos y Egresos", icon: Wallet, path: "/insumos-finance", permission: 'inventory.view' },
             ],
         },
         {
