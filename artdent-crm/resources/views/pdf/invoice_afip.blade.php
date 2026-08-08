@@ -138,20 +138,19 @@ strong { font-weight: 700; }
 
     $storedLogoUrl = $company->documentLogoUrl('general');
 
-    // Logo principal: primero lo que tenga la empresa en la DB, sino el asset estático
+    // Logo principal: el de la empresa (tenant) si tiene uno cargado; si no,
+    // sin imagen — el nombre de fantasía se muestra como texto en su lugar
+    // (nunca el logo de ArtCode, esta factura sale a nombre del tenant).
     if (!empty($storedLogoUrl)) {
         // logo_url puede ser '/storage/logos/file.png' → public_path('storage/logos/file.png')
         $dbLogoPath  = public_path(ltrim($storedLogoUrl, '/'));
         $logoColorSrc = $encodeImg($dbLogoPath);
     }
-    if (empty($logoColorSrc)) {
-        $logoColorSrc = $encodeImg(public_path('assets/artcode-horizontal-color.png'));
-    }
 
-    // Logo icono (footer): si la empresa tiene logo propio lo usa, si no el icono estático
-    $logoIconSrc = !empty($logoColorSrc)
-        ? $logoColorSrc
-        : $encodeImg(public_path('assets/artcode-horizontal-color.png'));
+    // Logo icono (footer): mismo criterio, sin fallback a ArtCode.
+    $logoIconSrc = $logoColorSrc ?? '';
+
+    $companyFantasyName = $company->fantasy_name ?: $company->name;
 
     // Logo ARCA (JPEG)
     $arcaLogoSrc = $encodeImg(public_path('images/logo-arca.jpg'), 'image/jpeg');
@@ -167,9 +166,14 @@ strong { font-weight: 700; }
     <div style="display: flex; flex-direction: column; gap: 2px;">
         @if($logoColorSrc)
             <img src="{{ $logoColorSrc }}" alt="{{ $company->name }}" style="height: 22mm; object-fit: contain; display: block; max-width: 78mm; margin-bottom: 4px;">
+        @elseif($companyFantasyName !== $company->name)
+            {{-- Sin logo propio: el nombre de fantasía hace de "logo" --}}
+            <div style="font-weight: 800; font-size: 16pt; color: #111; line-height: 1.2;">
+                {{ $companyFantasyName }}
+            </div>
         @endif
-        {{-- Siempre se muestra la razón social (name), nunca el nombre de fantasía --}}
-        <div style="font-weight: 800; font-size: {{ $logoColorSrc ? '9pt' : '16pt' }}; color: #111; line-height: 1.2;">
+        {{-- La razón social (name) siempre se muestra --}}
+        <div style="font-weight: 800; font-size: {{ $logoColorSrc || $companyFantasyName !== $company->name ? '9pt' : '16pt' }}; color: #111; line-height: 1.2;">
             {{ $company->name }}
         </div>
         <div style="font-size: 7.5pt; color: #444; line-height: 1.75; margin-top: 2px;">
@@ -368,10 +372,10 @@ strong { font-weight: 700; }
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 @if($logoIconSrc)
-                    <img src="{{ $logoIconSrc }}" alt="ArtCode" style="height: 10mm; object-fit: contain; display: block; max-width: 20mm;">
+                    <img src="{{ $logoIconSrc }}" alt="{{ $company->name }}" style="height: 10mm; object-fit: contain; display: block; max-width: 20mm;">
                 @endif
                 <span style="font-size: 7.5pt; color: #49949C; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                    {{ $company->name }} — Tu sonrisa, es nuestra prioridad.
+                    {{ $companyFantasyName }}
                 </span>
             </div>
             <div style="text-align: right; font-size: 7pt; color: #bbb; line-height: 1.7;">

@@ -263,7 +263,7 @@ function ReceiptDocument({ move, company }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <CompanyLogo company={company} scope="lab" height="8mm" maxWidth="22mm" />
                         <div style={{ fontSize: 7.2, color: AD.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                            {companyDisplayName} · Tu sonrisa, es nuestra prioridad.
+                            {companyDisplayName}
                         </div>
                     </div>
                     <div style={{ fontSize: 7, color: '#94a3b8', textAlign: 'right' }}>

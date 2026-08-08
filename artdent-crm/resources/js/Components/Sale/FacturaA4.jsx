@@ -383,7 +383,7 @@ export default function FacturaA4({ sale }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <CompanyLogo company={company} scope="general" height="10mm" maxWidth="20mm" />
                             <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                {companyDisplayName} — Tu sonrisa, es nuestra prioridad.
+                                {companyDisplayName}
                             </span>
                         </div>
                         <div style={{ textAlign: 'right', fontSize: 7, color: '#bbb', lineHeight: 1.7 }}>

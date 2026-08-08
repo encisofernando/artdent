@@ -1,5 +1,5 @@
 import { fmt, fmtDate } from '@/Components/Sale/FacturaA4';
-import { getCompanyLogoSrc } from '@/lib/companyBranding';
+import { getCompanyLogoSrc, getCompanyDisplayName } from '@/lib/companyBranding';
 
 // Dibuja el ticket de orden/fase de laboratorio entero a mano sobre un
 // <canvas> (NO es una foto de la página vía html2canvas) para que el bitmap
@@ -262,7 +262,7 @@ export async function renderJobTicketCanvas(job, { widthMM = 80 } = {}) {
 
     ctx.font = `${F.small}px Arial, Helvetica, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('Tu sonrisa, es nuestra prioridad.', W / 2, cy + F.small);
+    ctx.fillText(getCompanyDisplayName(company), W / 2, cy + F.small);
     cy += F.small + 6 + GAP;
 
     ctx.fillRect(0, cy, W, RULE);

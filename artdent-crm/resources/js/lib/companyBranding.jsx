@@ -33,15 +33,25 @@ export function getCompanyLogoUrl(company, scope = 'general') {
     return company.logo_url || null;
 }
 
+// platformFallback: sólo para chrome interno del CRM (ej. Sidebar), donde
+// mostrar el logo de ArtCode como placeholder es aceptable. En cualquier
+// documento que salga al cliente del tenant (factura, ticket, recibo,
+// presupuesto) NUNCA debe caer a la marca de ArtCode — sin logo propio,
+// mejor no mostrar imagen (el nombre de fantasía/razón social ya se
+// muestra aparte en esos templates).
 export function getCompanyLogoSrc(
     company,
-    { scope = 'general', variant = 'color', thermal = false } = {},
+    { scope = 'general', variant = 'color', thermal = false, platformFallback = false } = {},
 ) {
     const normalizedScope = normalizeBrandScope(scope);
     const storedLogo = getCompanyLogoUrl(company, normalizedScope);
 
     if (storedLogo) {
         return storedLogo;
+    }
+
+    if (!platformFallback) {
+        return null;
     }
 
     if (thermal) {
@@ -76,13 +86,14 @@ export function CompanyLogo({
     scope = 'general',
     variant = 'color',
     thermal = false,
+    platformFallback = false,
     height = 50,
     maxWidth = 180,
     alt,
     style = {},
     className,
 }) {
-    const src = getCompanyLogoSrc(company, { scope, variant, thermal });
+    const src = getCompanyLogoSrc(company, { scope, variant, thermal, platformFallback });
 
     if (!src) {
         return null;

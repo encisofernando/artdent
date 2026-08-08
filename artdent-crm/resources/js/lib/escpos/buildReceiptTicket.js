@@ -80,11 +80,11 @@ function printExtrasAndDiscounts(builder, { extras, discounts, columns }) {
     }
 }
 
-function printSignaturesAndFooter(builder, { firmaLabel, columns }) {
+function printSignaturesAndFooter(builder, { firmaLabel, columns, company }) {
     builder.feed(2).line(justify('Firma Empleador', '', columns));
     builder.feed(2).line(justify(firmaLabel, '', columns));
     builder.hr('─', columns);
-    builder.align(ALIGN.CENTER).line('Tu sonrisa, es nuestra prioridad.').line('ArtCode CRM').align(ALIGN.LEFT);
+    builder.align(ALIGN.CENTER).line(getCompanyDisplayName(company)).align(ALIGN.LEFT);
     builder.feed(1).cut(true);
 }
 
@@ -130,7 +130,7 @@ export async function buildCollaboratorReceiptTicket({ receipt, extras = [], dis
     totalBox(builder, 'Neto a cobrar', `$${fmt(receipt.net)}`, columns);
 
     printExtrasAndDiscounts(builder, { extras, discounts, columns });
-    printSignaturesAndFooter(builder, { firmaLabel: 'Firma Colaborador', columns });
+    printSignaturesAndFooter(builder, { firmaLabel: 'Firma Colaborador', columns, company });
 
     return builder.toBytes();
 }
@@ -195,7 +195,7 @@ export async function buildEmployeeReceiptTicket({ receipt, extras = [], discoun
         builder.hr('─', columns);
     }
 
-    printSignaturesAndFooter(builder, { firmaLabel: 'Firma Empleado', columns });
+    printSignaturesAndFooter(builder, { firmaLabel: 'Firma Empleado', columns, company });
 
     return builder.toBytes();
 }

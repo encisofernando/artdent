@@ -342,6 +342,7 @@ export default function Sidebar({ className = "" }) {
                     <CompanyLogo
                         company={company}
                         variant="white"
+                        platformFallback
                         height={32}
                         maxWidth={160}
                         className="object-contain transition-all"
@@ -350,6 +351,7 @@ export default function Sidebar({ className = "" }) {
                     <CompanyLogo
                         company={company}
                         variant="icon"
+                        platformFallback
                         height={32}
                         maxWidth={32}
                         className="rounded-md object-contain transition-all"

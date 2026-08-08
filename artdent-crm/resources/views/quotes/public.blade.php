@@ -10,8 +10,8 @@
         'consumidor_final' => 'Consumidor final',
     ];
     $companyIva = $companyIvaLabels[$company?->iva_condition ?? ''] ?? ($company?->iva_condition ?: 'Monotributista');
-    $companyLogo = $company?->documentLogoUrl('lab') ?: '/assets/artcode-horizontal-color.png';
-    $companyFooterLogo = $company?->documentLogoUrl('lab') ?: '/assets/artcode-icon-color.svg';
+    $companyLogo = $company?->documentLogoUrl('lab');
+    $companyFooterLogo = $companyLogo;
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -108,6 +108,7 @@
         }
 
         .header-logo img { height: 22mm; max-width: 78mm; object-fit: contain; }
+        .header-logo-fallback { display: block; font-size: 16pt; font-weight: 800; color: #111; line-height: 1.2; }
 
         .header-badge {
             text-align: center;
@@ -261,7 +262,9 @@
     <!-- Toolbar -->
     <div class="toolbar">
         <div class="toolbar-brand">
-            <img src="{{ $companyLogo }}" alt="{{ $companyDisplayName }}" onerror="this.style.display='none'">
+            @if($companyLogo)
+                <img src="{{ $companyLogo }}" alt="{{ $companyDisplayName }}" onerror="this.style.display='none'">
+            @endif
             <span>{{ $companyDisplayName }}</span>
         </div>
         <div class="toolbar-actions">
@@ -284,7 +287,11 @@
         <!-- Header -->
         <div class="header">
             <div class="header-logo">
-                <img src="{{ $companyLogo }}" alt="{{ $companyDisplayName }}" onerror="this.style.display='none'">
+                @if($companyLogo)
+                    <img src="{{ $companyLogo }}" alt="{{ $companyDisplayName }}" onerror="this.style.display='none'">
+                @else
+                    <span class="header-logo-fallback">{{ $companyDisplayName }}</span>
+                @endif
             </div>
             <div class="header-badge">
                 <div class="big-letter">P</div>
@@ -451,10 +458,12 @@
 
             <div class="footer">
                 <div class="footer-left">
-                    <div class="footer-logo">
-                        <img src="{{ $companyFooterLogo }}" alt="{{ $companyDisplayName }}" onerror="this.style.display='none'">
-                    </div>
-                    <span class="footer-slogan">Tu sonrisa, es nuestra prioridad.</span>
+                    @if($companyFooterLogo)
+                        <div class="footer-logo">
+                            <img src="{{ $companyFooterLogo }}" alt="{{ $companyDisplayName }}" onerror="this.style.display='none'">
+                        </div>
+                    @endif
+                    <span class="footer-slogan">{{ $companyDisplayName }}</span>
                 </div>
                 <div class="footer-right">
                     <div>Este presupuesto no constituye factura</div>

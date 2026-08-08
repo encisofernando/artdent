@@ -164,7 +164,7 @@ function ReciboTicket({ receipt, extras, discounts, company, mode = '80mm' }) {
             <div style={{ marginTop: 8, borderTop: '1px solid #000', paddingTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <CompanyLogo company={company} scope="lab" height={18} maxWidth={48} />
-                    <span style={{ fontSize: 6.4, color: '#000', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>Tu sonrisa, es nuestra prioridad.</span>
+                    <span style={{ fontSize: 6.4, color: '#000', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>{companyDisplayName}</span>
                 </div>
                 <div style={{ fontSize: 6, color: '#000' }}>ArtCode CRM</div>
             </div>

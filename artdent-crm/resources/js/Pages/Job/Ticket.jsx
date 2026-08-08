@@ -128,7 +128,7 @@ function TicketBase({ job, widthMM = 80 }) {
             </div>
 
             <div style={{ textAlign: 'center', fontSize: `${F.small}pt`, borderTop: '1px solid #000', paddingTop: 5 }}>
-                <div style={{ marginTop: 2 }}>Tu sonrisa, es nuestra prioridad.</div>
+                <div style={{ marginTop: 2 }}>{companyDisplayName}</div>
             </div>
 
             <div style={{ borderTop: '3px solid #000', marginTop: is57 ? 5 : 7 }} />
@@ -261,7 +261,7 @@ function OrdenA4({ job }) {
                 <div style={{ padding: '4mm 15mm', borderTop: `1px solid ${AD.light}`, background: '#fafcfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <CompanyLogo company={company} scope="lab" height="10mm" maxWidth="20mm" />
-                        <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tu sonrisa, es nuestra prioridad.</span>
+                        <span style={{ fontSize: 7.5, color: AD.teal, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{companyDisplayName}</span>
                     </div>
                     <div style={{ fontSize: 7, color: '#bbb' }}>Generado por ArtCode CRM — {fmtDate(new Date())}</div>
                 </div>
