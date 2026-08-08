@@ -231,7 +231,7 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Caja", icon: Wallet, key: "caja",
-                    permission: ['cash-register.view', 'cash-register.operate'], module: 'finanzas',
+                    permission: ['cash-register.view', 'cash-register.operate'],
                     requiresCashRegister: true,
                     children: [
                         { title: "Caja", path: "/cash-sessions" },
