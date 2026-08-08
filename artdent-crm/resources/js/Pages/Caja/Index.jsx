@@ -30,7 +30,7 @@ function Modal({ open, onClose, title, children, isDark }) {
     );
 }
 
-export default function Index({ drawers, sessions }) {
+export default function Index({ drawers, sessions, can_view }) {
     const { isDark } = useTheme();
     const { flash } = usePage().props;
     const card = `rounded-2xl border shadow-sm ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200/70'}`;
@@ -72,9 +72,11 @@ export default function Index({ drawers, sessions }) {
                             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Apertura, cierre y arqueo de caja</p>
                         </div>
                     </div>
-                    <Link href={route('cash-drawers.index')} className={`inline-flex items-center gap-2 text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                        <Settings size={15} /> Administrar cajas
-                    </Link>
+                    {can_view && (
+                        <Link href={route('cash-drawers.index')} className={`inline-flex items-center gap-2 text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                            <Settings size={15} /> Administrar cajas
+                        </Link>
+                    )}
                 </div>
 
                 {flash?.success && (
@@ -93,12 +95,13 @@ export default function Index({ drawers, sessions }) {
                 {drawers.length === 0 ? (
                     <div className={`${card} p-8 text-center`}>
                         <p className={`text-sm mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Todavía no hay ninguna caja registrada.</p>
-                        <Link href={route('cash-drawers.index')} className="text-sm font-bold" style={{ color: B.teal }}>+ Crear la primera caja</Link>
+                        {can_view && <Link href={route('cash-drawers.index')} className="text-sm font-bold" style={{ color: B.teal }}>+ Crear la primera caja</Link>}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {drawers.map((drawer) => {
                             const session = drawer.open_session;
+                            const canOpenThis = session ? (can_view || session.is_mine) : true;
                             return (
                                 <div key={drawer.id} className={`${card} p-5`}>
                                     <div className="flex items-start justify-between gap-3 mb-3">
@@ -110,18 +113,24 @@ export default function Index({ drawers, sessions }) {
                                     </div>
                                     {session ? (
                                         <div className="space-y-1 mb-4">
-                                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Abierta por {session.user?.name} el {fmtDateTime(session.opened_at)}</p>
-                                            <p className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Monto inicial: {fmt(session.opening_amount)}</p>
+                                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Abierta por {session.is_mine ? 'vos' : session.user?.name} el {fmtDateTime(session.opened_at)}
+                                            </p>
+                                            {can_view && (
+                                                <p className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Monto inicial: {fmt(session.opening_amount)}</p>
+                                            )}
                                         </div>
                                     ) : (
                                         <p className={`text-xs mb-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Sin sesión activa</p>
                                     )}
                                     {session ? (
-                                        <Link href={route('cash-sessions.show', session.id)}
-                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white"
-                                            style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
-                                            Ver caja abierta
-                                        </Link>
+                                        canOpenThis && (
+                                            <Link href={route('cash-sessions.show', session.id)}
+                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white"
+                                                style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
+                                                {session.is_mine ? 'Cerrar mi caja' : 'Ver caja abierta'}
+                                            </Link>
+                                        )
                                     ) : (
                                         <button onClick={() => startOpen(drawer)}
                                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white"
@@ -135,6 +144,7 @@ export default function Index({ drawers, sessions }) {
                     </div>
                 )}
 
+                {can_view && (
                 <div className={`${card} overflow-hidden`}>
                     <div className={`px-5 py-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                         <h2 className={`font-extrabold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Historial de sesiones</h2>
@@ -179,6 +189,7 @@ export default function Index({ drawers, sessions }) {
                     )}
                     <Pagination data={sessions} />
                 </div>
+                )}
             </div>
 
             <Modal open={!!openModal} onClose={() => setOpenModal(null)} title={`Abrir ${openModal?.name ?? ''}`} isDark={isDark}>

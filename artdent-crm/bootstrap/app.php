@@ -33,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'tenant.session' => \App\Http\Middleware\InitializeTenancyBySession::class,
             'module' => \App\Http\Middleware\EnsureModuleEnabled::class,
+            'cash.session.current' => \App\Http\Middleware\EnsureCashSessionIsCurrent::class,
             'lab.network' => \App\Http\Middleware\RestrictToLabNetwork::class,
             'isup.internal' => \App\Http\Middleware\EnsureIsupInternalToken::class,
             'isup.tenant' => \App\Http\Middleware\InitializeTenancyByIsupAccount::class,

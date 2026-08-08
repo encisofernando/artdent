@@ -820,7 +820,10 @@ class SaleController extends Controller
 
     /**
      * Si hay exactamente una caja abierta para la empresa, adjunta la venta a esa sesión
-     * y registra el ingreso en efectivo como un movimiento de caja. Con más de una sesión
+     * — sin importar el medio de pago, para que el informe de cierre (CashSessionController)
+     * pueda desglosar TODAS las ventas del turno por medio de pago, no sólo las que tuvieron
+     * algo de efectivo. El movimiento de caja física (CashMovement) sólo se crea por la
+     * porción en efectivo, que es la que afecta el arqueo real. Con más de una sesión
      * abierta simultánea no se puede saber a qué caja pertenece esta venta (todavía no hay
      * un selector de caja en el punto de venta), así que en ese caso no se vincula nada y
      * la venta sigue su curso normal sin afectar ninguna caja.
@@ -829,12 +832,6 @@ class SaleController extends Controller
      */
     private function linkSaleToOpenCashSession(Sale $sale, int $companyId, array $payments): void
     {
-        $cashAmount = round(collect($payments)->where('method', 'cash')->sum('amount'), 2);
-
-        if ($cashAmount <= 0) {
-            return;
-        }
-
         $openSessions = CashSession::query()
             ->where('status', 'open')
             ->whereHas('cash_drawer', fn ($query) => $query->where('company_id', $companyId))
@@ -846,6 +843,12 @@ class SaleController extends Controller
 
         $session = $openSessions->first();
         $sale->update(['cash_session_id' => $session->id]);
+
+        $cashAmount = round(collect($payments)->where('method', 'cash')->sum('amount'), 2);
+
+        if ($cashAmount <= 0) {
+            return;
+        }
 
         CashMovement::create([
             'cash_session_id' => $session->id,

@@ -12,7 +12,7 @@ const fmtDateTime = (d) => {
     return new Date(d).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-export default function Show({ session, totals }) {
+export default function Show({ session, totals, can_view }) {
     const { isDark } = useTheme();
     const { flash } = usePage().props;
     const confirmDialog = useConfirm();
@@ -87,26 +87,51 @@ export default function Show({ session, totals }) {
                     </div>
                 )}
 
+                {can_view && (
+                <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className={`${card} p-4`}>
-                        <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Monto Inicial</p>
+                        <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Caja Inicial</p>
                         <p className={`mt-1 text-lg font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{fmt(totals.opening_amount)}</p>
                     </div>
                     <div className={`${card} p-4`}>
-                        <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Ingresos</p>
-                        <p className="mt-1 text-lg font-extrabold text-emerald-500">{fmt(totals.cash_in)}</p>
+                        <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Ingresos Manuales</p>
+                        <p className="mt-1 text-lg font-extrabold text-emerald-500">{fmt(totals.manual_income)}</p>
                     </div>
                     <div className={`${card} p-4`}>
                         <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Egresos</p>
-                        <p className="mt-1 text-lg font-extrabold text-red-500">{fmt(totals.cash_out)}</p>
+                        <p className="mt-1 text-lg font-extrabold text-red-500">{fmt(totals.expenses)}</p>
                     </div>
                     <div className={`${card} p-4`}>
-                        <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Esperado en Caja</p>
+                        <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Esperado en Efectivo</p>
                         <p className={`mt-1 text-lg font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{fmt(totals.expected_cash)}</p>
                     </div>
                 </div>
 
-                {isOpen && (
+                <div className={`${card} overflow-hidden`}>
+                    <div className={`px-5 py-4 border-b flex items-center justify-between gap-3 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                        <h2 className={`font-extrabold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Ventas por medio de pago</h2>
+                        <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Total digital: {fmt(totals.sales_digital_total)}
+                        </span>
+                    </div>
+                    {totals.sales_by_method.length === 0 ? (
+                        <p className={`p-5 text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Todavía no hay ventas en esta sesión.</p>
+                    ) : (
+                        <div className="divide-y divide-slate-800/20">
+                            {totals.sales_by_method.map((line) => (
+                                <div key={line.key} className="px-5 py-3 flex items-center justify-between gap-3">
+                                    <p className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{line.label}</p>
+                                    <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{fmt(line.amount)}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                </>
+                )}
+
+                {can_view && isOpen && (
                     <div className={`${card} p-5`}>
                         <h2 className={`font-extrabold mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Registrar movimiento manual</h2>
                         <form onSubmit={submitMovement} className="flex flex-col sm:flex-row gap-3 items-end">
@@ -140,6 +165,7 @@ export default function Show({ session, totals }) {
                     </div>
                 )}
 
+                {can_view && (
                 <div className={`${card} overflow-hidden`}>
                     <div className={`px-5 py-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                         <h2 className={`font-extrabold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Movimientos</h2>
@@ -175,6 +201,7 @@ export default function Show({ session, totals }) {
                         </div>
                     )}
                 </div>
+                )}
 
                 {isOpen ? (
                     <div className={`${card} p-5`}>
@@ -188,7 +215,9 @@ export default function Show({ session, totals }) {
                                     onChange={(e) => setCloseForm((f) => ({ ...f, closing_amount: e.target.value }))}
                                     className={inputCls} placeholder="0.00" required />
                                 {errors.closing_amount && <p className="text-red-500 text-xs mt-1">{errors.closing_amount}</p>}
-                                <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Esperado según el sistema: {fmt(totals.expected_cash)}</p>
+                                {can_view && (
+                                    <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Esperado según el sistema: {fmt(totals.expected_cash)}</p>
+                                )}
                             </div>
                             <div>
                                 <label className={labelCls}>Notas de cierre</label>
@@ -204,11 +233,15 @@ export default function Show({ session, totals }) {
                             </div>
                         </form>
                     </div>
-                ) : (
+                ) : can_view ? (
                     <div className={`${card} p-5`}>
                         <h2 className={`font-extrabold mb-2 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Cierre</h2>
                         <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Monto contado: <span className="font-bold">{fmt(session.closing_amount)}</span></p>
                         {session.notes && <pre className={`text-xs mt-2 whitespace-pre-wrap font-sans ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{session.notes}</pre>}
+                    </div>
+                ) : (
+                    <div className={`${card} p-5`}>
+                        <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Esta caja ya está cerrada.</p>
                     </div>
                 )}
             </div>

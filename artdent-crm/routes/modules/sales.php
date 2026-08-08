@@ -22,8 +22,12 @@ Route::post('quotes/{quote}/send-email', [QuoteController::class, 'sendEmail'])-
 
 // ── Ventas ────────────────────────────────────────────────────────────────────
 Route::get('sales', [SaleController::class, 'index'])->name('sales.index')->middleware('permission:sales.view');
-Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create')->middleware('permission:sales.create');
-Route::post('sales', [SaleController::class, 'store'])->name('sales.store')->middleware('permission:sales.create');
+// cash.session.current: si el tenant activó Caja (Settings → Caja), exige
+// una sesión de caja abierta y del día de hoy para poder vender — no-op
+// si el tenant no la activó. Sólo toca el POS de Sale, no Laboratorio ni
+// e-commerce.
+Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create')->middleware(['permission:sales.create', 'cash.session.current']);
+Route::post('sales', [SaleController::class, 'store'])->name('sales.store')->middleware(['permission:sales.create', 'cash.session.current']);
 Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->middleware('permission:sales.view');
 Route::get('sales/{sale}/edit', [SaleController::class, 'edit'])->name('sales.edit')->middleware('permission:sales.edit');
 Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update')->middleware('permission:sales.edit');

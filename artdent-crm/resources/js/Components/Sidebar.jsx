@@ -41,6 +41,7 @@ export default function Sidebar({ className = "" }) {
     const auth = props.auth;
     const billingEnabled = props.app_context?.billing_enabled !== false;
     const enabledModules = props.enabled_modules || [];
+    const cashRegisterEnabled = props.cash_register_enabled ?? false;
     const company = props.companyContext?.active ?? null;
     const hasCustomLogo = Boolean(getCompanyLogoUrl(company, 'general'));
 
@@ -230,10 +231,11 @@ export default function Sidebar({ className = "" }) {
                 },
                 {
                     title: "Caja", icon: Wallet, key: "caja",
-                    permission: 'reports.view', module: 'finanzas',
+                    permission: ['cash-register.view', 'cash-register.operate'], module: 'finanzas',
+                    requiresCashRegister: true,
                     children: [
                         { title: "Caja", path: "/cash-sessions" },
-                        { title: "Administrar Cajas", path: "/cash-drawers", permission: 'reports.create' },
+                        { title: "Administrar Cajas", path: "/cash-drawers", permission: 'cash-register.view' },
                     ],
                 },
             ],
@@ -284,6 +286,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Puntos de Fidelización", path: "/loyalty-settings", permission: 'settings.edit' },
                         { title: "Recompensas de Puntos", path: "/loyalty-rewards", permission: 'settings.edit' },
                         { title: "Envío Gratis", path: "/shipping-settings", permission: 'settings.edit' },
+                        { title: "Caja", path: "/cash-register-settings", permission: 'settings.edit' },
                         ...(billingEnabled ? [{ title: "Suscripción", path: "/subscription", permission: 'settings.edit' }] : []),
                     ],
                 },
@@ -315,7 +318,8 @@ export default function Sidebar({ className = "" }) {
         return enabledModules.includes(module);
     };
 
-    const isVisible = (node) => hasPermission(node.permission) && hasModule(node.module);
+    const isVisible = (node) => hasPermission(node.permission) && hasModule(node.module)
+        && (!node.requiresCashRegister || cashRegisterEnabled);
 
     const toggleMenu = (key) => {
         if (sidebarCollapsed) return;

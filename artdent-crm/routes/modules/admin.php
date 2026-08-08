@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CashRegisterSettingsController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceItemController;
@@ -61,6 +62,8 @@ Route::put('loyalty-settings', [LoyaltySettingsController::class, 'update'])->na
 Route::resource('loyalty-rewards', LoyaltyRewardController::class)->except(['show'])->middleware('permission:settings.edit');
 Route::get('shipping-settings', [ShippingSettingsController::class, 'index'])->name('shipping-settings.index')->middleware('permission:settings.edit');
 Route::put('shipping-settings', [ShippingSettingsController::class, 'update'])->name('shipping-settings.update')->middleware('permission:settings.edit');
+Route::get('cash-register-settings', [CashRegisterSettingsController::class, 'index'])->name('cash-register-settings.index')->middleware('permission:settings.edit');
+Route::put('cash-register-settings', [CashRegisterSettingsController::class, 'update'])->name('cash-register-settings.update')->middleware('permission:settings.edit');
 
 // Multi-empresa: listado/alta + selector de compañía activa (companies.switch)
 Route::get('companies', [CompanyController::class, 'index'])->name('companies.index')->middleware('permission:companies.switch');

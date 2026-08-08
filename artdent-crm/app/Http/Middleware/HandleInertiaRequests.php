@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Branch;
+use App\Models\CashRegisterSetting;
 use App\Models\Company;
 use App\Services\ChatbotService;
 use App\Support\BranchContext;
@@ -70,6 +71,9 @@ class HandleInertiaRequests extends Middleware
             'enabled_modules' => fn () => $request->user()
                 ? app(TenantModuleResolver::class)->enabledSlugs()
                 : [],
+            'cash_register_enabled' => fn () => $request->user()
+                ? CashRegisterSetting::forCompany(CompanyContext::id())->is_enabled
+                : false,
             // Flash data para todos los componentes Inertia
             'flash' => [
                 'success' => $request->session()->get('success'),
