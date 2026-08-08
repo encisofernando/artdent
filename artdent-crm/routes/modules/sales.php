@@ -28,8 +28,12 @@ Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')-
 Route::get('sales/{sale}/edit', [SaleController::class, 'edit'])->name('sales.edit')->middleware('permission:sales.edit');
 Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update')->middleware('permission:sales.edit');
 Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy')->middleware('permission:sales.delete');
-Route::post('sales/{sale}/pay', [SaleController::class, 'pay'])->name('sales.pay')->middleware('permission:sales.edit');
-Route::post('sales/{sale}/nave-charge', [NavePosPaymentController::class, 'createForSale'])->name('sales.nave-charge')->middleware('permission:sales.edit');
+// sales.pay: cobrar un saldo pendiente sobre una venta ya existente — a
+// propósito separado de sales.edit, para poder darle esto a un cajero sin
+// darle también editar/eliminar la venta o emitir NC/ND (ver
+// project_cajero_role_permissions en memoria).
+Route::post('sales/{sale}/pay', [SaleController::class, 'pay'])->name('sales.pay')->middleware('permission:sales.edit|sales.pay');
+Route::post('sales/{sale}/nave-charge', [NavePosPaymentController::class, 'createForSale'])->name('sales.nave-charge')->middleware('permission:sales.edit|sales.pay');
 Route::post('sales/{sale}/generate-pdf', [SaleController::class, 'generatePdf'])->name('sales.generate-pdf')->middleware('permission:sales.view');
 Route::post('sales/{sale}/send-email', [SaleController::class, 'sendEmail'])->name('sales.send-email')->middleware('permission:sales.view');
 Route::post('sales/{sale}/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store')->middleware('permission:sales.edit');
