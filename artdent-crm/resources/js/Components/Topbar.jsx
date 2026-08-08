@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
 import CompanySwitcher from '@/Components/CompanySwitcher';
+import BranchSwitcher from '@/Components/BranchSwitcher';
 import {
     Menu,
     Moon,
@@ -231,6 +232,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                     </div>
 
                     <CompanySwitcher />
+                    <BranchSwitcher />
                 </div>
 
                 {/* Right side */}

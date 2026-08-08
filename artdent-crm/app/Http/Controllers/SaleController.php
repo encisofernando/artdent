@@ -23,6 +23,7 @@ use App\Services\LoyaltyService;
 use App\Services\SalePaymentService;
 use App\Services\StockAlertService;
 use App\Support\Auditor;
+use App\Support\BranchContext;
 use App\Support\CompanyContext;
 use App\Support\PlanLimitService;
 use Carbon\Carbon;
@@ -241,7 +242,8 @@ class SaleController extends Controller
         // X → punto de venta fijo 00001 | A/B/C/FA/FB/FC/NC*/ND* → punto de venta
         // AFIP resuelto por sucursal (con fallback al default de la empresa).
         $isAfipType = in_array($receiptType, ['A', 'B', 'C', 'FA', 'FB', 'FC', 'NCA', 'NCB', 'NCC', 'NDA', 'NDB', 'NDC']);
-        $resolvedPos = \App\Models\AfipPointOfSale::resolveFor($companyId, $request->integer('branch_id') ?: null);
+        $branchId = BranchContext::id();
+        $resolvedPos = \App\Models\AfipPointOfSale::resolveFor($companyId, $branchId);
         $pointSale = $isAfipType
             ? str_pad($resolvedPos->point_sale ?? 1, 5, '0', STR_PAD_LEFT)
             : '00001';
@@ -283,6 +285,7 @@ class SaleController extends Controller
         try {
             $sale = Sale::create([
                 'company_id' => $companyId,
+                'branch_id' => $branchId,
                 'user_id' => $userId,
                 'customer_id' => $request->customer_id ?: null,
                 'sale_number' => $saleNumber,

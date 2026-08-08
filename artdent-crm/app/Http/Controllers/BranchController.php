@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Support\BranchContext;
 use App\Support\CompanyContext;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
@@ -16,6 +18,20 @@ class BranchController extends Controller
                 ->orderBy('name')
                 ->get(),
         ]);
+    }
+
+    /**
+     * Cambia la sucursal activa en sesión (sólo usuarios sin branch_id fijo).
+     */
+    public function setActive(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'branch_id' => ['required', 'integer'],
+        ]);
+
+        BranchContext::set($validated['branch_id']);
+
+        return redirect()->back()->with('success', 'Sucursal activa actualizada.');
     }
 
     public function create()

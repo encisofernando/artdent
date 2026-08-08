@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Branch;
 use App\Models\Company;
 use App\Services\ChatbotService;
+use App\Support\BranchContext;
 use App\Support\CompanyContext;
 use App\Support\CrmMode;
 use App\Support\TenantModuleResolver;
@@ -60,6 +62,10 @@ class HandleInertiaRequests extends Middleware
             'companyContext' => fn () => $request->user() ? [
                 'active' => Company::find(CompanyContext::id(), ['id', 'name', 'fantasy_name', 'logo_url', 'lab_logo_url']),
                 'available' => CompanyContext::availableFor($request->user()),
+            ] : null,
+            'branchContext' => fn () => $request->user() ? [
+                'active' => Branch::find(BranchContext::id(), ['id', 'name', 'code']),
+                'available' => BranchContext::availableFor($request->user()),
             ] : null,
             'enabled_modules' => fn () => $request->user()
                 ? app(TenantModuleResolver::class)->enabledSlugs()
