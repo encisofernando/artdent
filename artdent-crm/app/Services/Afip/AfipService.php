@@ -100,6 +100,15 @@ class AfipService
         $isRI = in_array($cbteTipo, [1, 2, 3, 6, 7, 8]);
 
         foreach ($items as $item) {
+            // FC/NCC/NDC (monotributista): todo el importe va a ImpNeto, sin
+            // discriminar IVA — declarar el objeto Iva en este tipo de
+            // comprobante hace que AFIP rechace todo el comprobante.
+            if (! $isRI) {
+                $neto += (float) $item->total;
+
+                continue;
+            }
+
             $taxRate = (float) ($item->tax_rate ?? 0);
 
             // El frontend guarda tax_rate como decimal (0.21); IVA_CODES usa porcentaje (21).
@@ -117,10 +126,8 @@ class AfipService
                 $ivaItems[$code] ??= ['Id' => $code, 'BaseImp' => 0, 'Importe' => 0];
                 $ivaItems[$code]['BaseImp'] += $itemNeto;
                 $ivaItems[$code]['Importe'] += $itemIva;
-            } elseif ($isRI) {
-                $opEx += (float) $item->total;
             } else {
-                $neto += (float) $item->total;
+                $opEx += (float) $item->total;
             }
         }
 
