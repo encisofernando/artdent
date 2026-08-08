@@ -423,7 +423,10 @@ class SaleController extends Controller
                 $company->refresh();
                 if ($company->afip_auto_invoice) {
                     try {
-                        \App\Jobs\GenerateAfipInvoiceJob::dispatch(
+                        // Síncrono a propósito: el operador necesita el CAE/QR
+                        // reales en el ticket que se imprime al toque de
+                        // "Confirmar cobro", no minutos después vía cola.
+                        \App\Jobs\GenerateAfipInvoiceJob::dispatchSync(
                             $sale->id,
                             $afipKeyMap[$receiptType]
                         );
