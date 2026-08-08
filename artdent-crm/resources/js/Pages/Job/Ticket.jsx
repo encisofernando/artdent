@@ -14,7 +14,7 @@ import {
     printElementWithElectron,
     setStoredTicketFormat,
 } from '@/lib/print';
-import { CompanyLogo, getCompanyDisplayName, getCompanyLogoUrl } from '@/lib/companyBranding';
+import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
 import { isNativePrintAvailable, printRawBytes } from '@/lib/nativePrinter';
 import { buildJobOrderTicket } from '@/lib/escpos/buildJobOrderTicket';
 
@@ -34,7 +34,6 @@ function TicketBase({ job, widthMM = 80 }) {
     const items = job.job_items || [];
     const total = Number(job.total || 0);
     const company = job.company || {};
-    const configuredLogo = getCompanyLogoUrl(company, 'lab');
     const companyDisplayName = getCompanyDisplayName(company);
     const dentist = job.dentist || {};
     const patient = job.patient || {};
@@ -68,18 +67,14 @@ function TicketBase({ job, widthMM = 80 }) {
             <div style={{ borderTop: '3px solid #000', marginBottom: is57 ? 5 : 7 }} />
 
             <div style={{ textAlign: 'center', marginBottom: is57 ? 6 : 8 }}>
-                {configuredLogo ? (
-                    <CompanyLogo
-                        company={company}
-                        scope="lab"
-                        thermal
-                        height={F.logo}
-                        maxWidth={is57 ? 140 : 180}
-                        style={{ margin: '0 auto' }}
-                    />
-                ) : (
-                    <div style={{ fontSize: `${F.body + 2}pt`, fontWeight: 800 }}>{companyDisplayName}</div>
-                )}
+                <CompanyLogo
+                    company={company}
+                    scope="lab"
+                    thermal
+                    height={F.logo}
+                    maxWidth={is57 ? 140 : 180}
+                    style={{ margin: '0 auto' }}
+                />
                 <div style={{ fontSize: `${F.small}pt`, marginTop: 4 }}>Documento interno. No válido como factura.</div>
             </div>
 
@@ -148,9 +143,7 @@ function OrdenA4({ job }) {
     const discount = Number(job.discount_amount || 0);
     const total = Number(job.total || 0);
     const company = job.company || {};
-    const configuredLogo = getCompanyLogoUrl(company, 'lab');
     const companyDisplayName = getCompanyDisplayName(company);
-    const companyFantasyName = company.fantasy_name || company.name;
     const dentist = job.dentist || {};
     const patientName = job.patient?.name ? `${job.patient.name} ${job.patient.last_name || ''}`.trim() : '—';
     const clientName = dentist.type === 'clinic' ? (dentist.name || dentist.contact_name) : `${dentist.last_name || ''} ${dentist.name || ''}`.trim().toUpperCase();
@@ -161,13 +154,7 @@ function OrdenA4({ job }) {
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8mm 15mm 6mm', borderBottom: `1px solid ${AD.light}`, flexShrink: 0 }}>
-                {configuredLogo ? (
-                    <CompanyLogo company={company} scope="lab" height="22mm" maxWidth="78mm" />
-                ) : (
-                    <div style={{ fontWeight: 800, fontSize: 19, color: '#111', lineHeight: 1.2 }}>
-                        {companyFantasyName}
-                    </div>
-                )}
+                <CompanyLogo company={company} scope="lab" height="22mm" maxWidth="78mm" />
                 <div style={{ textAlign: 'center', border: '2.5px solid #222', padding: '6px 18px', minWidth: 108, alignSelf: 'center' }}>
                     <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: -1 }}>O</div>
                     <div style={{ borderTop: '1px solid #222', marginTop: 3, paddingTop: 3, fontSize: 7, fontWeight: 700, letterSpacing: 1 }}>TRABAJO</div>
