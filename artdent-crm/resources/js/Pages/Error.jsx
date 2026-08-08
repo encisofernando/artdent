@@ -1,6 +1,6 @@
 import { Link, Head, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { ShieldAlert, Search, Server, Home, ArrowLeft, Sparkles } from 'lucide-react';
+import { ShieldAlert, Search, Server, Home, ArrowLeft, Sparkles, LogOut } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 
 const MODULE_NAMES = {
@@ -20,6 +20,7 @@ export default function Error({ status, reason, module }) {
     const { isDark } = useTheme();
     const { props } = usePage();
     const billingEnabled = props.app_context?.billing_enabled !== false;
+    const isAuthenticated = !!props.auth?.user;
 
     if (reason === 'module_not_included') {
         const moduleName = MODULE_NAMES[module] || module;
@@ -157,7 +158,7 @@ export default function Error({ status, reason, module }) {
                     </Button>
                     
                     <Link href="/dashboard">
-                        <Button 
+                        <Button
                             className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl gap-2 h-12 px-8 shadow-lg shadow-blue-500/20 w-full"
                         >
                             <Home size={18} />
@@ -165,6 +166,17 @@ export default function Error({ status, reason, module }) {
                         </Button>
                     </Link>
                 </div>
+
+                {isAuthenticated && (
+                    <Link href={route('logout')} method="post" as="button" className="mt-6 inline-block">
+                        <span className={`inline-flex items-center gap-2 text-xs font-semibold hover:underline ${
+                            isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                        }`}>
+                            <LogOut size={14} />
+                            Cerrar sesión e ingresar con otra cuenta
+                        </span>
+                    </Link>
+                )}
 
                 {/* Footer brand */}
                 <div className="mt-16 opacity-30 flex items-center justify-center gap-2">
