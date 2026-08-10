@@ -2,9 +2,21 @@ const { app, BrowserWindow, Tray, Menu, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { execFile } = require('child_process');
 const express = require('express');
 const cors = require('cors');
 const settings = require('electron-settings');
+
+// En dev, scripts/ está junto a main.js. Empaquetado, va dentro de
+// app.asar — pero powershell.exe no puede leer un archivo DENTRO del
+// asar (necesita un path real de filesystem), así que ese archivo se
+// desempaqueta aparte (ver "asarUnpack" en package.json) a
+// app.asar.unpacked/scripts/print-raw.ps1.
+function getPrintRawScriptPath() {
+    return app.isPackaged
+        ? path.join(process.resourcesPath, 'app.asar.unpacked', 'scripts', 'print-raw.ps1')
+        : path.join(__dirname, 'scripts', 'print-raw.ps1');
+}
 
 let tray = null;
 let workerWindow = null;
@@ -167,6 +179,18 @@ function executePrint(html, mode, res = null, done = null) {
         return;
     }
 
+    // Impresora térmica por USB en Windows, instalada con su driver normal
+    // (nombre de impresora de Windows, no ip:puerto ni /dev/...): el driver
+    // casi nunca soporta un pageSize custom vía webContents.print() y cae a
+    // A4 (ticket angosto "flotando" en una hoja grande, con margen enorme y
+    // a veces recortado si el driver limita el alto). Se manda el mismo
+    // raster ESC/POS que el resto de los caminos, pero por la API RAW de
+    // Windows (winspool.drv vía print-raw.ps1) en vez del spooler/GDI.
+    if (process.platform === 'win32' && printerName) {
+        executePrintRasterESCPOS(html, mode, { transport: 'windows-raw', printerName }, res, done);
+        return;
+    }
+
     const printableHtml = normalizeHtmlForPrint(html);
     workerWindow.webContents.setZoomFactor(1);
     workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(printableHtml)}`);
@@ -221,6 +245,31 @@ function sendRasterBuffer(escposBuffer, target, callback) {
         fs.writeFile(target.devicePath, escposBuffer, (err) => {
             if (err) return callback(err);
             callback(null, `dispositivo ${target.devicePath}`);
+        });
+        return;
+    }
+
+    if (target.transport === 'windows-raw') {
+        const tmpFile = path.join(os.tmpdir(), `artdent-ticket-${Date.now()}.bin`);
+        fs.writeFile(tmpFile, escposBuffer, (writeErr) => {
+            if (writeErr) return callback(writeErr);
+
+            const scriptPath = getPrintRawScriptPath();
+            execFile('powershell.exe', [
+                '-NoProfile',
+                '-ExecutionPolicy', 'Bypass',
+                '-File', scriptPath,
+                '-PrinterName', target.printerName,
+                '-FilePath', tmpFile,
+            ], (err, stdout, stderr) => {
+                fs.unlink(tmpFile, () => {});
+
+                if (err || !String(stdout).includes('OK')) {
+                    return callback(new Error(stderr?.trim() || err?.message || 'print-raw.ps1 falló'));
+                }
+
+                callback(null, `USB (RAW) ${target.printerName}`);
+            });
         });
         return;
     }
@@ -349,16 +398,24 @@ async function executePrintRasterESCPOS(html, mode, target, res, done) {
         const fullH = img.bitmap.height;
         const data = img.bitmap.data;
 
-        // Encontrar la última fila con pixel negro
+        // Encontrar la primera y la última fila con pixel negro — recorta el
+        // blanco sobrante arriba Y abajo (antes sólo se recortaba abajo, y el
+        // margen superior en blanco quedaba tal cual salía del render).
+        let firstContentRow = -1;
         let lastContentRow = 0;
         for (let y = 0; y < fullH; y++) {
             for (let x = 0; x < w; x++) {
-                if (data[(y * w + x) * 4] === 0) { lastContentRow = y; break; }
+                if (data[(y * w + x) * 4] === 0) {
+                    if (firstContentRow === -1) firstContentRow = y;
+                    lastContentRow = y;
+                    break;
+                }
             }
         }
-        const cropH = Math.min(lastContentRow + 20, fullH);
-        addLog(`Recortando a ${w}×${cropH}px`);
-        img.crop(0, 0, w, cropH);
+        const cropTop = Math.max(firstContentRow === -1 ? 0 : firstContentRow - 10, 0);
+        const cropH = Math.min(lastContentRow + 20, fullH) - cropTop;
+        addLog(`Recortando a ${w}×${cropH}px (arriba ${cropTop}px)`);
+        img.crop(0, cropTop, w, cropH);
 
         const h = cropH;
         const bytesPerRow = Math.ceil(w / 8);

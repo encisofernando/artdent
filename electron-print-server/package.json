@@ -1,6 +1,6 @@
 {
   "name": "artdent-print-server",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Servidor de Impresion ArtDent",
   "main": "main.js",
   "author": "ArtDent",
@@ -18,6 +18,9 @@
     "executableName": "ArtDentPrint",
     "msiProjectCreated": "scripts/customize-msi.js",
     "icon": "icon.png",
+    "asarUnpack": [
+      "scripts/print-raw.ps1"
+    ],
     "win": {
       "target": [
         "msi"
