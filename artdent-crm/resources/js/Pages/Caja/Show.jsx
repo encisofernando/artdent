@@ -128,6 +128,32 @@ export default function Show({ session, totals, can_view }) {
                         </div>
                     )}
                 </div>
+
+                <div className={`${card} overflow-hidden`}>
+                    <div className={`px-5 py-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                        <h2 className={`font-extrabold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Ventas por artículo</h2>
+                    </div>
+                    {totals.items_sold.length === 0 ? (
+                        <p className={`p-5 text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Todavía no hay artículos vendidos en esta sesión.</p>
+                    ) : (
+                        <div className="divide-y divide-slate-800/20">
+                            {totals.items_sold.map((line) => (
+                                <div key={line.key} className="px-5 py-3 flex items-center justify-between gap-3">
+                                    <div className="flex items-baseline gap-2 min-w-0">
+                                        <span className="text-sm font-extrabold shrink-0" style={{ color: B.blue }}>{line.quantity}×</span>
+                                        <div className="min-w-0">
+                                            <p className={`text-sm font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{line.name}</p>
+                                            {line.sku && (
+                                                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>SKU {line.sku}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className={`text-sm font-bold shrink-0 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{fmt(line.total)}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
                 </>
                 )}
 

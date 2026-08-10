@@ -193,13 +193,14 @@ class CashSessionController extends Controller
     /**
      * Informe de cierre completo: caja inicial, ingresos manuales (no
      * originados por una venta), ventas desglosadas por medio de pago,
-     * egresos, total esperado en efectivo y total por medios digitales.
+     * ventas desglosadas por artículo, egresos, total esperado en efectivo
+     * y total por medios digitales.
      *
-     * @return array{opening_amount: float, manual_income: float, sales_by_method: array<int, array{key: string, label: string, amount: float}>, sales_cash: float, sales_digital_total: float, expenses: float, expected_cash: float}
+     * @return array{opening_amount: float, manual_income: float, sales_by_method: array<int, array{key: string, label: string, amount: float}>, items_sold: array<int, array{key: string, name: string, sku: string|null, quantity: float, total: float}>, sales_cash: float, sales_digital_total: float, expenses: float, expected_cash: float}
      */
     private function buildReport(CashSession $cashSession): array
     {
-        $cashSession->loadMissing(['cash_movements', 'sales.sale_payments.paymentMethod']);
+        $cashSession->loadMissing(['cash_movements', 'sales.sale_payments.paymentMethod', 'sales.sale_items']);
 
         $manualIncome = round((float) $cashSession->cash_movements
             ->where('type', 'in')
@@ -229,10 +230,38 @@ class CashSessionController extends Controller
             ->values()
             ->all();
 
+        $byProduct = [];
+        foreach ($cashSession->sales as $sale) {
+            foreach ($sale->sale_items as $item) {
+                $key = $item->product_id !== null ? 'id:'.$item->product_id : 'name:'.$item->product_name;
+
+                $byProduct[$key] ??= [
+                    'key' => $key,
+                    'name' => $item->product_name,
+                    'sku' => $item->sku,
+                    'quantity' => 0.0,
+                    'total' => 0.0,
+                ];
+                $byProduct[$key]['quantity'] += (float) $item->quantity;
+                $byProduct[$key]['total'] += (float) $item->total;
+            }
+        }
+
+        $itemsSold = collect($byProduct)
+            ->map(fn ($line) => [
+                ...$line,
+                'quantity' => round($line['quantity'], 2),
+                'total' => round($line['total'], 2),
+            ])
+            ->sortByDesc('quantity')
+            ->values()
+            ->all();
+
         return [
             'opening_amount' => (float) $cashSession->opening_amount,
             'manual_income' => $manualIncome,
             'sales_by_method' => $salesByMethod,
+            'items_sold' => $itemsSold,
             'sales_cash' => $salesCash,
             'sales_digital_total' => $salesDigitalTotal,
             'expenses' => $expenses,

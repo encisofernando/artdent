@@ -2,6 +2,7 @@
 
 @php
     $fmt = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+    $fmtQty = fn ($n) => number_format((float) $n, floor((float) $n) == (float) $n ? 0 : 2, ',', '.');
     $diffLabel = $difference == 0
         ? 'Sin diferencias'
         : ($difference > 0 ? 'Sobrante de '.$fmt($difference) : 'Faltante de '.$fmt(abs($difference)));
@@ -81,6 +82,28 @@
         </table>
       </td>
     </tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;border-top:1px solid #eee;">
+    <tr>
+      <td colspan="3" style="padding:16px 0 6px;font-size:13px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:0.5px;">Ventas por artículo</td>
+    </tr>
+    @forelse($report['items_sold'] as $line)
+    <tr>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;font-size:14px;font-weight:700;color:#397B9C;width:44px;">{{ $fmtQty($line['quantity']) }}×</td>
+      <td style="padding:6px 12px 6px 0;border-bottom:1px solid #eee;font-size:14px;color:#444;">
+        {{ $line['name'] }}
+        @if($line['sku'])
+          <span style="display:block;font-size:11px;color:#999;">SKU {{ $line['sku'] }}</span>
+        @endif
+      </td>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;font-size:14px;font-weight:600;color:#333;text-align:right;white-space:nowrap;">{{ $fmt($line['total']) }}</td>
+    </tr>
+    @empty
+    <tr>
+      <td colspan="3" style="padding:6px 0 6px;border-bottom:1px solid #eee;font-size:13px;color:#999;">Sin artículos vendidos en este turno.</td>
+    </tr>
+    @endforelse
   </table>
 
   @if($session->notes)
