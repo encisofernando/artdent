@@ -197,6 +197,14 @@ return [
          * file. Using 'default' here means to use the `default` set in cache.php.
          */
 
-        'store' => 'default',
+        // 'array' a propósito, NO 'default': stancl/tenancy's CacheTenancyBootstrapper
+        // aísla el cache por tenant vía cache TAGS, pero Spatie resuelve su propio
+        // Cache Repository sin pasar por ese wrapper de tags — en un dominio que sirve
+        // varios tenants (pos.artcode.com.ar) esto hacía que el set de permisos de UN
+        // tenant quedara cacheado en Redis y se lo sirviera a los demás (2026-08-10,
+        // CAJERO de sanjose bloqueado con 403 por permisos de otro tenant). 'array'
+        // vive sólo durante el request en curso — nunca persiste ni se comparte entre
+        // tenants ni requests, elimina la fuga de raíz al costo de requeries menores.
+        'store' => 'array',
     ],
 ];
