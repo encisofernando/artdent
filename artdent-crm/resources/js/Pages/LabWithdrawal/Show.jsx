@@ -150,7 +150,8 @@ export default function Show({ auth, withdrawal, company }) {
                     </div>
 
                     {/* Tabla items */}
-                    <table className="w-full text-sm border-collapse mb-6">
+                    <div className="overflow-x-auto mb-6">
+                    <table className="w-full text-sm border-collapse">
                         <thead>
                             <tr className="border-y border-slate-200 bg-slate-50">
                                 <th className="text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">Producto</th>
@@ -179,6 +180,7 @@ export default function Show({ auth, withdrawal, company }) {
                             </tr>
                         </tfoot>
                     </table>
+                    </div>
 
                     {/* Sección firma */}
                     <div className="mt-10 grid grid-cols-2 gap-8">

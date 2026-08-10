@@ -51,6 +51,7 @@ export default function Events({ auth, events }) {
 
                 {/* Table */}
                 <div className={`rounded-2xl border overflow-hidden ${card}`}>
+                    <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className={`border-b ${th}`}>
@@ -110,6 +111,7 @@ export default function Events({ auth, events }) {
                             })}
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <Pagination data={events} />

@@ -571,7 +571,7 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {}, port
                         <div className={`rounded-xl border overflow-hidden
                             ${isDark ? 'border-slate-800' : 'border-slate-200'}
                         `}>
-                            <div className="max-h-[400px] overflow-y-auto">
+                            <div className="max-h-[400px] overflow-y-auto overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className={`text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm
                                         ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}

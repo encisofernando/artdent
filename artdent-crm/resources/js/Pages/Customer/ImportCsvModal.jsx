@@ -149,6 +149,7 @@ export default function ImportCsvModal({ isOpen, onClose }) {
                             <p className="text-sm text-slate-500">Relacioná las columnas de tu CSV con los campos de ArtCode.</p>
 
                             <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                                <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className={isDark ? 'bg-slate-800/50' : 'bg-slate-50'}>
                                         <tr>
@@ -175,6 +176,7 @@ export default function ImportCsvModal({ isOpen, onClose }) {
                                         ))}
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
 
                             <p className="text-xs text-slate-500 italic">{csvData.length} fila(s) detectada(s) en el archivo.</p>
