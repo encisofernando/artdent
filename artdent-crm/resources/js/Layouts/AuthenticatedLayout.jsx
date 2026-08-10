@@ -51,10 +51,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
       {/* Contenido Principal */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <Topbar
-          user={currentUser}
-          onSidebarToggle={() => setSidebarOpenMobile(true)}
-        />
+        <Topbar user={currentUser} />
 
         {/* Área de scroll principal */}
         <main className="flex-1 overflow-y-auto">

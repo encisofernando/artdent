@@ -6,7 +6,6 @@ import { usePwaInstall } from '@/hooks/usePwaInstall';
 import CompanySwitcher from '@/Components/CompanySwitcher';
 import BranchSwitcher from '@/Components/BranchSwitcher';
 import {
-    Menu,
     Moon,
     Sun,
     Bell,
@@ -89,7 +88,7 @@ function ToastItem({ toast, onDismiss, isDark }) {
     );
 }
 
-export default function Topbar({ user, onSidebarToggle }) {
+export default function Topbar({ user }) {
     const { isDark, toggleTheme } = useTheme();
     const { props: pageProps } = usePage();
     const tenantId = pageProps.tenant_info?.id;
@@ -213,17 +212,7 @@ export default function Topbar({ user, onSidebarToggle }) {
                 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-[#397B9C] border-[#2D6585]'}
             `}>
                 {/* Left side */}
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={onSidebarToggle}
-                        className={`lg:hidden p-2 rounded-md transition-colors ${isDark
-                            ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                            : 'text-white/80 hover:bg-white/15 hover:text-white'
-                        }`}
-                    >
-                        <Menu className="h-5 w-5" />
-                    </button>
-
+                <div className="flex items-center gap-2 sm:gap-4">
                     <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold select-none
                         ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-300' : 'bg-white/15 border-white/25 text-white'}
                     `}>

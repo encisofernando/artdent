@@ -41,18 +41,18 @@ export default function CompanySwitcher() {
         <div ref={ref} className="relative">
             <button
                 onClick={() => setOpen((v) => !v)}
-                className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold transition-colors
+                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-md border text-xs font-semibold transition-colors
                     ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-800' : 'bg-white/15 border-white/25 text-white hover:bg-white/25'}
                 `}
                 title="Cambiar compañía activa"
             >
                 <Building2 size={14} />
-                <span className="max-w-[140px] truncate">{activeLabel}</span>
+                <span className="hidden sm:inline max-w-[140px] truncate">{activeLabel}</span>
                 <ChevronDown size={14} />
             </button>
 
             {open && (
-                <div className={`absolute left-0 top-full mt-2 w-64 rounded-xl shadow-2xl border z-50 overflow-hidden
+                <div className={`absolute left-0 top-full mt-2 w-[min(16rem,calc(100vw-2rem))] rounded-xl shadow-2xl border z-50 overflow-hidden
                     ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-artdent-border'}
                 `}>
                     <div className={`px-4 py-2.5 border-b text-xs font-semibold ${isDark ? 'border-slate-700 text-slate-400' : 'border-artdent-border text-slate-500'}`}>
