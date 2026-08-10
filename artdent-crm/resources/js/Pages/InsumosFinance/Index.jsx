@@ -160,11 +160,11 @@ export default function Index({ auth, items = [], summary, filters, paymentMetho
                             className={`w-full pl-10 pr-3 py-2.5 rounded-xl border ${input}`}
                         />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-2 w-full lg:flex lg:w-auto">
                         <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-                        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-xl border ${input}`} />
+                        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`min-w-0 px-3 py-2.5 rounded-xl border ${input}`} />
                         <span className={sub}>a</span>
-                        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-xl border ${input}`} />
+                        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`min-w-0 px-3 py-2.5 rounded-xl border ${input}`} />
                     </div>
                 </div>
 

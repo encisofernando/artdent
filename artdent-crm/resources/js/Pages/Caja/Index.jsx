@@ -152,7 +152,41 @@ export default function Index({ drawers, sessions, can_view }) {
                     {sessions.data.length === 0 ? (
                         <p className={`p-5 text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Todavía no hay sesiones de caja registradas.</p>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        {/* Cards — solo mobile */}
+                        <div className={`sm:hidden divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                            {sessions.data.map((s) => (
+                                <div key={s.id} className="p-4 cursor-pointer" onClick={() => router.get(route('cash-sessions.show', s.id))}>
+                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                        <p className={`font-semibold text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{s.cash_drawer?.name}</p>
+                                        {s.status === 'open'
+                                            ? <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>Abierta</span>
+                                            : <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>Cerrada</span>
+                                        }
+                                    </div>
+                                    <p className={`text-xs mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{s.user?.name}</p>
+                                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                                        <div>
+                                            <p className={isDark ? 'text-slate-500' : 'text-slate-400'}>Apertura</p>
+                                            <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>{fmtDateTime(s.opened_at)}</p>
+                                        </div>
+                                        <div>
+                                            <p className={isDark ? 'text-slate-500' : 'text-slate-400'}>Cierre</p>
+                                            <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>{fmtDateTime(s.closed_at)}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`flex items-center justify-between pt-3 border-t text-sm ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                        <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{fmt(s.opening_amount)}</span>
+                                        <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                            {s.status === 'closed' ? fmt(s.closing_amount) : '—'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Tabla — solo desktop */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className={`border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50'}`}>
@@ -186,6 +220,7 @@ export default function Index({ drawers, sessions, can_view }) {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                     <Pagination data={sessions} />
                 </div>

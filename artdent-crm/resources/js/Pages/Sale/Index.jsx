@@ -10,7 +10,7 @@ import { DatePicker } from '@/Components/_appkit';
 function DateRangePicker({ from, to, onFromChange, onToChange, isDark }) {
     const inputCls = `text-sm px-3 py-1.5 rounded-xl border outline-none ${isDark ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"}`;
     return (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full sm:flex sm:w-auto">
             <DatePicker value={from} onChange={onFromChange} className={inputCls} />
             <span className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>al</span>
             <DatePicker value={to} onChange={onToChange} className={inputCls} />
