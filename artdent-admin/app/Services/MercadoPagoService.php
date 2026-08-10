@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AfipIssuerSetting;
+use App\Models\PaymentCredentialSetting;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
@@ -19,7 +20,11 @@ class MercadoPagoService
 
     public function __construct()
     {
-        $this->accessToken = config('mercadopago.access_token');
+        // El panel de Credenciales de Pago (/payment-credentials) es la fuente
+        // preferida — si el admin todavía no cargó nada ahí, se cae al .env
+        // para no romper una instalación ya funcionando con la config vieja.
+        $this->accessToken = PaymentCredentialSetting::current()?->mp_access_token
+            ?: config('mercadopago.access_token');
     }
 
     // ── Planes (Preapproval Plans) ────────────────────────────────────────────

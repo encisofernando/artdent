@@ -6,7 +6,7 @@ import Badge from '@/Components/ui/Badge';
 import Toggle from '@/Components/ui/Toggle';
 import { Head, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { ShieldCheck, CheckCircle2, XCircle, UploadCloud } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, UploadCloud, KeyRound, Download } from 'lucide-react';
 
 const STATUS_COLORS = { pending: 'warning', authorized: 'success', failed: 'danger' };
 const STATUS_LABELS = { pending: 'Pendiente', authorized: 'Autorizada', failed: 'Falló' };
@@ -16,6 +16,9 @@ export default function Edit({ issuer, invoices }) {
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState(null);
     const [uploading, setUploading] = useState(null);
+    const [csrAlias, setCsrAlias] = useState('');
+    const [csrGenerating, setCsrGenerating] = useState(false);
+    const [csrResult, setCsrResult] = useState(null); // null | { success, csr, alias, message, error }
 
     const cls = `w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition-colors focus:ring-2 focus:ring-brand-cyan/40 ${
         isDark ? 'bg-brand-navy border-white/15 focus:border-brand-cyan' : 'bg-white border-brand-aqua focus:border-brand-cyan'
@@ -66,6 +69,38 @@ export default function Edit({ issuer, invoices }) {
             setUploading(null);
             window.location.reload();
         });
+    };
+
+    const generateCsr = async () => {
+        setCsrGenerating(true);
+        setCsrResult(null);
+        try {
+            const res = await fetch(route('afip-issuer.generate-csr'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ alias: csrAlias }),
+            });
+            setCsrResult(await res.json());
+        } catch {
+            setCsrResult({ success: false, error: 'Error de red o servidor.' });
+        } finally {
+            setCsrGenerating(false);
+        }
+    };
+
+    const downloadCsr = () => {
+        if (! csrResult?.csr) return;
+        const blob = new Blob([csrResult.csr], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${csrResult.alias}.csr`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -125,6 +160,53 @@ export default function Edit({ issuer, invoices }) {
                         </Card>
                     </form>
 
+                    <Card
+                        title="Generar solicitud de certificado (CSR)"
+                        description="Generá el par de claves y el CSR acá mismo, subilo al portal ARCA (wsass.afip.gov.ar) y después cargá el .crt que te den en Certificados."
+                    >
+                        <div className="flex flex-col sm:flex-row gap-3 items-end">
+                            <div className="flex-1 w-full">
+                                <label className="block text-sm font-bold mb-1.5">Alias del certificado</label>
+                                <input
+                                    className={cls}
+                                    value={csrAlias}
+                                    onChange={(e) => setCsrAlias(e.target.value)}
+                                    placeholder="artcode-wsfe"
+                                    maxLength={40}
+                                />
+                            </div>
+                            <Button type="button" onClick={generateCsr} disabled={csrGenerating || ! csrAlias.trim()} className="shrink-0">
+                                <KeyRound size={15} /> {csrGenerating ? 'Generando…' : 'Generar clave privada y CSR'}
+                            </Button>
+                        </div>
+
+                        {csrResult && (
+                            <div className={`mt-4 rounded-xl border p-4 space-y-3 ${
+                                csrResult.success
+                                    ? isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                                    : isDark ? 'bg-rose-500/5 border-rose-500/20' : 'bg-rose-50 border-rose-200'
+                            }`}>
+                                {csrResult.success ? (
+                                    <>
+                                        <div className="flex items-center gap-2 text-emerald-500 font-bold text-sm">
+                                            <CheckCircle2 size={15} /> {csrResult.message}
+                                        </div>
+                                        <Button type="button" variant="outline" size="sm" onClick={downloadCsr}>
+                                            <Download size={14} /> Descargar CSR (.pem)
+                                        </Button>
+                                        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                            La clave privada ya se guardó — sólo necesitás subir el .crt que te dé ARCA.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-rose-500 font-bold text-sm">
+                                        <XCircle size={15} /> {csrResult.error}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Card>
+
                     <Card title="Facturas de suscripción emitidas">
                         <div className="overflow-x-auto -mx-6">
                             <table className="w-full text-sm">
@@ -159,21 +241,30 @@ export default function Edit({ issuer, invoices }) {
                 <div className="space-y-6">
                     <Card title="Certificados">
                         <div className="space-y-3">
-                            {['cert', 'cert_homo'].map((f) => (
-                                <div key={f} className="flex items-center justify-between gap-2">
-                                    <span className="text-sm font-semibold">{f === 'cert' ? 'Certificado producción' : 'Certificado homologación'}</span>
-                                    <label className={`inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-brand-mint hover:bg-brand-aqua/40'}`}>
-                                        <UploadCloud size={14} />
-                                        {uploading === `cert-${f === 'cert' ? 'prod' : 'homo'}` ? 'Subiendo…' : 'Subir'}
-                                        <input type="file" accept=".crt,.pem" className="hidden" onChange={(e) => upload('cert', f === 'cert' ? 'prod' : 'homo', e.target.files[0])} />
-                                    </label>
-                                </div>
-                            ))}
+                            {['cert', 'cert_homo'].map((f) => {
+                                const loaded = f === 'cert' ? !! issuer?.cert_path : !! issuer?.homo_cert_path;
+                                return (
+                                    <div key={f} className="flex items-center justify-between gap-2">
+                                        <span className="text-sm font-semibold inline-flex items-center gap-1.5">
+                                            {loaded && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
+                                            {f === 'cert' ? 'Certificado producción' : 'Certificado homologación'}
+                                        </span>
+                                        <label className={`inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-brand-mint hover:bg-brand-aqua/40'}`}>
+                                            <UploadCloud size={14} />
+                                            {uploading === `cert-${f === 'cert' ? 'prod' : 'homo'}` ? 'Subiendo…' : (loaded ? 'Reemplazar' : 'Subir')}
+                                            <input type="file" accept=".crt,.pem" className="hidden" onChange={(e) => upload('cert', f === 'cert' ? 'prod' : 'homo', e.target.files[0])} />
+                                        </label>
+                                    </div>
+                                );
+                            })}
                             <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-semibold">Clave privada</span>
+                                <span className="text-sm font-semibold inline-flex items-center gap-1.5">
+                                    {!!issuer?.key_path && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
+                                    Clave privada
+                                </span>
                                 <label className={`inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-brand-mint hover:bg-brand-aqua/40'}`}>
                                     <UploadCloud size={14} />
-                                    {uploading === 'key-' ? 'Subiendo…' : 'Subir'}
+                                    {uploading === 'key-' ? 'Subiendo…' : (issuer?.key_path ? 'Reemplazar' : 'Subir')}
                                     <input type="file" accept=".key,.pem" className="hidden" onChange={(e) => upload('key', null, e.target.files[0])} />
                                 </label>
                             </div>

@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KbArticleController;
+use App\Http\Controllers\PaymentCredentialController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\SignupController;
 use App\Http\Controllers\SubscriptionController;
@@ -94,7 +95,12 @@ Route::middleware('auth')->group(function () {
     Route::get('afip-issuer', [AfipIssuerController::class, 'edit'])->name('afip-issuer.edit');
     Route::put('afip-issuer', [AfipIssuerController::class, 'update'])->name('afip-issuer.update');
     Route::post('afip-issuer/upload', [AfipIssuerController::class, 'uploadCert'])->name('afip-issuer.upload');
+    Route::post('afip-issuer/generate-csr', [AfipIssuerController::class, 'generateCsr'])->name('afip-issuer.generate-csr');
     Route::post('afip-issuer/test-connection', [AfipIssuerController::class, 'testConnection'])->name('afip-issuer.test-connection');
+
+    Route::get('payment-credentials', [PaymentCredentialController::class, 'edit'])->name('payment-credentials.edit');
+    Route::put('payment-credentials', [PaymentCredentialController::class, 'update'])->name('payment-credentials.update');
+    Route::post('payment-credentials/test-connection', [PaymentCredentialController::class, 'testConnection'])->name('payment-credentials.test-connection');
 
     Route::get('tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
