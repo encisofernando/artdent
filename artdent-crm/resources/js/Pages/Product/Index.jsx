@@ -206,8 +206,8 @@ export default function Index({ auth, items, filters }) {
                             ))}
                         </div>
 
-                        {/* Buttons — mobile: igual ancho, ícono + texto corto / desktop: texto completo */}
-                        <div className="flex w-full sm:w-auto gap-2">
+                        {/* Buttons — mobile: grilla 2x2 para que no se corten fuera de pantalla / desktop: fila */}
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto">
                             <button
                                 onClick={() => { setBarcodeInitialProducts([]); setIsBarcodeModalOpen(true); }}
                                 className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold shadow-sm transition-all

@@ -28,6 +28,31 @@ Route::middleware('tenant.session')->get('/storage/{path}', function (string $pa
     ]);
 })->where('path', '.*');
 
+// ── Fallback para /tenant-storage/{path} (ver App\Support\TenantStorageUrl) ───
+// Un symlink estático (público/tenant-storage → storage/tenantX/app/public)
+// sólo sirve para un dominio de UN tenant fijo (ej. pos.artdent.com.ar). En un
+// dominio multi-tenant real (pos.artcode.com.ar, varios tenants en la misma
+// URL) no hay forma de que un symlink apunte a "el tenant correcto" según el
+// request — hace falta resolverlo en runtime. Storage::disk('public') ya es
+// tenant-aware (FilesystemTenancyBootstrapper, config/tenancy.php), así que
+// esta ruta sirve el archivo del tenant activo sin necesitar el symlink en
+// ningún dominio (donde el symlink SÍ existe y funciona, el webserver lo
+// sirve directo y esta ruta ni se ejecuta).
+Route::middleware('tenant.session')->get('/tenant-storage/{path}', function (string $path) {
+    $realPath = \Illuminate\Support\Facades\Storage::disk('public')->path(ltrim($path, '/'));
+
+    if (! file_exists($realPath) || is_dir($realPath)) {
+        abort(404);
+    }
+
+    $mime = mime_content_type($realPath) ?: 'application/octet-stream';
+
+    return response()->file($realPath, [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('path', '.*');
+
 // Attendance kiosk — publicly accessible
 Route::get('/attendance-kiosk', [\App\Http\Controllers\AttendanceKioskController::class, 'index'])->name('attendance-kiosk');
 

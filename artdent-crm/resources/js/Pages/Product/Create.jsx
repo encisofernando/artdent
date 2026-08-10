@@ -818,8 +818,9 @@ export default function Create({ auth, categories = [], vendors = [], usdExchang
                 )}
             </form>
 
-            {/* mobile save FAB */}
-            <div className="fixed bottom-6 inset-x-4 sm:hidden z-50">
+            {/* mobile save FAB — bottom compensa la altura real de BottomNav
+                (56px + safe-area), si no quedaba tapada detrás */}
+            <div className="fixed bottom-[calc(56px+env(safe-area-inset-bottom,0px)+8px)] inset-x-4 sm:hidden z-50">
                 <button type="submit" form="product-form" disabled={processing}
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold shadow-2xl shadow-blue-900/30 transition-all active:scale-[0.98] disabled:opacity-60"
                     style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}

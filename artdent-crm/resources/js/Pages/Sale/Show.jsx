@@ -12,6 +12,7 @@ import { Ticket80, Ticket57 } from '@/Components/Sale/TicketBase';
 import SaleReturnModal from '@/Components/Sale/SaleReturnModal';
 import {
     buildPrintHtml,
+    getStoredTicketFormat,
     getThermalPrintZoom,
     getThermalZoneWidth,
     MONTSERRAT_PRINT_HEAD,
@@ -145,7 +146,7 @@ const MODES = [
 export default function Show({ auth, sale, account, paymentMethods = [] }) {
     const { isDark } = useTheme();
     const toast = useToast();
-    const [mode, setMode] = useState('a4');
+    const [mode, setMode] = useState(() => getStoredTicketFormat('80mm'));
     const [printingNative, setPrintingNative] = useState(false);
     const saleBalance = Math.max(0, Number(sale.total || 0) - Number(sale.paid_amount || 0));
 

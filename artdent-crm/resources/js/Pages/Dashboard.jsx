@@ -169,7 +169,7 @@ export default function DashboardIndex({ auth, stats, chartData = [], recentTran
                         <h1 className={`text-2xl font-extrabold tracking-tight ${text}`}>Dashboard</h1>
                         <p className={`text-sm mt-0.5 ${muted}`}>Métricas del negocio en tiempo real</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <div className="flex items-center gap-1 p-1 rounded-xl border"
                             style={{ borderColor: isDark ? "#334155" : "#e2e8f0", background: isDark ? "#0f172a" : "#f8fafc" }}>
                             {PERIODS.map((p) => (

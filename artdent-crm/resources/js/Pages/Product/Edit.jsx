@@ -956,8 +956,9 @@ export default function Edit({ auth, item, categories = [], vendors = [], usdExc
                 )}
             </form>
 
-            {/* mobile bottom bar: guardar + eliminar */}
-            <div className="fixed bottom-6 inset-x-4 sm:hidden z-50 flex gap-3">
+            {/* mobile bottom bar: guardar + eliminar — bottom compensa la altura
+                real de BottomNav (56px + safe-area), si no quedaba tapada detrás */}
+            <div className="fixed bottom-[calc(56px+env(safe-area-inset-bottom,0px)+8px)] inset-x-4 sm:hidden z-50 flex gap-3">
                 <button
                     type="button"
                     onClick={handleDelete}
