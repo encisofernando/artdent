@@ -411,15 +411,17 @@ class SaleController extends Controller
             DB::commit();
 
             // ── Auto-facturación AFIP ─────────────────────────────────────────
-            // Mapa de receipt_type (formato legacy A/B/C y nuevo FA/FB/FC) → receipt_key AFIP
-            $afipKeyMap = [
-                'A' => 'FA', 'FA' => 'FA',
-                'B' => 'FB', 'FB' => 'FB',
-                'C' => 'FC', 'FC' => 'FC',
-                'NCA' => 'NCA', 'NCB' => 'NCB', 'NCC' => 'NCC',
-                'NDA' => 'NDA', 'NDB' => 'NDB', 'NDC' => 'NDC',
-            ];
-            if (isset($afipKeyMap[$receiptType])) {
+            // "Primero pago, después ticket" para nave_qr: el pago todavía no
+            // impactó (queda pendiente hasta que Nave lo confirme, ver
+            // NavePosPaymentController), así que ni la Factura AFIP ni el
+            // ticket con CAE se generan acá — se disparan recién desde
+            // NavePosPaymentController::applyApprovedIntent() cuando el pago
+            // se confirma de verdad. cuenta_corriente sigue facturando ahora
+            // (factura ahora, cobra después es el diseño de esa modalidad).
+            $hasPendingNaveQr = collect($payments)->contains('method', 'nave_qr');
+            $afipKey = \App\Support\AfipReceiptKeyMap::keyFor($receiptType);
+
+            if ($afipKey && ! $hasPendingNaveQr) {
                 $company->refresh();
                 if ($company->afip_auto_invoice) {
                     try {
@@ -428,7 +430,7 @@ class SaleController extends Controller
                         // "Confirmar cobro", no minutos después vía cola.
                         \App\Jobs\GenerateAfipInvoiceJob::dispatchSync(
                             $sale->id,
-                            $afipKeyMap[$receiptType]
+                            $afipKey
                         );
                     } catch (\Throwable $e) {
                         \Illuminate\Support\Facades\Log::warning('Auto-factura AFIP falló (no bloquea la venta)', [

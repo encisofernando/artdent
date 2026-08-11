@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateAfipInvoiceJob;
 use App\Models\Customer;
 use App\Models\NaveChargeIntent;
 use App\Models\Sale;
@@ -10,6 +11,7 @@ use App\Services\CustomerAccountPaymentService;
 use App\Services\CustomerAccountSaleAllocator;
 use App\Services\NaveService;
 use App\Services\SalePaymentService;
+use App\Support\AfipReceiptKeyMap;
 use App\Support\CompanyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -110,7 +112,16 @@ class NavePosPaymentController extends Controller
             $intent->refresh();
         }
 
-        return response()->json(['status' => $intent->status]);
+        $sale = null;
+        if ($intent->status === NaveChargeIntent::STATUS_APPROVED && $intent->payable_type === NaveChargeIntent::PAYABLE_SALE) {
+            // El frontend (QrPaymentModal, compartido con Customer/Account)
+            // usa esto para recién mostrar el ticket/factura una vez que el
+            // pago ya impactó de verdad — "primero pago, después ticket".
+            $sale = Sale::with(['sale_items', 'sale_payments.paymentMethod', 'company', 'user', 'invoice.invoice_type'])
+                ->find($intent->payable_id);
+        }
+
+        return response()->json(['status' => $intent->status, 'sale' => $sale]);
     }
 
     /**
@@ -228,7 +239,9 @@ class NavePosPaymentController extends Controller
             return;
         }
 
-        DB::transaction(function () use ($intent, $newStatus, $paymentId) {
+        $approvedSaleId = null;
+
+        DB::transaction(function () use ($intent, $newStatus, $paymentId, &$approvedSaleId) {
             $locked = NaveChargeIntent::whereKey($intent->id)->lockForUpdate()->first();
 
             if (! $locked || $locked->status !== NaveChargeIntent::STATUS_PENDING) {
@@ -238,17 +251,23 @@ class NavePosPaymentController extends Controller
             $locked->update(['status' => $newStatus, 'nave_payment_id' => $paymentId]);
 
             if ($newStatus === NaveChargeIntent::STATUS_APPROVED) {
-                $this->applyApprovedIntent($locked);
+                $approvedSaleId = $this->applyApprovedIntent($locked);
             }
         });
+
+        // Fuera de la transacción/lock a propósito: la llamada SOAP a AFIP
+        // puede tardar segundos y no debe mantener lockeada la fila del intent.
+        if ($approvedSaleId) {
+            $this->generateDeferredAfipInvoice($approvedSaleId);
+        }
     }
 
-    private function applyApprovedIntent(NaveChargeIntent $intent): void
+    private function applyApprovedIntent(NaveChargeIntent $intent): ?int
     {
         if ($intent->payable_type === NaveChargeIntent::PAYABLE_SALE) {
             $sale = Sale::find($intent->payable_id);
             if (! $sale) {
-                return;
+                return null;
             }
 
             app(SalePaymentService::class)->registerPayment(
@@ -258,12 +277,12 @@ class NavePosPaymentController extends Controller
                 $intent->description,
             );
 
-            return;
+            return $sale->id;
         }
 
         $customer = Customer::find($intent->payable_id);
         if (! $customer) {
-            return;
+            return null;
         }
 
         $metadata = $intent->metadata ?? [];
@@ -278,6 +297,37 @@ class NavePosPaymentController extends Controller
             null,
             (bool) ($metadata['send_email'] ?? false),
         );
+
+        return null;
+    }
+
+    /**
+     * "Primero pago, después ticket": la venta se creó sin factura AFIP a
+     * propósito (ver SaleController::store(), que se salta la auto-factura
+     * cuando hay un split nave_qr pendiente) — recién acá, con el pago ya
+     * confirmado de verdad, se genera la Factura/CAE real.
+     */
+    private function generateDeferredAfipInvoice(int $saleId): void
+    {
+        $sale = Sale::with('company')->find($saleId);
+        if (! $sale) {
+            return;
+        }
+
+        $afipKey = AfipReceiptKeyMap::keyFor($sale->receipt_type);
+        if (! $afipKey || ! $sale->company->afip_auto_invoice) {
+            return;
+        }
+
+        try {
+            GenerateAfipInvoiceJob::dispatchSync($sale->id, $afipKey);
+        } catch (\Throwable $e) {
+            Log::channel('nave')->error('Nave POS: fallo al generar factura AFIP diferida.', [
+                'sale_id' => $sale->id,
+                'error' => $e->getMessage(),
+            ]);
+            $sale->update(['receipt_type' => 'X']);
+        }
     }
 
     /**
