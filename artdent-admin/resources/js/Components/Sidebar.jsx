@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Building2, CreditCard, Receipt, Users, ShieldCheck, FileText, LifeBuoy, BookOpen, Wallet } from 'lucide-react';
+import { LayoutDashboard, Building2, CreditCard, Receipt, Users, ShieldCheck, FileText, LifeBuoy, BookOpen, Wallet, X } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import BrandLogo from '@/Components/ui/BrandLogo';
 
@@ -19,18 +19,27 @@ const NAV = [
 // Sigue el toggle claro/oscuro: navy en modo oscuro, azul de marca en modo
 // claro (mismo criterio que ya usa el Sidebar del CRM) — evita un sidebar
 // blanco/plano y mantiene presencia de marca en los dos temas.
-export default function Sidebar() {
+export default function Sidebar({ onClose }) {
     const { url } = usePage();
     const { isDark } = useTheme();
 
     const isActive = (path) => url === path || url.startsWith(`${path}/`);
 
     return (
-        <aside className={`w-64 shrink-0 h-screen flex flex-col border-r transition-colors duration-300 ${
+        <aside className={`w-64 shrink-0 h-full flex flex-col border-r transition-colors duration-300 ${
             isDark ? 'bg-brand-navy border-white/10' : 'bg-brand-blue border-brand-blue/60'
         }`}>
-            <div className="h-16 flex items-center px-5 border-b border-white/15 shrink-0">
+            <div className="h-16 flex items-center justify-between px-5 border-b border-white/15 shrink-0">
                 <BrandLogo variant="white" height={38} />
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 -mr-1.5 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors lg:hidden"
+                        title="Cerrar menú"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             <div className="px-5 pt-4 pb-2">
@@ -44,6 +53,7 @@ export default function Sidebar() {
                         <Link
                             key={item.path}
                             href={item.path}
+                            onClick={onClose}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                                 active
                                     ? (isDark ? 'bg-brand-cyan/15 text-brand-cyan' : 'bg-white/15 text-white')
