@@ -89,13 +89,56 @@ class NavePosPaymentController extends Controller
         );
     }
 
+    /**
+     * Estado del intent, consultado por el frontend cada ~10s mientras el
+     * modal de QR está abierto. No confía ciegamente en el webhook: si el
+     * intent sigue 'pending' acá, también consulta el estado real contra
+     * Nave y se auto-corrige — confirmado en producción (2026-08-11) que
+     * Nave puede aceptar y guardar la notification_url correcta y aun así
+     * nunca llamarla (el pago quedó APPROVED del lado de Nave pero el
+     * webhook jamás llegó). Sin este fallback, una venta ya cobrada de
+     * verdad se queda "Pendiente" para siempre en el CRM.
+     */
     public function status(NaveChargeIntent $intent): JsonResponse
     {
         if ($intent->company_id !== CompanyContext::id()) {
             abort(404);
         }
 
+        if ($intent->status === NaveChargeIntent::STATUS_PENDING && $intent->payment_request_id) {
+            $this->reconcileFromNave($intent);
+            $intent->refresh();
+        }
+
         return response()->json(['status' => $intent->status]);
+    }
+
+    /**
+     * Consulta el payment_request en Nave y aplica el mismo mapeo/transacción
+     * que el webhook si ya hay un pago resuelto — mismo criterio de lock que
+     * webhook() para no duplicar el registro de pago si ambos caminos
+     * (webhook real + este fallback) llegan a coincidir.
+     */
+    private function reconcileFromNave(NaveChargeIntent $intent): void
+    {
+        try {
+            $paymentRequest = $this->nave->getPaymentRequest($intent->payment_request_id);
+            $naveStatus = $paymentRequest['payment']['status']['name'] ?? null;
+            $paymentId = $paymentRequest['payment']['id'] ?? null;
+
+            if (! $naveStatus || ! $paymentId) {
+                return;
+            }
+
+            $this->applyNaveStatus($intent, $naveStatus, $paymentId);
+        } catch (\Throwable $e) {
+            // No relanzar: el polling del frontend sigue funcionando con el
+            // status actual, se reintenta solo en la próxima consulta.
+            Log::channel('nave')->error('Nave POS: error al reconciliar desde status().', [
+                'intent_id' => $intent->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -151,31 +194,9 @@ class NavePosPaymentController extends Controller
         }
 
         $naveStatus = $payment['status']['name'] ?? null;
-        $newStatus = match ($naveStatus) {
-            'APPROVED' => NaveChargeIntent::STATUS_APPROVED,
-            'REJECTED' => NaveChargeIntent::STATUS_REJECTED,
-            'CANCELLED' => NaveChargeIntent::STATUS_CANCELLED,
-            default => null,
-        };
-
-        if (! $newStatus) {
-            return response()->json(['ok' => true]);
-        }
 
         try {
-            DB::transaction(function () use ($intent, $newStatus, $paymentId) {
-                $locked = NaveChargeIntent::whereKey($intent->id)->lockForUpdate()->first();
-
-                if (! $locked || $locked->status !== NaveChargeIntent::STATUS_PENDING) {
-                    return;
-                }
-
-                $locked->update(['status' => $newStatus, 'nave_payment_id' => $paymentId]);
-
-                if ($newStatus === NaveChargeIntent::STATUS_APPROVED) {
-                    $this->applyApprovedIntent($locked);
-                }
-            });
+            $this->applyNaveStatus($intent, $naveStatus, $paymentId);
         } catch (\Throwable $e) {
             Log::channel('nave')->error('Nave POS: error al procesar webhook.', [
                 'intent_id' => $intent->id,
@@ -186,6 +207,40 @@ class NavePosPaymentController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Mapea el status de Nave a nuestro status interno y, si corresponde,
+     * aplica el pago — con el mismo lock que usaba antes sólo webhook(), para
+     * que el webhook real y el fallback de reconcileFromNave() nunca dupliquen
+     * el registro de pago si llegan a coincidir.
+     */
+    private function applyNaveStatus(NaveChargeIntent $intent, ?string $naveStatus, string $paymentId): void
+    {
+        $newStatus = match ($naveStatus) {
+            'APPROVED' => NaveChargeIntent::STATUS_APPROVED,
+            'REJECTED' => NaveChargeIntent::STATUS_REJECTED,
+            'CANCELLED' => NaveChargeIntent::STATUS_CANCELLED,
+            default => null,
+        };
+
+        if (! $newStatus) {
+            return;
+        }
+
+        DB::transaction(function () use ($intent, $newStatus, $paymentId) {
+            $locked = NaveChargeIntent::whereKey($intent->id)->lockForUpdate()->first();
+
+            if (! $locked || $locked->status !== NaveChargeIntent::STATUS_PENDING) {
+                return;
+            }
+
+            $locked->update(['status' => $newStatus, 'nave_payment_id' => $paymentId]);
+
+            if ($newStatus === NaveChargeIntent::STATUS_APPROVED) {
+                $this->applyApprovedIntent($locked);
+            }
+        });
     }
 
     private function applyApprovedIntent(NaveChargeIntent $intent): void
