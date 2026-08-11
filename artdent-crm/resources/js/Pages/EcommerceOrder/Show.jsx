@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, Package, Truck, CreditCard, User, FileText, Save, CheckCircle2, Tag, MapPin, Banknote, QrCode, Printer, FileCheck2, Check, AlertTriangle, Loader2, PackagePlus, FileDown, RefreshCw } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Button } from '@/Components/ui/button';
 import SearchableSelect from '@/Components/SearchableSelect';
 import { CompanyLogo, getCompanyDisplayName } from '@/lib/companyBranding';
@@ -373,20 +374,25 @@ function AfipPanel({ order, invoice, isDark }) {
 }
 
 function AndreaniPanel({ order, isDark }) {
+    const confirmDialog = useConfirm();
     const shipment = (order.shipments || []).find(s => s.carrier === 'andreani') ?? null;
     const [creating, setCreating] = React.useState(false);
     const [refreshing, setRefreshing] = React.useState(false);
     const [errorMsg, setErrorMsg] = React.useState(null);
 
     const handleCreate = () => {
-        if (!window.confirm('Esto va a generar un envío REAL en Andreani (planifican el retiro). ¿Confirmás?')) {
-            return;
-        }
-        setErrorMsg(null);
-        setCreating(true);
-        router.post(route('ecommerce-orders.andreani.shipment', order.id), {}, {
-            onError: (errs) => setErrorMsg(errs.andreani ?? 'No se pudo crear el envío.'),
-            onFinish: () => setCreating(false),
+        confirmDialog({
+            message: 'Esto va a generar un envío REAL en Andreani (planifican el retiro). ¿Confirmás?',
+            variant: 'warning',
+            confirmLabel: 'Generar envío',
+            onConfirm: () => {
+                setErrorMsg(null);
+                setCreating(true);
+                router.post(route('ecommerce-orders.andreani.shipment', order.id), {}, {
+                    onError: (errs) => setErrorMsg(errs.andreani ?? 'No se pudo crear el envío.'),
+                    onFinish: () => setCreating(false),
+                });
+            },
         });
     };
 

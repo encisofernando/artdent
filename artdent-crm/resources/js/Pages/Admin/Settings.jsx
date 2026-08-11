@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
+import { useToast } from '@/Contexts/ToastContext';
 import {
     Building2, Receipt, MapPin, Globe, MessageSquare,
     Save, UploadCloud, X, Camera, CheckCircle2,
@@ -140,6 +142,8 @@ function BranchForm({ isDark, initial, onCancel, onSubmit, saving, error }) {
 }
 
 function BranchesManager({ isDark }) {
+    const confirmDialog = useConfirm();
+    const toast = useToast();
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
@@ -189,14 +193,15 @@ function BranchesManager({ isDark }) {
         }
     };
 
-    const destroy = async (id) => {
-        if (!window.confirm('¿Eliminar esta sucursal?')) return;
-        try {
-            await axios.delete(route('branchs.destroy', id));
-            await load();
-        } catch (e) {
-            alert(e.response?.data?.error || 'Error al eliminar.');
-        }
+    const destroy = (id) => {
+        confirmDialog('¿Eliminar esta sucursal?', async () => {
+            try {
+                await axios.delete(route('branchs.destroy', id));
+                await load();
+            } catch (e) {
+                toast.error(e.response?.data?.error || 'Error al eliminar.');
+            }
+        });
     };
 
     return (
@@ -294,6 +299,8 @@ function BranchesManager({ isDark }) {
 }
 
 function PointsOfSaleManager({ isDark }) {
+    const confirmDialog = useConfirm();
+    const toast = useToast();
     const [items, setItems] = useState([]);
     const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -347,14 +354,15 @@ function PointsOfSaleManager({ isDark }) {
         }
     };
 
-    const destroy = async (id) => {
-        if (!window.confirm('¿Eliminar este punto de venta?')) return;
-        try {
-            await axios.delete(route('afip.points-of-sale.destroy', id));
-            await load();
-        } catch (e) {
-            alert(e.response?.data?.error || 'Error al eliminar.');
-        }
+    const destroy = (id) => {
+        confirmDialog('¿Eliminar este punto de venta?', async () => {
+            try {
+                await axios.delete(route('afip.points-of-sale.destroy', id));
+                await load();
+            } catch (e) {
+                toast.error(e.response?.data?.error || 'Error al eliminar.');
+            }
+        });
     };
 
     return (
