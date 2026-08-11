@@ -153,4 +153,11 @@ require __DIR__.'/modules/dentist_portal.php';
 // Panel de asignación — usa auth:sanctum (Bearer token) fuera del grupo de sesión
 require __DIR__.'/modules/assign-panel.php';
 
-require __DIR__.'/auth.php';
+// En panel.artdent.com.ar (portal_only) el sitio entero ES el portal del
+// odontólogo — las rutas de auth de staff (/login, /register, /forgot-password...)
+// no tienen sentido ahí y, peor, "/login" choca en la tabla de rutas con
+// dentist_portal.php (que registra su propio "login" con prefijo vacío en
+// este modo), pisando esa ruta por completo (hasta el lookup por nombre).
+if (! config('crm.portal_only')) {
+    require __DIR__.'/auth.php';
+}
