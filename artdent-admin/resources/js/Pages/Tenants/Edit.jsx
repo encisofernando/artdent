@@ -6,6 +6,7 @@ import Button from '@/Components/ui/Button';
 import Toggle from '@/Components/ui/Toggle';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { ArrowLeft, Trash2, Database, Globe, CreditCard, Layers } from 'lucide-react';
 import { STATUS_LABELS, PLAN_LABELS } from '@/lib/tenantMeta';
 
@@ -26,6 +27,7 @@ function toLocalInput(value) {
 
 export default function Edit({ tenant, userMaps, plans, modules }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const cls = `w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition-colors focus:ring-2 focus:ring-brand-cyan/40 ${
         isDark ? 'bg-brand-navy border-white/15 focus:border-brand-cyan' : 'bg-white border-brand-aqua focus:border-brand-cyan'
     }`;
@@ -55,9 +57,9 @@ export default function Edit({ tenant, userMaps, plans, modules }) {
     };
 
     const removeUserMap = (map) => {
-        if (confirm(`¿Quitar el mapeo de "${map.email}"?`)) {
+        confirmDialog(`¿Quitar el mapeo de "${map.email}"?`, () => {
             router.delete(route('tenants.user-maps.destroy', [tenant.id, map.id]), { preserveScroll: true });
-        }
+        });
     };
 
     const toggleModule = (module) => {

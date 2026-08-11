@@ -5,6 +5,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from './Contexts/ThemeContext';
+import { ConfirmProvider } from './Contexts/ConfirmContext';
 
 const appName = import.meta.env.VITE_APP_NAME || 'ArtCode Admin';
 
@@ -26,7 +27,9 @@ createInertiaApp({
 
         root.render(
             <ThemeProvider>
-                <App {...props} />
+                <ConfirmProvider>
+                    <App {...props} />
+                </ConfirmProvider>
             </ThemeProvider>
         );
     },

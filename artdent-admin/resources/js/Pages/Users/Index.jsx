@@ -4,16 +4,18 @@ import Button from '@/Components/ui/Button';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 export default function Index({ users }) {
     const { isDark } = useTheme();
     const { auth } = usePage().props;
+    const confirmDialog = useConfirm();
 
     const destroy = (user) => {
-        if (confirm(`¿Eliminar el usuario "${user.name}"?`)) {
+        confirmDialog(`¿Eliminar el usuario "${user.name}"?`, () => {
             router.delete(route('users.destroy', user.id));
-        }
+        });
     };
 
     return (

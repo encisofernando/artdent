@@ -5,15 +5,17 @@ import Toggle from '@/Components/ui/Toggle';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 export default function Index({ articles }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
 
     const destroy = (article) => {
-        if (confirm(`¿Eliminar el artículo "${article.title}"?`)) {
+        confirmDialog(`¿Eliminar el artículo "${article.title}"?`, () => {
             router.delete(route('kb-articles.destroy', article.id));
-        }
+        });
     };
 
     return (

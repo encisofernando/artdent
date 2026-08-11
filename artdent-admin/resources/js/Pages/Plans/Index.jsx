@@ -5,15 +5,26 @@ import Toggle from '@/Components/ui/Toggle';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Plus, ArrowUpCircle, RefreshCw, Pencil, Trash2, Globe, Lock } from 'lucide-react';
 
 export default function Index({ plans }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
 
     const destroy = (plan) => {
-        if (confirm(`¿Eliminar el plan "${plan.name}"?`)) {
+        confirmDialog(`¿Eliminar el plan "${plan.name}"?`, () => {
             router.delete(route('plans.destroy', plan.id));
-        }
+        });
+    };
+
+    const publishToMp = (plan) => {
+        confirmDialog({
+            message: `Se creará el plan "${plan.name}" ($${plan.price} ARS/mes) en MercadoPago. ¿Continuar?`,
+            variant: 'info',
+            confirmLabel: 'Publicar',
+            onConfirm: () => router.patch(route('plans.publish-to-mp', plan.id)),
+        });
     };
 
     return (
@@ -67,7 +78,7 @@ export default function Index({ plans }) {
                                             {!p.mp_plan_id && p.is_public && (
                                                 <button
                                                     title="Publicar en MercadoPago"
-                                                    onClick={() => confirm(`Se creará el plan "${p.name}" ($${p.price} ARS/mes) en MercadoPago. ¿Continuar?`) && router.patch(route('plans.publish-to-mp', p.id))}
+                                                    onClick={() => publishToMp(p)}
                                                     className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-white/5' : 'hover:bg-brand-mint'}`}
                                                 >
                                                     <ArrowUpCircle size={16} className="text-emerald-500" />

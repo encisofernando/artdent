@@ -6,11 +6,13 @@ import Button from '@/Components/ui/Button';
 import Modal from '@/Components/ui/Modal';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import { Plus, Search, MoreVertical, Star, CreditCard, PlayCircle, PauseCircle, Trash2, Pencil } from 'lucide-react';
 import { STATUS_LABELS, STATUS_COLORS, PLAN_LABELS, PLAN_COLORS } from '@/lib/tenantMeta';
 
 function RowMenu({ tenant, onAssignOwner, onCheckout }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -21,9 +23,9 @@ function RowMenu({ tenant, onAssignOwner, onCheckout }) {
     }, []);
 
     const destroy = () => {
-        if (confirm(`¿Eliminar la empresa "${tenant.name}"? Esta acción no se puede deshacer.`)) {
+        confirmDialog(`¿Eliminar la empresa "${tenant.name}"? Esta acción no se puede deshacer.`, () => {
             router.delete(route('tenants.destroy', tenant.id));
-        }
+        });
     };
 
     return (
@@ -60,6 +62,7 @@ function RowMenu({ tenant, onAssignOwner, onCheckout }) {
 
 export default function Index({ tenants, filters, plans }) {
     const { isDark } = useTheme();
+    const confirmDialog = useConfirm();
     const [search, setSearch] = useState(filters.search || '');
     const [checkoutTenant, setCheckoutTenant] = useState(null);
     const checkoutForm = useForm({ plan_id: '' });
@@ -79,9 +82,12 @@ export default function Index({ tenants, filters, plans }) {
     };
 
     const assignOwner = (tenant) => {
-        if (confirm(`Se asignará la licencia Owner (ilimitada, sin cobro) a "${tenant.name}". ¿Continuar?`)) {
-            router.patch(route('tenants.assign-owner', tenant.id));
-        }
+        confirmDialog({
+            message: `Se asignará la licencia Owner (ilimitada, sin cobro) a "${tenant.name}". ¿Continuar?`,
+            variant: 'warning',
+            confirmLabel: 'Asignar',
+            onConfirm: () => router.patch(route('tenants.assign-owner', tenant.id)),
+        });
     };
 
     const submitCheckout = (e) => {
