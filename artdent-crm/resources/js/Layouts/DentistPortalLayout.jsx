@@ -18,7 +18,7 @@ export default function DentistPortalLayout({ dentist, children }) {
                 style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
             >
                 <div className="flex items-center gap-2 text-white font-extrabold text-lg tracking-tight">
-                    <img src="/logo-artdent-blanco.png" alt="ArtDent" className="h-7 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <img src="/assets/logo-artdent-blanco.png" alt="ArtDent" className="h-7 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     Portal de Odontólogos
                 </div>
 
