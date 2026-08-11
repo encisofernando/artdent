@@ -23,6 +23,7 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string|null $contact_name
  * @property string|null $email
+ * @property string|null $dni
  * @property string|null $phone
  * @property string|null $phone_alt
  * @property string|null $address
@@ -67,6 +68,7 @@ class Dentist extends Model
         'name',
         'contact_name',
         'email',
+        'dni',
         'phone',
         'phone_alt',
         'whatsapp',

@@ -24,6 +24,7 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {}, port
         contact_name: item.contact_name || '',
         code: item.code || '',
         email: item.email || '',
+        dni: item.dni || '',
         phone: item.phone || '',
         phone_alt: item.phone_alt || '',
         whatsapp: item.whatsapp || '',
@@ -211,7 +212,7 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {}, port
                                 {errors.license_number && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.license_number}</div>}
                             </div>
 
-                            <div className="md:col-span-2">
+                            <div>
                                 <label className={labelClasses}>Email</label>
                                 <input
                                     type="email"
@@ -221,6 +222,18 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {}, port
                                     placeholder="correo@ejemplo.com"
                                 />
                                 {errors.email && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.email}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>DNI</label>
+                                <input
+                                    type="text"
+                                    value={data.dni}
+                                    onChange={e => setData('dni', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Para iniciar sesión en el portal"
+                                />
+                                {errors.dni && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dni}</div>}
                             </div>
 
                             <div>

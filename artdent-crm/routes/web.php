@@ -2,9 +2,17 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+// panel.artdent.com.ar (mismo codebase/DB que pos.artdent.com.ar, ver
+// config/crm.php "portal_only"): la raíz del sitio NO se registra acá —
+// routes/modules/dentist_portal.php ya registra "/" (prefijo vacío en ese
+// modo) apuntando a DentistPortalController::show(), cuyo middleware
+// dentist.portal.auth ya redirige solo a "login" si no hay sesión. Definir
+// otra ruta "/" acá también generaría un choque de rutas duplicadas.
+if (! config('crm.portal_only')) {
+    Route::get('/', function () {
+        return redirect()->route('login');
+    });
+}
 
 Route::get('/print-manager/download/{platform?}', [\App\Http\Controllers\PrintManagerDownloadController::class, 'download'])
     ->name('print-manager.download');
