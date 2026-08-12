@@ -18,7 +18,7 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {}, port
         };
     });
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, put, transform, processing, errors } = useForm({
         type: item.type || 'individual',
         name: item.name || '',
         contact_name: item.contact_name || '',
@@ -53,6 +53,10 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {}, port
 
     const submit = (e) => {
         e.preventDefault();
+        transform((data) => ({
+            ...data,
+            custom_prices: data.custom_prices.filter((cp) => cp.price !== ''),
+        }));
         put(route('dentists.update', item.id));
     };
 
@@ -580,6 +584,12 @@ export default function Edit({ auth, item, tariffs = [], customPrices = {}, port
                                 />
                             </div>
                         </div>
+
+                        {Object.keys(errors).some((key) => key.startsWith('custom_prices')) && (
+                            <div className="text-red-500 text-xs mb-4 font-medium">
+                                Revisá los precios personalizados cargados: alguno tiene un valor inválido.
+                            </div>
+                        )}
 
                         <div className={`rounded-xl border overflow-hidden
                             ${isDark ? 'border-slate-800' : 'border-slate-200'}

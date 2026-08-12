@@ -161,8 +161,8 @@ class DentistController extends Controller
             'is_active' => 'nullable|boolean',
             'notes' => 'nullable|string',
             'custom_prices' => 'nullable|array',
-            'custom_prices.*.tariff_id' => 'required_with:custom_prices|integer|exists:tariffs,id',
-            'custom_prices.*.price' => 'required_with:custom_prices|numeric|min:0',
+            'custom_prices.*.tariff_id' => 'required_with:custom_prices.*.price|integer|exists:tariffs,id',
+            'custom_prices.*.price' => 'nullable|numeric|min:0',
         ]);
 
         $dentist->update($validated);
