@@ -6,6 +6,7 @@ use App\Models\Collaborator;
 use App\Models\Dentist;
 use App\Models\Job;
 use App\Models\JobItem;
+use App\Models\JobTeeth;
 use App\Models\JobType;
 use App\Models\LabAccount;
 use App\Models\LabAccountMove;
@@ -96,6 +97,8 @@ class JobController extends Controller
             'items.*.unit_price' => 'required|numeric|min:0',
 
             'teeth' => 'nullable|array',
+            'teeth.*.tooth' => 'required_with:teeth|string|max:10',
+            'teeth.*.note' => 'nullable|string|max:191',
         ]);
 
         if (! $this->hasJobTypesTable()) {
@@ -156,6 +159,14 @@ class JobController extends Controller
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'total' => $item['quantity'] * $item['unit_price'],
+                ]);
+            }
+
+            foreach ($data['teeth'] ?? [] as $tooth) {
+                JobTeeth::create([
+                    'job_id' => $job->id,
+                    'tooth' => $tooth['tooth'],
+                    'note' => $tooth['note'] ?? null,
                 ]);
             }
 
@@ -327,6 +338,8 @@ class JobController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'required|numeric|min:0',
             'teeth' => 'nullable|array',
+            'teeth.*.tooth' => 'required_with:teeth|string|max:10',
+            'teeth.*.note' => 'nullable|string|max:191',
         ]);
 
         if (! $this->hasJobTypesTable()) {
@@ -382,6 +395,16 @@ class JobController extends Controller
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'total' => $item['quantity'] * $item['unit_price'],
+                ]);
+            }
+
+            $job->job_teeths()->delete();
+
+            foreach ($data['teeth'] ?? [] as $tooth) {
+                JobTeeth::create([
+                    'job_id' => $job->id,
+                    'tooth' => $tooth['tooth'],
+                    'note' => $tooth['note'] ?? null,
                 ]);
             }
 
