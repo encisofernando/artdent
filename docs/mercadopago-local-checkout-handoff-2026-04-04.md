@@ -18,8 +18,8 @@ Dejar documentado el estado actual de la prueba integral del checkout del e-comm
 
 Se verificó en DB/config del CRM que `mercadopago` está tomando:
 
-- `public_key`: `APP_USR-b25dd9a1-3657-41d7-b302-b666b65489e1`
-- `access_token`: `APP_USR-8403277172325145-061511-a46a721e0343b7c8d4ce7ccaf39c0d3c-240642664`
+- `public_key`: `[REDACTADO]`
+- `access_token`: `[REDACTADO]`
 - `webhook_secret`: presente
 
 Archivo relevante:
