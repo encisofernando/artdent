@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import DentistPortalLayout from '@/Layouts/DentistPortalLayout';
 import Pagination from '@/Components/Pagination';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useToast } from '@/Contexts/ToastContext';
-import { Package, PackageCheck, Wallet, Download, Send, CheckCircle2 } from 'lucide-react';
+import { Package, PackageCheck, Wallet, Download, Send, CheckCircle2, Plus } from 'lucide-react';
 
 const B = { blue: '#397B9C', teal: '#49949C', green: '#5AAD9C', red: '#E63946' };
 
@@ -65,16 +65,25 @@ export default function Dashboard({ dentist, jobs, readyCount, account, recentMo
                             Tus trabajos y tu cuenta corriente con el laboratorio.
                         </p>
                     </div>
-                    {readyCount > 0 && (
-                        <button
-                            onClick={requestPickup}
-                            disabled={requesting}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-                            style={{ background: `linear-gradient(90deg, ${B.green}, ${B.teal})` }}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                            href={route('dentist-portal.orders.create')}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+                            style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
                         >
-                            <Send size={15} /> Avisar que quiero retirar
-                        </button>
-                    )}
+                            <Plus size={15} /> Nueva orden
+                        </Link>
+                        {readyCount > 0 && (
+                            <button
+                                onClick={requestPickup}
+                                disabled={requesting}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                                style={{ background: `linear-gradient(90deg, ${B.green}, ${B.teal})` }}
+                            >
+                                <Send size={15} /> Avisar que quiero retirar
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {flash?.success && (

@@ -9,6 +9,7 @@ use App\Http\Controllers\JobAttachmentController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobPhaseKioskController;
 use App\Http\Controllers\JobRemakeController;
+use App\Http\Controllers\JobRequestController;
 use App\Http\Controllers\JobTeethController;
 use App\Http\Controllers\JobTypeController;
 use App\Http\Controllers\PatientController;
@@ -27,8 +28,12 @@ Route::middleware('module:laboratorio')->group(function () {
     Route::delete('jobs/{job}', [JobController::class, 'destroy'])->name('jobs.destroy')->middleware('permission:orders.delete');
     Route::get('jobs/{job}/ticket', [JobController::class, 'ticket'])->name('jobs.ticket')->middleware('permission:orders.view');
 
+    // Solicitudes de trabajo enviadas desde el portal del odontólogo
+    Route::get('job-requests', [JobRequestController::class, 'index'])->name('job-requests.index')->middleware('permission:orders.create');
+    Route::post('job-requests/{jobRequest}/reject', [JobRequestController::class, 'reject'])->name('job-requests.reject')->middleware('permission:orders.create');
+
     // Sub-recursos de Trabajos
-    Route::resource('job-attachments', JobAttachmentController::class)->middleware('permission:orders.edit');
+    Route::resource('job-attachments', JobAttachmentController::class)->only(['index', 'store', 'destroy'])->middleware('permission:orders.edit');
     Route::resource('job-teeths', JobTeethController::class)->middleware('permission:orders.edit');
     Route::resource('job-types', JobTypeController::class)->middleware('permission:orders.edit');
     Route::resource('job-remakes', JobRemakeController::class)->middleware('permission:orders.edit');

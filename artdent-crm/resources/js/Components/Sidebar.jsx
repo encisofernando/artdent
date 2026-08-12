@@ -141,6 +141,7 @@ export default function Sidebar({ className = "" }) {
                     children: [
                         { title: "Nueva Orden", path: "/jobs/create", permission: 'orders.create' },
                         { title: "Consultar", path: "/jobs" },
+                        { title: "Solicitudes del Portal", path: "/job-requests", permission: 'orders.create' },
                         { title: "Rehacimientos", path: "/job-remakes", permission: 'orders.edit' },
                     ],
                 },

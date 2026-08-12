@@ -5,16 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Collaborator;
 use App\Models\Dentist;
 use App\Models\Job;
+use App\Models\JobAttachment;
 use App\Models\JobItem;
+use App\Models\JobRequest;
 use App\Models\JobTeeth;
 use App\Models\JobType;
 use App\Models\LabAccount;
 use App\Models\LabAccountMove;
 use App\Models\Patient;
 use App\Models\Tariff;
+use App\Support\TenantStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class JobController extends Controller
@@ -59,14 +63,34 @@ class JobController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $jobRequest = null;
+
+        if ($request->filled('job_request_id')) {
+            $found = JobRequest::where('id', $request->integer('job_request_id'))
+                ->where('status', JobRequest::STATUS_PENDING)
+                ->first();
+
+            if ($found) {
+                $jobRequest = [
+                    'id' => $found->id,
+                    'dentist_id' => $found->dentist_id,
+                    'patient_name' => $found->patient_name,
+                    'job_type_label' => $found->job_type_label,
+                    'due_date_requested' => $found->due_date_requested?->format('Y-m-d'),
+                    'notes' => $found->notes,
+                ];
+            }
+        }
+
         return Inertia::render('Job/Create', [
             'dentists' => Dentist::orderBy('name')->get(),
             'patients' => Patient::orderBy('name')->get(),
             'jobTypes' => $this->jobTypesForForm(),
             'collaborators' => Collaborator::where('is_active', true)->orderBy('name')->get(),
             'tariffs' => Tariff::orderBy('name')->get(),
+            'jobRequest' => $jobRequest,
         ]);
     }
 
@@ -99,6 +123,8 @@ class JobController extends Controller
             'teeth' => 'nullable|array',
             'teeth.*.tooth' => 'required_with:teeth|string|max:10',
             'teeth.*.note' => 'nullable|string|max:191',
+
+            'job_request_id' => 'nullable|exists:job_requests,id',
         ]);
 
         if (! $this->hasJobTypesTable()) {
@@ -174,11 +200,55 @@ class JobController extends Controller
             $this->initializePhasesForJob($job);
 
             $this->chargeAccountIfNeeded($job);
+
+            if (! empty($data['job_request_id'])) {
+                $this->linkJobRequest($job, (int) $data['job_request_id']);
+            }
         });
 
         return redirect()
             ->route('jobs.index')
             ->with('success', 'Trabajo registrado correctamente');
+    }
+
+    /**
+     * Vincula un Job recién creado a la solicitud del portal que lo originó:
+     * copia los adjuntos ya subidos por el odontólogo a job_attachments (el
+     * Job real, no la solicitud) y marca la solicitud como aprobada.
+     */
+    protected function linkJobRequest(Job $job, int $jobRequestId): void
+    {
+        $jobRequest = JobRequest::with('attachments')->find($jobRequestId);
+
+        if (! $jobRequest || $jobRequest->company_id !== $job->company_id) {
+            return;
+        }
+
+        foreach ($jobRequest->attachments as $attachment) {
+            $sourcePath = TenantStorageUrl::relativePath($attachment->url);
+            $destPath = 'job-attachments/'.$job->id.'/'.basename($sourcePath);
+
+            if (Storage::disk('public')->exists($sourcePath)) {
+                Storage::disk('public')->copy($sourcePath, $destPath);
+            }
+
+            JobAttachment::create([
+                'job_id' => $job->id,
+                'user_id' => null,
+                'filename' => $attachment->filename,
+                'url' => TenantStorageUrl::publicUrl($destPath),
+                'mime_type' => $attachment->mime_type,
+                'size_bytes' => $attachment->size_bytes,
+                'note' => 'Subido por el odontólogo con la solicitud original.',
+            ]);
+        }
+
+        $jobRequest->update([
+            'status' => JobRequest::STATUS_APPROVED,
+            'job_id' => $job->id,
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
     }
 
     protected function generateJobNumber(int $companyId): string
@@ -283,7 +353,7 @@ class JobController extends Controller
     {
         $relations = ['company', 'dentist', 'patient', 'job_items.tariff.phases', 'job_teeths', 'collaborators',
             'phaseProgress.tariffPhase', 'phaseProgress.collaborator', 'phaseProgress.ticket',
-            'phaseProgress.phaseCollaborators.collaborator', 'receivedBy.employee'];
+            'phaseProgress.phaseCollaborators.collaborator', 'receivedBy.employee', 'job_attachments'];
 
         if ($this->hasJobTypesTable()) {
             $relations[] = 'job_type';
