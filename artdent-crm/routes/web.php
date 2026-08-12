@@ -17,6 +17,79 @@ if (! config('crm.portal_only')) {
 Route::get('/print-manager/download/{platform?}', [\App\Http\Controllers\PrintManagerDownloadController::class, 'download'])
     ->name('print-manager.download');
 
+// Manifest PWA — dinámico en vez de archivo estático en public/ porque
+// panel.artdent.com.ar (portal_only) y pos.artdent.com.ar comparten el mismo
+// codebase pero necesitan un manifest distinto (start_url distinto, nombre
+// distinto). Un archivo estático se desincroniza en cada deploy; una ruta no.
+Route::get('/manifest.webmanifest', function () {
+    if (config('crm.portal_only')) {
+        return response()->json([
+            'id' => '/',
+            'name' => 'Portal de Odontólogos — ArtDent',
+            'short_name' => 'Portal ArtDent',
+            'description' => 'Consultá tus trabajos, pagos y el estado de tus órdenes con el laboratorio.',
+            'lang' => 'es-AR',
+            'dir' => 'ltr',
+            'start_url' => '/?source=pwa',
+            'scope' => '/',
+            'display' => 'standalone',
+            'display_override' => ['window-controls-overlay', 'standalone', 'browser'],
+            'background_color' => '#020617',
+            'theme_color' => '#0f172a',
+            'categories' => ['business', 'medical'],
+            'prefer_related_applications' => false,
+            'icons' => [
+                ['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => '/pwa/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ],
+        ]);
+    }
+
+    return response()->json([
+        'id' => '/dashboard',
+        'name' => 'ArtCode CRM',
+        'short_name' => 'ArtCode CRM',
+        'description' => 'Gestión comercial, laboratorio, e-commerce y finanzas de ArtCode en una experiencia instalable.',
+        'lang' => 'es-AR',
+        'dir' => 'ltr',
+        'start_url' => '/dashboard?source=pwa',
+        'scope' => '/',
+        'display' => 'standalone',
+        'display_override' => ['window-controls-overlay', 'standalone', 'browser'],
+        'background_color' => '#020617',
+        'theme_color' => '#0f172a',
+        'categories' => ['business', 'medical', 'productivity'],
+        'prefer_related_applications' => false,
+        'icons' => [
+            ['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => '/pwa/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+        ],
+        'shortcuts' => [
+            [
+                'name' => 'Panel General',
+                'short_name' => 'Dashboard',
+                'description' => 'Abrí el panel general del CRM',
+                'url' => '/dashboard?source=pwa-shortcut',
+                'icons' => [['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']],
+            ],
+            [
+                'name' => 'Nueva Venta',
+                'short_name' => 'Ventas',
+                'description' => 'Creá una nueva venta desde la app instalada',
+                'url' => '/sales/create?source=pwa-shortcut',
+                'icons' => [['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']],
+            ],
+            [
+                'name' => 'Órdenes',
+                'short_name' => 'Órdenes',
+                'description' => 'Consultá trabajos y órdenes del laboratorio',
+                'url' => '/jobs?source=pwa-shortcut',
+                'icons' => [['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']],
+            ],
+        ],
+    ]);
+})->name('manifest');
+
 // ── Fallback para archivos de storage cuando el symlink no existe ─────────────
 // Si el symlink public/storage existe y el servidor sirve el archivo estático,
 // esta ruta nunca se ejecuta. Sólo actúa cuando el archivo no se resuelve
