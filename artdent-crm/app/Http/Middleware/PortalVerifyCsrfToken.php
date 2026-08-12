@@ -9,8 +9,9 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Symfony\Component\HttpFoundation\Cookie;
 
 /**
- * Igual que VerifyCsrfToken, pero con cookie/header propios en vez de los
- * nombres estándar "XSRF-TOKEN"/"X-XSRF-TOKEN".
+ * Igual que VerifyCsrfToken, pero en panel.artdent.com.ar (portal_only) usa
+ * cookie/header propios en vez de los nombres estándar
+ * "XSRF-TOKEN"/"X-XSRF-TOKEN".
  *
  * pos.artdent.com.ar tiene SESSION_DOMAIN=.artdent.com.ar (wildcard) — su
  * cookie XSRF-TOKEN le llega también a panel.artdent.com.ar (subdominio
@@ -19,7 +20,13 @@ use Symfony\Component\HttpFoundation\Cookie;
  * y axios/Inertia puede leer la equivocada al armar el header — eso
  * producía 419 intermitentes en panel según cuál de las dos se leyera en
  * cada request. Con un nombre propio la ambigüedad desaparece del todo.
- * Solo se activa en panel.artdent.com.ar (ver bootstrap/app.php).
+ *
+ * Este middleware reemplaza a ValidateCsrfToken en TODO el grupo "web"
+ * (pos.artdent.com.ar incluido) porque config('crm.portal_only') todavía no
+ * está disponible cuando bootstrap/app.php arma los middlewares — la
+ * decisión se toma acá adentro, en tiempo de request, cuando config() ya
+ * funciona. Con portal_only=false (pos.artdent.com.ar) delega 100% al
+ * comportamiento estándar heredado, sin ningún cambio de conducta.
  */
 class PortalVerifyCsrfToken extends VerifyCsrfToken
 {
@@ -29,6 +36,10 @@ class PortalVerifyCsrfToken extends VerifyCsrfToken
 
     protected function getTokenFromRequest($request)
     {
+        if (! config('crm.portal_only')) {
+            return parent::getTokenFromRequest($request);
+        }
+
         $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
 
         if (! $token && $header = $request->header(self::HEADER_NAME)) {
@@ -44,6 +55,10 @@ class PortalVerifyCsrfToken extends VerifyCsrfToken
 
     protected function newCookie($request, $config)
     {
+        if (! config('crm.portal_only')) {
+            return parent::newCookie($request, $config);
+        }
+
         return new Cookie(
             self::COOKIE_NAME,
             $request->session()->token(),
@@ -60,6 +75,10 @@ class PortalVerifyCsrfToken extends VerifyCsrfToken
 
     public static function serialized()
     {
+        if (! config('crm.portal_only')) {
+            return parent::serialized();
+        }
+
         return EncryptCookies::serialized(self::COOKIE_NAME);
     }
 }
