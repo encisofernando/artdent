@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\CrmInteraction;
 use App\Models\CrmNotification;
 use App\Models\Dentist;
+use App\Models\Job;
+use App\Models\JobPhaseProgress;
 use App\Models\LabAccount;
 use App\Models\LabAccountMove;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -79,6 +81,67 @@ class DentistPortalController extends Controller
             'account' => ['balance' => (float) $account->balance],
             'recentMoves' => $recentMoves,
         ]);
+    }
+
+    public function showJob(Request $request, Job $job): Response
+    {
+        $dentist = $this->currentDentist($request);
+
+        abort_unless($job->dentist_id === $dentist->id, 404);
+
+        $job->load(['job_items.tariff', 'phaseProgress.tariffPhase', 'job_attachments']);
+
+        $phases = $job->phaseProgress
+            ->sortBy(fn ($p) => $p->tariffPhase?->sort_order ?? 0)
+            ->values()
+            ->map(fn ($p) => [
+                'label' => $p->tariffPhase?->name ?? 'Fase',
+                'status' => $p->status,
+                'time' => $this->phaseTime($p),
+            ]);
+
+        return Inertia::render('DentistPortal/JobShow', [
+            'job' => [
+                'id' => $job->id,
+                'number' => $job->job_number,
+                'patient' => $job->patient?->name,
+                'job_type' => $job->job_items->pluck('description')->filter()->join(', ') ?: null,
+                'shade' => $job->shade,
+                'status' => $job->status,
+                'status_label' => self::STATUS_LABELS[$job->status] ?? $job->status,
+                'due_date' => $job->due_date ? Carbon::parse($job->due_date)->format('d/m/Y') : null,
+            ],
+            'phases' => $phases,
+            'attachments' => $job->job_attachments->map(fn ($a) => [
+                'id' => $a->id,
+                'filename' => $a->filename,
+                'url' => $a->url,
+                'mime_type' => $a->mime_type,
+                'size_label' => $this->fileSizeLabel($a->size_bytes),
+            ]),
+        ]);
+    }
+
+    private function phaseTime(JobPhaseProgress $phase): ?string
+    {
+        $timestamp = match ($phase->status) {
+            JobPhaseProgress::STATUS_COMPLETED => $phase->completed_at,
+            JobPhaseProgress::STATUS_IN_PROGRESS, JobPhaseProgress::STATUS_PRUEBA => $phase->started_at,
+            default => null,
+        };
+
+        return $timestamp?->format('d/m · H:i');
+    }
+
+    private function fileSizeLabel(?int $bytes): ?string
+    {
+        if (! $bytes) {
+            return null;
+        }
+
+        return $bytes >= 1_000_000
+            ? number_format($bytes / 1_000_000, 1).' MB'
+            : number_format($bytes / 1000, 0).' KB';
     }
 
     public function requestPickup(Request $request): RedirectResponse

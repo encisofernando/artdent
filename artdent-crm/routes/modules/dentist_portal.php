@@ -23,6 +23,7 @@ Route::prefix($dentistPortalPrefix)->name('dentist-portal.')->group(function () 
 // Rutas protegidas con la sesión del odontólogo
 Route::prefix($dentistPortalPrefix)->name('dentist-portal.')->middleware(['web', 'tenant.session', 'dentist.portal.auth'])->group(function () {
     Route::get('/', [DentistPortalController::class, 'show'])->name('show');
+    Route::get('jobs/{job}', [DentistPortalController::class, 'showJob'])->name('jobs.show');
     Route::post('request-pickup', [DentistPortalController::class, 'requestPickup'])->name('request-pickup');
     Route::get('moves/{move}/pdf', [DentistPortalController::class, 'movePdf'])->name('move-pdf');
 });

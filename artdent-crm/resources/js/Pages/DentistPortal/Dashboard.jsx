@@ -112,7 +112,11 @@ export default function Dashboard({ dentist, jobs, readyCount, account, recentMo
                         ) : (
                             <div className="divide-y divide-slate-800/20">
                                 {jobs.data.map((job) => (
-                                    <div key={job.id} className="p-4 flex items-center justify-between gap-3">
+                                    <div
+                                        key={job.id}
+                                        onClick={() => router.visit(route('dentist-portal.jobs.show', job.id))}
+                                        className="p-4 flex items-center justify-between gap-3 cursor-pointer transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40"
+                                    >
                                         <div className="min-w-0">
                                             <p className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                                 {job.number} {job.patient && <span className="font-normal">— {job.patient}</span>}
