@@ -153,6 +153,17 @@ export default function Dashboard({ dentist, jobs, readyCount, account, recentMo
 
                 {tab === 'account' && (
                     <div className={`${card} overflow-hidden`}>
+                        {account.balance > 0 && (
+                            <div className="p-4 border-b border-slate-800/20 flex justify-end">
+                                <Link
+                                    href={route('dentist-portal.account.report-payment.create')}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white"
+                                    style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
+                                >
+                                    Informar un pago
+                                </Link>
+                            </div>
+                        )}
                         {recentMoves.data.length === 0 ? (
                             <p className={`p-8 text-center text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Todavía no hay movimientos.</p>
                         ) : (

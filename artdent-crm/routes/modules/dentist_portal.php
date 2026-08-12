@@ -3,6 +3,7 @@
 use App\Http\Controllers\DentistPortalAuthController;
 use App\Http\Controllers\DentistPortalController;
 use App\Http\Controllers\DentistPortalOrderController;
+use App\Http\Controllers\DentistPortalPaymentReportController;
 use Illuminate\Support\Facades\Route;
 
 // ── Portal del Odontólogo (autenticación independiente por email + código de un solo uso) ──
@@ -27,6 +28,8 @@ Route::prefix($dentistPortalPrefix)->name('dentist-portal.')->middleware(['web',
     Route::get('jobs/{job}', [DentistPortalController::class, 'showJob'])->name('jobs.show');
     Route::get('orders/new', [DentistPortalOrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [DentistPortalOrderController::class, 'store'])->name('orders.store');
+    Route::get('account/report-payment', [DentistPortalPaymentReportController::class, 'create'])->name('account.report-payment.create');
+    Route::post('account/report-payment', [DentistPortalPaymentReportController::class, 'store'])->name('account.report-payment.store');
     Route::post('request-pickup', [DentistPortalController::class, 'requestPickup'])->name('request-pickup');
     Route::get('moves/{move}/pdf', [DentistPortalController::class, 'movePdf'])->name('move-pdf');
 });

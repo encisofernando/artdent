@@ -12,6 +12,7 @@ use App\Http\Controllers\JobRemakeController;
 use App\Http\Controllers\JobRequestController;
 use App\Http\Controllers\JobTeethController;
 use App\Http\Controllers\JobTypeController;
+use App\Http\Controllers\LabAccountPaymentReportController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PhaseTemplateController;
 use App\Http\Controllers\TariffController;
@@ -31,6 +32,11 @@ Route::middleware('module:laboratorio')->group(function () {
     // Solicitudes de trabajo enviadas desde el portal del odontólogo
     Route::get('job-requests', [JobRequestController::class, 'index'])->name('job-requests.index')->middleware('permission:orders.create');
     Route::post('job-requests/{jobRequest}/reject', [JobRequestController::class, 'reject'])->name('job-requests.reject')->middleware('permission:orders.create');
+
+    // Comprobantes de pago informados desde el portal del odontólogo
+    Route::get('lab-account-payment-reports', [LabAccountPaymentReportController::class, 'index'])->name('lab-account-payment-reports.index')->middleware('permission:orders.edit');
+    Route::post('lab-account-payment-reports/{labAccountPaymentReport}/approve', [LabAccountPaymentReportController::class, 'approve'])->name('lab-account-payment-reports.approve')->middleware('permission:orders.edit');
+    Route::post('lab-account-payment-reports/{labAccountPaymentReport}/reject', [LabAccountPaymentReportController::class, 'reject'])->name('lab-account-payment-reports.reject')->middleware('permission:orders.edit');
 
     // Sub-recursos de Trabajos
     Route::resource('job-attachments', JobAttachmentController::class)->only(['index', 'store', 'destroy'])->middleware('permission:orders.edit');

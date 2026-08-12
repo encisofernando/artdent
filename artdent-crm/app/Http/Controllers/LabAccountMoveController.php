@@ -6,6 +6,7 @@ use App\Models\Dentist;
 use App\Models\LabAccount;
 use App\Models\LabAccountMove;
 use App\Models\PaymentMethod;
+use App\Services\LabAccountPaymentService;
 use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -176,33 +177,13 @@ class LabAccountMoveController extends Controller
             ->where('company_id', $companyId)
             ->firstOrFail();
 
-        DB::transaction(function () use ($validated, $dentist) {
-
-            $account = LabAccount::lockForUpdate()->firstOrCreate(
-                ['dentist_id' => $dentist->id],
-                ['balance' => 0]
-            );
-
-            $move = new LabAccountMove([
-                'lab_account_id' => $account->id,
-                'user_id' => auth()->id(),
-                'type' => LabAccountMove::TYPE_PAYMENT,
-                'amount' => $validated['amount'],
-                'description' => $validated['description'],
-                'payment_method_id' => $validated['payment_method_id'],
-                'move_date' => $validated['move_date'],
-            ]);
-
-            $newBalance = $account->balance + $move->signed_amount;
-
-            $move->balance_after = $newBalance;
-
-            $move->save();
-
-            $account->update([
-                'balance' => $newBalance,
-            ]);
-        });
+        app(LabAccountPaymentService::class)->registerPayment(
+            dentist: $dentist,
+            amount: $validated['amount'],
+            paymentMethodId: $validated['payment_method_id'],
+            description: $validated['description'],
+            moveDate: $validated['move_date'],
+        );
 
         return redirect()
             ->route('lab-account-moves.index')

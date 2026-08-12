@@ -154,6 +154,7 @@ export default function Sidebar({ className = "" }) {
                         { title: "Rutas de Entrega", path: "/dentist-delivery-routes", permission: 'customers.edit', module: 'laboratorio' },
                         { title: "Remitos de Entrega", path: "/remitos", permission: 'orders.edit', module: 'laboratorio' },
                         { title: "Cuentas Corrientes", path: "/lab-account-moves", permission: 'orders.edit', module: 'laboratorio' },
+                        { title: "Comprobantes de Pago", path: "/lab-account-payment-reports", permission: 'orders.edit', module: 'laboratorio' },
                         { title: "Ingresos y Egresos", path: "/lab-finance", permission: 'orders.view', module: 'laboratorio' },
                     ],
                 },
