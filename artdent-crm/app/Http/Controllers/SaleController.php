@@ -803,13 +803,13 @@ class SaleController extends Controller
         $method = strtolower($method);
         $aliases = match ($method) {
             'cash' => ['cash', 'efectivo'],
-            'debit' => ['debit', 'debito', 'débito'],
-            'credit' => ['credit', 'credito', 'crédito'],
+            'debit' => ['debit', 'debito', 'débito', 'card_debit'],
+            'credit' => ['credit', 'credito', 'crédito', 'card_credit'],
             'transfer' => ['transfer', 'transferencia'],
             default => [$method],
         };
 
-        return PaymentMethod::query()
+        $resolved = PaymentMethod::query()
             ->where('is_active', true)
             ->where(function ($query) use ($aliases) {
                 foreach ($aliases as $alias) {
@@ -818,6 +818,20 @@ class SaleController extends Controller
                 }
             })
             ->first();
+
+        if (! $resolved) {
+            // Falla silenciosa históricamente: la venta se guardaba con
+            // payment_method_id=null sin ningún rastro, lo que rompía el
+            // agrupado por medio de pago y el efectivo esperado del cierre
+            // de caja (ver CashSessionController::buildReport). Al menos
+            // queda en el log para poder auditar qué tenant/medio falló.
+            \Log::warning('resolveSalePaymentMethod: no se encontró un payment_method activo', [
+                'method' => $method,
+                'company_id' => CompanyContext::id(),
+            ]);
+        }
+
+        return $resolved;
     }
 
     /**

@@ -99,7 +99,7 @@ Route::prefix('proveedores')->name('proveedores.')->group(function () {
 });
 
 Route::resource('taxs', TaxController::class);
-Route::resource('payment-methods', PaymentMethodController::class);
+Route::resource('payment-methods', PaymentMethodController::class)->except(['create', 'show', 'edit'])->middleware('permission:settings.edit');
 
 Route::resource('invoices', InvoiceController::class);
 Route::resource('invoice-types', InvoiceTypeController::class);
