@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\LabAccountMercadoPagoController;
+use App\Http\Controllers\Api\NavePosPaymentController;
 use App\Http\Controllers\DentistPortalAuthController;
 use App\Http\Controllers\DentistPortalController;
 use App\Http\Controllers\DentistPortalOrderController;
@@ -30,6 +32,10 @@ Route::prefix($dentistPortalPrefix)->name('dentist-portal.')->middleware(['web',
     Route::post('orders', [DentistPortalOrderController::class, 'store'])->name('orders.store');
     Route::get('account/report-payment', [DentistPortalPaymentReportController::class, 'create'])->name('account.report-payment.create');
     Route::post('account/report-payment', [DentistPortalPaymentReportController::class, 'store'])->name('account.report-payment.store');
+    Route::get('account/checkout', [DentistPortalController::class, 'showCheckout'])->name('account.checkout');
+    Route::post('account/nave-charge', [NavePosPaymentController::class, 'createForLabAccount'])->name('account.nave-charge');
+    Route::post('account/mp-preference', [LabAccountMercadoPagoController::class, 'createPreference'])->name('account.mp-preference');
+    Route::get('nave-charge-intents/{intent}/status', [NavePosPaymentController::class, 'statusForLabAccount'])->name('nave-charge-intents.status');
     Route::post('request-pickup', [DentistPortalController::class, 'requestPickup'])->name('request-pickup');
     Route::get('moves/{move}/pdf', [DentistPortalController::class, 'movePdf'])->name('move-pdf');
 });

@@ -29,6 +29,7 @@ export default function QrPaymentModal({
     amount,
     onApproved,
     onClose,
+    statusRouteName = 'nave-charge-intents.status',
 }) {
     const { isDark } = useTheme();
     const { props: pageProps } = usePage();
@@ -53,7 +54,7 @@ export default function QrPaymentModal({
     // que el pago se confirmó.
     const checkStatus = useCallback(async () => {
         try {
-            const res = await fetch(route('nave-charge-intents.status', intentId));
+            const res = await fetch(route(statusRouteName, intentId));
             if (!res.ok) return;
             const data = await res.json();
             if (data.sale) setResolvedSale(data.sale);
@@ -63,7 +64,7 @@ export default function QrPaymentModal({
         } catch {
             // silencioso — vuelve a intentar en el próximo tick
         }
-    }, [intentId]);
+    }, [intentId, statusRouteName]);
 
     useEffect(() => {
         if (status !== 'pending') return;

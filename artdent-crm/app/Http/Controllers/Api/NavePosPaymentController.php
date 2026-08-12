@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ResolvesCurrentDentist;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateAfipInvoiceJob;
 use App\Models\Customer;
+use App\Models\LabAccount;
 use App\Models\NaveChargeIntent;
 use App\Models\Sale;
 use App\Services\CustomerAccountPaymentService;
 use App\Services\CustomerAccountSaleAllocator;
+use App\Services\LabAccountPaymentService;
 use App\Services\NaveService;
 use App\Services\SalePaymentService;
 use App\Support\AfipReceiptKeyMap;
@@ -31,6 +34,8 @@ use Illuminate\Support\Str;
  */
 class NavePosPaymentController extends Controller
 {
+    use ResolvesCurrentDentist;
+
     public function __construct(private readonly NaveService $nave) {}
 
     public function createForSale(Request $request, Sale $sale, CustomerAccountSaleAllocator $allocator): JsonResponse
@@ -92,6 +97,40 @@ class NavePosPaymentController extends Controller
     }
 
     /**
+     * Arma el QR/link para que el odontólogo pague su saldo deudor de cuenta
+     * corriente desde su propio portal — mismo patrón que
+     * createForCustomerAccount() pero resolviendo el dentista desde la
+     * sesión del portal (session('dentist_id')) en vez de un route-model-
+     * binding {customer}, que exige sesión de staff.
+     */
+    public function createForLabAccount(Request $request): JsonResponse
+    {
+        $dentist = $this->currentDentist($request);
+        $account = LabAccount::firstOrCreate(['dentist_id' => $dentist->id], ['balance' => 0]);
+
+        if ($account->balance <= 0) {
+            return response()->json(['message' => 'No tenés saldo pendiente para pagar.'], 422);
+        }
+
+        $validated = $request->validate([
+            'type' => ['required', 'in:static_qr,payment_link'],
+        ]);
+
+        $amount = (float) $account->balance;
+        $description = "Pago cuenta corriente — {$dentist->name}";
+
+        return $this->createIntent(
+            payableType: NaveChargeIntent::PAYABLE_LAB_ACCOUNT,
+            payableId: $dentist->id,
+            type: $validated['type'],
+            amount: $amount,
+            products: [['name' => $description, 'quantity' => 1, 'unit_price' => $amount]],
+            description: $description,
+            companyId: $dentist->company_id,
+        );
+    }
+
+    /**
      * Estado del intent, consultado por el frontend cada ~10s mientras el
      * modal de QR está abierto. No confía ciegamente en el webhook: si el
      * intent sigue 'pending' acá, también consulta el estado real contra
@@ -107,6 +146,28 @@ class NavePosPaymentController extends Controller
             abort(404);
         }
 
+        return $this->resolveStatus($intent);
+    }
+
+    /**
+     * Igual que status(), pero para el portal del odontólogo: no hay sesión
+     * de staff (CompanyContext::id() no sirve acá), así que la pertenencia
+     * se valida contra el dentista de la sesión del portal en vez de la
+     * company activa.
+     */
+    public function statusForLabAccount(Request $request, NaveChargeIntent $intent): JsonResponse
+    {
+        $dentist = $this->currentDentist($request);
+
+        if ($intent->payable_type !== NaveChargeIntent::PAYABLE_LAB_ACCOUNT || (int) $intent->payable_id !== $dentist->id) {
+            abort(404);
+        }
+
+        return $this->resolveStatus($intent);
+    }
+
+    private function resolveStatus(NaveChargeIntent $intent): JsonResponse
+    {
         if ($intent->status === NaveChargeIntent::STATUS_PENDING && $intent->payment_request_id) {
             $this->reconcileFromNave($intent);
             $intent->refresh();
@@ -280,6 +341,22 @@ class NavePosPaymentController extends Controller
             return $sale->id;
         }
 
+        if ($intent->payable_type === NaveChargeIntent::PAYABLE_LAB_ACCOUNT) {
+            $dentist = \App\Models\Dentist::find($intent->payable_id);
+            if (! $dentist) {
+                return null;
+            }
+
+            app(LabAccountPaymentService::class)->registerPayment(
+                dentist: $dentist,
+                amount: $intent->amount,
+                paymentMethodId: null,
+                description: $intent->description,
+            );
+
+            return null;
+        }
+
         $customer = Customer::find($intent->payable_id);
         if (! $customer) {
             return null;
@@ -342,6 +419,7 @@ class NavePosPaymentController extends Controller
         array $products,
         string $description,
         array $metadata = [],
+        ?int $companyId = null,
     ): JsonResponse {
         $posId = $type === NaveChargeIntent::TYPE_STATIC_QR
             ? $this->nave->posIdQr()
@@ -352,7 +430,7 @@ class NavePosPaymentController extends Controller
         }
 
         $intent = NaveChargeIntent::create([
-            'company_id' => CompanyContext::id(),
+            'company_id' => $companyId ?? CompanyContext::id(),
             'payable_type' => $payableType,
             'payable_id' => $payableId,
             'nave_payment_type' => $type,

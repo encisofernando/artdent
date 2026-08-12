@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesCurrentDentist;
 use App\Models\CrmNotification;
-use App\Models\Dentist;
 use App\Models\JobRequest;
 use App\Models\JobRequestAttachment;
 use App\Support\TenantStorageUrl;
@@ -14,6 +14,8 @@ use Inertia\Response;
 
 class DentistPortalOrderController extends Controller
 {
+    use ResolvesCurrentDentist;
+
     public function create(): Response
     {
         return Inertia::render('DentistPortal/NewOrder');
@@ -63,12 +65,5 @@ class DentistPortalOrderController extends Controller
         ]);
 
         return redirect()->route('dentist-portal.show')->with('success', 'Enviamos tu solicitud al laboratorio. Te va a contactar cuando la revise.');
-    }
-
-    private function currentDentist(Request $request): Dentist
-    {
-        return Dentist::where('id', $request->session()->get('dentist_id'))
-            ->where('is_active', true)
-            ->firstOrFail();
     }
 }

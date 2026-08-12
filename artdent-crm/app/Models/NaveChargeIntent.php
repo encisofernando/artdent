@@ -10,6 +10,8 @@ class NaveChargeIntent extends Model
 
     public const PAYABLE_CUSTOMER_ACCOUNT = 'customer_account';
 
+    public const PAYABLE_LAB_ACCOUNT = 'lab_account';
+
     public const TYPE_STATIC_QR = 'static_qr';
 
     public const TYPE_PAYMENT_LINK = 'payment_link';

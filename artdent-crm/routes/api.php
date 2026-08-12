@@ -9,6 +9,7 @@
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\LabAccountMercadoPagoController;
 use App\Http\Controllers\Api\LoyaltyApiController;
 use App\Http\Controllers\Api\NaveInstallmentRateApiController;
 use App\Http\Controllers\Api\NavePaymentController;
@@ -119,6 +120,12 @@ Route::prefix('payment')->name('api.payment.')->group(function (): void {
     // Cobro presencial/remoto (QR físico + link de pago) desde el POS y
     // cuentas corrientes — distinto del checkout online de arriba.
     Route::post('nave/pos/webhook', [NavePosPaymentController::class, 'webhook'])->name('nave.pos.webhook');
+
+    // Checkout Pro de Mercado Pago para que el odontólogo pague su cuenta
+    // corriente desde el portal — la creación de la preferencia vive en
+    // routes/modules/dentist_portal.php (necesita la sesión del portal),
+    // pero el webhook es público (Mercado Pago lo llama server-to-server).
+    Route::post('mp/lab-account/webhook', [LabAccountMercadoPagoController::class, 'webhook'])->name('mp.lab-account.webhook');
 });
 
 /*

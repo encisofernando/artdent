@@ -95,7 +95,24 @@ export default function Dashboard({ dentist, jobs, readyCount, account, recentMo
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <StatCard icon={Package} label="Trabajos" value={jobs.total} accent={B.blue} isDark={isDark} />
                     <StatCard icon={PackageCheck} label="Listos para retirar" value={readyCount} accent={B.green} isDark={isDark} />
-                    <StatCard icon={Wallet} label="Saldo cuenta corriente" value={fmt(account.balance)} accent={account.balance > 0 ? B.red : B.green} isDark={isDark} />
+                    <div className={`rounded-2xl border p-4 flex items-center gap-3 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${account.balance > 0 ? B.red : B.green}1a` }}>
+                            <Wallet size={20} style={{ color: account.balance > 0 ? B.red : B.green }} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Saldo cuenta corriente</p>
+                            <p className={`text-lg font-extrabold truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{fmt(account.balance)}</p>
+                        </div>
+                        {account.balance > 0 && (
+                            <Link
+                                href={route('dentist-portal.account.checkout')}
+                                className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg text-white"
+                                style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}
+                            >
+                                Pagar ahora
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 <div className={`flex items-center p-1 gap-1 rounded-xl border w-fit ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>

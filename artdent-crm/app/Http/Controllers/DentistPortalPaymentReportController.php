@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesCurrentDentist;
 use App\Models\CrmNotification;
-use App\Models\Dentist;
 use App\Models\LabAccount;
 use App\Models\LabAccountPaymentReport;
 use App\Models\PaymentMethod;
@@ -15,6 +15,8 @@ use Inertia\Response;
 
 class DentistPortalPaymentReportController extends Controller
 {
+    use ResolvesCurrentDentist;
+
     public function create(Request $request): Response
     {
         $dentist = $this->currentDentist($request);
@@ -64,12 +66,5 @@ class DentistPortalPaymentReportController extends Controller
         ]);
 
         return redirect()->route('dentist-portal.show')->with('success', 'Recibimos tu comprobante. Lo vamos a revisar y acreditar en tu cuenta.');
-    }
-
-    private function currentDentist(Request $request): Dentist
-    {
-        return Dentist::where('id', $request->session()->get('dentist_id'))
-            ->where('is_active', true)
-            ->firstOrFail();
     }
 }

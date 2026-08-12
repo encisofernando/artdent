@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesCurrentDentist;
 use App\Models\CrmInteraction;
 use App\Models\CrmNotification;
-use App\Models\Dentist;
 use App\Models\Job;
 use App\Models\JobPhaseProgress;
 use App\Models\LabAccount;
@@ -18,6 +18,8 @@ use Inertia\Response;
 
 class DentistPortalController extends Controller
 {
+    use ResolvesCurrentDentist;
+
     private const STATUS_LABELS = [
         'received' => 'Recibido',
         'in_progress' => 'En proceso',
@@ -144,6 +146,16 @@ class DentistPortalController extends Controller
             : number_format($bytes / 1000, 0).' KB';
     }
 
+    public function showCheckout(Request $request): Response
+    {
+        $dentist = $this->currentDentist($request);
+        $account = LabAccount::firstOrCreate(['dentist_id' => $dentist->id], ['balance' => 0]);
+
+        return Inertia::render('DentistPortal/Checkout', [
+            'balance' => (float) $account->balance,
+        ]);
+    }
+
     public function requestPickup(Request $request): RedirectResponse
     {
         $dentist = $this->currentDentist($request);
@@ -190,12 +202,5 @@ class DentistPortalController extends Controller
         ])->setPaper('a4', 'portrait');
 
         return $pdf->stream('comprobante-'.$move->id.'.pdf');
-    }
-
-    private function currentDentist(Request $request): Dentist
-    {
-        return Dentist::where('id', $request->session()->get('dentist_id'))
-            ->where('is_active', true)
-            ->firstOrFail();
     }
 }
