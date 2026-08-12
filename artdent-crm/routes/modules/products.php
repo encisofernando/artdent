@@ -1,12 +1,9 @@
 <?php
 
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\ProductAttributeController;
-use App\Http\Controllers\ProductAttributeValueController;
 use App\Http\Controllers\ProductBarcodeController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
-use App\Http\Controllers\ProductVariantController;
 use App\Http\Controllers\UsdExchangeRateController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,7 +43,4 @@ Route::put('categorys/{category}', [CategoryController::class, 'update'])->name(
 Route::delete('categorys/{category}', [CategoryController::class, 'destroy'])->name('categorys.destroy')->middleware('permission:products.delete');
 
 // Sub-recursos (simplificados con el mismo permiso de productos por ahora)
-Route::resource('product-attributes', ProductAttributeController::class)->middleware('permission:products.edit');
-Route::resource('product-attribute-values', ProductAttributeValueController::class)->middleware('permission:products.edit');
 Route::resource('product-images', ProductImageController::class)->middleware('permission:products.edit');
-Route::resource('product-variants', ProductVariantController::class)->middleware('permission:products.edit');

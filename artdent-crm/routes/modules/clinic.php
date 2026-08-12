@@ -5,14 +5,10 @@ use App\Http\Controllers\CrmInteractionController;
 use App\Http\Controllers\DeliveryNoteController;
 use App\Http\Controllers\DentistController;
 use App\Http\Controllers\DentistDeliveryRouteController;
-use App\Http\Controllers\DentistTariffPriceController;
 use App\Http\Controllers\JobAttachmentController;
-use App\Http\Controllers\JobCollaboratorController;
 use App\Http\Controllers\JobController;
-use App\Http\Controllers\JobItemController;
 use App\Http\Controllers\JobPhaseKioskController;
 use App\Http\Controllers\JobRemakeController;
-use App\Http\Controllers\JobStatusHistoryController;
 use App\Http\Controllers\JobTeethController;
 use App\Http\Controllers\JobTypeController;
 use App\Http\Controllers\PatientController;
@@ -33,9 +29,6 @@ Route::middleware('module:laboratorio')->group(function () {
 
     // Sub-recursos de Trabajos
     Route::resource('job-attachments', JobAttachmentController::class)->middleware('permission:orders.edit');
-    Route::resource('job-collaborators', JobCollaboratorController::class)->middleware('permission:orders.edit');
-    Route::resource('job-items', JobItemController::class)->middleware('permission:orders.edit');
-    Route::resource('job-status-historys', JobStatusHistoryController::class)->middleware('permission:orders.view');
     Route::resource('job-teeths', JobTeethController::class)->middleware('permission:orders.edit');
     Route::resource('job-types', JobTypeController::class)->middleware('permission:orders.edit');
     Route::resource('job-remakes', JobRemakeController::class)->middleware('permission:orders.edit');
@@ -47,7 +40,6 @@ Route::middleware('module:laboratorio')->group(function () {
 
     // Dentistas y Clientes
     Route::resource('dentists', DentistController::class)->middleware('permission:customers.view');
-    Route::resource('dentist-tariff-prices', DentistTariffPriceController::class)->middleware('permission:customers.edit');
     Route::resource('dentist-delivery-routes', DentistDeliveryRouteController::class)->middleware('permission:customers.edit');
 
     // Remitos de entrega (comprobante no fiscal que acompaña la entrega de trabajos al odontólogo)

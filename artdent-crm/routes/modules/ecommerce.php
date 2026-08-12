@@ -3,14 +3,11 @@
 use App\Http\Controllers\Api\NavePosPaymentController;
 use App\Http\Controllers\ClientesController;
 use App\Http\Controllers\CouponController;
-use App\Http\Controllers\CouponUsageController;
 use App\Http\Controllers\CrmClientController;
 use App\Http\Controllers\CustomerAccountController;
-use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerLoyaltyController;
 use App\Http\Controllers\EcommerceOrderController;
-use App\Http\Controllers\EcommerceOrderItemController;
 use App\Http\Controllers\EcommercePaymentConfigController;
 use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\NewsletterSubscriberController;
@@ -20,7 +17,6 @@ use App\Http\Controllers\ShippingCarrierConfigController;
 use App\Http\Controllers\ShippingMotoCompanyController;
 use App\Http\Controllers\ShippingPickupPointController;
 use App\Http\Controllers\SidebarBannerController;
-use App\Http\Controllers\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 // Clientes
@@ -41,7 +37,6 @@ Route::middleware('module:clientes')->group(function () {
     Route::post('customers/{customer}/account/send-statement', [CustomerAccountController::class, 'sendStatement'])->name('customers.account.send-statement')->middleware('permission:customers.view');
     Route::get('customers/{customer}/loyalty', [CustomerLoyaltyController::class, 'show'])->name('customers.loyalty')->middleware('permission:customers.view');
     Route::post('customers/{customer}/loyalty/adjustments', [CustomerLoyaltyController::class, 'storeAdjustment'])->name('customers.loyalty.adjustments')->middleware('permission:customers.edit');
-    Route::resource('customer-address', CustomerAddressController::class)->middleware('permission:customers.edit');
     Route::resource('clientes', ClientesController::class)->middleware('permission:customers.view');
     Route::resource('crm-clients', CrmClientController::class)->middleware('permission:customers.view');
 });
@@ -56,15 +51,12 @@ Route::middleware('module:ecommerce')->group(function () {
     Route::post('ecommerce-orders/{ecommerce_order}/andreani/shipment', [EcommerceOrderController::class, 'createAndreaniShipment'])->name('ecommerce-orders.andreani.shipment')->middleware('permission:ecommerce.edit');
     Route::get('ecommerce-orders/{ecommerce_order}/andreani/label', [EcommerceOrderController::class, 'downloadAndreaniLabel'])->name('ecommerce-orders.andreani.label')->middleware('permission:ecommerce.view');
     Route::post('ecommerce-orders/{ecommerce_order}/andreani/tracking', [EcommerceOrderController::class, 'refreshAndreaniTracking'])->name('ecommerce-orders.andreani.tracking')->middleware('permission:ecommerce.edit');
-    Route::resource('ecommerce-order-items', EcommerceOrderItemController::class)->middleware('permission:ecommerce.view');
 
     // Cupones y Ofertas
     Route::resource('coupons', CouponController::class)->middleware('permission:ecommerce.edit');
-    Route::resource('coupon-usages', CouponUsageController::class)->middleware('permission:ecommerce.view');
     Route::resource('offers', OfferController::class)->except(['show'])->middleware('permission:ecommerce.edit');
 
     // Marketing y Social
-    Route::resource('wishlists', WishlistController::class)->middleware('permission:ecommerce.view');
     Route::resource('reviews', ReviewController::class)->middleware('permission:ecommerce.view');
     Route::resource('sidebar-banners', SidebarBannerController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('permission:ecommerce.edit');
     Route::resource('hero-slides', HeroSlideController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('permission:ecommerce.edit');

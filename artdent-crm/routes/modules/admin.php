@@ -5,22 +5,17 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CashRegisterSettingsController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\InvoiceItemController;
 use App\Http\Controllers\InvoiceTypeController;
 use App\Http\Controllers\LoyaltyRewardController;
 use App\Http\Controllers\LoyaltySettingsController;
 use App\Http\Controllers\NaveInstallmentRateSettingsController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\ShipmentController;
-use App\Http\Controllers\ShippingMethodController;
 use App\Http\Controllers\ShippingSettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaxController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\VariantAttributeValueController;
 use App\Http\Controllers\VendorAccountController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorPaymentController;
@@ -106,13 +101,7 @@ Route::prefix('proveedores')->name('proveedores.')->group(function () {
 Route::resource('taxs', TaxController::class);
 Route::resource('payment-methods', PaymentMethodController::class);
 
-Route::resource('shipping-methods', ShippingMethodController::class);
-Route::resource('shipments', ShipmentController::class);
-
-Route::resource('notifications', NotificationController::class);
-
 Route::resource('invoices', InvoiceController::class);
-Route::resource('invoice-items', InvoiceItemController::class);
 Route::resource('invoice-types', InvoiceTypeController::class);
 
 // ── AFIP / ARCA ─────────────────────────────────────────────────────────────
@@ -145,8 +134,6 @@ Route::prefix('padron')->name('padron.')->group(function () {
     Route::get('{cuit}', [PadronController::class, 'lookup'])->name('lookup');
     Route::delete('{cuit}/cache', [PadronController::class, 'invalidate'])->name('invalidate');
 });
-
-Route::resource('variant-attribute-values', VariantAttributeValueController::class);
 
 // Acceso Kiosk — IPs permitidas + Tokens API
 use App\Http\Controllers\KioskAccessController;
