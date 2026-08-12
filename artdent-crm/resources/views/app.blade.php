@@ -9,6 +9,7 @@
         <meta name="apple-mobile-web-app-title" content="ArtCode CRM">
         <meta name="theme-color" content="#0f172a">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="portal-only" content="{{ config('crm.portal_only') ? '1' : '0' }}">
         <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
         <link rel="icon" type="image/svg+xml" href="{{ asset('assets/artcode-icon-color.svg') }}">
         <link rel="shortcut icon" href="{{ asset('assets/artcode-icon-color.svg') }}">

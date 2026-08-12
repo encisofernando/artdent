@@ -28,6 +28,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'internal/isup/*',
         ]);
 
+        // panel.artdent.com.ar (portal_only) usa cookie/header CSRF con
+        // nombre propio en vez de "XSRF-TOKEN" — ver PortalVerifyCsrfToken
+        // para el porqué (colisión con la cookie wildcard de pos.artdent.com.ar).
+        if (config('crm.portal_only')) {
+            $middleware->web(replace: [
+                \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class => \App\Http\Middleware\PortalVerifyCsrfToken::class,
+            ]);
+        }
+
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
