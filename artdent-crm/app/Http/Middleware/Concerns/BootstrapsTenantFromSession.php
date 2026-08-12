@@ -15,6 +15,17 @@ trait BootstrapsTenantFromSession
             return;
         }
 
+        // Rutas como auth:customer (API stateful de e-commerce) sólo tienen
+        // sesión cuando Sanctum reconoce el Origin/Referer del request como
+        // "de confianza" (ver config/sanctum.php "stateful"). Un cliente sin
+        // ese header — o que no matchea la lista — nunca pasa por
+        // StartSession, y $request->session() explota con "Session store
+        // not set on request". Esta lógica es de tenant de STAFF (guard
+        // "web"); si no hay sesión, simplemente no hay nada que bootstrapear.
+        if (! $request->hasSession()) {
+            return;
+        }
+
         $tenantId = $request->session()->get('tenant_id');
 
         if (! $tenantId) {
