@@ -1,0 +1,67 @@
+;;
+;; Domain:     artcode.com.ar.
+;; Exported:   2026-07-15 15:12:21
+;;
+;; This file is intended for use for informational and archival
+;; purposes ONLY and MUST be edited before use on a production
+;; DNS server.  In particular, you must:
+;;   -- update the SOA record with the correct authoritative name server
+;;   -- update the SOA record with the contact e-mail address information
+;;   -- update the NS record(s) with the authoritative name servers for this domain.
+;;
+;; For further information, please consult the BIND documentation
+;; located on the following website:
+;;
+;; http://www.isc.org/
+;;
+;; And RFC 1035:
+;;
+;; http://www.ietf.org/rfc/rfc1035.txt
+;;
+;; Please note that we do NOT offer technical support for any use
+;; of this zone data, the BIND name server, or any other third-party
+;; DNS software.
+;;
+;; Use at your own risk.
+;; SOA Record
+artcode.com.ar	3600	IN	SOA	adele.ns.cloudflare.com. dns.cloudflare.com. 2053579494 10000 2400 604800 3600
+
+;; NS Records
+artcode.com.ar.	86400	IN	NS	adele.ns.cloudflare.com.
+artcode.com.ar.	86400	IN	NS	logan.ns.cloudflare.com.
+
+;; A Records
+app.artcode.com.ar.	1	IN	A	149.50.143.129 ; cf_tags=cf-proxied:true
+artcode.com.ar.	1	IN	A	149.50.143.129 ; cf_tags=cf-proxied:true
+mail.artcode.com.ar.	1	IN	A	149.50.143.129 ; cf_tags=cf-proxied:false
+pos.artcode.com.ar.	1	IN	A	149.50.143.129 ; cf_tags=cf-proxied:true
+
+;; AAAA Records
+app.artcode.com.ar.	1	IN	AAAA	2800:6c0:5::1152 ; cf_tags=cf-proxied:true
+artcode.com.ar.	1	IN	AAAA	2800:6c0:5::1152 ; cf_tags=cf-proxied:true
+mail.artcode.com.ar.	1	IN	AAAA	2800:6c0:5::1152 ; cf_tags=cf-proxied:false
+pos.artcode.com.ar.	1	IN	AAAA	2800:6c0:5::1152 ; cf_tags=cf-proxied:true
+
+;; CAA Records
+artcode.com.ar.	1	IN	CAA	0 issue "letsencrypt.org"
+
+;; CNAME Records
+autoconfig.artcode.com.ar.	1	IN	CNAME	mail.artcode.com.ar. ; cf_tags=cf-proxied:false
+autodiscover.artcode.com.ar.	1	IN	CNAME	mail.artcode.com.ar. ; cf_tags=cf-proxied:false
+caldav.artcode.com.ar.	1	IN	CNAME	mail.artcode.com.ar. ; cf_tags=cf-proxied:false
+carddav.artcode.com.ar.	1	IN	CNAME	mail.artcode.com.ar. ; cf_tags=cf-proxied:false
+imap.artcode.com.ar.	1	IN	CNAME	mail.artcode.com.ar. ; cf_tags=cf-proxied:false
+pop.artcode.com.ar.	1	IN	CNAME	mail.artcode.com.ar. ; cf_tags=cf-proxied:false
+smtp.artcode.com.ar.	1	IN	CNAME	mail.artcode.com.ar. ; cf_tags=cf-proxied:false
+www.app.artcode.com.ar.	1	IN	CNAME	app.artcode.com.ar. ; cf_tags=cf-proxied:true
+www.artcode.com.ar.	1	IN	CNAME	artcode.com.ar. ; cf_tags=cf-proxied:true
+www.pos.artcode.com.ar.	1	IN	CNAME	pos.artcode.com.ar. ; cf_tags=cf-proxied:true
+
+;; MX Records
+artcode.com.ar.	1	IN	MX	0 mail.artcode.com.ar.
+
+;; TXT Records
+artcode.com.ar.	1	IN	TXT	"v=spf1 a mx ip4:149.50.143.129 -all"
+_dmarc.artcode.com.ar.	1	IN	TXT	"v=DMARC1; p=quarantine; rua=mailto:dmarc@artcode.com.ar; adkim=s; aspf=s; fo=1; pct=100"
+mail._domainkey.artcode.com.ar.	1	IN	TXT	"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvg5TySGSLjBdaTbc7Lg6HG6axnIpVUyJqPIdxBxtWoCKLwiTYj6V05xZaqe+JIgwDolBtlV5rUlFF6uOkMpeTxMTn8PwqEowovRKvHtPTt9KAngPU+mAc5h70Iy4HpICBo4JyImkNnVMS64MRNw4/gg10kqLcT/PAac4+/7Jz29f2pzgbp+pMhR1OkEDLOtu+" "XyvNWN0BNvJzgAc56wG4+nJkLzxVUdKXCf3ylcg64OUJT5PqM5SA2FhN2lCpRA0kVfoGheJkJheLQsBC1+Yk6bDBhhqeahZ/03rbSTwtXJuufDzBGeJAsQiEB84TpiyF7JR3COM5MZSE9AJy4jpkQIDAQAB"
+_smtp._tls.artcode.com.ar.	1	IN	TXT	"v=TLSRPTv1; rua=mailto:tls@artcode.com.ar"

@@ -58,6 +58,11 @@ artdent-android/android/local.properties
 /artdent_dev.sql
 /.codex
 /ArtDent*.pdf
+/token-panel.txt
+/config
+/artdent-panel/_extracted/
+/artdent.sql
+/9980248.pdf
 
 # --- Backups de .env con secretos reales (cualquier variante, no solo .env.backup) ---
 *.env.bak*
