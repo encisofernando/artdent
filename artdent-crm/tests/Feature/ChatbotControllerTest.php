@@ -6,7 +6,6 @@ use App\Models\ChatbotConversation;
 use App\Models\Company;
 use App\Models\User;
 use App\Services\ChatbotService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -15,7 +14,7 @@ use Tests\TestCase;
 
 class ChatbotControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use \Tests\Concerns\RefreshesTenantSchema;
 
     protected function setUp(): void
     {
@@ -23,6 +22,19 @@ class ChatbotControllerTest extends TestCase
 
         $this->withoutMiddleware();
         $this->ensureChatbotTables();
+    }
+
+    // 2 tests de acá abajo hacen Schema::dropIfExists() para simular
+    // "storage no listo" — en MySQL un DROP TABLE es DDL, no se revierte
+    // con la transacción de RefreshDatabase (autocommit), así que sin
+    // esto las tablas quedan borradas para el resto de la corrida y
+    // rompen otros archivos de test que asumen que existen (ej.
+    // PlanLimitServiceTest).
+    protected function tearDown(): void
+    {
+        $this->ensureChatbotTables();
+
+        parent::tearDown();
     }
 
     public function test_history_endpoint_returns_persisted_messages(): void
@@ -51,7 +63,7 @@ class ChatbotControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('messages.0.content', 'Hola Artie')
             ->assertJsonPath('messages.1.content', 'Hola, ¿cómo estás?')
-            ->assertJsonPath('meta.provider', 'openai')
+            ->assertJsonPath('meta.provider', 'claude')
             ->assertJsonPath('meta.model', 'gpt-4o-mini');
     }
 
@@ -74,7 +86,7 @@ class ChatbotControllerTest extends TestCase
                 ->andReturn('Ventas de hoy: $ 10.000');
             $mock->shouldReceive('getFrontendConfig')->andReturn([
                 'enabled' => true,
-                'provider' => 'openai',
+                'provider' => 'claude',
                 'model' => 'gpt-4o-mini',
                 'welcome_message' => 'Hola',
             ]);
@@ -155,7 +167,7 @@ class ChatbotControllerTest extends TestCase
         $this->mock(ChatbotService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getFrontendConfig')->once()->andReturn([
                 'enabled' => true,
-                'provider' => 'openai',
+                'provider' => 'claude',
                 'model' => 'gpt-4o-mini',
                 'welcome_message' => 'Hola',
             ]);
@@ -168,8 +180,16 @@ class ChatbotControllerTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonCount(0, 'messages')
-            ->assertJsonPath('meta.provider', 'openai')
+            ->assertJsonPath('meta.provider', 'claude')
             ->assertJsonPath('storage_ready', false);
+
+        // El DROP TABLE de arriba ya rompió la transacción de RefreshDatabase
+        // (DDL = commit implícito en MySQL) — sin este cleanup manual, este
+        // user/company quedan pegados para siempre y contaminan otros
+        // archivos de test que cuentan usuarios/empresas globalmente.
+        $company = $user->company;
+        $user->forceDelete();
+        $company->delete();
     }
 
     public function test_message_endpoint_can_reply_without_persistent_storage(): void
@@ -195,7 +215,7 @@ class ChatbotControllerTest extends TestCase
                 ->andReturn('Puedo responder aunque el historial no este listo.');
             $mock->shouldReceive('getFrontendConfig')->once()->andReturn([
                 'enabled' => true,
-                'provider' => 'openai',
+                'provider' => 'claude',
                 'model' => 'gpt-4o-mini',
                 'welcome_message' => 'Hola',
             ]);
@@ -210,9 +230,15 @@ class ChatbotControllerTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('message', 'Puedo responder aunque el historial no este listo.')
-            ->assertJsonPath('meta.provider', 'openai')
+            ->assertJsonPath('meta.provider', 'claude')
             ->assertJsonPath('storage_ready', false)
             ->assertJsonMissingPath('messages');
+
+        // Mismo motivo que en el test anterior: el DROP TABLE rompió la
+        // transacción, hay que limpiar a mano.
+        $company = $user->company;
+        $user->forceDelete();
+        $company->delete();
     }
 
     protected function createUserWithCompany(array $companyOverrides = []): User

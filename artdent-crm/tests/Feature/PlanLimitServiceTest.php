@@ -76,7 +76,10 @@ class PlanLimitServiceTest extends TestCase
     public function test_blocks_creating_a_product_beyond_the_plan_limit(): void
     {
         $this->usePlan(['max_products' => 1]);
-        Product::insert(['name' => 'Producto de prueba', 'price' => 100, 'created_at' => now(), 'updated_at' => now()]);
+        $company = $this->makeCompany();
+        // 'slug'/'company_id' son NOT NULL en el schema real (ya no en la
+        // tabla mínima de este test — products existía antes de correr esto).
+        Product::insert(['company_id' => $company->id, 'name' => 'Producto de prueba', 'slug' => 'producto-prueba-'.uniqid(), 'price' => 100, 'created_at' => now(), 'updated_at' => now()]);
 
         $this->expectException(PlanLimitExceededException::class);
 
@@ -86,7 +89,8 @@ class PlanLimitServiceTest extends TestCase
     public function test_blocks_recording_a_sale_beyond_the_monthly_plan_limit(): void
     {
         $this->usePlan(['max_sales_per_month' => 1]);
-        Sale::insert(['total' => 100, 'created_at' => now(), 'updated_at' => now()]);
+        $company = $this->makeCompany();
+        Sale::insert(['company_id' => $company->id, 'total' => 100, 'created_at' => now(), 'updated_at' => now()]);
 
         $this->expectException(PlanLimitExceededException::class);
 
@@ -96,7 +100,8 @@ class PlanLimitServiceTest extends TestCase
     public function test_blocks_sending_a_chat_message_beyond_the_monthly_plan_limit(): void
     {
         $this->usePlan(['max_chat_messages_per_month' => 1]);
-        ChatbotMessage::insert(['conversation_id' => 1, 'role' => 'user', 'content' => 'hola', 'created_at' => now(), 'updated_at' => now()]);
+        $conversationId = $this->makeChatbotConversation();
+        ChatbotMessage::insert(['conversation_id' => $conversationId, 'role' => 'user', 'content' => 'hola', 'created_at' => now(), 'updated_at' => now()]);
 
         $this->expectException(PlanLimitExceededException::class);
 
@@ -108,9 +113,10 @@ class PlanLimitServiceTest extends TestCase
         // max=2, pero sólo 1 mensaje de "user" (las 2 respuestas de "assistant"
         // no deben contar contra el límite) → no debería lanzar.
         $this->usePlan(['max_chat_messages_per_month' => 2]);
-        ChatbotMessage::insert(['conversation_id' => 1, 'role' => 'user', 'content' => 'hola', 'created_at' => now(), 'updated_at' => now()]);
-        ChatbotMessage::insert(['conversation_id' => 1, 'role' => 'assistant', 'content' => 'hola!', 'created_at' => now(), 'updated_at' => now()]);
-        ChatbotMessage::insert(['conversation_id' => 1, 'role' => 'assistant', 'content' => 'en qué te ayudo?', 'created_at' => now(), 'updated_at' => now()]);
+        $conversationId = $this->makeChatbotConversation();
+        ChatbotMessage::insert(['conversation_id' => $conversationId, 'role' => 'user', 'content' => 'hola', 'created_at' => now(), 'updated_at' => now()]);
+        ChatbotMessage::insert(['conversation_id' => $conversationId, 'role' => 'assistant', 'content' => 'hola!', 'created_at' => now(), 'updated_at' => now()]);
+        ChatbotMessage::insert(['conversation_id' => $conversationId, 'role' => 'assistant', 'content' => 'en qué te ayudo?', 'created_at' => now(), 'updated_at' => now()]);
 
         app(PlanLimitService::class)->assertCanSendChatMessage();
 
@@ -158,6 +164,18 @@ class PlanLimitServiceTest extends TestCase
         ]);
     }
 
+    protected function makeChatbotConversation(): int
+    {
+        $company = $this->makeCompany();
+        $user = $this->makeUser($company);
+
+        return \App\Models\ChatbotConversation::create([
+            'company_id' => $company->id,
+            'user_id' => $user->id,
+            'last_message_at' => now(),
+        ])->id;
+    }
+
     protected function ensureTables(): void
     {
         if (! Schema::hasTable('companies')) {
@@ -197,6 +215,28 @@ class PlanLimitServiceTest extends TestCase
                 $table->decimal('total', 12, 2)->default(0);
                 $table->timestamps();
                 $table->softDeletes();
+            });
+        }
+
+        // `plans` vive en la conexión 'central' (compartida con
+        // artdent-admin, otro codebase) — no tiene migración en este
+        // repo, así que hay que armarla acá igual que el resto.
+        if (! Schema::connection('central')->hasTable('plans')) {
+            Schema::connection('central')->create('plans', function (Blueprint $table): void {
+                $table->id();
+                $table->string('slug')->unique();
+                $table->string('name');
+                $table->decimal('price', 10, 2)->default(0);
+                $table->unsignedInteger('trial_days')->default(0);
+                $table->boolean('is_active')->default(true);
+                $table->boolean('is_public')->default(true);
+                $table->string('mp_plan_id')->nullable();
+                $table->unsignedInteger('max_users')->nullable();
+                $table->unsignedInteger('max_products')->nullable();
+                $table->unsignedInteger('max_sales_per_month')->nullable();
+                $table->unsignedInteger('max_chat_messages_per_month')->nullable();
+                $table->json('features')->nullable();
+                $table->timestamps();
             });
         }
 

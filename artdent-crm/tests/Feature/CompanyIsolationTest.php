@@ -113,6 +113,18 @@ class CompanyIsolationTest extends TestCase
      */
     protected function makeCompany(array $overrides = []): Company
     {
+        // Este test fuerza IDs fijos (1, 2, 3 — importa para el default
+        // de CompanyContext::DEFAULT_COMPANY_ID). Otro archivo de test
+        // (BroadcastingAuthTest) usa la misma convención sobre la misma
+        // DB real compartida — si su rollback no limpia a tiempo, choca.
+        // Defensivo: borrar cualquier residuo antes de insertar (usuarios
+        // primero — FK — y forceDelete porque User usa SoftDeletes, un
+        // soft-delete no libera la fila para el FK de companies).
+        if (isset($overrides['id'])) {
+            \App\Models\User::withTrashed()->where('company_id', $overrides['id'])->forceDelete();
+            Company::where('id', $overrides['id'])->delete();
+        }
+
         $company = new Company(['name' => 'Company '.uniqid()]);
 
         foreach ($overrides as $key => $value) {
