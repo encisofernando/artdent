@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
 class SyncPublicTokenRegistry extends Command
 {
     protected $signature = 'tenant:sync-public-tokens
-                            {--fresh : Truncate the registry before syncing}';
+                            {--fresh : Truncate the registry before syncing}
+                            {--tenants=* : Limit to specific tenant IDs (por credenciales de DB por hosting user)}';
 
     protected $description = 'Populate public_token_registry from all tenant databases (Invoice.public_token de presupuestos + Customer.portal_token)';
 
@@ -22,7 +23,8 @@ class SyncPublicTokenRegistry extends Command
             $this->info('Registry truncated.');
         }
 
-        $tenants = Tenant::all();
+        $tenantIds = $this->option('tenants');
+        $tenants = empty($tenantIds) ? Tenant::all() : Tenant::whereIn('id', $tenantIds)->get();
         $total = 0;
 
         foreach ($tenants as $tenant) {

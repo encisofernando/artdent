@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
 class SyncIsapiDeviceRegistry extends Command
 {
     protected $signature = 'tenant:sync-isapi-registry
-                            {--fresh : Truncate the registry before syncing}';
+                            {--fresh : Truncate the registry before syncing}
+                            {--tenants=* : Limit to specific tenant IDs (por credenciales de DB por hosting user)}';
 
     protected $description = 'Populate isapi_device_registry from all tenant databases (HikVisionDevice rows with connection_type != isup)';
 
@@ -22,7 +23,8 @@ class SyncIsapiDeviceRegistry extends Command
             $this->info('Registry truncated.');
         }
 
-        $tenants = Tenant::all();
+        $tenantIds = $this->option('tenants');
+        $tenants = empty($tenantIds) ? Tenant::all() : Tenant::whereIn('id', $tenantIds)->get();
         $total = 0;
 
         foreach ($tenants as $tenant) {
