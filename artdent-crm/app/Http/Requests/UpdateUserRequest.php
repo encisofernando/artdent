@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Support\UserTenantMapGuard;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +23,18 @@ class UpdateUserRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:191'],
-            'email' => ['required', 'email', 'max:191', Rule::unique('users', 'email')->ignore($userId)->whereNull('deleted_at')],
+            'email' => [
+                'required', 'email', 'max:191',
+                Rule::unique('users', 'email')->ignore($userId)->whereNull('deleted_at'),
+                // Mismo criterio que StoreUserRequest: bloquear acá evita
+                // llegar a UserObserver::updated() con un email que otro
+                // tenant ya reclamó (ver UserTenantMapGuard).
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (UserTenantMapGuard::claimedByOtherTenant((string) $value)) {
+                        $fail('Ya existe un usuario con ese correo electrónico.');
+                    }
+                },
+            ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'phone' => ['nullable', 'string', 'max:64', Rule::unique('users', 'phone')->ignore($userId)->whereNotNull('phone')],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],

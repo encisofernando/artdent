@@ -51,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'lab.network' => \App\Http\Middleware\RestrictToLabNetwork::class,
             'isup.internal' => \App\Http\Middleware\EnsureIsupInternalToken::class,
             'isup.tenant' => \App\Http\Middleware\InitializeTenancyByIsupAccount::class,
+            'tenant.public_token' => \App\Http\Middleware\InitializeTenancyByPublicToken::class,
             'colaborador.auth' => \App\Http\Middleware\ColaboradorAuth::class,
             'dentist.portal.auth' => \App\Http\Middleware\DentistPortalAuth::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

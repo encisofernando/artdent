@@ -210,11 +210,18 @@ Route::middleware(['tenant.session', 'auth'])->group(function () {
 
 });
 
-// Presupuesto público — sin autenticación (link compartible por WhatsApp)
-Route::get('/q/{token}', [\App\Http\Controllers\QuoteController::class, 'publicShow'])->name('quotes.public');
+// Presupuesto público — sin autenticación (link compartible por WhatsApp).
+// tenant.public_token: resuelve tenant contra el registro central antes de
+// tocar Invoice — sin esto, en multi-tenant la query cae en la conexión
+// default (no necesariamente la BD del tenant dueño del presupuesto).
+Route::get('/q/{token}', [\App\Http\Controllers\QuoteController::class, 'publicShow'])
+    ->middleware('tenant.public_token')
+    ->name('quotes.public');
 
 // Portal del cliente — sin autenticación, acceso por token único
-Route::get('/portal/{token}', [\App\Http\Controllers\CustomerPortalController::class, 'show'])->name('customer.portal');
+Route::get('/portal/{token}', [\App\Http\Controllers\CustomerPortalController::class, 'show'])
+    ->middleware('tenant.public_token')
+    ->name('customer.portal');
 
 // Portal de colaboradores — autenticación independiente por PIN
 require __DIR__.'/modules/colaborador_portal.php';

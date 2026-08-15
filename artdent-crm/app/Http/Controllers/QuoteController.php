@@ -9,6 +9,7 @@ use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Services\EmailTemplateService;
 use App\Support\CompanyContext;
+use App\Support\PublicTokenRegistrar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -128,6 +129,8 @@ class QuoteController extends Controller
                 'public_token' => Str::random(32),
                 'quote_number' => $quoteNumber,
             ]);
+
+            PublicTokenRegistrar::register($quote->public_token, 'quote');
 
             foreach ($request->items as $item) {
                 $taxRate = (float) ($item['tax_rate'] ?? 0);
