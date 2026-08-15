@@ -306,6 +306,7 @@ class SaleController extends Controller
                     ['customer_id' => $request->customer_id],
                     ['balance' => 0]
                 );
+                $account = CustomerAccount::where('id', $account->id)->lockForUpdate()->first();
                 $newBalance = $account->balance + $accountAmount;
                 $move = CustomerAccountMove::create([
                     'customer_account_id' => $account->id,
@@ -380,9 +381,16 @@ class SaleController extends Controller
                         ['product_id' => $productId, 'variant_id' => $variantId, 'warehouse_id' => $warehouse->id],
                         ['quantity' => 0]
                     );
+                    $stock = Stock::where('id', $stock->id)->lockForUpdate()->first();
 
                     $stockBefore = (float) $stock->quantity;
                     $stockAfter = $stockBefore - $qty;
+
+                    if ($stockAfter < 0) {
+                        throw ValidationException::withMessages([
+                            'items' => "Stock insuficiente para \"{$product->name}\". Disponible: {$stockBefore}.",
+                        ]);
+                    }
 
                     $stock->update(['quantity' => $stockAfter]);
 
@@ -673,6 +681,7 @@ class SaleController extends Controller
                             ['product_id' => $item->product_id, 'variant_id' => $cancelVariantId, 'warehouse_id' => $warehouse->id],
                             ['quantity' => 0]
                         );
+                        $stock = Stock::where('id', $stock->id)->lockForUpdate()->first();
 
                         $stockBefore = (float) $stock->quantity;
                         $stockAfter = $stockBefore + $item->quantity;

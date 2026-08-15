@@ -101,6 +101,7 @@ class VendorPaymentController extends Controller
                 ['vendor_id' => $validated['vendor_id']],
                 ['company_id' => $companyId, 'balance' => 0]
             );
+            $account = VendorAccount::where('id', $account->id)->lockForUpdate()->first();
 
             $newBalance = $account->balance - $validated['amount'];
             $account->balance = $newBalance;

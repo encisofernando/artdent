@@ -18,9 +18,11 @@ class InvoiceController extends Controller
         $query = Invoice::with('invoice_type');
 
         if ($search) {
-            $query->where('recipient_name', 'like', "%{$search}%")
-                ->orWhere('recipient_cuit', 'like', "%{$search}%")
-                ->orWhere('number', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('recipient_name', 'like', "%{$search}%")
+                    ->orWhere('recipient_cuit', 'like', "%{$search}%")
+                    ->orWhere('number', 'like', "%{$search}%");
+            });
         }
 
         if ($status !== 'all') {

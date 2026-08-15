@@ -19,9 +19,11 @@ class CustomerController extends Controller
         $query = \App\Models\Customer::query();
 
         if ($search) {
-            $query->where('name', 'like', "%{$search}%")
-                ->orWhere('dni', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('dni', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
         }
 
         $items = $query->paginate(15)->withQueryString();
