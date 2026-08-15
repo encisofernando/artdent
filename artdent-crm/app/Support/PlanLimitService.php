@@ -24,12 +24,18 @@ class PlanLimitService
 
     public function assertCanAddProduct(): void
     {
-        $this->assertUnder('productos', $this->modules->currentPlan()?->max_products, Product::count());
+        // withoutCompanyScope(): los límites de plan aplican a todo el
+        // tenant (modo owner), no a una sola empresa dentro de él —
+        // mismo criterio que User::count() arriba (User no tiene el
+        // scope de company en absoluto, ver App\Models\User).
+        $this->assertUnder('productos', $this->modules->currentPlan()?->max_products, Product::withoutCompanyScope()->count());
     }
 
     public function assertCanRecordSale(): void
     {
-        $count = Sale::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count();
+        $count = Sale::withoutCompanyScope()
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->count();
 
         $this->assertUnder('ventas de este mes', $this->modules->currentPlan()?->max_sales_per_month, $count);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class PayrollBookSubmission extends Model
 {
+    use BelongsToCompany;
+
     protected $casts = [
         'company_id' => 'int',
         'payroll_run_id' => 'int',

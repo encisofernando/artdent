@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DentistDeliveryRoute extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'dentist_delivery_routes';
 
     protected $casts = [

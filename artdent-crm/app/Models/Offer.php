@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class Offer extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
         'company_id',
         'name',

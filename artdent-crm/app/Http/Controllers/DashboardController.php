@@ -221,12 +221,15 @@ class DashboardController extends Controller
             return null;
         }
 
+        // withoutCompanyScope(): el uso de plan es por tenant completo
+        // (modo owner), no por una sola empresa — mismo criterio que
+        // App\Support\PlanLimitService, que es quien realmente lo aplica.
         $items = [
             ['label' => 'Usuarios', 'current' => User::count(), 'max' => $plan->max_users],
-            ['label' => 'Productos', 'current' => Product::count(), 'max' => $plan->max_products],
+            ['label' => 'Productos', 'current' => Product::withoutCompanyScope()->count(), 'max' => $plan->max_products],
             [
                 'label' => 'Ventas este mes',
-                'current' => Sale::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+                'current' => Sale::withoutCompanyScope()->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
                 'max' => $plan->max_sales_per_month,
             ],
         ];

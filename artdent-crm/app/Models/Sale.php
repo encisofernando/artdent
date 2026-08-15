@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -42,6 +43,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Sale extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'sales';
 
     protected $casts = [

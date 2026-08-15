@@ -6,13 +6,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Class IncomeRecord
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property string|null $scope
@@ -24,41 +25,41 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property Carbon $income_date
  * @property string|null $notes
  * @property Carbon|null $created_at
- * 
  * @property Company $company
- *
- * @package App\Models
  */
 class IncomeRecord extends Model
 {
-	protected $table = 'income_records';
-	public $timestamps = false;
+    use BelongsToCompany;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'expense_category_id' => 'int',
-		'user_id' => 'int',
-		'payment_method_id' => 'int',
-		'amount' => 'float',
-		'income_date' => 'datetime'
-	];
+    protected $table = 'income_records';
 
-	protected $fillable = [
-		'company_id',
-		'scope',
-		'expense_category_id',
-		'user_id',
-		'payment_method_id',
-		'description',
-		'amount',
-		'income_date',
-		'notes'
-	];
+    public $timestamps = false;
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    protected $casts = [
+        'company_id' => 'int',
+        'expense_category_id' => 'int',
+        'user_id' => 'int',
+        'payment_method_id' => 'int',
+        'amount' => 'float',
+        'income_date' => 'datetime',
+    ];
+
+    protected $fillable = [
+        'company_id',
+        'scope',
+        'expense_category_id',
+        'user_id',
+        'payment_method_id',
+        'description',
+        'amount',
+        'income_date',
+        'notes',
+    ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function paymentMethod(): BelongsTo
     {

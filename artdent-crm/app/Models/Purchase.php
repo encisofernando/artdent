@@ -6,13 +6,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class Purchase
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property int $vendor_id
@@ -27,72 +28,71 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon|null $purchased_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * 
  * @property Company $company
  * @property Vendor $vendor
  * @property Warehouse|null $warehouse
  * @property Collection|PurchaseItem[] $purchase_items
- *
- * @package App\Models
  */
 class Purchase extends Model
 {
-	protected $table = 'purchases';
+    use BelongsToCompany;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'vendor_id' => 'int',
-		'user_id' => 'int',
-		'warehouse_id' => 'int',
-		'subtotal' => 'float',
-		'tax_amount' => 'float',
-		'total' => 'float',
-		'purchased_at' => 'date',
-		'cae_due_date' => 'date',
-		'due_date' => 'date',
-	];
+    protected $table = 'purchases';
 
-	protected $fillable = [
-		'company_id',
-		'vendor_id',
-		'user_id',
-		'warehouse_id',
-		'reference_no',
-		'invoice_type',
-		'invoice_number',
-		'cae',
-		'cae_due_date',
-		'status',
-		'subtotal',
-		'tax_amount',
-		'total',
-		'notes',
-		'purchased_at',
-		'due_date',
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'vendor_id' => 'int',
+        'user_id' => 'int',
+        'warehouse_id' => 'int',
+        'subtotal' => 'float',
+        'tax_amount' => 'float',
+        'total' => 'float',
+        'purchased_at' => 'date',
+        'cae_due_date' => 'date',
+        'due_date' => 'date',
+    ];
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    protected $fillable = [
+        'company_id',
+        'vendor_id',
+        'user_id',
+        'warehouse_id',
+        'reference_no',
+        'invoice_type',
+        'invoice_number',
+        'cae',
+        'cae_due_date',
+        'status',
+        'subtotal',
+        'tax_amount',
+        'total',
+        'notes',
+        'purchased_at',
+        'due_date',
+    ];
 
-	public function vendor()
-	{
-		return $this->belongsTo(Vendor::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function warehouse()
-	{
-		return $this->belongsTo(Warehouse::class);
-	}
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
 
-	public function purchase_items()
-	{
-		return $this->hasMany(PurchaseItem::class);
-	}
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
 
-	public function user()
-	{
-		return $this->belongsTo(User::class);
-	}
+    public function purchase_items()
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

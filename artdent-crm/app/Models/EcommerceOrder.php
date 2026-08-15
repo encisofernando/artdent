@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -44,6 +45,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class EcommerceOrder extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'ecommerce_orders';
 
     protected $casts = [

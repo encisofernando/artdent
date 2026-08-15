@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class JobRequest extends Model
 {
+    use BelongsToCompany;
+
     const STATUS_PENDING = 'pending';
 
     const STATUS_APPROVED = 'approved';

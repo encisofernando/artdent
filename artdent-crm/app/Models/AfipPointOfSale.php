@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class AfipPointOfSale extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'afip_points_of_sale';
 
     protected $casts = [

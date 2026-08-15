@@ -125,25 +125,46 @@ class VendorPaymentController extends Controller
 
     public function destroy(VendorPayment $vendorPayment): \Illuminate\Http\RedirectResponse
     {
+        abort_if($vendorPayment->reversed_at, 422, 'Este pago ya fue revertido.');
+
         DB::transaction(function () use ($vendorPayment) {
-            $account = VendorAccount::where('vendor_id', $vendorPayment->vendor_id)->first();
+            $account = VendorAccount::where('vendor_id', $vendorPayment->vendor_id)
+                ->lockForUpdate()
+                ->first();
+
             if ($account) {
-                $move = $account->moves()
+                $originalMove = $account->moves()
                     ->where('reference_type', VendorPayment::class)
                     ->where('reference_id', $vendorPayment->id)
                     ->first();
 
-                if ($move) {
-                    $account->balance += $move->amount;
+                if ($originalMove) {
+                    // Reversión, no delete: el movimiento original queda
+                    // intacto como registro de auditoría inmutable (mismo
+                    // criterio que stock_movements), se agrega uno nuevo
+                    // que cancela su efecto.
+                    $newBalance = $account->balance + $originalMove->amount;
+                    $account->balance = $newBalance;
                     $account->save();
-                    $move->delete();
+
+                    VendorAccountMove::create([
+                        'vendor_account_id' => $account->id,
+                        'user_id' => auth()->id(),
+                        'type' => 'payment_reversal',
+                        'amount' => -$originalMove->amount,
+                        'balance_after' => $newBalance,
+                        'description' => 'Reversión de pago #'.$vendorPayment->id,
+                        'reference_type' => VendorPayment::class,
+                        'reference_id' => $vendorPayment->id,
+                        'move_date' => now()->toDateString(),
+                    ]);
                 }
             }
 
-            $vendorPayment->delete();
+            $vendorPayment->update(['reversed_at' => now()]);
         });
 
         return redirect()->route('proveedores.pagos.index')
-            ->with('success', 'Pago eliminado exitosamente.');
+            ->with('success', 'Pago revertido exitosamente.');
     }
 }

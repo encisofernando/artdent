@@ -23,10 +23,16 @@ class JobAttachmentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
+            // 'exists:jobs,id' consulta la tabla directo, sin pasar por el
+            // scope de Job (Eloquent) — no alcanza para confirmar que el
+            // job es de la empresa activa. findOrFail() unas líneas abajo
+            // sí lo hace.
             'job_id' => ['required', 'integer', 'exists:jobs,id'],
             'file' => ['required', 'file', 'max:51200', 'extensions:stl,ply,jpg,jpeg,png,webp,pdf'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
+
+        Job::findOrFail($data['job_id']);
 
         $file = $request->file('file');
         $path = $file->store('job-attachments/'.$data['job_id'], 'public');
@@ -46,6 +52,11 @@ class JobAttachmentController extends Controller
 
     public function destroy(JobAttachment $jobAttachment): JsonResponse
     {
+        // JobAttachment no tiene company_id propio (cuelga de Job) — el
+        // route-model-binding no lo filtra solo, hay que confirmar el
+        // padre a mano.
+        Job::findOrFail($jobAttachment->job_id);
+
         Storage::disk('public')->delete(TenantStorageUrl::relativePath($jobAttachment->url));
         $jobAttachment->delete();
 

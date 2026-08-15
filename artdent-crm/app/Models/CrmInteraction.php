@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -29,6 +30,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CrmInteraction extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'crm_interactions';
 
     protected $casts = [
