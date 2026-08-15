@@ -190,7 +190,6 @@ Route::middleware(['tenant.session', 'auth'])->group(function () {
     require __DIR__.'/modules/hikvision.php';
 
     require __DIR__.'/modules/admin.php';
-    require __DIR__.'/modules/user.php';
 
     require __DIR__.'/modules/profile.php';
 

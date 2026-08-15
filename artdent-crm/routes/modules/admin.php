@@ -41,11 +41,11 @@ Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs
 
 // Suscripción SaaS
 Route::get('subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
-Route::post('subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
-Route::post('subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+Route::post('subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout')->middleware('permission:settings.edit');
+Route::post('subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel')->middleware('permission:settings.edit');
 
 Route::get('settings', [CompanyController::class, 'edit'])->name('settings.edit');
-Route::put('settings', [CompanyController::class, 'update'])->name('settings.update');
+Route::put('settings', [CompanyController::class, 'update'])->name('settings.update')->middleware('permission:settings.edit');
 
 // Tasas de cuotas Nave (usadas por el simulador de Ventas, ver routes/modules/sales.php)
 Route::get('nave-installment-rates', [NaveInstallmentRateSettingsController::class, 'index'])->name('nave-installment-rates.index')->middleware('permission:settings.edit');
@@ -68,27 +68,29 @@ Route::post('companies/active', [CompanyController::class, 'setActive'])->name('
 Route::post('branchs/active', [BranchController::class, 'setActive'])->name('branchs.set-active');
 Route::resource('branchs', BranchController::class)->except(['create', 'show', 'edit'])->middleware('permission:settings.edit');
 
-Route::resource('vendors', VendorController::class);
+// vendors/proveedores/* reusan permission:purchases.* — el mismo permiso
+// que ya gatea la sección "Proveedores" del sidebar (Sidebar.jsx:90-92).
+Route::resource('vendors', VendorController::class)->middleware('permission:purchases.view');
 
 // Gestión de Proveedores
-Route::prefix('proveedores')->name('proveedores.')->group(function () {
+Route::prefix('proveedores')->name('proveedores.')->middleware('permission:purchases.view')->group(function () {
     // Comprobantes (Facturas / Remitos de compra)
     Route::prefix('comprobantes')->name('comprobantes.')->group(function () {
         Route::get('/', [PurchaseController::class, 'index'])->name('index');
-        Route::get('/create', [PurchaseController::class, 'create'])->name('create');
-        Route::post('/', [PurchaseController::class, 'store'])->name('store');
+        Route::get('/create', [PurchaseController::class, 'create'])->name('create')->middleware('permission:purchases.create');
+        Route::post('/', [PurchaseController::class, 'store'])->name('store')->middleware('permission:purchases.create');
         Route::get('/{purchase}', [PurchaseController::class, 'show'])->name('show');
-        Route::get('/{purchase}/edit', [PurchaseController::class, 'edit'])->name('edit');
-        Route::put('/{purchase}', [PurchaseController::class, 'update'])->name('update');
-        Route::delete('/{purchase}', [PurchaseController::class, 'destroy'])->name('destroy');
+        Route::get('/{purchase}/edit', [PurchaseController::class, 'edit'])->name('edit')->middleware('permission:purchases.edit');
+        Route::put('/{purchase}', [PurchaseController::class, 'update'])->name('update')->middleware('permission:purchases.edit');
+        Route::delete('/{purchase}', [PurchaseController::class, 'destroy'])->name('destroy')->middleware('permission:purchases.delete');
     });
 
     // Pagos a proveedores
     Route::prefix('pagos')->name('pagos.')->group(function () {
         Route::get('/', [VendorPaymentController::class, 'index'])->name('index');
-        Route::get('/create', [VendorPaymentController::class, 'create'])->name('create');
-        Route::post('/', [VendorPaymentController::class, 'store'])->name('store');
-        Route::delete('/{vendorPayment}', [VendorPaymentController::class, 'destroy'])->name('destroy');
+        Route::get('/create', [VendorPaymentController::class, 'create'])->name('create')->middleware('permission:purchases.create');
+        Route::post('/', [VendorPaymentController::class, 'store'])->name('store')->middleware('permission:purchases.create');
+        Route::delete('/{vendorPayment}', [VendorPaymentController::class, 'destroy'])->name('destroy')->middleware('permission:purchases.delete');
     });
 
     // Cuentas corrientes
@@ -98,33 +100,36 @@ Route::prefix('proveedores')->name('proveedores.')->group(function () {
     });
 });
 
-Route::resource('taxs', TaxController::class);
+// taxs/invoice-types: catálogos de configuración, mismo criterio que
+// payment-methods (línea de abajo). invoices: documentos financieros
+// reales, mismo permiso que ya gatea la sección "Contable" del sidebar.
+Route::resource('taxs', TaxController::class)->middleware('permission:settings.edit');
 Route::resource('payment-methods', PaymentMethodController::class)->except(['create', 'show', 'edit'])->middleware('permission:settings.edit');
 
-Route::resource('invoices', InvoiceController::class);
-Route::resource('invoice-types', InvoiceTypeController::class);
+Route::resource('invoices', InvoiceController::class)->middleware('permission:accounting.view');
+Route::resource('invoice-types', InvoiceTypeController::class)->middleware('permission:settings.edit');
 
 // ── AFIP / ARCA ─────────────────────────────────────────────────────────────
 use App\Http\Controllers\AfipController;
 
 Route::prefix('afip')->name('afip.')->group(function () {
     // Genera comprobante de forma síncrona (respuesta inmediata)
-    Route::post('sales/{sale}/generate', [AfipController::class, 'generate'])->name('sales.generate');
+    Route::post('sales/{sale}/generate', [AfipController::class, 'generate'])->name('sales.generate')->middleware('permission:accounting.create');
     // Despacha job en cola (asíncrono)
-    Route::post('sales/{sale}/dispatch', [AfipController::class, 'dispatch'])->name('sales.dispatch');
+    Route::post('sales/{sale}/dispatch', [AfipController::class, 'dispatch'])->name('sales.dispatch')->middleware('permission:accounting.create');
     // Sube certificado o clave privada de la empresa
-    Route::post('upload-cert', [AfipController::class, 'uploadCert'])->name('upload-cert');
+    Route::post('upload-cert', [AfipController::class, 'uploadCert'])->name('upload-cert')->middleware('permission:settings.edit');
     // Guarda configuración AFIP (entorno, auto-invoice, punto de venta)
-    Route::post('settings', [AfipController::class, 'saveSettings'])->name('settings');
+    Route::post('settings', [AfipController::class, 'saveSettings'])->name('settings')->middleware('permission:settings.edit');
     // Valida archivos y consulta último comprobante autorizado
-    Route::get('test-connection', [AfipController::class, 'testConnection'])->name('test-connection');
+    Route::get('test-connection', [AfipController::class, 'testConnection'])->name('test-connection')->middleware('permission:settings.edit');
     // Genera clave privada RSA + CSR para registrar en portal ARCA
-    Route::post('generate-csr', [AfipController::class, 'generateCsr'])->name('generate-csr');
+    Route::post('generate-csr', [AfipController::class, 'generateCsr'])->name('generate-csr')->middleware('permission:settings.edit');
     // Puntos de venta (multi-PV por empresa)
-    Route::get('points-of-sale', [AfipController::class, 'pointsOfSale'])->name('points-of-sale.index');
-    Route::post('points-of-sale', [AfipController::class, 'storePointOfSale'])->name('points-of-sale.store');
-    Route::put('points-of-sale/{pointOfSale}', [AfipController::class, 'updatePointOfSale'])->name('points-of-sale.update');
-    Route::delete('points-of-sale/{pointOfSale}', [AfipController::class, 'destroyPointOfSale'])->name('points-of-sale.destroy');
+    Route::get('points-of-sale', [AfipController::class, 'pointsOfSale'])->name('points-of-sale.index')->middleware('permission:settings.edit');
+    Route::post('points-of-sale', [AfipController::class, 'storePointOfSale'])->name('points-of-sale.store')->middleware('permission:settings.edit');
+    Route::put('points-of-sale/{pointOfSale}', [AfipController::class, 'updatePointOfSale'])->name('points-of-sale.update')->middleware('permission:settings.edit');
+    Route::delete('points-of-sale/{pointOfSale}', [AfipController::class, 'destroyPointOfSale'])->name('points-of-sale.destroy')->middleware('permission:settings.edit');
 });
 
 // ── Padrón ARCA ──────────────────────────────────────────────────────────────
@@ -132,14 +137,14 @@ use App\Http\Controllers\PadronController;
 
 Route::prefix('padron')->name('padron.')->group(function () {
     Route::get('{cuit}', [PadronController::class, 'lookup'])->name('lookup');
-    Route::delete('{cuit}/cache', [PadronController::class, 'invalidate'])->name('invalidate');
+    Route::delete('{cuit}/cache', [PadronController::class, 'invalidate'])->name('invalidate')->middleware('permission:settings.edit');
 });
 
 // Acceso Kiosk — IPs permitidas + Tokens API
 use App\Http\Controllers\KioskAccessController;
 
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::middleware('module:laboratorio|rrhh')->group(function () {
+    Route::middleware(['module:laboratorio|rrhh', 'permission:settings.edit'])->group(function () {
         Route::get('kiosk-access', [KioskAccessController::class, 'index'])->name('kiosk-access.index');
         Route::post('kiosk-access/ips', [KioskAccessController::class, 'storeIp'])->name('kiosk-access.ips.store');
         Route::patch('kiosk-access/ips/{ip}/toggle', [KioskAccessController::class, 'toggleIp'])->name('kiosk-access.ips.toggle');
@@ -151,7 +156,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('kiosk-access/device-tokens/{network}', [KioskAccessController::class, 'destroyDeviceToken'])->name('kiosk-access.device-tokens.destroy');
     });
 
-    // Crear symlink storage en producción
+    // Crear symlink storage en producción — antes cualquier usuario
+    // autenticado del tenant podía ejecutar un comando Artisan del
+    // servidor sin ningún permiso.
     Route::post('storage-link', function () {
         try {
             \Artisan::call('storage:link', ['--force' => true]);
@@ -161,5 +168,5 @@ Route::prefix('admin')->name('admin.')->group(function () {
         } catch (\Throwable $e) {
             return back()->with('error', 'Error al crear symlink: '.$e->getMessage());
         }
-    })->name('storage-link');
+    })->name('storage-link')->middleware('permission:settings.edit');
 });
