@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ['middleware' => ['web', 'tenant.session', 'auth']],
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // El grupo "api" no traía throttle propio (Laravel 12 no lo agrega
+        // por default salvo que se pida acá) — routes/api.php entero
+        // (checkout, login, webhooks de pago, etc.) quedaba sin límite de
+        // requests. El limiter "api" se define en AppServiceProvider::boot().
+        $middleware->throttleApi();
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
