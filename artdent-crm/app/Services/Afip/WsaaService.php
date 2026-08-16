@@ -28,7 +28,7 @@ class WsaaService
      */
     public function getAuth(string $cuit, string $certPath, string $keyPath, string $service = 'wsfe'): array
     {
-        $cacheKey = "afip_ta_{$this->environment}_{$cuit}_{$service}";
+        $cacheKey = $this->cacheKey($cuit, $service);
 
         if (Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
@@ -52,7 +52,22 @@ class WsaaService
      */
     public function invalidate(string $cuit, string $service = 'wsfe'): void
     {
-        Cache::forget("afip_ta_{$this->environment}_{$cuit}_{$service}");
+        Cache::forget($this->cacheKey($cuit, $service));
+    }
+
+    /**
+     * El CUIT ya scopea esto en la práctica (cada company tiene el suyo),
+     * pero se agrega tenant_id igual como defensa en profundidad — mismo
+     * criterio que el bug real ya confirmado una vez con el cache de
+     * permisos de Spatie (ver project_spatie_permission_cache_multitenant_bug
+     * en memoria): no depender de que un valor de negocio sea siempre único
+     * entre tenants para que el cache no se cruce.
+     */
+    private function cacheKey(string $cuit, string $service): string
+    {
+        $tenantId = function_exists('tenant') && tenancy()->initialized ? tenant('id') : 'no-tenant';
+
+        return "afip_ta_{$tenantId}_{$this->environment}_{$cuit}_{$service}";
     }
 
     // ─── Internals ────────────────────────────────────────────────────────────
