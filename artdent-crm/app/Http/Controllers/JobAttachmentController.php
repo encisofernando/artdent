@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Job;
 use App\Models\JobAttachment;
+use App\Rules\ScanOrDocumentFile;
 use App\Support\TenantStorageUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class JobAttachmentController extends Controller
             // job es de la empresa activa. findOrFail() unas líneas abajo
             // sí lo hace.
             'job_id' => ['required', 'integer', 'exists:jobs,id'],
-            'file' => ['required', 'file', 'max:51200', 'extensions:stl,ply,jpg,jpeg,png,webp,pdf'],
+            'file' => ['required', 'file', 'max:51200', new ScanOrDocumentFile],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
 

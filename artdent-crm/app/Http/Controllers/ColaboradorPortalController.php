@@ -10,6 +10,9 @@ use App\Models\JobStatusHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -34,13 +37,30 @@ class ColaboradorPortalController extends Controller
             'pin' => ['required', 'string'],
         ]);
 
+        // Un PIN de 4-6 dígitos tiene muchísima menos entropía que una
+        // contraseña — sin límite, es fuerza bruta trivial. Mismo criterio
+        // que LoginRequest (staff): 5 intentos por colaborador+IP.
+        $throttleKey = Str::transliterate('colaborador-login|'.$request->collaborator_id.'|'.$request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            throw ValidationException::withMessages([
+                'pin' => ["Demasiados intentos. Probá de nuevo en {$seconds} segundos."],
+            ]);
+        }
+
         $collaborator = Collaborator::where('id', $request->collaborator_id)
             ->where('is_active', true)
             ->first();
 
         if (! $collaborator || ! Hash::check($request->pin, $collaborator->pin)) {
+            RateLimiter::hit($throttleKey);
+
             return back()->withErrors(['pin' => 'PIN incorrecto.']);
         }
+
+        RateLimiter::clear($throttleKey);
 
         $request->session()->put('colaborador_id', $collaborator->id);
         $request->session()->put('colaborador_name', $collaborator->name);

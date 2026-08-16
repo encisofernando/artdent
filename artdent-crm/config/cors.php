@@ -21,6 +21,7 @@ return [
 
     'allowed_origins' => [
         'https://shop.artdent.com.ar',
+        'https://shop.artcode.com.ar',
         'http://localhost:5173',
         'http://localhost:8080',
         'https://localhost:8080',
@@ -28,10 +29,20 @@ return [
         'http://127.0.0.1:8080',
     ],
 
-    'allowed_origins_patterns' => [
+    // Túneles de desarrollo local (loca.lt/lhr.life) — con
+    // supports_credentials=true, dejar esto activo en producción permite
+    // que cualquiera con un túnel en cualquiera de los dos servicios haga
+    // requests cross-origin autenticados contra la API real. Sólo tiene
+    // sentido en local, donde de hecho se usan para probar webhooks.
+    // env() crudo, no app()->environment(): los archivos de config se
+    // cargan antes de que el binding 'env' del container exista todavía
+    // (LoadConfiguration corre antes que DetectEnvironment resuelto vía
+    // container) — app()->environment() acá tira "Class env does not
+    // exist" en cada boot, incluida cada request real.
+    'allowed_origins_patterns' => env('APP_ENV') === 'local' ? [
         '#^https://[a-z0-9]+\.lhr\.life$#i',
         '#^https://[a-z0-9]+\.loca\.lt$#i',
-    ],
+    ] : [],
 
     'allowed_headers' => ['*'],
 

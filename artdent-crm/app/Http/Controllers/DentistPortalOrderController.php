@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesCurrentDentist;
 use App\Models\CrmNotification;
 use App\Models\JobRequest;
 use App\Models\JobRequestAttachment;
+use App\Rules\ScanOrDocumentFile;
 use App\Support\TenantStorageUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class DentistPortalOrderController extends Controller
             'due_date_requested' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'files' => ['nullable', 'array', 'max:10'],
-            'files.*' => ['file', 'max:51200', 'extensions:stl,ply,jpg,jpeg,png,webp,pdf'],
+            'files.*' => ['file', 'max:51200', new ScanOrDocumentFile],
         ]);
 
         $jobRequest = JobRequest::create([
