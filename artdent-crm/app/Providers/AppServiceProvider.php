@@ -18,7 +18,9 @@ use App\Observers\NaveChargeIntentObserver;
 use App\Observers\TenantModuleCacheObserver;
 use App\Observers\UserObserver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -68,5 +70,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('webhooks', function (Request $request) {
             return Limit::perMinute(300)->by($request->ip());
         });
+
+        Event::listen(DiagnosingHealth::class, \App\Listeners\VerifyInfrastructureOnHealthCheck::class);
     }
 }
