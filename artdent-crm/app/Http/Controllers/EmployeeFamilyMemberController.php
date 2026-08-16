@@ -31,7 +31,10 @@ class EmployeeFamilyMemberController extends Controller
     public function update(Request $request, EmployeeFamilyMember $employeeFamilyMember): RedirectResponse
     {
         $companyId = CompanyContext::id();
-        abort_unless((int) $employeeFamilyMember->employee->company_id === $companyId, 404);
+        // Employee tiene BelongsToCompany: si el familiar quedó huérfano de un
+        // empleado de otra empresa, la relación devuelve null en vez de la fila
+        // ajena. ?-> evita un 500 (null->company_id) donde debería ser 404.
+        abort_unless((int) $employeeFamilyMember->employee?->company_id === $companyId, 404);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
@@ -49,7 +52,9 @@ class EmployeeFamilyMemberController extends Controller
     public function destroy(EmployeeFamilyMember $employeeFamilyMember): RedirectResponse
     {
         $companyId = CompanyContext::id();
-        abort_unless((int) $employeeFamilyMember->employee->company_id === $companyId, 404);
+        // Ver comentario en update(): employee->company_id puede ser null
+        // (Employee tiene BelongsToCompany) para un familiar cross-empresa.
+        abort_unless((int) $employeeFamilyMember->employee?->company_id === $companyId, 404);
 
         $employeeFamilyMember->delete();
 

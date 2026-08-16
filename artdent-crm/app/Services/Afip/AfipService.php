@@ -9,6 +9,7 @@ use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
 use App\Models\Sale;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -74,6 +75,21 @@ class AfipService
             ?? throw new RuntimeException("Tipo de comprobante inválido: {$receiptKey}");
 
         $pointSale = $this->resolvePointSale($company, $sale->branch_id);
+
+        // Sin este lock, dos ventas facturándose al mismo tiempo (mismo
+        // company + punto de venta + tipo de comprobante) podían pedir
+        // getLastNumber() y recibir el mismo valor antes de que cualquiera
+        // de las dos terminara de pedir el CAE — dos comprobantes con el
+        // mismo número. AFIP normalmente lo rechaza del lado del servidor,
+        // pero eso ya es un fallo real de facturación (y un reintento
+        // manual) que serializar acá evita del todo.
+        $lock = Cache::lock("afip-invoice:{$company->id}:{$pointSale}:{$cbteTipo}", 30);
+
+        return $lock->block(15, fn () => $this->requestCaeForSale($sale, $receiptKey, $company, $cbteTipo, $pointSale));
+    }
+
+    private function requestCaeForSale(Sale $sale, string $receiptKey, Company $company, int $cbteTipo, string $pointSale): Invoice
+    {
         $cuit = preg_replace('/\D/', '', $company->cuit);
 
         // 1 — Obtener token WSAA

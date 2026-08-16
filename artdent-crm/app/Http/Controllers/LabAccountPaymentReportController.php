@@ -72,6 +72,9 @@ class LabAccountPaymentReportController extends Controller
 
     private function authorizeCompany(LabAccountPaymentReport $report): void
     {
-        abort_unless($report->dentist->company_id === CompanyContext::id(), 404);
+        // Dentist tiene BelongsToCompany: si el informe apunta a un
+        // odontólogo de otra empresa, la relación devuelve null en vez de la
+        // fila ajena. ?-> evita un 500 (null->company_id) donde debería ser 404.
+        abort_unless($report->dentist?->company_id === CompanyContext::id(), 404);
     }
 }
