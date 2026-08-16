@@ -369,7 +369,10 @@ class HikVisionIsapiService
         $parsed = parse_url($webhookUrl);
         $host = $parsed['host'] ?? '';
         $port = $parsed['port'] ?? ($parsed['scheme'] === 'https' ? 443 : 80);
-        $path = $parsed['path'] ?? '/hikvision/webhook';
+        // El query string (?secret=...) va pegado al path — el campo "url"
+        // de HttpHostNotification acepta path+query tal cual, y sin esto se
+        // perdía el secret que subscribeEvents() ya arma en $webhookUrl.
+        $path = ($parsed['path'] ?? '/hikvision/webhook').(isset($parsed['query']) ? '?'.$parsed['query'] : '');
 
         $notification = [
             'id' => '1',

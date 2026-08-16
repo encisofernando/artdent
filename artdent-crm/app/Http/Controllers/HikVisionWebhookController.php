@@ -108,6 +108,25 @@ class HikVisionWebhookController extends Controller
             return response('OK', 200);
         }
 
+        // Validación opcional (no obligatoria): subscribeEvents() ahora
+        // registra la URL con ?secret=..., pero un dispositivo ya
+        // suscripto ANTES de este cambio sigue empujando a la URL vieja
+        // sin el parámetro hasta que alguien vuelva a apretar "Suscribir
+        // eventos" en el panel — exigirlo ya rompería esos terminales en
+        // producción sin aviso. Si el secret SÍ viene y no matchea, se
+        // rechaza (alguien intentando spoofear un dispositivo conocido).
+        if ($device && $device->webhook_secret) {
+            $providedSecret = (string) $request->query('secret', '');
+
+            if ($providedSecret !== '' && ! hash_equals($device->webhook_secret, $providedSecret)) {
+                Log::warning('HikVision webhook: secret inválido para el dispositivo resuelto', [
+                    'device_id' => $device->id,
+                ]);
+
+                return response('OK', 200);
+            }
+        }
+
         $eventType = $raw['eventType'] ?? ($raw['Events'][0]['eventType'] ?? 'unknown');
 
         // ── Heartbeat / keepalive ─────────────────────────────────────────
