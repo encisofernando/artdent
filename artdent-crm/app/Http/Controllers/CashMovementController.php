@@ -23,7 +23,10 @@ class CashMovementController extends Controller
         ]);
 
         $session = CashSession::with('cash_drawer')->findOrFail($validated['cash_session_id']);
-        abort_unless($session->cash_drawer->company_id === $companyId, 404);
+        // cash_drawer tiene BelongsToCompany: si la caja es de otra empresa
+        // la relación devuelve null, no una fila ajena (ver
+        // CashSessionController::authorizeSameCompany).
+        abort_unless($session->cash_drawer?->company_id === $companyId, 404);
 
         if ($session->status !== 'open') {
             return back()->with('error', 'No se pueden registrar movimientos en una caja cerrada.');
@@ -45,7 +48,7 @@ class CashMovementController extends Controller
     {
         $companyId = CompanyContext::id();
         $cashMovement->load('cash_session.cash_drawer');
-        abort_unless($cashMovement->cash_session->cash_drawer->company_id === $companyId, 404);
+        abort_unless($cashMovement->cash_session?->cash_drawer?->company_id === $companyId, 404);
 
         if ($cashMovement->cash_session->status !== 'open' || $cashMovement->reference_type !== 'manual') {
             return back()->with('error', 'Solo se pueden eliminar movimientos manuales de una caja todavía abierta.');
