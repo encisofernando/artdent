@@ -35,6 +35,13 @@ export default defineConfig({
                 entryFileNames: "assets/[name]-[hash].js",
                 chunkFileNames: "assets/[name]-[hash].js",
                 assetFileNames: "assets/[name]-[hash][extname]",
+                // react/react-dom/@inertiajs casi no cambian entre deploys —
+                // separarlos del bundle de la app (antes todo entraba junto
+                // en app-{hash}.js) para que el navegador no tenga que
+                // volver a bajarlos cada vez que cambia una sola página.
+                manualChunks: {
+                    vendor: ["react", "react-dom", "@inertiajs/react"],
+                },
             },
         },
     },
