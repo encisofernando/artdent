@@ -3,63 +3,78 @@
 namespace App\Http\Controllers;
 
 use App\Models\InvoiceType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Catálogo global de tipos de comprobante (Factura A/B/C, NC, ND) —
+ * invoices.invoice_type_id es NOT NULL, así que este catálogo es requisito
+ * real para poder facturar, no sólo un nice-to-have. Mismo criterio de UI
+ * que PaymentMethodController/TaxController: JSON sin páginas Inertia
+ * dedicadas.
+ */
 class InvoiceTypeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): JsonResponse
     {
-        //
+        return response()->json([
+            'invoice_types' => InvoiceType::orderBy('afip_code')->get(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $validated = $this->validated($request);
+
+        $invoiceType = InvoiceType::create($validated);
+
+        return response()->json(['success' => true, 'invoice_type' => $invoiceType]);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(InvoiceType $invoiceType)
     {
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(InvoiceType $invoiceType)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, InvoiceType $invoiceType)
+    public function update(Request $request, InvoiceType $invoiceType): JsonResponse
     {
-        //
+        $validated = $this->validated($request);
+
+        $invoiceType->update($validated);
+
+        return response()->json(['success' => true, 'invoice_type' => $invoiceType->fresh()]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(InvoiceType $invoiceType)
+    public function destroy(InvoiceType $invoiceType): JsonResponse
     {
-        //
+        if ($invoiceType->invoices()->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No se puede eliminar: hay comprobantes emitidos con este tipo. Desactivalo en su lugar.',
+            ], 422);
+        }
+
+        $invoiceType->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'afip_code' => ['required', 'string', 'max:20'],
+            'is_active' => ['required', 'boolean'],
+        ]);
     }
 }

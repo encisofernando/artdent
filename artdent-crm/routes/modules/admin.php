@@ -103,11 +103,11 @@ Route::prefix('proveedores')->name('proveedores.')->middleware('permission:purch
 // taxs/invoice-types: catálogos de configuración, mismo criterio que
 // payment-methods (línea de abajo). invoices: documentos financieros
 // reales, mismo permiso que ya gatea la sección "Contable" del sidebar.
-Route::resource('taxs', TaxController::class)->middleware('permission:settings.edit');
+Route::resource('taxs', TaxController::class)->except(['create', 'show', 'edit'])->middleware('permission:settings.edit');
 Route::resource('payment-methods', PaymentMethodController::class)->except(['create', 'show', 'edit'])->middleware('permission:settings.edit');
 
 Route::resource('invoices', InvoiceController::class)->middleware('permission:accounting.view');
-Route::resource('invoice-types', InvoiceTypeController::class)->middleware('permission:settings.edit');
+Route::resource('invoice-types', InvoiceTypeController::class)->except(['create', 'show', 'edit'])->middleware('permission:settings.edit');
 
 // ── AFIP / ARCA ─────────────────────────────────────────────────────────────
 use App\Http\Controllers\AfipController;
