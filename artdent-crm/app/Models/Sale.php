@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $invoice_id
  * @property string|null $sale_number
  * @property string|null $receipt_type
+ * @property string|null $afip_pending_receipt_type
  * @property string|null $status
  * @property float|null $subtotal
  * @property float|null $discount_amount
@@ -77,6 +78,7 @@ class Sale extends Model
         'invoice_id',
         'sale_number',
         'receipt_type',
+        'afip_pending_receipt_type',
         'status',
         'subtotal',
         'discount_amount',

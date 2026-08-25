@@ -32,7 +32,7 @@ class AfipController extends Controller
             $invoice = $service->generateFromSale($sale, $request->receipt_key);
 
             // Actualizar receipt_type de la venta al tipo AFIP generado
-            $sale->update(['receipt_type' => $request->receipt_key]);
+            $sale->update(['receipt_type' => $request->receipt_key, 'afip_pending_receipt_type' => null]);
 
             return response()->json([
                 'success' => true,

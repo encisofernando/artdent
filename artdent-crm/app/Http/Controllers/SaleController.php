@@ -445,8 +445,10 @@ class SaleController extends Controller
                             'sale_id' => $sale->id,
                             'error' => $e->getMessage(),
                         ]);
-                        // Revertir a ticket X para que el operador pueda reintentar manualmente
-                        $sale->update(['receipt_type' => 'X']);
+                        // Revertir a ticket X sin bloquear la venta; queda registrado
+                        // qué comprobante faltaba para que afip:retry-pending-invoices
+                        // lo reintente solo cuando AFIP esté disponible de nuevo.
+                        $sale->update(['receipt_type' => 'X', 'afip_pending_receipt_type' => $afipKey]);
                         $sale->refresh();
                     }
                 }

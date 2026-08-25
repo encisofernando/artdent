@@ -403,7 +403,7 @@ class NavePosPaymentController extends Controller
                 'sale_id' => $sale->id,
                 'error' => $e->getMessage(),
             ]);
-            $sale->update(['receipt_type' => 'X']);
+            $sale->update(['receipt_type' => 'X', 'afip_pending_receipt_type' => $afipKey]);
         }
     }
 

@@ -10,3 +10,8 @@ Artisan::command('inspire', function () {
 
 // Recordatorio de pago por WhatsApp: cada 4 horas detecta pedidos de entre 22-26 h sin pago
 Schedule::command('ecommerce:send-unpaid-reminders')->everyFourHours();
+
+// Ventas que quedaron como ticket X por un corte/timeout con AFIP (ver
+// afip_pending_receipt_type en sales) — reintenta cada 15 min sin que el
+// operador tenga que acordarse de volver a facturarlas a mano.
+Schedule::command('afip:retry-pending-invoices')->everyFifteenMinutes();

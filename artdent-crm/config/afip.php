@@ -13,6 +13,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Timeout de red hacia AFIP/ARCA (segundos)
+    |--------------------------------------------------------------------------
+    | Cubre tanto la conexión como la espera de respuesta del SOAP. Sin esto
+    | un corte de comunicación con AFIP puede colgar el request hasta el
+    | max_execution_time de PHP, sin darle tiempo al try/catch de la venta a
+    | revertir el comprobante a ticket X.
+    */
+    'soap_timeout' => env('AFIP_SOAP_TIMEOUT', 15),
+
+    /*
+    |--------------------------------------------------------------------------
     | WSAA — Web Service de Autenticación y Autorización
     |--------------------------------------------------------------------------
     */

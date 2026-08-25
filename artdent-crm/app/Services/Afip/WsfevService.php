@@ -246,14 +246,19 @@ class WsfevService
             'ciphers' => 'DEFAULT:@SECLEVEL=0',
         ];
 
+        $timeout = (int) config('afip.soap_timeout', 15);
+
         $options = [
             'soap_version' => \SOAP_1_2,
             'exceptions' => true,
             'trace' => false,
             'encoding' => 'UTF-8',
             'cache_wsdl' => \WSDL_CACHE_NONE,
-            'connection_timeout' => 30,
-            'stream_context' => stream_context_create(['ssl' => $sslOpts]),
+            'connection_timeout' => $timeout,
+            'stream_context' => stream_context_create([
+                'ssl' => $sslOpts,
+                'http' => ['timeout' => $timeout],
+            ]),
         ];
 
         try {

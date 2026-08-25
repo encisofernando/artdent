@@ -47,6 +47,7 @@ class GenerateAfipInvoiceJob implements ShouldQueue
 
         $sale->update([
             'receipt_type' => $this->receiptKey,
+            'afip_pending_receipt_type' => null,
             'sale_number' => "{$pointSale}-{$afipNumber}",
         ]);
     }
@@ -58,9 +59,14 @@ class GenerateAfipInvoiceJob implements ShouldQueue
             'error' => $exception->getMessage(),
         ]);
 
-        // Revertir a ticket X para que el operador pueda reintentar manualmente
+        // Revertir a ticket X para que la venta no quede bloqueada, pero sin
+        // perder de vista qué comprobante quedó pendiente — afip:retry-pending-invoices
+        // vuelve a intentarlo solo cuando AFIP esté disponible de nuevo.
         Sale::where('id', $this->saleId)
             ->whereNull('invoice_id')
-            ->update(['receipt_type' => 'X']);
+            ->update([
+                'receipt_type' => 'X',
+                'afip_pending_receipt_type' => $this->receiptKey,
+            ]);
     }
 }

@@ -172,6 +172,13 @@ export default function Show({ auth, sale, account, paymentMethods = [] }) {
         NDA: 'N. Débito A',  NDB: 'N. Débito B',  NDC: 'N. Débito C',
     };
     const suggestedKey = (() => {
+        // Si la venta quedó pendiente por un corte con AFIP, ya sabemos con
+        // certeza qué comprobante le faltaba — no hace falta adivinar por
+        // condición de IVA (afip:retry-pending-invoices reintenta esto solo
+        // cada 15 min; este selector es el fallback manual).
+        if (sale.afip_pending_receipt_type) {
+            return sale.afip_pending_receipt_type;
+        }
         if (company.iva_condition === 'responsable_inscripto') {
             return sale.customer?.cuit ? 'FA' : 'FB';
         }
