@@ -11,6 +11,7 @@ use App\Models\LabAccount;
 use App\Models\LabAccountMove;
 use App\Models\Patient;
 use App\Models\Tariff;
+use App\Services\JobPhaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -18,6 +19,8 @@ use Inertia\Inertia;
 
 class JobController extends Controller
 {
+    public function __construct(private readonly JobPhaseService $phaseService) {}
+
     public function index(Request $request)
     {
         $relations = ['dentist', 'patient'];
@@ -163,6 +166,12 @@ class JobController extends Controller
             $this->initializePhasesForJob($job);
 
             $this->chargeAccountIfNeeded($job);
+
+            // El formulario permite crear el trabajo con cualquier estado,
+            // incluido "entregado" directamente — mismo caso que en update().
+            if ($data['status'] === 'delivered') {
+                $this->phaseService->billOutstandingForManualDelivery($job);
+            }
         });
 
         return redirect()
@@ -386,6 +395,16 @@ class JobController extends Controller
             }
 
             $this->adjustAccountCharge($job, $oldTotal, $newTotal);
+
+            // Esta pantalla permite fijar el estado libremente, sin pasar por
+            // el Kiosk — si se guarda como "entregado" y el trabajo tiene
+            // fases, hay que asegurar que quedó facturado igual que si
+            // hubiera pasado por completePhase()/registerDelivery() ahí. Sin
+            // esto, un trabajo con fases nunca tocadas en el Kiosk puede
+            // quedar "entregado" sin haber generado un peso de deuda.
+            if ($data['status'] === 'delivered') {
+                $this->phaseService->billOutstandingForManualDelivery($job);
+            }
         });
 
         return redirect()

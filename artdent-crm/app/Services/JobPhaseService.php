@@ -266,6 +266,31 @@ class JobPhaseService
     }
 
     /**
+     * Factura cualquier fase pendiente de cobro y el remanente del arancel
+     * para un trabajo con fases que se marca "entregado" (o cualquier
+     * estado final) por fuera del Kiosk — ej. desde la edición general de
+     * Job, donde el estado se puede fijar libremente sin pasar por
+     * completePhase(). Reutiliza exactamente billPhaseIfNeeded() y
+     * settleArancelRemainder(), así que nunca puede cobrar algo distinto
+     * a como lo haría el Kiosk: cada fase su propio precio, el remanente
+     * cierra contra job.total, todo idempotente si ya se facturó antes.
+     */
+    public function billOutstandingForManualDelivery(Job $job): void
+    {
+        $job->loadMissing('phaseProgress.tariffPhase');
+
+        if ($job->phaseProgress->isEmpty()) {
+            return;
+        }
+
+        foreach ($job->phaseProgress as $phase) {
+            $this->billPhaseIfNeeded($phase);
+        }
+
+        $this->settleArancelRemainder($job);
+    }
+
+    /**
      * Register delivery and close the job.
      */
     public function registerDelivery(Job $job, string $deliveryMethod, ?string $notes = null): void
