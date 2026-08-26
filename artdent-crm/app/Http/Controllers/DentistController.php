@@ -52,6 +52,7 @@ class DentistController extends Controller
             'name' => 'required|string|max:255',
             'contact_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
+            'dni' => 'nullable|string|max:20|unique:dentists,dni',
             'phone' => 'nullable|string|max:64',
             'phone_alt' => 'nullable|string|max:64',
             'whatsapp' => 'nullable|string|max:64',
@@ -137,6 +138,7 @@ class DentistController extends Controller
             'name' => 'required|string|max:255',
             'contact_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
+            'dni' => ['nullable', 'string', 'max:20', \Illuminate\Validation\Rule::unique('dentists', 'dni')->ignore($dentist->id)],
             'phone' => 'nullable|string|max:64',
             'phone_alt' => 'nullable|string|max:64',
             'whatsapp' => 'nullable|string|max:64',
@@ -159,8 +161,8 @@ class DentistController extends Controller
             'is_active' => 'nullable|boolean',
             'notes' => 'nullable|string',
             'custom_prices' => 'nullable|array',
-            'custom_prices.*.tariff_id' => 'required_with:custom_prices|integer|exists:tariffs,id',
-            'custom_prices.*.price' => 'required_with:custom_prices|numeric|min:0',
+            'custom_prices.*.tariff_id' => 'required_with:custom_prices.*.price|integer|exists:tariffs,id',
+            'custom_prices.*.price' => 'nullable|numeric|min:0',
         ]);
 
         $dentist->update($validated);

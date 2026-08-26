@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use App\Observers\JobObserver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -54,6 +55,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[ObservedBy([JobObserver::class])]
 class Job extends Model
 {
+    use BelongsToCompany;
     use SoftDeletes;
 
     protected $table = 'jobs';

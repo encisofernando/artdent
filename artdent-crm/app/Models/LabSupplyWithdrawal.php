@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -30,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class LabSupplyWithdrawal extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'lab_supply_withdrawals';
 
     protected $casts = [

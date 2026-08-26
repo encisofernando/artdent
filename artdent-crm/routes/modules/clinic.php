@@ -5,16 +5,14 @@ use App\Http\Controllers\CrmInteractionController;
 use App\Http\Controllers\DeliveryNoteController;
 use App\Http\Controllers\DentistController;
 use App\Http\Controllers\DentistDeliveryRouteController;
-use App\Http\Controllers\DentistTariffPriceController;
 use App\Http\Controllers\JobAttachmentController;
-use App\Http\Controllers\JobCollaboratorController;
 use App\Http\Controllers\JobController;
-use App\Http\Controllers\JobItemController;
 use App\Http\Controllers\JobPhaseKioskController;
 use App\Http\Controllers\JobRemakeController;
-use App\Http\Controllers\JobStatusHistoryController;
+use App\Http\Controllers\JobRequestController;
 use App\Http\Controllers\JobTeethController;
 use App\Http\Controllers\JobTypeController;
+use App\Http\Controllers\LabAccountPaymentReportController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PhaseTemplateController;
 use App\Http\Controllers\TariffController;
@@ -31,11 +29,17 @@ Route::middleware('module:laboratorio')->group(function () {
     Route::delete('jobs/{job}', [JobController::class, 'destroy'])->name('jobs.destroy')->middleware('permission:orders.delete');
     Route::get('jobs/{job}/ticket', [JobController::class, 'ticket'])->name('jobs.ticket')->middleware('permission:orders.view');
 
+    // Solicitudes de trabajo enviadas desde el portal del odontólogo
+    Route::get('job-requests', [JobRequestController::class, 'index'])->name('job-requests.index')->middleware('permission:orders.create');
+    Route::post('job-requests/{jobRequest}/reject', [JobRequestController::class, 'reject'])->name('job-requests.reject')->middleware('permission:orders.create');
+
+    // Comprobantes de pago informados desde el portal del odontólogo
+    Route::get('lab-account-payment-reports', [LabAccountPaymentReportController::class, 'index'])->name('lab-account-payment-reports.index')->middleware('permission:orders.edit');
+    Route::post('lab-account-payment-reports/{labAccountPaymentReport}/approve', [LabAccountPaymentReportController::class, 'approve'])->name('lab-account-payment-reports.approve')->middleware('permission:orders.edit');
+    Route::post('lab-account-payment-reports/{labAccountPaymentReport}/reject', [LabAccountPaymentReportController::class, 'reject'])->name('lab-account-payment-reports.reject')->middleware('permission:orders.edit');
+
     // Sub-recursos de Trabajos
-    Route::resource('job-attachments', JobAttachmentController::class)->middleware('permission:orders.edit');
-    Route::resource('job-collaborators', JobCollaboratorController::class)->middleware('permission:orders.edit');
-    Route::resource('job-items', JobItemController::class)->middleware('permission:orders.edit');
-    Route::resource('job-status-historys', JobStatusHistoryController::class)->middleware('permission:orders.view');
+    Route::resource('job-attachments', JobAttachmentController::class)->only(['index', 'store', 'destroy'])->middleware('permission:orders.edit');
     Route::resource('job-teeths', JobTeethController::class)->middleware('permission:orders.edit');
     Route::resource('job-types', JobTypeController::class)->middleware('permission:orders.edit');
     Route::resource('job-remakes', JobRemakeController::class)->middleware('permission:orders.edit');
@@ -47,7 +51,6 @@ Route::middleware('module:laboratorio')->group(function () {
 
     // Dentistas y Clientes
     Route::resource('dentists', DentistController::class)->middleware('permission:customers.view');
-    Route::resource('dentist-tariff-prices', DentistTariffPriceController::class)->middleware('permission:customers.edit');
     Route::resource('dentist-delivery-routes', DentistDeliveryRouteController::class)->middleware('permission:customers.edit');
 
     // Remitos de entrega (comprobante no fiscal que acompaña la entrega de trabajos al odontólogo)

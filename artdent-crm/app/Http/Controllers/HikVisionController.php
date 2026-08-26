@@ -196,7 +196,16 @@ class HikVisionController extends Controller
     {
         $this->authorizeDevice($request, $hikVisionDevice);
 
+        // webhook_secret ya se genera al crear el dispositivo pero nunca se
+        // usaba — si por lo que sea faltara (dispositivo viejo, de antes de
+        // que existiera el campo), se genera acá para no dejarlo sin.
+        if (! $hikVisionDevice->webhook_secret) {
+            $hikVisionDevice->update(['webhook_secret' => Str::random(32)]);
+        }
+
         $webhookUrl = config('app.hikvision_webhook_url') ?: route('hikvision.webhook');
+        $webhookUrl .= (str_contains($webhookUrl, '?') ? '&' : '?').'secret='.$hikVisionDevice->webhook_secret;
+
         $result = $this->isapi->subscribeEventPush($hikVisionDevice, $webhookUrl);
 
         return response()->json($result);

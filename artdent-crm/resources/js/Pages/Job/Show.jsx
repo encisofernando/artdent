@@ -3,11 +3,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useToast } from '@/Contexts/ToastContext';
+import { useConfirm } from '@/Contexts/ConfirmContext';
 import {
     ArrowLeft, Edit, Printer,
     User, Calendar, Layers, FileText,
     CheckCircle2, AlertCircle, BriefcaseMedical, SlidersHorizontal, Clock,
-    GitBranch, Loader2, FlaskConical, Truck, Play, Percent
+    GitBranch, Loader2, FlaskConical, Truck, Play, Percent, Paperclip, Trash2, Upload
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -55,7 +56,9 @@ function KV({ label, value, D, accent, last }) {
 export default function Show({ auth, item }) {
     const { isDark } = useTheme();
     const toast = useToast();
+    const confirmDialog = useConfirm();
     const [actionLoading, setActionLoading] = useState(null);
+    const [uploading, setUploading] = useState(false);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [deliveryMethod, setDeliveryMethod] = useState('retiro_dentista');
 
@@ -97,6 +100,39 @@ export default function Show({ auth, item }) {
         } finally {
             setActionLoading(null);
         }
+    };
+
+    const uploadAttachment = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const form = new FormData();
+        form.append('job_id', item.id);
+        form.append('file', file);
+
+        try {
+            await axios.post(route('job-attachments.store'), form);
+            toast.success('Archivo adjuntado.');
+            router.reload({ only: ['item'] });
+        } catch (err) {
+            toast.error(err?.response?.data?.errors?.file?.[0] ?? 'No se pudo subir el archivo.');
+        } finally {
+            setUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const deleteAttachment = (attachment) => {
+        confirmDialog(`¿Eliminar "${attachment.filename}"?`, async () => {
+            try {
+                await axios.delete(route('job-attachments.destroy', attachment.id));
+                toast.success('Adjunto eliminado.');
+                router.reload({ only: ['item'] });
+            } catch {
+                toast.error('No se pudo eliminar el adjunto.');
+            }
+        });
     };
 
     const D = isDark
@@ -289,6 +325,31 @@ export default function Show({ auth, item }) {
                         </p>
                     </Card>
                 )}
+
+                {/* ── Adjuntos ── */}
+                <Card title={`Adjuntos (${(item.job_attachments || []).length})`} icon={Paperclip} D={D}>
+                    {(item.job_attachments || []).length === 0 ? (
+                        <p style={{ fontSize: 12, color: D.sub, marginBottom: 10 }}>Sin escaneos ni archivos adjuntos todavía.</p>
+                    ) : (
+                        <div style={{ marginBottom: 10 }}>
+                            {item.job_attachments.map((a) => (
+                                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${D.border}` }}>
+                                    <a href={a.url} target="_blank" rel="noreferrer" style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: D.text, textDecoration: 'none' }}>
+                                        {a.filename}
+                                    </a>
+                                    <button onClick={() => deleteAttachment(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', flexShrink: 0 }}>
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: `1.5px dashed ${D.border}`, borderRadius: 10, padding: '9px', fontSize: 12, fontWeight: 700, color: AD.blue, cursor: uploading ? 'default' : 'pointer', opacity: uploading ? 0.6 : 1 }}>
+                        {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                        {uploading ? 'Subiendo…' : 'Subir archivo'}
+                        <input type="file" onChange={uploadAttachment} disabled={uploading} style={{ display: 'none' }} accept=".stl,.ply,.jpg,.jpeg,.png,.webp,.pdf" />
+                    </label>
+                </Card>
 
                 {/* ── CRM Phase Actions ── */}
                 {(() => {

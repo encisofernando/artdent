@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Evaluation extends Model
 {
+    use BelongsToCompany;
+
     protected $casts = [
         'company_id' => 'int',
         'evaluation_cycle_id' => 'int',

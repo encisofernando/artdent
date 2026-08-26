@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import QRCode from 'qrcode';
 import { X, Copy, Check, Loader2 } from 'lucide-react';
@@ -29,12 +29,14 @@ export default function QrPaymentModal({
     amount,
     onApproved,
     onClose,
+    statusRouteName = 'nave-charge-intents.status',
 }) {
     const { isDark } = useTheme();
     const { props: pageProps } = usePage();
     const tenantId = pageProps.tenant_info?.id;
 
     const [status, setStatus] = useState('pending');
+    const [resolvedSale, setResolvedSale] = useState(null);
     const [qrImage, setQrImage] = useState('');
     const [copied, setCopied] = useState(false);
 
@@ -45,40 +47,44 @@ export default function QrPaymentModal({
             .catch(() => {});
     }, [type, qrData]);
 
+    // Única fuente de verdad para el estado: tanto el poll de 10s como el
+    // aviso de Reverb (que no trae la venta en el payload del evento) pasan
+    // por acá — así "primero pago, después ticket" siempre resuelve la
+    // venta actualizada (con factura/CAE si corresponde) antes de avisar
+    // que el pago se confirmó.
+    const checkStatus = useCallback(async () => {
+        try {
+            const res = await fetch(route(statusRouteName, intentId));
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.sale) setResolvedSale(data.sale);
+            if (data.status && data.status !== 'pending') {
+                setStatus(data.status);
+            }
+        } catch {
+            // silencioso — vuelve a intentar en el próximo tick
+        }
+    }, [intentId, statusRouteName]);
+
     useEffect(() => {
         if (status !== 'pending') return;
-
-        const timer = setInterval(async () => {
-            try {
-                const res = await fetch(route('nave-charge-intents.status', intentId));
-                if (!res.ok) return;
-                const data = await res.json();
-                if (data.status && data.status !== 'pending') {
-                    setStatus(data.status);
-                }
-            } catch {
-                // silencioso — vuelve a intentar en el próximo tick
-            }
-        }, POLL_INTERVAL_MS);
-
+        const timer = setInterval(checkStatus, POLL_INTERVAL_MS);
         return () => clearInterval(timer);
-    }, [status, intentId]);
+    }, [status, checkStatus]);
 
     useEffect(() => {
         if (!window.Echo || !tenantId || !companyId || !intentId) return;
 
         const channelName = `tenant.${tenantId}.company.${companyId}.nave-intents.${intentId}`;
         const channel = window.Echo.private(channelName);
-        channel.listen('.nave-intent-status-changed', (e) => {
-            if (e.status) setStatus(e.status);
-        });
+        channel.listen('.nave-intent-status-changed', () => { checkStatus(); });
 
         return () => window.Echo.leave(channelName);
-    }, [tenantId, companyId, intentId]);
+    }, [tenantId, companyId, intentId, checkStatus]);
 
     useEffect(() => {
         if (status === 'approved') {
-            onApproved?.();
+            onApproved?.(resolvedSale);
         }
     }, [status]);
 

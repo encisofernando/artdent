@@ -91,7 +91,10 @@ class JobRemakeController extends Controller
     {
         $companyId = auth()->user()->company_id;
 
-        if ($jobRemake->job->company_id !== $companyId) {
+        // Job tiene BelongsToCompany: si el rehacimiento apunta a un job de
+        // otra empresa, la relación devuelve null en vez de la fila ajena.
+        // ?-> evita un 500 (null->company_id) donde debería ser 403.
+        if ($jobRemake->job?->company_id !== $companyId) {
             abort(403);
         }
 
@@ -111,7 +114,9 @@ class JobRemakeController extends Controller
     {
         $companyId = auth()->user()->company_id;
 
-        if ($jobRemake->job->company_id !== $companyId) {
+        // Ver comentario en show(): job->company_id puede ser null (Job
+        // tiene BelongsToCompany) para un rehacimiento cross-empresa.
+        if ($jobRemake->job?->company_id !== $companyId) {
             abort(403);
         }
 

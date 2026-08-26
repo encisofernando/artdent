@@ -95,6 +95,7 @@ class StockController extends Controller
                 ],
                 ['quantity' => 0, 'min_quantity' => 0]
             );
+            $stock = Stock::where('id', $stock->id)->lockForUpdate()->first();
 
             $qty = (float) $validated['qty'];
             $before = (float) $stock->quantity;
@@ -145,15 +146,26 @@ class StockController extends Controller
                 ['product_id' => $productId, 'variant_id' => $variantId, 'warehouse_id' => $validated['from_warehouse_id']],
                 ['quantity' => 0, 'min_quantity' => 0]
             );
-
-            if ($origin->quantity < $qty) {
-                throw new \RuntimeException('Stock insuficiente en el depósito origen. Disponible: '.(int) $origin->quantity);
-            }
-
             $dest = Stock::firstOrCreate(
                 ['product_id' => $productId, 'variant_id' => $variantId, 'warehouse_id' => $validated['to_warehouse_id']],
                 ['quantity' => 0, 'min_quantity' => 0]
             );
+
+            // Se bloquean ambas filas en una sola query ordenada por id (no
+            // por origen/destino) para que dos transferencias concurrentes en
+            // direcciones opuestas (A→B y B→A) siempre las tomen en el mismo
+            // orden y no se generen deadlocks.
+            $locked = Stock::whereIn('id', [$origin->id, $dest->id])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+            $origin = $locked[$origin->id];
+            $dest = $locked[$dest->id];
+
+            if ($origin->quantity < $qty) {
+                throw new \RuntimeException('Stock insuficiente en el depósito origen. Disponible: '.(int) $origin->quantity);
+            }
 
             $beforeOrigin = $origin->quantity;
             $origin->quantity -= $qty;

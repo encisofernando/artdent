@@ -16,6 +16,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Portal-only deployment (portal de odontólogos)
+    |--------------------------------------------------------------------------
+    |
+    | Cuando está prendido, este deploy sirve EXCLUSIVAMENTE el portal de
+    | odontólogos (panel.artdent.com.ar) — misma base de datos y mismo
+    | codebase que la instancia CRM normal (pos.artdent.com.ar), sólo cambia
+    | qué se expone en la raíz del sitio. Ver routes/web.php.
+    |
+    */
+
+    'portal_only' => filter_var(env('PORTAL_ONLY', false), FILTER_VALIDATE_BOOL),
+
+    /*
+    |--------------------------------------------------------------------------
     | Billing
     |--------------------------------------------------------------------------
     |

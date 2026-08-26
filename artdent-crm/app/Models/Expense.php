@@ -6,12 +6,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class Expense
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property string|null $scope
@@ -28,63 +29,62 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $notes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * 
  * @property ExpenseCategory|null $expense_category
  * @property Company $company
  * @property PaymentMethod|null $payment_method
  * @property Vendor|null $vendor
- *
- * @package App\Models
  */
 class Expense extends Model
 {
-	protected $table = 'expenses';
+    use BelongsToCompany;
 
-	protected $casts = [
-		'company_id' => 'int',
-		'branch_id' => 'int',
-		'expense_category_id' => 'int',
-		'user_id' => 'int',
-		'payment_method_id' => 'int',
-		'amount' => 'float',
-		'tax_amount' => 'float',
-		'vendor_id' => 'int',
-		'expense_date' => 'datetime'
-	];
+    protected $table = 'expenses';
 
-	protected $fillable = [
-		'company_id',
-		'scope',
-		'branch_id',
-		'expense_category_id',
-		'user_id',
-		'payment_method_id',
-		'description',
-		'amount',
-		'tax_amount',
-		'vendor_id',
-		'reference',
-		'expense_date',
-		'notes'
-	];
+    protected $casts = [
+        'company_id' => 'int',
+        'branch_id' => 'int',
+        'expense_category_id' => 'int',
+        'user_id' => 'int',
+        'payment_method_id' => 'int',
+        'amount' => 'float',
+        'tax_amount' => 'float',
+        'vendor_id' => 'int',
+        'expense_date' => 'datetime',
+    ];
 
-	public function expense_category()
-	{
-		return $this->belongsTo(ExpenseCategory::class);
-	}
+    protected $fillable = [
+        'company_id',
+        'scope',
+        'branch_id',
+        'expense_category_id',
+        'user_id',
+        'payment_method_id',
+        'description',
+        'amount',
+        'tax_amount',
+        'vendor_id',
+        'reference',
+        'expense_date',
+        'notes',
+    ];
 
-	public function company()
-	{
-		return $this->belongsTo(Company::class);
-	}
+    public function expense_category()
+    {
+        return $this->belongsTo(ExpenseCategory::class);
+    }
 
-	public function payment_method()
-	{
-		return $this->belongsTo(PaymentMethod::class);
-	}
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-	public function vendor()
-	{
-		return $this->belongsTo(Vendor::class);
-	}
+    public function payment_method()
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
 }

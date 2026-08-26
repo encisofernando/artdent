@@ -465,6 +465,436 @@ function PointsOfSaleManager({ isDark }) {
     );
 }
 
+const IVA_RATE_OPTIONS = [
+    { value: '0', label: '0%', afip_code: '3' },
+    { value: '2.5', label: '2.5%', afip_code: '9' },
+    { value: '5', label: '5%', afip_code: '8' },
+    { value: '10.5', label: '10.5%', afip_code: '4' },
+    { value: '21', label: '21%', afip_code: '5' },
+    { value: '27', label: '27%', afip_code: '6' },
+];
+
+function TaxForm({ isDark, initial, onCancel, onSubmit, saving, error }) {
+    const [form, setForm] = useState(initial);
+
+    const inp = `w-full rounded-xl border text-sm font-medium px-3.5 py-2.5 transition-colors focus:ring-0 ${isDark
+        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm'}`;
+    const lbl = `block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+    const applyRatePreset = (value) => {
+        const preset = IVA_RATE_OPTIONS.find((opt) => opt.value === value);
+        setForm((f) => ({
+            ...f,
+            rate: value,
+            afip_code: preset?.afip_code ?? f.afip_code,
+            name: f.name || (preset ? `IVA ${preset.label}` : f.name),
+        }));
+    };
+
+    return (
+        <div className={`p-4 rounded-xl border grid gap-4 sm:grid-cols-2 ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div>
+                <label className={lbl}>Nombre</label>
+                <input className={inp} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: IVA 21%" />
+            </div>
+            <div>
+                <label className={lbl}>Alícuota</label>
+                <select className={inp} value={form.rate} onChange={(e) => applyRatePreset(e.target.value)}>
+                    <option value="">Personalizada…</option>
+                    {IVA_RATE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                </select>
+                {form.rate === '' && (
+                    <input type="number" step="0.01" min="0" max="100" className={`${inp} mt-2`} value={form.rate} onChange={(e) => setForm((f) => ({ ...f, rate: e.target.value }))} placeholder="Alícuota %" />
+                )}
+            </div>
+            <div>
+                <label className={lbl}>Código AFIP (IVA)</label>
+                <input className={inp} value={form.afip_code} onChange={(e) => setForm((f) => ({ ...f, afip_code: e.target.value }))} placeholder="Ej: 5" />
+            </div>
+            <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                    <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" />
+                    Activo
+                </label>
+            </div>
+
+            {error && <div className="sm:col-span-2 text-red-500 text-xs font-bold bg-red-500/10 px-3 py-2 rounded-lg">{error}</div>}
+
+            <div className="sm:col-span-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={onCancel} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                    Cancelar
+                </Button>
+                <Button type="button" onClick={() => onSubmit(form)} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white gap-2 min-w-32">
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function TaxesManager({ isDark }) {
+    const confirmDialog = useConfirm();
+    const toast = useToast();
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showCreate, setShowCreate] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get(route('taxs.index'));
+            setItems(data.taxes);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []);
+
+    const blankForm = () => ({ name: '', rate: '21', afip_code: '5', is_active: true });
+
+    const submitCreate = async (form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.post(route('taxs.store'), form);
+            setShowCreate(false);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const submitUpdate = async (id, form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.put(route('taxs.update', id), form);
+            setEditingId(null);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const destroy = (id) => {
+        confirmDialog('¿Eliminar esta alícuota?', async () => {
+            try {
+                await axios.delete(route('taxs.destroy', id));
+                await load();
+            } catch (e) {
+                toast.error(e.response?.data?.error || 'Error al eliminar.');
+            }
+        });
+    };
+
+    return (
+        <div className={`rounded-2xl border shadow-sm transition-colors p-6 ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
+            <div className="flex items-center justify-between gap-3 mb-1">
+                <div className="flex items-center gap-2">
+                    <Receipt size={18} className={isDark ? 'text-teal-400' : 'text-teal-600'} />
+                    <h3 className={`text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        Alícuotas de IVA
+                    </h3>
+                </div>
+                {!showCreate && (
+                    <Button type="button" size="sm" onClick={() => { setShowCreate(true); setEditingId(null); }} className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white">
+                        <Plus size={14} /> Nueva
+                    </Button>
+                )}
+            </div>
+            <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Las alícuotas activas aparecen para elegir al cargar un producto y al calcular el IVA de cada factura.
+            </p>
+
+            {showCreate && (
+                <div className="mb-4">
+                    <TaxForm
+                        isDark={isDark}
+                        initial={blankForm()}
+                        onCancel={() => { setShowCreate(false); setError(''); }}
+                        onSubmit={submitCreate}
+                        saving={saving}
+                        error={error}
+                    />
+                </div>
+            )}
+
+            {loading ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cargando…</div>
+            ) : items.length === 0 && !showCreate ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No hay alícuotas configuradas.</div>
+            ) : (
+                <div className="space-y-2">
+                    {items.map((tax) => (
+                        <div key={tax.id}>
+                            {editingId === tax.id ? (
+                                <TaxForm
+                                    isDark={isDark}
+                                    initial={{
+                                        name: tax.name,
+                                        rate: String(tax.rate),
+                                        afip_code: tax.afip_code ?? '',
+                                        is_active: tax.is_active,
+                                    }}
+                                    onCancel={() => { setEditingId(null); setError(''); }}
+                                    onSubmit={(form) => submitUpdate(tax.id, form)}
+                                    saving={saving}
+                                    error={error}
+                                />
+                            ) : (
+                                <div className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-900/40 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <div className="min-w-0">
+                                        <p className={`text-sm font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                            {tax.name}
+                                        </p>
+                                        <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {tax.rate}%{tax.afip_code ? ` · código AFIP ${tax.afip_code}` : ''}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {tax.is_active ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500">Activo</span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400">Inactivo</span>
+                                        )}
+                                        <Button type="button" size="sm" variant="outline" onClick={() => { setEditingId(tax.id); setShowCreate(false); setError(''); }} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                                            <Edit size={13} />
+                                        </Button>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => destroy(tax.id)} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20">
+                                            <Trash2 size={13} />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+const RECEIPT_TYPE_OPTIONS = [
+    { afip_code: '1', label: 'Factura A' },
+    { afip_code: '2', label: 'Nota de Crédito A' },
+    { afip_code: '3', label: 'Nota de Débito A' },
+    { afip_code: '6', label: 'Factura B' },
+    { afip_code: '7', label: 'Nota de Crédito B' },
+    { afip_code: '8', label: 'Nota de Débito B' },
+    { afip_code: '11', label: 'Factura C' },
+    { afip_code: '12', label: 'Nota de Crédito C' },
+    { afip_code: '13', label: 'Nota de Débito C' },
+];
+
+function InvoiceTypeForm({ isDark, initial, onCancel, onSubmit, saving, error }) {
+    const [form, setForm] = useState(initial);
+
+    const inp = `w-full rounded-xl border text-sm font-medium px-3.5 py-2.5 transition-colors focus:ring-0 ${isDark
+        ? 'bg-slate-800/50 border-slate-700 text-white focus:border-blue-500 placeholder:text-slate-600'
+        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm'}`;
+    const lbl = `block text-[10px] uppercase font-black tracking-widest mb-1.5 pl-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+    const applyPreset = (afip_code) => {
+        const preset = RECEIPT_TYPE_OPTIONS.find((opt) => opt.afip_code === afip_code);
+        setForm((f) => ({ ...f, afip_code, name: f.name || preset?.label || f.name }));
+    };
+
+    return (
+        <div className={`p-4 rounded-xl border grid gap-4 sm:grid-cols-2 ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div>
+                <label className={lbl}>Tipo de comprobante</label>
+                <select className={inp} value={form.afip_code} onChange={(e) => applyPreset(e.target.value)}>
+                    <option value="">Elegir…</option>
+                    {RECEIPT_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.afip_code} value={opt.afip_code}>{opt.label} (código {opt.afip_code})</option>
+                    ))}
+                </select>
+            </div>
+            <div>
+                <label className={lbl}>Nombre</label>
+                <input className={inp} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: Factura B" />
+            </div>
+            <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                    <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" />
+                    Activo
+                </label>
+            </div>
+
+            {error && <div className="sm:col-span-2 text-red-500 text-xs font-bold bg-red-500/10 px-3 py-2 rounded-lg">{error}</div>}
+
+            <div className="sm:col-span-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={onCancel} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                    Cancelar
+                </Button>
+                <Button type="button" onClick={() => onSubmit(form)} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white gap-2 min-w-32">
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function InvoiceTypesManager({ isDark }) {
+    const confirmDialog = useConfirm();
+    const toast = useToast();
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showCreate, setShowCreate] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get(route('invoice-types.index'));
+            setItems(data.invoice_types);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []);
+
+    const blankForm = () => ({ name: '', afip_code: '', is_active: true });
+
+    const submitCreate = async (form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.post(route('invoice-types.store'), form);
+            setShowCreate(false);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const submitUpdate = async (id, form) => {
+        setSaving(true);
+        setError('');
+        try {
+            await axios.put(route('invoice-types.update', id), form);
+            setEditingId(null);
+            await load();
+        } catch (e) {
+            setError(e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(' ') : (e.response?.data?.error || 'Error al guardar.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const destroy = (id) => {
+        confirmDialog('¿Eliminar este tipo de comprobante?', async () => {
+            try {
+                await axios.delete(route('invoice-types.destroy', id));
+                await load();
+            } catch (e) {
+                toast.error(e.response?.data?.error || 'Error al eliminar.');
+            }
+        });
+    };
+
+    return (
+        <div className={`rounded-2xl border shadow-sm transition-colors p-6 ${isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-100'}`}>
+            <div className="flex items-center justify-between gap-3 mb-1">
+                <div className="flex items-center gap-2">
+                    <FileCheck2 size={18} className={isDark ? 'text-teal-400' : 'text-teal-600'} />
+                    <h3 className={`text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        Tipos de comprobante
+                    </h3>
+                </div>
+                {!showCreate && (
+                    <Button type="button" size="sm" onClick={() => { setShowCreate(true); setEditingId(null); }} className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white">
+                        <Plus size={14} /> Nuevo
+                    </Button>
+                )}
+            </div>
+            <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Cada factura necesita un tipo de comprobante válido antes de poder emitirse — sin al menos uno acá, la facturación no va a funcionar.
+            </p>
+
+            {showCreate && (
+                <div className="mb-4">
+                    <InvoiceTypeForm
+                        isDark={isDark}
+                        initial={blankForm()}
+                        onCancel={() => { setShowCreate(false); setError(''); }}
+                        onSubmit={submitCreate}
+                        saving={saving}
+                        error={error}
+                    />
+                </div>
+            )}
+
+            {loading ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Cargando…</div>
+            ) : items.length === 0 && !showCreate ? (
+                <div className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No hay tipos de comprobante configurados.</div>
+            ) : (
+                <div className="space-y-2">
+                    {items.map((it) => (
+                        <div key={it.id}>
+                            {editingId === it.id ? (
+                                <InvoiceTypeForm
+                                    isDark={isDark}
+                                    initial={{
+                                        name: it.name,
+                                        afip_code: it.afip_code,
+                                        is_active: it.is_active,
+                                    }}
+                                    onCancel={() => { setEditingId(null); setError(''); }}
+                                    onSubmit={(form) => submitUpdate(it.id, form)}
+                                    saving={saving}
+                                    error={error}
+                                />
+                            ) : (
+                                <div className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-900/40 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <div className="min-w-0">
+                                        <p className={`text-sm font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                            {it.name}
+                                        </p>
+                                        <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            Código AFIP {it.afip_code}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {it.is_active ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500">Activo</span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400">Inactivo</span>
+                                        )}
+                                        <Button type="button" size="sm" variant="outline" onClick={() => { setEditingId(it.id); setShowCreate(false); setError(''); }} className={isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : ''}>
+                                            <Edit size={13} />
+                                        </Button>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => destroy(it.id)} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20">
+                                            <Trash2 size={13} />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Settings({ company, accountingSettings }) {
     const { isDark } = useTheme();
     const { flash } = usePage().props;
@@ -1699,6 +2129,12 @@ export default function Settings({ company, accountingSettings }) {
 
                                 {/* Puntos de venta */}
                                 <PointsOfSaleManager isDark={isDark} />
+
+                                {/* Alícuotas de IVA */}
+                                <TaxesManager isDark={isDark} />
+
+                                {/* Tipos de comprobante */}
+                                <InvoiceTypesManager isDark={isDark} />
 
                                 {/* Generar CSR */}
                                 <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>

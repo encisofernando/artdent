@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -35,6 +36,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CollaboratorAttendance extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'collaborator_attendances';
 
     protected $casts = [

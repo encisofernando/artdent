@@ -56,6 +56,9 @@ return [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
             'ignore_exceptions' => false,
+            // tenant_id/company_id en cada línea sin tocar los ~125 call
+            // sites de Log:: existentes — ver App\Logging\TenantContextTap.
+            'tap' => [\App\Logging\TenantContextTap::class],
         ],
 
         'single' => [
@@ -124,6 +127,7 @@ return [
             'level' => 'debug',
             'days' => 30,
             'replace_placeholders' => true,
+            'tap' => [\App\Logging\TenantContextTap::class],
         ],
 
         'mercadopago' => [
@@ -131,6 +135,7 @@ return [
             'path' => storage_path('logs/mercadopago.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [\App\Logging\TenantContextTap::class],
         ],
 
         'nave' => [
@@ -138,6 +143,7 @@ return [
             'path' => storage_path('logs/nave.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [\App\Logging\TenantContextTap::class],
         ],
 
         'andreani' => [
@@ -145,6 +151,7 @@ return [
             'path' => storage_path('logs/andreani.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [\App\Logging\TenantContextTap::class],
         ],
 
         'null' => [

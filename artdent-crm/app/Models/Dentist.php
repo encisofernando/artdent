@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,7 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string|null $contact_name
  * @property string|null $email
+ * @property string|null $dni
  * @property string|null $phone
  * @property string|null $phone_alt
  * @property string|null $address
@@ -46,6 +48,7 @@ use Illuminate\Support\Str;
  */
 class Dentist extends Model
 {
+    use BelongsToCompany;
     use SoftDeletes;
 
     protected $table = 'dentists';
@@ -67,6 +70,7 @@ class Dentist extends Model
         'name',
         'contact_name',
         'email',
+        'dni',
         'phone',
         'phone_alt',
         'whatsapp',

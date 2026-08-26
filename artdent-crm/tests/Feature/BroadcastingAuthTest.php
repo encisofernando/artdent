@@ -114,6 +114,16 @@ class BroadcastingAuthTest extends TestCase
 
     protected function makeCompany(array $overrides = []): Company
     {
+        // IDs fijos (importa para CompanyContext::DEFAULT_COMPANY_ID) —
+        // CompanyIsolationTest usa la misma convención sobre la misma DB
+        // real compartida; defensivo por si un rollback anterior no
+        // llegó a limpiar a tiempo. Usuarios primero (FK) y forceDelete
+        // porque User usa SoftDeletes (un soft-delete no libera la fila).
+        if (isset($overrides['id'])) {
+            \App\Models\User::withTrashed()->where('company_id', $overrides['id'])->forceDelete();
+            Company::where('id', $overrides['id'])->delete();
+        }
+
         $company = new Company(['name' => 'Company '.uniqid()]);
 
         foreach ($overrides as $key => $value) {
@@ -137,8 +147,11 @@ class BroadcastingAuthTest extends TestCase
 
     protected function makeOrder(Company $company): int
     {
+        // 'order_number' es NOT NULL/UNIQUE en el schema real (tabla ya
+        // existía antes de correr esto, no en el mini-schema de abajo).
         return DB::table('ecommerce_orders')->insertGetId([
             'company_id' => $company->id,
+            'order_number' => 'TEST-'.uniqid(),
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),

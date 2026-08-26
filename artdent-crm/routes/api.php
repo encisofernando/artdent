@@ -9,6 +9,7 @@
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\LabAccountMercadoPagoController;
 use App\Http\Controllers\Api\LoyaltyApiController;
 use App\Http\Controllers\Api\NaveInstallmentRateApiController;
 use App\Http\Controllers\Api\NavePaymentController;
@@ -112,13 +113,27 @@ Route::prefix('customer')->name('api.customer.')->middleware([EnsureFrontendRequ
 */
 Route::prefix('payment')->name('api.payment.')->group(function (): void {
     Route::post('mp/create', [PaymentController::class, 'createPreference'])->name('mp.create');
-    Route::post('mp/webhook', [PaymentController::class, 'webhook'])->name('mp.webhook');
     Route::post('nave/create', [NavePaymentController::class, 'create'])->name('nave.create');
-    Route::post('nave/webhook', [NavePaymentController::class, 'webhook'])->name('nave.webhook');
 
-    // Cobro presencial/remoto (QR físico + link de pago) desde el POS y
-    // cuentas corrientes — distinto del checkout online de arriba.
-    Route::post('nave/pos/webhook', [NavePosPaymentController::class, 'webhook'])->name('nave.pos.webhook');
+    // Los webhooks los llaman los servidores de MP/Nave, no navegadores de
+    // clientes — comparten IP entre TODOS los merchants de ese proveedor, así
+    // que el throttle:api de 60/min (pensado para tráfico por usuario/IP de
+    // e-commerce) podría descartar pagos reales bajo carga. Van con su
+    // propio limiter, más permisivo (ver AppServiceProvider).
+    Route::withoutMiddleware('throttle:api')->middleware('throttle:webhooks')->group(function (): void {
+        Route::post('mp/webhook', [PaymentController::class, 'webhook'])->name('mp.webhook');
+        Route::post('nave/webhook', [NavePaymentController::class, 'webhook'])->name('nave.webhook');
+
+        // Cobro presencial/remoto (QR físico + link de pago) desde el POS y
+        // cuentas corrientes — distinto del checkout online de arriba.
+        Route::post('nave/pos/webhook', [NavePosPaymentController::class, 'webhook'])->name('nave.pos.webhook');
+
+        // Checkout Pro de Mercado Pago para que el odontólogo pague su cuenta
+        // corriente desde el portal — la creación de la preferencia vive en
+        // routes/modules/dentist_portal.php (necesita la sesión del portal),
+        // pero el webhook es público (Mercado Pago lo llama server-to-server).
+        Route::post('mp/lab-account/webhook', [LabAccountMercadoPagoController::class, 'webhook'])->name('mp.lab-account.webhook');
+    });
 });
 
 /*

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VendorPayment extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'vendor_payments';
 
     protected $fillable = [
@@ -18,6 +21,7 @@ class VendorPayment extends Model
         'payment_date',
         'reference_no',
         'notes',
+        'reversed_at',
     ];
 
     protected function casts(): array
@@ -29,6 +33,7 @@ class VendorPayment extends Model
             'payment_method_id' => 'int',
             'amount' => 'float',
             'payment_date' => 'date',
+            'reversed_at' => 'datetime',
         ];
     }
 

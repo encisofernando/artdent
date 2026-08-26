@@ -12,36 +12,47 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class DentistPortalAuthController extends Controller
 {
     private const REMEMBER_DAYS = 60;
 
-    public function showLogin(): View
+    public function showLogin(): Response
     {
-        return view('portal.dentist-login');
+        return Inertia::render('DentistPortal/Login');
     }
 
     public function sendCode(Request $request): RedirectResponse
     {
         $request->validate([
-            'email' => ['required', 'email'],
+            'identifier' => ['required', 'string', 'max:255'],
         ]);
 
-        $email = trim($request->email);
-        $throttleKey = 'dentist-portal-code:'.strtolower($email).'|'.$request->ip();
+        $identifier = trim($request->identifier);
+        $throttleKey = 'dentist-portal-code:'.strtolower($identifier).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
             $seconds = RateLimiter::availableIn($throttleKey);
 
-            return back()->withErrors(['email' => 'Demasiados intentos. Esperá '.ceil($seconds / 60).' minuto(s) y volvé a intentar.']);
+            return back()->withErrors(['identifier' => 'Demasiados intentos. Esperá '.ceil($seconds / 60).' minuto(s) y volvé a intentar.']);
         }
 
-        $dentist = Dentist::where('email', $email)->where('is_active', true)->first();
+        // El código siempre viaja por email — DNI es sólo una forma alternativa
+        // de identificar la cuenta, no un segundo factor propio.
+        $dentist = Dentist::where('is_active', true)
+            ->where(function ($query) use ($identifier) {
+                $query->where('email', $identifier)->orWhere('dni', $identifier);
+            })
+            ->first();
 
-        // Mismo mensaje exista o no el email, para no filtrar qué correos están registrados.
-        $genericMessage = 'Si el correo pertenece a un odontólogo registrado, te enviamos un código de acceso.';
+        if ($dentist && empty($dentist->email)) {
+            return back()->withErrors(['identifier' => 'Tu cuenta no tiene un email cargado para enviarte el código. Contactá al laboratorio para que lo agreguen.']);
+        }
+
+        // Mismo mensaje si no se encontró nada, para no filtrar qué cuentas están registradas.
+        $genericMessage = 'Si los datos pertenecen a un odontólogo registrado, te enviamos un código de acceso por email.';
 
         if ($dentist) {
             RateLimiter::hit($throttleKey, 600);
@@ -59,18 +70,21 @@ class DentistPortalAuthController extends Controller
             Mail::to($dentist->email)->send(new DentistPortalLoginCode($dentist, $code));
 
             $request->session()->put('dentist_portal_pending_id', $dentist->id);
+            $request->session()->put('dentist_portal_pending_email', $dentist->email);
         }
 
         return redirect()->route('dentist-portal.verify')->with('success', $genericMessage);
     }
 
-    public function showVerify(Request $request): View|RedirectResponse
+    public function showVerify(Request $request): Response|RedirectResponse
     {
         if (! $request->session()->has('dentist_portal_pending_id')) {
             return redirect()->route('dentist-portal.login');
         }
 
-        return view('portal.dentist-verify');
+        return Inertia::render('DentistPortal/Verify', [
+            'email' => $request->session()->get('dentist_portal_pending_email'),
+        ]);
     }
 
     public function verifyCode(Request $request): RedirectResponse
@@ -108,7 +122,7 @@ class DentistPortalAuthController extends Controller
 
         $dentist = Dentist::findOrFail($dentistId);
 
-        $request->session()->forget('dentist_portal_pending_id');
+        $request->session()->forget(['dentist_portal_pending_id', 'dentist_portal_pending_email']);
         $request->session()->regenerate();
         $request->session()->put('dentist_id', $dentist->id);
 

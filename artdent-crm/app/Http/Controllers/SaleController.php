@@ -306,6 +306,7 @@ class SaleController extends Controller
                     ['customer_id' => $request->customer_id],
                     ['balance' => 0]
                 );
+                $account = CustomerAccount::where('id', $account->id)->lockForUpdate()->first();
                 $newBalance = $account->balance + $accountAmount;
                 $move = CustomerAccountMove::create([
                     'customer_account_id' => $account->id,
@@ -380,9 +381,16 @@ class SaleController extends Controller
                         ['product_id' => $productId, 'variant_id' => $variantId, 'warehouse_id' => $warehouse->id],
                         ['quantity' => 0]
                     );
+                    $stock = Stock::where('id', $stock->id)->lockForUpdate()->first();
 
                     $stockBefore = (float) $stock->quantity;
                     $stockAfter = $stockBefore - $qty;
+
+                    if ($stockAfter < 0) {
+                        throw ValidationException::withMessages([
+                            'items' => "Stock insuficiente para \"{$product->name}\". Disponible: {$stockBefore}.",
+                        ]);
+                    }
 
                     $stock->update(['quantity' => $stockAfter]);
 
@@ -411,15 +419,17 @@ class SaleController extends Controller
             DB::commit();
 
             // ── Auto-facturación AFIP ─────────────────────────────────────────
-            // Mapa de receipt_type (formato legacy A/B/C y nuevo FA/FB/FC) → receipt_key AFIP
-            $afipKeyMap = [
-                'A' => 'FA', 'FA' => 'FA',
-                'B' => 'FB', 'FB' => 'FB',
-                'C' => 'FC', 'FC' => 'FC',
-                'NCA' => 'NCA', 'NCB' => 'NCB', 'NCC' => 'NCC',
-                'NDA' => 'NDA', 'NDB' => 'NDB', 'NDC' => 'NDC',
-            ];
-            if (isset($afipKeyMap[$receiptType])) {
+            // "Primero pago, después ticket" para nave_qr: el pago todavía no
+            // impactó (queda pendiente hasta que Nave lo confirme, ver
+            // NavePosPaymentController), así que ni la Factura AFIP ni el
+            // ticket con CAE se generan acá — se disparan recién desde
+            // NavePosPaymentController::applyApprovedIntent() cuando el pago
+            // se confirma de verdad. cuenta_corriente sigue facturando ahora
+            // (factura ahora, cobra después es el diseño de esa modalidad).
+            $hasPendingNaveQr = collect($payments)->contains('method', 'nave_qr');
+            $afipKey = \App\Support\AfipReceiptKeyMap::keyFor($receiptType);
+
+            if ($afipKey && ! $hasPendingNaveQr) {
                 $company->refresh();
                 if ($company->afip_auto_invoice) {
                     try {
@@ -428,7 +438,7 @@ class SaleController extends Controller
                         // "Confirmar cobro", no minutos después vía cola.
                         \App\Jobs\GenerateAfipInvoiceJob::dispatchSync(
                             $sale->id,
-                            $afipKeyMap[$receiptType]
+                            $afipKey
                         );
                     } catch (\Throwable $e) {
                         \Illuminate\Support\Facades\Log::warning('Auto-factura AFIP falló (no bloquea la venta)', [
@@ -671,6 +681,7 @@ class SaleController extends Controller
                             ['product_id' => $item->product_id, 'variant_id' => $cancelVariantId, 'warehouse_id' => $warehouse->id],
                             ['quantity' => 0]
                         );
+                        $stock = Stock::where('id', $stock->id)->lockForUpdate()->first();
 
                         $stockBefore = (float) $stock->quantity;
                         $stockAfter = $stockBefore + $item->quantity;
@@ -801,13 +812,13 @@ class SaleController extends Controller
         $method = strtolower($method);
         $aliases = match ($method) {
             'cash' => ['cash', 'efectivo'],
-            'debit' => ['debit', 'debito', 'débito'],
-            'credit' => ['credit', 'credito', 'crédito'],
+            'debit' => ['debit', 'debito', 'débito', 'card_debit'],
+            'credit' => ['credit', 'credito', 'crédito', 'card_credit'],
             'transfer' => ['transfer', 'transferencia'],
             default => [$method],
         };
 
-        return PaymentMethod::query()
+        $resolved = PaymentMethod::query()
             ->where('is_active', true)
             ->where(function ($query) use ($aliases) {
                 foreach ($aliases as $alias) {
@@ -816,6 +827,20 @@ class SaleController extends Controller
                 }
             })
             ->first();
+
+        if (! $resolved) {
+            // Falla silenciosa históricamente: la venta se guardaba con
+            // payment_method_id=null sin ningún rastro, lo que rompía el
+            // agrupado por medio de pago y el efectivo esperado del cierre
+            // de caja (ver CashSessionController::buildReport). Al menos
+            // queda en el log para poder auditar qué tenant/medio falló.
+            \Log::warning('resolveSalePaymentMethod: no se encontró un payment_method activo', [
+                'method' => $method,
+                'company_id' => CompanyContext::id(),
+            ]);
+        }
+
+        return $resolved;
     }
 
     /**

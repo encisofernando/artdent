@@ -112,13 +112,18 @@ return [
     | Alícuotas IVA → código AFIP
     |--------------------------------------------------------------------------
     */
+    // Claves como string: los índices float ('10.5', '2.5') se truncan a
+    // int (10, 2) si se escriben como literales numéricos — PHP trunca
+    // claves de array float tanto al escribir como al leer, así que el
+    // bug queda invisible mientras se acceda por el mismo literal, pero
+    // rompe apenas algo itera array_keys() esperando ver "10.5"/"2.5".
     'iva_rates' => [
-        0 => 3,    // IVA 0%
-        10.5 => 4,    // IVA 10.5%
-        21 => 5,    // IVA 21%
-        27 => 6,    // IVA 27%
-        5 => 8,    // IVA 5%
-        2.5 => 9,    // IVA 2.5%
+        '0' => 3,    // IVA 0%
+        '10.5' => 4,    // IVA 10.5%
+        '21' => 5,    // IVA 21%
+        '27' => 6,    // IVA 27%
+        '5' => 8,    // IVA 5%
+        '2.5' => 9,    // IVA 2.5%
     ],
 
     /*

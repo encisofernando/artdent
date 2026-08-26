@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
 class AbandonedCart extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'ecommerce_abandoned_carts';
 
     protected $fillable = [

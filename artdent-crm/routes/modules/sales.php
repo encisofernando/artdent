@@ -6,8 +6,6 @@ use App\Http\Controllers\InstallmentsSimulatorController;
 use App\Http\Controllers\LoyaltyRewardController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\SaleController;
-use App\Http\Controllers\SaleItemController;
-use App\Http\Controllers\SalePaymentController;
 use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\VentasController;
 use Illuminate\Support\Facades\Route;
@@ -54,8 +52,6 @@ Route::get('held-sales/{heldSale}', [HeldSaleController::class, 'show'])->name('
 Route::delete('held-sales/{heldSale}', [HeldSaleController::class, 'destroy'])->name('held-sales.destroy')->middleware('permission:sales.create');
 
 // Sub-recursos de venta (items y pagos)
-Route::resource('sale-items', SaleItemController::class)->middleware('permission:sales.edit');
-Route::resource('sale-payments', SalePaymentController::class)->middleware('permission:sales.edit');
 
 // Estado de una intención de cobro Nave — compartido por el POS y por
 // cuentas corrientes de clientes (routes/modules/ecommerce.php), no

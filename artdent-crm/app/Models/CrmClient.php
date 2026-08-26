@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -34,6 +35,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class CrmClient extends Model
 {
+    use BelongsToCompany;
     use SoftDeletes;
 
     protected $table = 'crm_clients';

@@ -661,10 +661,18 @@ export default function Create({ auth, products, customers = [], company = null 
                 setWaStep('actions');
                 setWaPhone('');
                 setPdfUrl(null);
-                setPostSaleOpen(true);
 
                 const naveSplit = normalizedPayments.find((p) => p.method === 'nave_qr');
-                if (naveSplit && sale.status === 'pending' && sale.id) {
+                const awaitingNavePayment = naveSplit && sale.status === 'pending' && sale.id;
+
+                // "Primero pago, después ticket": si se cobra por QR y el pago
+                // todavía no impactó, no mostramos ticket/factura acá — recién
+                // se abre cuando Nave confirma el pago (onApproved más abajo).
+                if (! awaitingNavePayment) {
+                    setPostSaleOpen(true);
+                }
+
+                if (awaitingNavePayment) {
                     axios.post(route('sales.nave-charge', sale.id), { type: 'static_qr' })
                         .then(({ data }) => {
                             setNaveIntent({
@@ -2389,8 +2397,17 @@ export default function Create({ auth, products, customers = [], company = null 
                     checkoutUrl={naveIntent.checkoutUrl}
                     companyId={naveIntent.companyId}
                     amount={naveIntent.amount}
-                    onApproved={() => {
-                        setPostSale((prev) => (prev ? { ...prev, status: 'completed' } : prev));
+                    onApproved={(sale) => {
+                        // "Primero pago, después ticket": recién acá, con la
+                        // venta ya confirmada (y su factura AFIP si
+                        // corresponde, generada por NavePosPaymentController
+                        // al aprobarse el pago), se muestra el ticket.
+                        if (sale) {
+                            setPostSale(sale);
+                            setPostSaleOpen(true);
+                        } else {
+                            setPostSale((prev) => (prev ? { ...prev, status: 'completed' } : prev));
+                        }
                         setNaveIntent(null);
                         toast.success('Pago con QR confirmado.');
                     }}

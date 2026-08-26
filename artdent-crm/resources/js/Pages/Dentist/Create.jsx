@@ -14,6 +14,7 @@ export default function Create({ auth }) {
         contact_name: '',
         code: '',
         email: '',
+        dni: '',
         phone: '',
         phone_alt: '',
         whatsapp: '',
@@ -163,7 +164,7 @@ export default function Create({ auth }) {
                                 {errors.license_number && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.license_number}</div>}
                             </div>
 
-                            <div className="md:col-span-2">
+                            <div>
                                 <label className={labelClasses}>Email</label>
                                 <input
                                     type="email"
@@ -173,6 +174,18 @@ export default function Create({ auth }) {
                                     placeholder="correo@ejemplo.com"
                                 />
                                 {errors.email && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.email}</div>}
+                            </div>
+
+                            <div>
+                                <label className={labelClasses}>DNI</label>
+                                <input
+                                    type="text"
+                                    value={data.dni}
+                                    onChange={e => setData('dni', e.target.value)}
+                                    className={inputClasses}
+                                    placeholder="Para iniciar sesión en el portal"
+                                />
+                                {errors.dni && <div className="text-red-500 text-xs mt-1.5 font-medium">{errors.dni}</div>}
                             </div>
 
                             <div>

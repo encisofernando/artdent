@@ -322,6 +322,17 @@ class EmployeePayrollService
             return $receipt;
         }
 
+        // El recibo individual sigue en 'draft' hasta que la liquidación
+        // pasa a 'paid' (PayrollRunController::update() recién ahí lo
+        // marca) — aprobar la liquidación ('calculated' → 'approved') NO
+        // toca el status del recibo. Sin este chequeo, un recibo de una
+        // liquidación ya aprobada se seguía recalculando solo con abrir su
+        // propia pantalla (EmployeeReceiptController::show()/pdf()),
+        // aunque la liquidación en sí ya estuviera aprobada.
+        if ($receipt->payroll_run_id && $receipt->payrollRun && $receipt->payrollRun->status !== 'calculated') {
+            return $receipt;
+        }
+
         $employee = $receipt->employee;
         $totals = $this->calculateTotals(
             $employee,

@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Corre la suite de artdent-crm antes de cada push, sólo si el push incluye
+# commits que tocan algo bajo artdent-crm/ — evita frenar pushes de otras
+# partes del repo (docs, otros proyectos) por un test suite que no aplica.
+#
+# Activación (una sola vez por checkout, no es automático en un clone nuevo):
+#   git config core.hooksPath .githooks
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+remote="$1"
+range_has_artdent_crm_changes=false
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+        continue # se está borrando el ref remoto, nada que testear
+    fi
+
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+        range="$local_sha"
+    else
+        range="$remote_sha..$local_sha"
+    fi
+
+    if git diff --name-only "$range" -- artdent-crm/ 2>/dev/null | grep -q .; then
+        range_has_artdent_crm_changes=true
+        break
+    fi
+done
+
+if [ "$range_has_artdent_crm_changes" = false ]; then
+    exit 0
+fi
+
+echo "pre-push: corriendo la suite de artdent-crm antes de pushear a $remote..."
+cd "$repo_root/artdent-crm"
+
+if ! php artisan test --compact; then
+    echo ""
+    echo "pre-push: la suite de tests falló — push cancelado."
+    echo "Para pushear igual (no recomendado): git push --no-verify"
+    exit 1
+fi

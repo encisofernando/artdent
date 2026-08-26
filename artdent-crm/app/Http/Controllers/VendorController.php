@@ -17,9 +17,11 @@ class VendorController extends Controller
         $query = Vendor::query();
 
         if ($search) {
-            $query->where('name', 'like', "%{$search}%")
-                ->orWhere('cuit', 'like', "%{$search}%")
-                ->orWhere('contact_name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('cuit', 'like', "%{$search}%")
+                    ->orWhere('contact_name', 'like', "%{$search}%");
+            });
         }
 
         if ($status === 'active') {

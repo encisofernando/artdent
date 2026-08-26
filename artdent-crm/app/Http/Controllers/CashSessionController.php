@@ -157,7 +157,7 @@ class CashSessionController extends Controller
             'Cierre: contado '.number_format($validated['closing_amount'], 2, ',', '.').
             ' / esperado '.number_format($report['expected_cash'], 2, ',', '.').
             ' / diferencia '.number_format($difference, 2, ',', '.').
-            ($validated['notes'] ? ' — '.$validated['notes'] : ''));
+            (($validated['notes'] ?? null) ? ' — '.$validated['notes'] : ''));
 
         $cashSession->update([
             'closed_at' => now(),
@@ -293,6 +293,11 @@ class CashSessionController extends Controller
     {
         $companyId = CompanyContext::id();
 
-        abort_unless($cashSession->cash_drawer->company_id === $companyId, 404);
+        // cash_drawer tiene BelongsToCompany (Fase 2): si la caja es de otra
+        // empresa, la relación ya la filtra sola y devuelve null — no una
+        // fila con company_id distinto. Comparar con ?-> en vez de asumir
+        // que siempre hay fila evita un 500 (null->company_id) donde
+        // debería ser un 404 igual que para cualquier otro cross-empresa.
+        abort_unless($cashSession->cash_drawer?->company_id === $companyId, 404);
     }
 }

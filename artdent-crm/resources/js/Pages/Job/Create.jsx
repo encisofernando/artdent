@@ -12,28 +12,31 @@ import Odontogram from '@/Components/Odontogram';
 import SearchableSelect from '@/Components/SearchableSelect';
 import { todayIso, toLocalDateIso } from '@/lib/localDate';
 
-export default function Create({ auth, dentists, patients, jobTypes, collaborators, tariffs }) {
+export default function Create({ auth, dentists, patients, jobTypes, collaborators, tariffs, jobRequest = null }) {
     const { isDark } = useTheme();
 
     const [isOdontogramOpen, setIsOdontogramOpen] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
-        dentist_id: '',
-        patient_name: '',
+        dentist_id: jobRequest?.dentist_id ? String(jobRequest.dentist_id) : '',
+        patient_name: jobRequest?.patient_name || '',
         job_type_id: '',
         assigned_user_id: '',
         status: 'received',
         priority: 'normal',
         description: '',
-        clinical_notes: '',
+        clinical_notes: jobRequest
+            ? [jobRequest.job_type_label, jobRequest.notes].filter(Boolean).join(' — ')
+            : '',
         shade: '',
         received_at: todayIso(),
-        due_date: toLocalDateIso(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        due_date: jobRequest?.due_date_requested || toLocalDateIso(Date.now() + 7 * 24 * 60 * 60 * 1000),
         delivered_at: '',
         discount_amount: 0,
         notes: '',
         items: [],
-        teeth: []
+        teeth: [],
+        job_request_id: jobRequest?.id || null,
     });
 
     const filteredPatients = data.dentist_id
@@ -135,6 +138,12 @@ export default function Create({ auth, dentists, patients, jobTypes, collaborato
                         </Button>
                     </Link>
                 </div>
+
+                {jobRequest && (
+                    <div className={`rounded-xl border px-4 py-3 text-sm ${isDark ? 'bg-teal-950/40 border-teal-900 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-800'}`}>
+                        Convirtiendo la solicitud enviada desde el portal del odontólogo — los campos ya vienen precargados, solo falta elegir los aranceles.
+                    </div>
+                )}
 
                 <form onSubmit={submit} className="flex flex-col lg:flex-row gap-6">
 

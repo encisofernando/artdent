@@ -2,12 +2,93 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+// panel.artdent.com.ar (mismo codebase/DB que pos.artdent.com.ar, ver
+// config/crm.php "portal_only"): la raíz del sitio NO se registra acá —
+// routes/modules/dentist_portal.php ya registra "/" (prefijo vacío en ese
+// modo) apuntando a DentistPortalController::show(), cuyo middleware
+// dentist.portal.auth ya redirige solo a "login" si no hay sesión. Definir
+// otra ruta "/" acá también generaría un choque de rutas duplicadas.
+if (! config('crm.portal_only')) {
+    Route::get('/', function () {
+        return redirect()->route('login');
+    });
+}
 
 Route::get('/print-manager/download/{platform?}', [\App\Http\Controllers\PrintManagerDownloadController::class, 'download'])
     ->name('print-manager.download');
+
+// Manifest PWA — dinámico en vez de archivo estático en public/ porque
+// panel.artdent.com.ar (portal_only) y pos.artdent.com.ar comparten el mismo
+// codebase pero necesitan un manifest distinto (start_url distinto, nombre
+// distinto). Un archivo estático se desincroniza en cada deploy; una ruta no.
+Route::get('/manifest.webmanifest', function () {
+    if (config('crm.portal_only')) {
+        return response()->json([
+            'id' => '/',
+            'name' => 'Portal de Odontólogos — ArtDent',
+            'short_name' => 'Portal ArtDent',
+            'description' => 'Consultá tus trabajos, pagos y el estado de tus órdenes con el laboratorio.',
+            'lang' => 'es-AR',
+            'dir' => 'ltr',
+            'start_url' => '/?source=pwa',
+            'scope' => '/',
+            'display' => 'standalone',
+            'display_override' => ['window-controls-overlay', 'standalone', 'browser'],
+            'background_color' => '#020617',
+            'theme_color' => '#0f172a',
+            'categories' => ['business', 'medical'],
+            'prefer_related_applications' => false,
+            'icons' => [
+                ['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => '/pwa/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ],
+        ]);
+    }
+
+    return response()->json([
+        'id' => '/dashboard',
+        'name' => 'ArtCode CRM',
+        'short_name' => 'ArtCode CRM',
+        'description' => 'Gestión comercial, laboratorio, e-commerce y finanzas de ArtCode en una experiencia instalable.',
+        'lang' => 'es-AR',
+        'dir' => 'ltr',
+        'start_url' => '/dashboard?source=pwa',
+        'scope' => '/',
+        'display' => 'standalone',
+        'display_override' => ['window-controls-overlay', 'standalone', 'browser'],
+        'background_color' => '#020617',
+        'theme_color' => '#0f172a',
+        'categories' => ['business', 'medical', 'productivity'],
+        'prefer_related_applications' => false,
+        'icons' => [
+            ['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => '/pwa/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+        ],
+        'shortcuts' => [
+            [
+                'name' => 'Panel General',
+                'short_name' => 'Dashboard',
+                'description' => 'Abrí el panel general del CRM',
+                'url' => '/dashboard?source=pwa-shortcut',
+                'icons' => [['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']],
+            ],
+            [
+                'name' => 'Nueva Venta',
+                'short_name' => 'Ventas',
+                'description' => 'Creá una nueva venta desde la app instalada',
+                'url' => '/sales/create?source=pwa-shortcut',
+                'icons' => [['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']],
+            ],
+            [
+                'name' => 'Órdenes',
+                'short_name' => 'Órdenes',
+                'description' => 'Consultá trabajos y órdenes del laboratorio',
+                'url' => '/jobs?source=pwa-shortcut',
+                'icons' => [['src' => '/pwa/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']],
+            ],
+        ],
+    ]);
+})->name('manifest');
 
 // ── Fallback para archivos de storage cuando el symlink no existe ─────────────
 // Si el symlink public/storage existe y el servidor sirve el archivo estático,
@@ -109,7 +190,6 @@ Route::middleware(['tenant.session', 'auth'])->group(function () {
     require __DIR__.'/modules/hikvision.php';
 
     require __DIR__.'/modules/admin.php';
-    require __DIR__.'/modules/user.php';
 
     require __DIR__.'/modules/profile.php';
 
@@ -130,11 +210,18 @@ Route::middleware(['tenant.session', 'auth'])->group(function () {
 
 });
 
-// Presupuesto público — sin autenticación (link compartible por WhatsApp)
-Route::get('/q/{token}', [\App\Http\Controllers\QuoteController::class, 'publicShow'])->name('quotes.public');
+// Presupuesto público — sin autenticación (link compartible por WhatsApp).
+// tenant.public_token: resuelve tenant contra el registro central antes de
+// tocar Invoice — sin esto, en multi-tenant la query cae en la conexión
+// default (no necesariamente la BD del tenant dueño del presupuesto).
+Route::get('/q/{token}', [\App\Http\Controllers\QuoteController::class, 'publicShow'])
+    ->middleware('tenant.public_token')
+    ->name('quotes.public');
 
 // Portal del cliente — sin autenticación, acceso por token único
-Route::get('/portal/{token}', [\App\Http\Controllers\CustomerPortalController::class, 'show'])->name('customer.portal');
+Route::get('/portal/{token}', [\App\Http\Controllers\CustomerPortalController::class, 'show'])
+    ->middleware('tenant.public_token')
+    ->name('customer.portal');
 
 // Portal de colaboradores — autenticación independiente por PIN
 require __DIR__.'/modules/colaborador_portal.php';
@@ -145,4 +232,11 @@ require __DIR__.'/modules/dentist_portal.php';
 // Panel de asignación — usa auth:sanctum (Bearer token) fuera del grupo de sesión
 require __DIR__.'/modules/assign-panel.php';
 
-require __DIR__.'/auth.php';
+// En panel.artdent.com.ar (portal_only) el sitio entero ES el portal del
+// odontólogo — las rutas de auth de staff (/login, /register, /forgot-password...)
+// no tienen sentido ahí y, peor, "/login" choca en la tabla de rutas con
+// dentist_portal.php (que registra su propio "login" con prefijo vacío en
+// este modo), pisando esa ruta por completo (hasta el lookup por nombre).
+if (! config('crm.portal_only')) {
+    require __DIR__.'/auth.php';
+}

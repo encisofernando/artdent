@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
 class NaveChargeIntent extends Model
 {
+    use BelongsToCompany;
+
     public const PAYABLE_SALE = 'sale';
 
     public const PAYABLE_CUSTOMER_ACCOUNT = 'customer_account';
+
+    public const PAYABLE_LAB_ACCOUNT = 'lab_account';
 
     public const TYPE_STATIC_QR = 'static_qr';
 

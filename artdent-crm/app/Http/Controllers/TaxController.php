@@ -3,63 +3,79 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tax;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Catálogo global de alícuotas de IVA — no tiene company_id (no es
+ * multi-empresa, es el mismo catálogo de tasas para todo el tenant). Mismo
+ * criterio de UI que PaymentMethodController: index()/store()/update()/
+ * destroy() en JSON, sin páginas Inertia dedicadas (ver
+ * Settings/AFIP en el frontend).
+ */
 class TaxController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): JsonResponse
     {
-        //
+        return response()->json([
+            'taxes' => Tax::orderBy('rate')->get(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $validated = $this->validated($request);
+
+        $tax = Tax::create($validated);
+
+        return response()->json(['success' => true, 'tax' => $tax]);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Tax $tax)
     {
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Tax $tax)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Tax $tax)
+    public function update(Request $request, Tax $tax): JsonResponse
     {
-        //
+        $validated = $this->validated($request);
+
+        $tax->update($validated);
+
+        return response()->json(['success' => true, 'tax' => $tax->fresh()]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Tax $tax)
+    public function destroy(Tax $tax): JsonResponse
     {
-        //
+        if ($tax->products()->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No se puede eliminar: hay productos usando esta alícuota. Desactivala en su lugar.',
+            ], 422);
+        }
+
+        $tax->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'afip_code' => ['nullable', 'string', 'max:20'],
+            'is_active' => ['required', 'boolean'],
+        ]);
     }
 }

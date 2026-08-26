@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -24,15 +26,32 @@ class AuthApiController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        // Mismo criterio que LoginRequest (staff): 5 intentos por
+        // email+IP — antes este login no tenía ningún límite, a diferencia
+        // del de staff.
+        $throttleKey = Str::transliterate(Str::lower($request->string('email')).'|'.$request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            throw ValidationException::withMessages([
+                'email' => ["Demasiados intentos. Probá de nuevo en {$seconds} segundos."],
+            ]);
+        }
+
         $customer = Customer::query()
             ->where('email', $request->email)
             ->first();
 
         if (! $customer || ! Hash::check($request->password, $customer->password)) {
+            RateLimiter::hit($throttleKey);
+
             throw ValidationException::withMessages([
                 'email' => ['Correo o contraseña incorrectos.'],
             ]);
         }
+
+        RateLimiter::clear($throttleKey);
 
         $this->linkGuestOrders($customer);
 

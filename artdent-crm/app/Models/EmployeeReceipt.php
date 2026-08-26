@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +39,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class EmployeeReceipt extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'employee_receipts';
 
     protected $casts = [

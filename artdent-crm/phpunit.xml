@@ -17,19 +17,12 @@
             <directory>app</directory>
         </include>
     </source>
+    <!-- Toda la config de entorno de test vive en .env.testing (gitignored,
+         no versionado), no acá — confirmado empíricamente que el <env> de
+         PHPUnit (incluso con force="true") pierde contra el propio boot de
+         Laravel/Dotenv al resolver config(), así que definirla acá sería
+         ruido que nunca se aplica de verdad. -->
     <php>
         <env name="APP_ENV" value="testing"/>
-        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="PULSE_ENABLED" value="false"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
-        <env name="NIGHTWATCH_ENABLED" value="false"/>
     </php>
 </phpunit>

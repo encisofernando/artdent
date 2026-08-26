@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\HikVisionDevice;
+use App\Models\IsapiDeviceRegistry;
+use App\Models\Tenant;
 use App\Services\HikVisionEventProcessor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -39,6 +41,24 @@ class HikVisionWebhookController extends Controller
         $sourceIp = $request->ip();
         $raw = $this->parsePayload($request);
 
+        // El terminal llega sin sesión ni sub-dominio de tenant resuelto —
+        // antes de tocar CUALQUIER tabla tenant-scoped (HikVisionDevice
+        // ahora tiene BelongsToCompany, y sin tenancy activa cualquier query
+        // caería en la conexión "mysql" default del deploy, que en
+        // pos.artcode.com.ar es fija a UN tenant, no a los 3 que sirve) hay
+        // que resolver primero a qué tenant pertenece este dispositivo
+        // contra el registro central. Mismo patrón que
+        // InitializeTenancyByIsupAccount/IsupDeviceRegistry.
+        if (! $this->initializeTenancyForDevice($sourceIp, $raw)) {
+            Log::warning('HikVision webhook: no se pudo resolver el tenant del dispositivo, evento descartado', [
+                'source_ip' => $sourceIp,
+                'mac_address' => $raw['macAddress'] ?? null,
+                'device_id' => $raw['deviceID'] ?? null,
+            ]);
+
+            return response('OK', 200);
+        }
+
         // Identificar dispositivo por IP (solo funciona si el terminal pushea
         // directo por LAN; cuando pega a la IP pública del servidor a través del
         // WAN del consultorio, $sourceIp es la IP pública del ISP, no la del
@@ -49,7 +69,11 @@ class HikVisionWebhookController extends Controller
         // que llegue de esa misma IP pública matchea siempre la fila ISUP acá
         // y el guard de abajo lo descarta entero, aunque el terminal siga
         // empujando por ISAPI en paralelo.
-        $device = HikVisionDevice::where('ip_address', $sourceIp)
+        // withoutCompanyScope(): no hay usuario autenticado acá, así que
+        // CompanyContext::id() cae al default (company 1) — un tenant con
+        // el dispositivo en otra company nunca lo encontraría.
+        $device = HikVisionDevice::withoutCompanyScope()
+            ->where('ip_address', $sourceIp)
             ->where('connection_type', '!=', 'isup')
             ->where('is_active', true)
             ->first();
@@ -62,7 +86,8 @@ class HikVisionWebhookController extends Controller
         // matcheara la ISUP, el guard de abajo descartaría el evento entero
         // sin guardar nada, aunque el terminal siga empujando por ISAPI.
         if (! $device && ! empty($raw['macAddress'])) {
-            $device = HikVisionDevice::where('mac_address', $raw['macAddress'])
+            $device = HikVisionDevice::withoutCompanyScope()
+                ->where('mac_address', $raw['macAddress'])
                 ->where('connection_type', '!=', 'isup')
                 ->where('is_active', true)
                 ->first();
@@ -70,7 +95,9 @@ class HikVisionWebhookController extends Controller
 
         // Si no encontramos por IP ni MAC, buscar por serial en el payload
         if (! $device && ! empty($raw['deviceID'])) {
-            $device = HikVisionDevice::where('serial_no', $raw['deviceID'])->first();
+            $device = HikVisionDevice::withoutCompanyScope()
+                ->where('serial_no', $raw['deviceID'])
+                ->first();
         }
 
         // Si el dispositivo ya está migrado a ISUP, ese evento ya lo procesó
@@ -79,6 +106,25 @@ class HikVisionWebhookController extends Controller
         // activo en paralelo.
         if ($device && $device->connection_type === 'isup') {
             return response('OK', 200);
+        }
+
+        // Validación opcional (no obligatoria): subscribeEvents() ahora
+        // registra la URL con ?secret=..., pero un dispositivo ya
+        // suscripto ANTES de este cambio sigue empujando a la URL vieja
+        // sin el parámetro hasta que alguien vuelva a apretar "Suscribir
+        // eventos" en el panel — exigirlo ya rompería esos terminales en
+        // producción sin aviso. Si el secret SÍ viene y no matchea, se
+        // rechaza (alguien intentando spoofear un dispositivo conocido).
+        if ($device && $device->webhook_secret) {
+            $providedSecret = (string) $request->query('secret', '');
+
+            if ($providedSecret !== '' && ! hash_equals($device->webhook_secret, $providedSecret)) {
+                Log::warning('HikVision webhook: secret inválido para el dispositivo resuelto', [
+                    'device_id' => $device->id,
+                ]);
+
+                return response('OK', 200);
+            }
         }
 
         $eventType = $raw['eventType'] ?? ($raw['Events'][0]['eventType'] ?? 'unknown');
@@ -113,6 +159,39 @@ class HikVisionWebhookController extends Controller
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
+
+    /**
+     * Busca en isapi_device_registry (BD central) por IP, luego MAC, luego
+     * serial del payload — mismo orden de prioridad que la búsqueda de
+     * HikVisionDevice de más abajo, porque ambas resuelven el mismo
+     * dispositivo físico. Si lo encuentra, inicializa la tenancy.
+     */
+    private function initializeTenancyForDevice(string $sourceIp, array $raw): bool
+    {
+        $registry = IsapiDeviceRegistry::where('ip_address', $sourceIp)->first();
+
+        if (! $registry && ! empty($raw['macAddress'])) {
+            $registry = IsapiDeviceRegistry::where('mac_address', $raw['macAddress'])->first();
+        }
+
+        if (! $registry && ! empty($raw['deviceID'])) {
+            $registry = IsapiDeviceRegistry::where('serial_no', $raw['deviceID'])->first();
+        }
+
+        if (! $registry) {
+            return false;
+        }
+
+        $tenant = Tenant::find($registry->tenant_id);
+
+        if (! $tenant || ! $tenant->isActive()) {
+            return false;
+        }
+
+        tenancy()->initialize($tenant);
+
+        return true;
+    }
 
     private function parsePayload(Request $request): array
     {

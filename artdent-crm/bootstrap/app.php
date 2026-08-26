@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ['middleware' => ['web', 'tenant.session', 'auth']],
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // El grupo "api" no traía throttle propio (Laravel 12 no lo agrega
+        // por default salvo que se pida acá) — routes/api.php entero
+        // (checkout, login, webhooks de pago, etc.) quedaba sin límite de
+        // requests. El limiter "api" se define en AppServiceProvider::boot().
+        $middleware->throttleApi();
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
@@ -28,6 +34,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'internal/isup/*',
         ]);
 
+        // PortalVerifyCsrfToken decide en tiempo de request (no acá — config()
+        // todavía no está disponible en este punto del bootstrap) si usar
+        // cookie/header CSRF propios (panel.artdent.com.ar, portal_only) o el
+        // comportamiento estándar de Laravel (pos.artdent.com.ar, sin cambios).
+        $middleware->web(replace: [
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class => \App\Http\Middleware\PortalVerifyCsrfToken::class,
+        ]);
+
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
@@ -37,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'lab.network' => \App\Http\Middleware\RestrictToLabNetwork::class,
             'isup.internal' => \App\Http\Middleware\EnsureIsupInternalToken::class,
             'isup.tenant' => \App\Http\Middleware\InitializeTenancyByIsupAccount::class,
+            'tenant.public_token' => \App\Http\Middleware\InitializeTenancyByPublicToken::class,
             'colaborador.auth' => \App\Http\Middleware\ColaboradorAuth::class,
             'dentist.portal.auth' => \App\Http\Middleware\DentistPortalAuth::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

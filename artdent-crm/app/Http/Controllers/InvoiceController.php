@@ -18,9 +18,11 @@ class InvoiceController extends Controller
         $query = Invoice::with('invoice_type');
 
         if ($search) {
-            $query->where('recipient_name', 'like', "%{$search}%")
-                ->orWhere('recipient_cuit', 'like', "%{$search}%")
-                ->orWhere('number', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('recipient_name', 'like', "%{$search}%")
+                    ->orWhere('recipient_cuit', 'like', "%{$search}%")
+                    ->orWhere('number', 'like', "%{$search}%");
+            });
         }
 
         if ($status !== 'all') {
@@ -117,6 +119,15 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
+        // Un comprobante ya autorizado por AFIP/ARCA (tiene CAE, o su
+        // status ya avanzó más allá de 'draft') es un documento fiscal
+        // real — borrarlo rompería el rastro de auditoría legal.
+        abort_if(
+            $invoice->cae || ! in_array($invoice->status, ['draft', 'failed'], true),
+            422,
+            'No se puede eliminar: el comprobante ya fue autorizado o está en un estado avanzado.'
+        );
+
         $invoice->delete();
 
         return redirect()->route('invoices.index')->with('success', 'Factura eliminada exitosamente.');

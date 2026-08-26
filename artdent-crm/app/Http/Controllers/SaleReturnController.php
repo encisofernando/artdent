@@ -55,7 +55,12 @@ class SaleReturnController extends Controller
                 ]);
 
                 foreach ($validated['items'] as $line) {
-                    $saleItem = SaleItem::where('sale_id', $sale->id)->findOrFail($line['sale_item_id']);
+                    // lockForUpdate serializa devoluciones concurrentes sobre
+                    // el mismo sale_item — sin esto, dos requests simultáneos
+                    // podrían leer el mismo "remaining" y devolver de más.
+                    $saleItem = SaleItem::where('sale_id', $sale->id)
+                        ->lockForUpdate()
+                        ->findOrFail($line['sale_item_id']);
 
                     $alreadyReturned = (float) SaleReturnItem::where('sale_item_id', $saleItem->id)->sum('quantity');
                     $remaining = (float) $saleItem->quantity - $alreadyReturned;
@@ -84,6 +89,7 @@ class SaleReturnController extends Controller
                             ['product_id' => $saleItem->product_id, 'variant_id' => $saleItem->variant_id, 'warehouse_id' => $warehouse->id],
                             ['quantity' => 0]
                         );
+                        $stock = Stock::where('id', $stock->id)->lockForUpdate()->first();
 
                         $stockBefore = (float) $stock->quantity;
                         $stockAfter = $stockBefore + $line['quantity'];
@@ -151,6 +157,7 @@ class SaleReturnController extends Controller
         }
 
         $account = CustomerAccount::firstOrCreate(['customer_id' => $sale->customer_id], ['balance' => 0]);
+        $account = CustomerAccount::where('id', $account->id)->lockForUpdate()->first();
         $newBalance = $account->balance - $amount;
 
         $move = CustomerAccountMove::create([

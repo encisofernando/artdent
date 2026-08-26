@@ -17,11 +17,11 @@ Route::withoutMiddleware('auth')
     ->group(function () {
 
         // Órdenes sin colaboradores asignados
-        Route::get('jobs/unassigned',  [CollaboratorAssignController::class, 'unassignedJobs'])
+        Route::get('jobs/unassigned', [CollaboratorAssignController::class, 'unassignedJobs'])
             ->name('jobs.unassigned');
 
         // Órdenes que ya tienen colaboradores
-        Route::get('jobs/assigned',    [CollaboratorAssignController::class, 'assignedJobs'])
+        Route::get('jobs/assigned', [CollaboratorAssignController::class, 'assignedJobs'])
             ->name('jobs.assigned');
 
         // Colaboradores presentes hoy (time_in != null, time_out = null)
@@ -29,10 +29,12 @@ Route::withoutMiddleware('auth')
             ->name('collaborators.present');
 
         // Asignar un colaborador a una orden
-        Route::post('jobs/{job}/assign',   [CollaboratorAssignController::class, 'assign'])
-            ->name('jobs.assign');
+        Route::post('jobs/{job}/assign', [CollaboratorAssignController::class, 'assign'])
+            ->name('jobs.assign')
+            ->middleware('permission:orders.edit');
 
         // Desasignar un colaborador de una orden
         Route::post('jobs/{job}/unassign', [CollaboratorAssignController::class, 'unassign'])
-            ->name('jobs.unassign');
+            ->name('jobs.unassign')
+            ->middleware('permission:orders.edit');
     });

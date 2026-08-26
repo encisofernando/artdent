@@ -26,4 +26,22 @@ class Authenticate extends \Illuminate\Auth\Middleware\Authenticate
     {
         parent::unauthenticated($request, $guards);
     }
+
+    protected function redirectTo($request): ?string
+    {
+        if ($request->expectsJson()) {
+            return null;
+        }
+
+        // En panel.artdent.com.ar (portal_only) no existen las rutas de
+        // staff (routes/auth.php no se carga, ver routes/web.php) — mandar
+        // acá a un visitante sin sesión de staff a route('login') explota
+        // con RouteNotFoundException. Se lo manda al login del portal, que
+        // es lo único que existe en ese deploy.
+        if (config('crm.portal_only')) {
+            return route('dentist-portal.login');
+        }
+
+        return route('login');
+    }
 }
