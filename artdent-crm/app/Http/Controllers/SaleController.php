@@ -360,6 +360,19 @@ class SaleController extends Controller
                 $product = $productId ? Product::find($productId) : null;
                 $variantId = isset($item['variant_id']) ? (int) $item['variant_id'] : null;
 
+                // Snapshot del costo al momento de la venta, para reportes de margen histórico precisos.
+                // Si el producto tiene variante con costo propio se usa ese; si no, el del producto base.
+                $costSnapshot = 0.0;
+                if ($product) {
+                    if ($variantId) {
+                        $variant = $product->product_variants->firstWhere('id', $variantId)
+                            ?? \App\Models\ProductVariant::find($variantId);
+                        $costSnapshot = (float) ($variant?->cost_price ?? $product->cost_price ?? 0);
+                    } else {
+                        $costSnapshot = (float) ($product->cost_price ?? 0);
+                    }
+                }
+
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $productId,
@@ -368,6 +381,7 @@ class SaleController extends Controller
                     'sku' => $item['variant_sku'] ?? $product->sku ?? null,
                     'quantity' => $qty,
                     'unit_price' => $unitPrice,
+                    'cost_price_snapshot' => $costSnapshot,
                     'discount' => $discount,
                     'tax_rate' => isset($item['tax_rate']) && (float) $item['tax_rate'] > 0
                         ? (float) $item['tax_rate']

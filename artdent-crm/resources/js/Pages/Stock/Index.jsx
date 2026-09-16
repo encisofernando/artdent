@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
-import { Search, Package, ArrowLeftRight, SlidersHorizontal, AlertTriangle, X, Save, ChevronRight } from 'lucide-react';
+import { Search, Package, ArrowLeftRight, SlidersHorizontal, AlertTriangle, X, Save, ChevronRight, Download, Layers } from 'lucide-react';
 import { DatePicker, useD } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
 
@@ -154,13 +154,21 @@ export default function Index({ auth, items, warehouses, products, filters }) {
                             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Inventario por producto y depósito</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Link href={route('stocks.valuation')}
+                            className={`inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border whitespace-nowrap ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <Layers size={15} /> Valorización
+                        </Link>
+                        <a href={route('stocks.export', { warehouse_id: filters.warehouse_id || undefined, search: filters.search || undefined, low_stock: filters.low_stock || undefined })}
+                            className={`inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-semibold border whitespace-nowrap ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <Download size={15} /> Exportar CSV
+                        </a>
                         <button onClick={() => openTransfer()}
-                            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap border ${isDark ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                            className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap border ${isDark ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
                             <ArrowLeftRight size={15} /> Transferir
                         </button>
                         <button onClick={() => openAdjust()}
-                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap text-white shadow-md"
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[40px] rounded-xl text-sm font-bold whitespace-nowrap text-white shadow-md"
                             style={{ background: `linear-gradient(90deg, ${B.blue}, ${B.teal})` }}>
                             <SlidersHorizontal size={15} /> Ajustar Stock
                         </button>

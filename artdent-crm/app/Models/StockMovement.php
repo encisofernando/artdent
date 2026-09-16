@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class StockMovement
- * 
+ *
  * @property int $id
  * @property int $product_id
  * @property int|null $variant_id
@@ -25,49 +25,57 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $reference_id
  * @property string|null $note
  * @property Carbon|null $created_at
- * 
  * @property Product $product
  * @property Warehouse $warehouse
- *
- * @package App\Models
  */
 class StockMovement extends Model
 {
-	protected $table = 'stock_movements';
-	public $timestamps = false;
+    protected $table = 'stock_movements';
 
-	protected $casts = [
-		'product_id' => 'int',
-		'variant_id' => 'int',
-		'warehouse_id' => 'int',
-		'user_id' => 'int',
-		'quantity' => 'float',
-		'stock_before' => 'float',
-		'stock_after' => 'float',
-		'reference_id' => 'int'
-	];
+    public $timestamps = false;
 
-	protected $fillable = [
-		'product_id',
-		'variant_id',
-		'warehouse_id',
-		'user_id',
-		'type',
-		'quantity',
-		'stock_before',
-		'stock_after',
-		'reference_type',
-		'reference_id',
-		'note'
-	];
+    protected $casts = [
+        'product_id' => 'int',
+        'variant_id' => 'int',
+        'warehouse_id' => 'int',
+        'user_id' => 'int',
+        'quantity' => 'float',
+        'stock_before' => 'float',
+        'stock_after' => 'float',
+        'reference_id' => 'int',
+    ];
 
-	public function product()
-	{
-		return $this->belongsTo(Product::class);
-	}
+    protected $fillable = [
+        'product_id',
+        'variant_id',
+        'warehouse_id',
+        'user_id',
+        'type',
+        'quantity',
+        'stock_before',
+        'stock_after',
+        'reference_type',
+        'reference_id',
+        'note',
+    ];
 
-	public function warehouse()
-	{
-		return $this->belongsTo(Warehouse::class);
-	}
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
+    }
+
+    public function productVariant()
+    {
+        return $this->belongsTo(\App\Models\ProductVariant::class, 'variant_id');
+    }
 }

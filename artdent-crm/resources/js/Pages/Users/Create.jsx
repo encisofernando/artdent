@@ -175,13 +175,20 @@ export default function Create({ auth, roles, branches }) {
                                                 </svg>
                                             )}
                                         </div>
-                                        <div>
-                                            <p className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                                {role.display_name}
-                                            </p>
-                                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                {role.name}
-                                            </p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                                    {role.display_name}
+                                                </p>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {role.name}
+                                                </span>
+                                            </div>
+                                            {role.description && (
+                                                <p className={`text-xs mt-0.5 leading-snug line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {role.description}
+                                                </p>
+                                            )}
                                         </div>
                                     </button>
                                 );

@@ -11,7 +11,10 @@ Route::middleware('module:insumos')->group(function () {
     // ── Lectura de stock ──────────────────────────────────────────────────────────
     Route::middleware('permission:inventory.view')->group(function () {
         Route::get('stocks', [StockController::class, 'index'])->name('stocks.index');
+        Route::get('stocks/export', [StockController::class, 'exportCsv'])->name('stocks.export');
+        Route::get('stocks/valuation', [StockController::class, 'valuation'])->name('stocks.valuation');
         Route::get('stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index');
+        Route::get('stock-movements/export', [StockMovementController::class, 'exportCsv'])->name('stock-movements.export');
         Route::get('warehouses', [WarehouseController::class, 'index'])->name('warehouses.index');
         Route::get('lab-withdrawals', [LabWithdrawalController::class, 'index'])->name('lab-withdrawals.index');
     });

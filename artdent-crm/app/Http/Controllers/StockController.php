@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockMovement;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StockController extends Controller
 {
@@ -211,5 +213,206 @@ class StockController extends Controller
         });
 
         return back()->with('success', 'Transferencia registrada correctamente.');
+    }
+
+    /**
+     * Exporta el stock valorizado filtrado como CSV (UTF-8 BOM, separador ;).
+     * Filtros: warehouse_id, search, low_stock (boolean).
+     */
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $companyId = CompanyContext::id();
+        $search = $request->input('search');
+        $warehouseId = $request->input('warehouse_id');
+        $lowStock = $request->boolean('low_stock');
+
+        $query = Stock::query()
+            ->with([
+                'product:id,name,sku,cost_price,price,category_id,company_id',
+                'product.category:id,name',
+                'product_variant:id,sku',
+                'warehouse:id,name',
+            ])
+            ->whereHas('product', fn ($q) => $q->where('company_id', $companyId)->where('is_active', true));
+
+        if ($search) {
+            $query->whereHas('product', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        }
+
+        if ($lowStock) {
+            $query->where('min_quantity', '>', 0)
+                ->whereColumn('quantity', '<=', 'min_quantity');
+        }
+
+        $stocks = $query
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->orderBy('stocks.warehouse_id')
+            ->orderBy('products.name')
+            ->select('stocks.*')
+            ->get();
+
+        $filename = 'stock-valorizado-'.now()->format('Y-m-d').'.csv';
+
+        return response()->streamDownload(function () use ($stocks) {
+            $out = fopen('php://output', 'w');
+            // BOM UTF-8 para compatibilidad con Excel
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, [
+                'Producto',
+                'SKU',
+                'Categoría',
+                'Depósito',
+                'Stock Actual',
+                'Stock Mínimo',
+                'Bajo Mínimo',
+                'Costo Unitario',
+                'Precio Venta',
+                'Valor Stock',
+            ], ';');
+
+            foreach ($stocks as $stock) {
+                $qty = (float) $stock->quantity;
+                $minQty = (float) $stock->min_quantity;
+                $costPrice = (float) ($stock->product?->cost_price ?? 0);
+                $salePrice = (float) ($stock->product?->price ?? 0);
+                $stockValue = round($qty * $costPrice, 2);
+                $lowMin = ($minQty > 0 && $qty <= $minQty) ? 'Sí' : 'No';
+
+                fputcsv($out, [
+                    $stock->product?->name ?? '',
+                    $stock->product?->sku ?? '',
+                    $stock->product?->category?->name ?? '',
+                    $stock->warehouse?->name ?? '',
+                    number_format($qty, 2, ',', '.'),
+                    number_format($minQty, 2, ',', '.'),
+                    $lowMin,
+                    number_format($costPrice, 2, ',', '.'),
+                    number_format($salePrice, 2, ',', '.'),
+                    number_format($stockValue, 2, ',', '.'),
+                ], ';');
+            }
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Vista de valorización de stock con resumen (KPIs) e ítems paginados.
+     * Filtros: warehouse_id, category_id, low_stock_only (boolean).
+     */
+    public function valuation(Request $request): Response
+    {
+        $companyId = CompanyContext::id();
+        $warehouseId = $request->input('warehouse_id');
+        $categoryId = $request->input('category_id');
+        $lowStockOnly = $request->boolean('low_stock_only');
+
+        // ── Query base ─────────────────────────────────────────────────────────
+        $baseQuery = Stock::query()
+            ->with([
+                'product:id,name,sku,cost_price,price,category_id,company_id',
+                'product.category:id,name',
+                'warehouse:id,name',
+            ])
+            ->whereHas('product', fn ($q) => $q->where('company_id', $companyId)->where('is_active', true));
+
+        if ($warehouseId) {
+            $baseQuery->where('warehouse_id', $warehouseId);
+        }
+
+        if ($categoryId) {
+            $baseQuery->whereHas('product', fn ($q) => $q->where('category_id', $categoryId));
+        }
+
+        if ($lowStockOnly) {
+            $baseQuery->where('min_quantity', '>', 0)
+                ->whereColumn('quantity', '<=', 'min_quantity');
+        }
+
+        // ── KPIs de resumen ────────────────────────────────────────────────────
+        // Se toma la colección completa (sin paginar) para los totales
+        $all = (clone $baseQuery)
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->select('stocks.*', 'products.cost_price as _cp')
+            ->get();
+
+        $totalValue = $all->sum(fn ($s) => (float) $s->quantity * (float) ($s->_cp ?? 0));
+        $totalSkus = $all->count();
+        $totalUnits = $all->sum(fn ($s) => (float) $s->quantity);
+        $lowStockCount = $all->filter(fn ($s) => $s->min_quantity > 0 && $s->quantity <= $s->min_quantity)->count();
+        $outOfStock = $all->filter(fn ($s) => $s->quantity <= 0)->count();
+
+        // ── Ítems paginados ────────────────────────────────────────────────────
+        $paginated = $baseQuery
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->orderBy('stocks.warehouse_id')
+            ->orderBy('products.name')
+            ->select('stocks.*')
+            ->paginate(50)
+            ->withQueryString();
+
+        $items = $paginated->through(function (Stock $stock) {
+            $qty = (float) $stock->quantity;
+            $minQty = (float) $stock->min_quantity;
+            $costPrice = (float) ($stock->product?->cost_price ?? 0);
+
+            if ($qty <= 0) {
+                $status = 'out';
+            } elseif ($minQty > 0 && $qty <= $minQty) {
+                $status = 'low';
+            } else {
+                $status = 'ok';
+            }
+
+            return [
+                'id' => $stock->id,
+                'product_name' => $stock->product?->name,
+                'sku' => $stock->product?->sku,
+                'category_name' => $stock->product?->category?->name,
+                'warehouse_name' => $stock->warehouse?->name,
+                'quantity' => $qty,
+                'min_quantity' => $minQty,
+                'status' => $status,
+                'cost_price' => $costPrice,
+                'price' => (float) ($stock->product?->price ?? 0),
+                'stock_value' => round($qty * $costPrice, 2),
+            ];
+        });
+
+        // ── Datos para filtros ─────────────────────────────────────────────────
+        $warehouses = Warehouse::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        // Las categorías no tienen company_id; se filtra por las que tienen productos de la empresa
+        $categories = Category::whereHas('products', fn ($q) => $q->where('company_id', $companyId))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return Inertia::render('Stock/Valuation', [
+            'summary' => [
+                'total_value' => round($totalValue, 2),
+                'total_skus' => $totalSkus,
+                'total_units' => round($totalUnits, 2),
+                'low_stock_count' => $lowStockCount,
+                'out_of_stock_count' => $outOfStock,
+            ],
+            'items' => $items,
+            'warehouses' => $warehouses,
+            'categories' => $categories,
+            'filters' => [
+                'warehouse_id' => $warehouseId,
+                'category_id' => $categoryId,
+                'low_stock_only' => $lowStockOnly,
+            ],
+        ]);
     }
 }

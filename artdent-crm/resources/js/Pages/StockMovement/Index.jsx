@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import Pagination from '@/Components/Pagination';
-import { Search, ArrowUpCircle, ArrowDownCircle, RefreshCw, ArrowLeftRight, ShoppingCart, PackageMinus, History } from 'lucide-react';
+import { Search, ArrowUpCircle, ArrowDownCircle, RefreshCw, ArrowLeftRight, ShoppingCart, PackageMinus, History, Download } from 'lucide-react';
 import { DatePicker, useD } from '@/Components/_appkit';
 import SearchableSelect from '@/Components/SearchableSelect';
 
@@ -80,14 +80,28 @@ export default function Index({ auth, items, warehouses, types, filters }) {
             <div className="flex flex-col gap-6 font-sans max-w-7xl mx-auto">
 
                 {/* Header */}
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
-                        <History size={20} className="text-white" />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${B.blue}, ${B.teal})` }}>
+                            <History size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Movimientos de Stock</h1>
+                            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Historial de auditoría — todas las entradas y salidas registradas</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Movimientos de Stock</h1>
-                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Historial de auditoría — todas las entradas y salidas registradas</p>
-                    </div>
+                    <a
+                        href={route('stock-movements.export', {
+                            search: search || undefined,
+                            warehouse_id: warehouseId || undefined,
+                            type: type || undefined,
+                            date_from: dateFrom || undefined,
+                            date_to: dateTo || undefined,
+                        })}
+                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                        <Download size={15} /> Exportar CSV
+                    </a>
                 </div>
 
                 {/* Filtros */}

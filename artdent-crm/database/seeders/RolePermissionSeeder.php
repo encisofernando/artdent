@@ -25,7 +25,8 @@ class RolePermissionSeeder extends Seeder
 
         // ── Comercial ─────────────────────────────────────────────────────────
         'customers' => ['view', 'create', 'edit', 'delete'],
-        'sales' => ['view', 'create', 'edit', 'delete'],
+        'sales' => ['view', 'create', 'edit', 'delete', 'pay'],
+        'cash-register' => ['view', 'operate'],
         'ecommerce' => ['view', 'create', 'edit', 'delete'],
         'purchases' => ['view', 'create', 'edit', 'delete'],
 
@@ -68,29 +69,36 @@ class RolePermissionSeeder extends Seeder
             [
                 'name' => 'Admin',
                 'display_name' => 'Administrador',
-                'description' => 'Gestión operativa completa de la clínica, usuarios y reportes.',
+                'description' => 'Gestión operativa completa de la clínica o comercio, usuarios y reportes.',
                 'permissions' => $all,
             ],
             [
-                'name' => 'Colaborador',
-                'display_name' => 'Técnico Colaborador',
-                'description' => 'Acceso a la gestión de órdenes de trabajo, productos e inventario de lectura.',
+                'name' => 'Cajero',
+                'display_name' => 'Cajero / Punto de Venta',
+                'description' => 'Atención en mostrador, ventas en POS, cobros y apertura/cierre de turnos de caja.',
                 'permissions' => [
-                    'orders.view', 'orders.create', 'orders.edit',
+                    'sales.view',
+                    'sales.create',
+                    'sales.pay',
+                    'cash-register.view',
+                    'cash-register.operate',
                     'products.view',
-                    'inventory.view',
-                    'reports.view',
+                    'customers.view',
+                    'customers.create',
                 ],
             ],
             [
                 'name' => 'Vendedor',
                 'display_name' => 'Vendedor / Comercial',
-                'description' => 'Gestión de ventas, presupuestos, e-commerce y catálogo de productos.',
+                'description' => 'Gestión de ventas, presupuestos, clientes y catálogo de productos.',
                 'permissions' => [
-                    'sales.view', 'sales.create', 'sales.edit',
-                    'ecommerce.view', 'ecommerce.create', 'ecommerce.edit',
-                    'customers.view', 'customers.create', 'customers.edit',
+                    'sales.view',
+                    'sales.create',
+                    'customers.view',
+                    'customers.create',
+                    'customers.edit',
                     'products.view',
+                    'ecommerce.view',
                     'reports.view',
                 ],
             ],
@@ -169,6 +177,21 @@ class RolePermissionSeeder extends Seeder
             );
 
             $role->syncPermissions($data['permissions']);
+        }
+
+        // Sincronizar también variantes existentes en minúsculas o mayúsculas (ej: 'cajero', 'CAJERO')
+        $cajeroPermissions = [
+            'sales.view',
+            'sales.create',
+            'sales.pay',
+            'cash-register.view',
+            'cash-register.operate',
+            'products.view',
+            'customers.view',
+            'customers.create',
+        ];
+        foreach (Role::whereIn('name', ['cajero', 'CAJERO'])->get() as $existingCajeroRole) {
+            $existingCajeroRole->syncPermissions($cajeroPermissions);
         }
 
         // 3. Ensure the first user has Super Admin

@@ -48,7 +48,7 @@ class UserController extends Controller
             'roles' => Role::query()
                 ->where('name', '!=', 'Super Admin')
                 ->orderBy('display_name')
-                ->get(['id', 'name', 'display_name']),
+                ->get(['id', 'name', 'display_name', 'description']),
             'branches' => Branch::query()
                 ->where('company_id', auth()->user()->company_id)
                 ->orderBy('name')
@@ -105,7 +105,7 @@ class UserController extends Controller
             'roles' => Role::query()
                 ->where('name', '!=', 'Super Admin')
                 ->orderBy('display_name')
-                ->get(['id', 'name', 'display_name']),
+                ->get(['id', 'name', 'display_name', 'description']),
             'branches' => Branch::query()
                 ->where('company_id', auth()->user()->company_id)
                 ->orderBy('name')

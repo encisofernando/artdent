@@ -78,10 +78,19 @@ class CostProfitReportController extends Controller
     /** @return \Illuminate\Support\Collection<int, array<string, mixed>> */
     private function buildRows(int $companyId, Carbon $from, Carbon $to): \Illuminate\Support\Collection
     {
+        // Agrupa ventas por producto.
+        // Usa cost_price_snapshot (costo al momento de la venta) si está disponible.
+        // Para registros anteriores a la migración (snapshot = NULL), usa el costo actual del producto como fallback.
         $sold = SaleItem::query()
             ->select('product_id', 'product_name', 'sku')
             ->selectRaw('SUM(quantity) as qty')
             ->selectRaw('SUM(total) as revenue')
+            ->selectRaw('
+                SUM(
+                    quantity * COALESCE(cost_price_snapshot, 0)
+                ) as cost_from_snapshot,
+                SUM(CASE WHEN cost_price_snapshot IS NULL THEN quantity ELSE 0 END) as qty_without_snapshot
+            ')
             ->whereHas('sale', fn ($q) => $q->where('company_id', $companyId)
                 ->where('status', '!=', 'cancelled')
                 ->whereBetween('sold_at', [$from, $to]))
@@ -101,15 +110,23 @@ class CostProfitReportController extends Controller
             ->get()
             ->keyBy('product_id');
 
+        // Costo actual del producto como fallback para ítems sin snapshot.
         $productIds = $sold->pluck('product_id')->filter()->all();
         $costPrices = Product::whereIn('id', $productIds)->pluck('cost_price', 'id');
 
         return $sold->map(function ($item) use ($returned, $costPrices) {
             $ret = $item->product_id ? $returned->get($item->product_id) : null;
-            $netQty = (float) $item->qty - (float) ($ret->qty ?? 0);
-            $netRevenue = round((float) $item->revenue - (float) ($ret->amount ?? 0), 2);
-            $costPrice = (float) ($costPrices[$item->product_id] ?? 0);
-            $cost = round($netQty * $costPrice, 2);
+            $netQty = (float) $item->qty - (float) ($ret?->qty ?? 0);
+            $netRevenue = round((float) $item->revenue - (float) ($ret?->amount ?? 0), 2);
+
+            // Costo basado en snapshot donde existe; para el resto usa cost_price actual.
+            $qtyWithoutSnapshot = (float) $item->qty_without_snapshot;
+            $fallbackCost = (float) ($costPrices[$item->product_id] ?? 0);
+            $cost = round(
+                (float) $item->cost_from_snapshot + ($qtyWithoutSnapshot * $fallbackCost),
+                2
+            );
+
             $margin = round($netRevenue - $cost, 2);
 
             return [

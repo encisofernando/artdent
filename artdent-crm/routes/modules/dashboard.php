@@ -4,6 +4,7 @@ use App\Http\Controllers\CostProfitReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\ReportExportController;
+use App\Http\Controllers\SalesReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -16,7 +17,8 @@ Route::middleware('module:reportes')->group(function () {
     Route::get('/reportes/export-pdf', [ReportesController::class, 'exportPdf'])->name('reportes.export-pdf')->middleware('permission:reports.view');
     Route::get('/reportes/costos-ganancias', [CostProfitReportController::class, 'index'])->name('reportes.costos-ganancias')->middleware('permission:reports.view');
     Route::get('/reportes/costos-ganancias/export', [CostProfitReportController::class, 'exportCsv'])->name('reportes.costos-ganancias.export')->middleware('permission:reports.view');
-
+    Route::get('/reportes/ventas-por-periodo', [SalesReportController::class, 'index'])->name('reportes.ventas-por-periodo')->middleware('permission:reports.view');
+    Route::get('/reportes/ventas-por-periodo/export', [SalesReportController::class, 'exportCsv'])->name('reportes.ventas-por-periodo.export')->middleware('permission:reports.view');
     // CSV / Excel exports — reportes de negocio en general
     Route::prefix('export')->name('export.')->middleware('permission:reports.view|accounting.view')->group(function () {
         Route::get('sales', [ReportExportController::class, 'sales'])->name('sales');

@@ -1,7 +1,7 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head } from "@inertiajs/react";
+import { Head, Link } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
-import { Download, FileText, BarChart2, ShoppingCart, Users, TrendingUp, BookOpen, ArrowRight, BarChart3 } from "lucide-react";
+import { Download, FileText, BarChart2, ShoppingCart, Users, TrendingUp, BookOpen, ArrowRight, BarChart3, Package, Layers, ArrowUpDown } from "lucide-react";
 import { useState } from "react";
 import { DatePicker } from "@/Components/_appkit";
 import { todayIso, toLocalDateIso } from "@/lib/localDate";
@@ -198,6 +198,61 @@ export default function ReportesIndex({ auth }) {
                         <ReportCard title="Aranceles" description="Uso de aranceles: cantidad utilizada y revenue por trabajo"
                             icon={BarChart2} color="#8b5cf6" isDark={isDark} href={route("export.tariffs")}>
                         </ReportCard>
+                    </div>
+                </div>
+                {/* Inventario y Stock */}
+                <div>
+                    <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>Inventario y Stock</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                        {/* Ventas por Período — página completa con gráficos */}
+                        <div className={`rounded-2xl border p-5 shadow-sm relative overflow-hidden ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
+                            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #397B9C, #397B9C66)" }} />
+                            <div className="flex items-start gap-3 mb-3">
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#397B9C18", color: "#397B9C" }}>
+                                    <BarChart3 size={18} />
+                                </div>
+                                <div>
+                                    <h3 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Ventas por Período</h3>
+                                    <p className={`text-xs mt-0.5 ${muted}`}>Evolución, comparativas y top productos por rango de fechas</p>
+                                </div>
+                            </div>
+                            <Link href={route("reportes.ventas-por-periodo")}
+                                className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
+                                style={{ background: "linear-gradient(90deg, #397B9C, #49949C)" }}>
+                                <ArrowRight size={13} /> Ver Reporte
+                            </Link>
+                        </div>
+
+                        {/* Valorización de Inventario */}
+                        <div className={`rounded-2xl border p-5 shadow-sm relative overflow-hidden ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
+                            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #49949C, #49949C66)" }} />
+                            <div className="flex items-start gap-3 mb-3">
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#49949C18", color: "#49949C" }}>
+                                    <Layers size={18} />
+                                </div>
+                                <div>
+                                    <h3 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Valorización de Inventario</h3>
+                                    <p className={`text-xs mt-0.5 ${muted}`}>Valor total del stock a costo, alertas de mínimos</p>
+                                </div>
+                            </div>
+                            <Link href={route("stocks.valuation")}
+                                className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
+                                style={{ background: "linear-gradient(90deg, #49949C, #5AAD9C)" }}>
+                                <ArrowRight size={13} /> Ver Inventario
+                            </Link>
+                        </div>
+
+                        {/* CSV Stock Actual */}
+                        <ReportCard title="Exportar Stock Actual" description="Stock valorizado por producto y depósito, con precio de costo"
+                            icon={Package} color="#5AAD9C" isDark={isDark} href={route("stocks.export")}>
+                        </ReportCard>
+
+                        {/* CSV Movimientos */}
+                        <ReportCard title="Exportar Movimientos" description="Historial completo de entradas, salidas, ajustes y transferencias"
+                            icon={ArrowUpDown} color="#7CA5C3" isDark={isDark} href={route("stock-movements.export")}>
+                        </ReportCard>
+
                     </div>
                 </div>
             </div>
