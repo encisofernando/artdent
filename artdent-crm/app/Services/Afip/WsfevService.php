@@ -162,8 +162,12 @@ class WsfevService
             ];
         }
 
-        // Para Factura A: fecha de vto de pago
-        if (! empty($data['due_date'])) {
+        // Fechas de servicios (obligatorias para conceptos 2=Servicios y 3=Productos y Servicios)
+        if (in_array((int) ($data['concepto'] ?? 1), [2, 3])) {
+            $detail['FchServDesde'] = $data['fch_serv_desde'] ?? $data['date'];
+            $detail['FchServHasta'] = $data['fch_serv_hasta'] ?? $data['date'];
+            $detail['FchVtoPago'] = $data['due_date'] ?? $data['date'];
+        } elseif (! empty($data['due_date'])) {
             $detail['FchVtoPago'] = $data['due_date'];
         }
 

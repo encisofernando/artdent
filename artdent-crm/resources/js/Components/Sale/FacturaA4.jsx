@@ -53,12 +53,12 @@ export function parseReceiptType(rt) {
         FB:  { letter: 'B', label: 'FACTURA B',     code: '06', isAfip: true  },
         C:   { letter: 'C', label: 'FACTURA C',     code: '11', isAfip: true  },
         FC:  { letter: 'C', label: 'FACTURA C',     code: '11', isAfip: true  },
-        NCA: { letter: 'A', label: 'N. CRÉDITO A',  code: '02', isAfip: true  },
-        NCB: { letter: 'B', label: 'N. CRÉDITO B',  code: '07', isAfip: true  },
-        NCC: { letter: 'C', label: 'N. CRÉDITO C',  code: '12', isAfip: true  },
-        NDA: { letter: 'A', label: 'N. DÉBITO A',   code: '03', isAfip: true  },
-        NDB: { letter: 'B', label: 'N. DÉBITO B',   code: '08', isAfip: true  },
-        NDC: { letter: 'C', label: 'N. DÉBITO C',   code: '13', isAfip: true  },
+        NCA: { letter: 'A', label: 'N. CRÉDITO A',  code: '03', isAfip: true  },
+        NCB: { letter: 'B', label: 'N. CRÉDITO B',  code: '08', isAfip: true  },
+        NCC: { letter: 'C', label: 'N. CRÉDITO C',  code: '13', isAfip: true  },
+        NDA: { letter: 'A', label: 'N. DÉBITO A',   code: '02', isAfip: true  },
+        NDB: { letter: 'B', label: 'N. DÉBITO B',   code: '07', isAfip: true  },
+        NDC: { letter: 'C', label: 'N. DÉBITO C',   code: '12', isAfip: true  },
     };
     return MAP[r] ?? { letter: r, label: r, code: '00', isAfip: false };
 }
@@ -122,10 +122,10 @@ export default function FacturaA4({ sale }) {
     // Número de comprobante
     const afipInvoice = sale.invoice;
     const pointSale = afipInvoice?.point_sale
-        ? String(afipInvoice.point_sale).padStart(4, '0')
+        ? String(afipInvoice.point_sale).padStart(5, '0')
         : receipt.isAfip
-            ? String(company.afip_point_sale ?? 1).padStart(4, '0')
-            : '0001';
+            ? String(company.afip_point_sale ?? 1).padStart(5, '0')
+            : '00001';
     const nroComp = afipInvoice?.number
         ? `${pointSale}-${String(afipInvoice.number).padStart(8, '0')}`
         : sale.sale_number?.includes('-')
@@ -143,7 +143,29 @@ export default function FacturaA4({ sale }) {
     const clientDoc      = inv?.recipient_cuit || sale.customer?.cuit || sale.customer?.dni || null;
     const clientDocLabel = clientDoc?.replace(/\D/g, '').length === 11 ? 'CUIT' : 'DNI';
     const recipientIvaLabel = IVA_LABELS[inv?.recipient_iva || sale.customer?.iva_condition] || 'Consumidor Final';
+    const clientAddress  = inv?.recipient_address || sale.customer?.address || null;
+    const isInvoiceA     = receipt.letter === 'A';
+    const isRecipientMonotributo = (inv?.recipient_iva || sale.customer?.iva_condition) === 'monotributista';
     const extraNotes = sale.notes?.replace(/^Cliente:[^\n]+\n?/, '') || '';
+
+    // Desglose de IVA para Factura A y cálculo de totales
+    const ivaBreakdown = {};
+    let netoGravado = 0;
+    let exento = 0;
+    items.forEach((item) => {
+        let rate = Number(item.tax_rate || 0);
+        if (rate > 0 && rate < 1) rate = Math.round(rate * 100);
+        const tot = Number(item.total || 0);
+        if (rate > 0) {
+            const n = Math.round(tot / (1 + rate / 100) * 100) / 100;
+            const i = Math.round((tot - n) * 100) / 100;
+            netoGravado += n;
+            const k = `${rate.toFixed(2).replace('.', ',')}%`;
+            ivaBreakdown[k] = (ivaBreakdown[k] || 0) + i;
+        } else {
+            exento += tot;
+        }
+    });
 
     const paymentBreakdown = Array.isArray(sale.payment_breakdown) && sale.payment_breakdown.length
         ? sale.payment_breakdown
@@ -243,6 +265,7 @@ export default function FacturaA4({ sale }) {
                     <div style={{ fontSize: 8.5, lineHeight: 1.9 }}>
                         <div><span style={{ fontWeight: 700 }}>Nombre y Apellido o Razón Social:</span> {clientName}</div>
                         {clientDoc && <div><span style={{ fontWeight: 700 }}>{clientDocLabel}:</span> {clientDoc}</div>}
+                        {clientAddress && <div><span style={{ fontWeight: 700 }}>Domicilio:</span> {clientAddress}</div>}
                         {extraNotes && <div><span style={{ fontWeight: 700 }}>Notas:</span> {extraNotes}</div>}
                     </div>
                     <div style={{ fontSize: 8.5, lineHeight: 1.9, textAlign: 'right' }}>
@@ -257,7 +280,16 @@ export default function FacturaA4({ sale }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
                     <thead>
                         <tr style={{ background: AD.blue, color: '#fff' }}>
-                            {[
+                            {(isInvoiceA ? [
+                                { label: 'Código',        align: 'left',   w: '12%' },
+                                { label: 'Descripción',   align: 'left',   w: '33%' },
+                                { label: 'Cant.',         align: 'center', w: '8%'  },
+                                { label: 'U. Med.',       align: 'center', w: '8%'  },
+                                { label: 'P. Unit. Neto', align: 'right',  w: '13%' },
+                                { label: '% Bonif.',      align: 'right',  w: '7%'  },
+                                { label: '% IVA',         align: 'right',  w: '8%'  },
+                                { label: 'Subt. Neto',    align: 'right',  w: '11%' },
+                            ] : [
                                 { label: 'Código',      align: 'left',   w: '14%' },
                                 { label: 'Descripción', align: 'left',   w: '36%' },
                                 { label: 'Cantidad',    align: 'center', w: '10%' },
@@ -265,9 +297,9 @@ export default function FacturaA4({ sale }) {
                                 { label: 'P. Unit.',    align: 'right',  w: '13%' },
                                 { label: '% Bonif.',    align: 'right',  w: '8%'  },
                                 { label: 'Importe',     align: 'right',  w: '9%'  },
-                            ].map((h, i) => (
+                            ]).map((h, i) => (
                                 <th key={h.label} style={{
-                                    padding: '5px 8px', textAlign: h.align, fontWeight: 700,
+                                    padding: '5px 6px', textAlign: h.align, fontWeight: 700,
                                     fontSize: 7.5, textTransform: 'uppercase', letterSpacing: 0.3,
                                     width: h.w,
                                     borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.15)' : 'none',
@@ -278,19 +310,34 @@ export default function FacturaA4({ sale }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {items.map((item, i) => (
-                            <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f5f9fc', borderBottom: `1px solid ${AD.light}` }}>
-                                <td style={{ padding: '6px 8px', color: '#666', fontSize: 8 }}>{item.sku || '—'}</td>
-                                <td style={{ padding: '6px 8px', fontWeight: 600, fontSize: 9 }}>{item.product_name || item.name}</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 9 }}>{Number(item.quantity)}</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 8.5, color: '#666' }}>Unid.</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9 }}>{fmt(item.unit_price)}</td>
-                                <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9, color: Number(item.discount) > 0 ? '#c00' : '#999' }}>
-                                    {Number(item.discount) > 0 ? fmt(Number(item.discount) / Number(item.unit_price) * 100) + '%' : '0,00'}
-                                </td>
-                                <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 9, color: AD.blue }}>{fmt(item.total)}</td>
-                            </tr>
-                        ))}
+                        {items.map((item, i) => {
+                            let rate = Number(item.tax_rate || 0);
+                            if (rate > 0 && rate < 1) rate = Math.round(rate * 100);
+                            const unitPrice = Number(item.unit_price || 0);
+                            const itemTot = Number(item.total || 0);
+                            const unitPriceNeto = isInvoiceA && rate > 0 ? Math.round(unitPrice / (1 + rate / 100) * 100) / 100 : unitPrice;
+                            const itemTotNeto = isInvoiceA && rate > 0 ? Math.round(itemTot / (1 + rate / 100) * 100) / 100 : itemTot;
+                            return (
+                                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f5f9fc', borderBottom: `1px solid ${AD.light}` }}>
+                                    <td style={{ padding: '6px 8px', color: '#666', fontSize: 8 }}>{item.sku || '—'}</td>
+                                    <td style={{ padding: '6px 8px', fontWeight: 600, fontSize: 9 }}>{item.product_name || item.name}</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 9 }}>{Number(item.quantity)}</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: 8.5, color: '#666' }}>Unid.</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9 }}>{fmt(isInvoiceA ? unitPriceNeto : unitPrice)}</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9, color: Number(item.discount) > 0 ? '#c00' : '#999' }}>
+                                        {Number(item.discount) > 0 ? fmt(Number(item.discount) / Number(item.unit_price) * 100) + '%' : '0,00'}
+                                    </td>
+                                    {isInvoiceA ? (
+                                        <>
+                                            <td style={{ padding: '6px 8px', textAlign: 'right', fontSize: 9, color: '#555' }}>{rate > 0 ? `${rate}%` : '0%'}</td>
+                                            <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 9, color: AD.blue }}>{fmt(itemTotNeto)}</td>
+                                        </>
+                                    ) : (
+                                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 9, color: AD.blue }}>{fmt(itemTot)}</td>
+                                    )}
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -304,7 +351,7 @@ export default function FacturaA4({ sale }) {
                 {/* Totales */}
                 <div style={{ padding: '0 15mm 5mm', borderTop: `1px solid ${AD.light}` }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '5mm' }}>
-                        <div style={{ width: '72mm' }}>
+                        <div style={{ width: '76mm' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt', border: `1px solid ${AD.light}`, borderBottom: 'none' }}>
                                 <thead>
                                     <tr style={{ background: '#f0f4f8' }}>
@@ -313,16 +360,31 @@ export default function FacturaA4({ sale }) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {totalIVA > 0 && (
+                                    {(totalIVA > 0 || isInvoiceA) && (
                                         <tr style={{ borderTop: `1px solid ${AD.light}` }}>
                                             <td style={{ padding: '4px 8px', fontSize: 8.5 }}>Importe Neto Gravado:</td>
-                                            <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(subtotal > 0 ? subtotal : total - totalIVA)}</td>
+                                            <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(subtotal > 0 ? subtotal : netoGravado)}</td>
                                         </tr>
                                     )}
-                                    {totalIVA > 0 && (
+                                    {Object.keys(ivaBreakdown).length > 0 ? (
+                                        Object.entries(ivaBreakdown).map(([rateKey, ivaAmount]) => (
+                                            <tr key={rateKey} style={{ borderTop: `1px solid ${AD.light}` }}>
+                                                <td style={{ padding: '4px 8px', fontSize: 8.5 }}>IVA {rateKey}:</td>
+                                                <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(ivaAmount)}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        totalIVA > 0 && (
+                                            <tr style={{ borderTop: `1px solid ${AD.light}` }}>
+                                                <td style={{ padding: '4px 8px', fontSize: 8.5 }}>IVA 21,00 %:</td>
+                                                <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(totalIVA)}</td>
+                                            </tr>
+                                        )
+                                    )}
+                                    {exento > 0 && isInvoiceA && (
                                         <tr style={{ borderTop: `1px solid ${AD.light}` }}>
-                                            <td style={{ padding: '4px 8px', fontSize: 8.5 }}>IVA 21,00 %:</td>
-                                            <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(totalIVA)}</td>
+                                            <td style={{ padding: '4px 8px', fontSize: 8.5 }}>Importe Exento:</td>
+                                            <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 8.5 }}>{fmt(exento)}</td>
                                         </tr>
                                     )}
                                     {discount > 0 && (
@@ -342,8 +404,15 @@ export default function FacturaA4({ sale }) {
                         </div>
                     </div>
 
-                    {/* Transparencia Fiscal Ley 27.743 — siempre en comprobantes AFIP */}
-                    {receipt.isAfip && (
+                    {/* Leyenda Obligatoria Ley 27.618 para Monotributistas */}
+                    {isInvoiceA && isRecipientMonotributo && (
+                        <div style={{ marginTop: 8, padding: '6px 10px', background: '#fffbe6', border: '1px solid #ffe58f', fontSize: 7.5, color: '#873800', borderRadius: 3, lineHeight: 1.4 }}>
+                            <strong>Leyenda Ley Nº 27.618:</strong> El crédito fiscal discriminado en el presente comprobante, sólo podrá ser computado a efectos del Régimen de Sostenimiento e Inclusión Fiscal para Pequeños Contribuyentes de la Ley Nº 27.618.
+                        </div>
+                    )}
+
+                    {/* Transparencia Fiscal Ley 27.743 — Solo en B o C dirigidos a Consumidor Final */}
+                    {!isInvoiceA && receipt.isAfip && ((inv?.recipient_iva || sale.customer?.iva_condition || 'consumidor_final') === 'consumidor_final' || !clientDoc) && (
                         <div style={{ marginTop: 8, fontSize: 7.5, lineHeight: 1.7, color: '#444' }}>
                             <div style={{ fontWeight: 700 }}>Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)</div>
                             <div style={{ display: 'flex', gap: 24 }}>

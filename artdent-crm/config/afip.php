@@ -156,5 +156,5 @@ return [
     |--------------------------------------------------------------------------
     | Por encima de este valor el DNI del receptor es obligatorio.
     */
-    'cf_identification_limit' => env('AFIP_CF_LIMIT', 10_000_000),
+    'cf_identification_limit' => env('AFIP_CF_LIMIT', 344_488),
 ];

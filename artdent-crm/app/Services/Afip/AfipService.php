@@ -25,14 +25,14 @@ class AfipService
     // Mapa receipt_key → código AFIP
     private const CBTE_TIPO = [
         'FA' => 1,   // Factura A
-        'NCA' => 2,   // Nota de Crédito A
-        'NDA' => 3,   // Nota de Débito A
+        'NDA' => 2,   // Nota de Débito A
+        'NCA' => 3,   // Nota de Crédito A
         'FB' => 6,   // Factura B
-        'NCB' => 7,   // Nota de Crédito B
-        'NDB' => 8,   // Nota de Débito B
+        'NDB' => 7,   // Nota de Débito B
+        'NCB' => 8,   // Nota de Crédito B
         'FC' => 11,  // Factura C
-        'NCC' => 12,  // Nota de Crédito C
-        'NDC' => 13,  // Nota de Débito C
+        'NDC' => 12,  // Nota de Débito C
+        'NCC' => 13,  // Nota de Crédito C
     ];
 
     // Alícuota IVA % (string) → código AFIP
@@ -154,11 +154,30 @@ class AfipService
         }
         unset($iva);
 
+        // Cuadratura matemática estricta para AFIP (ImpTotal == ImpNeto + ImpOpEx + ImpIVA)
+        if ($isRI && ! empty($ivaItems)) {
+            $ivaTotal = round((float) array_sum(array_column($ivaItems, 'Importe')), 2);
+            $sumParts = round($neto + $opEx + $ivaTotal, 2);
+            $saleTotal = round((float) $sale->total, 2);
+            if ($sumParts !== $saleTotal) {
+                $diff = round($saleTotal - $sumParts, 2);
+                if (abs($diff) <= 0.05) {
+                    $neto = round($neto + $diff, 2);
+                }
+            }
+        }
+
         // Datos del receptor
-        [$docTipo, $docNro, $ivaReceptor] = $this->resolveRecipient($sale, $receiptKey);
+        [$docTipo, $docNro, $ivaReceptor, $resolvedIvaCondition] = $this->resolveRecipient($sale, $receiptKey);
 
         $saleDate = Carbon::parse($sale->sold_at ?? $sale->created_at);
         $date = $saleDate->format('Ymd');
+
+        // Concepto: 1=Productos, 2=Servicios, 3=Ambos
+        $concepto = (int) ($sale->afip_concept ?? 1);
+        if (! in_array($concepto, [1, 2, 3])) {
+            $concepto = 1;
+        }
 
         $invoiceData = [
             'point_sale' => $pointSale,
@@ -173,8 +192,16 @@ class AfipService
             'doc_tipo' => $docTipo,
             'doc_nro' => $docNro,
             'iva_receptor' => $ivaReceptor, // RG 5616: CondicionIVAReceptorId
-            'concepto' => 1, // Productos
+            'recipient_iva' => $resolvedIvaCondition,
+            'concepto' => $concepto,
         ];
+
+        // Servicios o Ambos requieren FchServDesde, FchServHasta y FchVtoPago
+        if ($concepto === 2 || $concepto === 3) {
+            $invoiceData['fch_serv_desde'] = $saleDate->copy()->startOfMonth()->format('Ymd');
+            $invoiceData['fch_serv_hasta'] = $saleDate->format('Ymd');
+            $invoiceData['due_date'] = $saleDate->format('Ymd');
+        }
 
         // NC/ND requieren CbteAsoc o PeriodoAsoc obligatorio (error AFIP 10197).
         // Usamos PeriodoAsoc con el mes de la venta para no depender del comprobante original.
@@ -283,7 +310,7 @@ class AfipService
             'reference_id' => $sale->id,
             'recipient_name' => $sale->customer?->name ?? 'Consumidor Final',
             'recipient_cuit' => $sale->customer?->cuit ?? $sale->customer?->dni ?? null,
-            'recipient_iva' => 'consumidor_final',
+            'recipient_iva' => $data['recipient_iva'] ?? ($sale->customer?->iva_condition ?? 'consumidor_final'),
             'recipient_address' => $sale->customer?->address ?? null,
             'point_sale' => $data['point_sale'],
             'number' => $data['number'],  // provisional, se actualiza con CAE
@@ -314,7 +341,7 @@ class AfipService
     }
 
     /**
-     * Determina DocTipo, DocNro y CondicionIVAReceptorId del receptor.
+     * Determina DocTipo, DocNro, CondicionIVAReceptorId y condición string del receptor.
      *
      * Reglas según normativa AFIP/ARCA vigente:
      *   — RI / Monotributo / Exento → DocTipo 80 (CUIT), 11 dígitos obligatorio.
@@ -325,18 +352,38 @@ class AfipService
      * CondicionIVAReceptorId (RG 5616):
      *   1 = Responsable Inscripto · 4 = Exento · 5 = Consumidor Final · 6 = Monotributo
      *
-     * @return array{int, int, int} [docTipo, docNro, condicionIVAReceptorId]
+     * @return array{int, int, int, string} [docTipo, docNro, condicionIVAReceptorId, ivaCondition]
      */
     private function resolveRecipient(Sale $sale, string $receiptKey): array
     {
-        // Monto límite para CF sin identificar (RG 4290-E art. 5 inc. b)
-        $cfLimit = (float) config('afip.cf_identification_limit', 10_000_000);
+        // Monto límite para CF sin identificar (RG 4290-E / resoluciones ARCA)
+        $cfLimit = (float) config('afip.cf_identification_limit', 344_488);
 
         $customer = $sale->customer;
         $total = round((float) $sale->total, 2);
         $ivaCondition = $customer?->iva_condition ?? 'consumidor_final';
 
-        // ── Comprobantes tipo A → receptor debe ser RI (CUIT obligatorio) ─────
+        // Si tiene CUIT y la condición no está definida (o es default consumidor_final), autocompletar con padrón ARCA
+        $rawCuit = $customer?->cuit ? preg_replace('/\D/', '', $customer->cuit) : null;
+        if (! empty($rawCuit) && strlen($rawCuit) === 11 && ($ivaCondition === 'consumidor_final' || empty($customer?->iva_condition))) {
+            try {
+                $padronService = new PadronService($this->wsaa, $sale->company);
+                $padron = $padronService->getClienteByCuit($rawCuit);
+                if (! empty($padron['condicion_iva'])) {
+                    $ivaCondition = $padron['condicion_iva'];
+                    if (method_exists($customer, 'update')) {
+                        $customer->update([
+                            'iva_condition' => $ivaCondition,
+                            'address' => $customer->address ?: ($padron['direccion'] ?? null),
+                        ]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning("No se pudo autocompletar condición IVA con ARCA para CUIT {$rawCuit}: {$e->getMessage()}");
+            }
+        }
+
+        // ── Comprobantes tipo A → receptor con CUIT (RI o Monotributista Ley 27.618) ─────
         if (in_array($receiptKey, ['FA', 'NCA', 'NDA'])) {
             return $this->resolveConCuit($customer, $ivaCondition, forceRI: true);
         }
@@ -373,17 +420,17 @@ class AfipService
                 );
             }
 
-            return [96, (int) $dni, 5];
+            return [96, (int) $dni, 5, 'consumidor_final'];
         }
 
         // Sin documento — DocTipo 99, DocNro siempre 0
-        return [99, 0, 5];
+        return [99, 0, 5, 'consumidor_final'];
     }
 
     /**
      * Resuelve receptor con CUIT (RI, Monotributo, Exento o Factura A).
      *
-     * @return array{int, int, int}
+     * @return array{int, int, int, string}
      */
     private function resolveConCuit(?object $customer, string $ivaCondition, bool $forceRI): array
     {
@@ -408,10 +455,10 @@ class AfipService
             'responsable_inscripto' => 1,
             'monotributista' => 6,
             'exento' => 4,
-            default => 1, // Factura A siempre RI
+            default => $forceRI ? 1 : 5,
         };
 
-        return [80, (int) $cuit, $condicionIVA];
+        return [80, (int) $cuit, $condicionIVA, $ivaCondition];
     }
 
     private function assertCompanyReady(Company $company): void

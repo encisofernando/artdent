@@ -35,15 +35,19 @@ strong { font-weight: 700; }
     $items   = $invoice->invoice_items;
 
     $receiptMap = [
-        'FA'  => ['letter' => 'A', 'label' => 'FACTURA A',    'code' => '01'],
-        'FB'  => ['letter' => 'B', 'label' => 'FACTURA B',    'code' => '06'],
-        'FC'  => ['letter' => 'C', 'label' => 'FACTURA C',    'code' => '11'],
-        'NCA' => ['letter' => 'A', 'label' => 'N. CRÉDITO A', 'code' => '02'],
-        'NCB' => ['letter' => 'B', 'label' => 'N. CRÉDITO B', 'code' => '07'],
-        'NCC' => ['letter' => 'C', 'label' => 'N. CRÉDITO C', 'code' => '12'],
+        'FA'  => ['letter' => 'A', 'label' => 'FACTURA A',         'code' => '01'],
+        'FB'  => ['letter' => 'B', 'label' => 'FACTURA B',         'code' => '06'],
+        'FC'  => ['letter' => 'C', 'label' => 'FACTURA C',         'code' => '11'],
+        'NDA' => ['letter' => 'A', 'label' => 'NOTA DE DÉBITO A',  'code' => '02'],
+        'NDB' => ['letter' => 'B', 'label' => 'NOTA DE DÉBITO B',  'code' => '07'],
+        'NDC' => ['letter' => 'C', 'label' => 'NOTA DE DÉBITO C',  'code' => '12'],
+        'NCA' => ['letter' => 'A', 'label' => 'NOTA DE CRÉDITO A', 'code' => '03'],
+        'NCB' => ['letter' => 'B', 'label' => 'NOTA DE CRÉDITO B', 'code' => '08'],
+        'NCC' => ['letter' => 'C', 'label' => 'NOTA DE CRÉDITO C', 'code' => '13'],
     ];
     $typeName = $invType->name ?? 'FC';
     $receipt  = $receiptMap[$typeName] ?? ['letter' => 'C', 'label' => 'FACTURA C', 'code' => '11'];
+    $isInvoiceA = ($receipt['letter'] ?? '') === 'A';
 
     $pointSale = str_pad($invoice->point_sale, 5, '0', STR_PAD_LEFT);
     $number    = str_pad($invoice->number,     8, '0', STR_PAD_LEFT);
@@ -60,6 +64,8 @@ strong { font-weight: 700; }
     ];
     $ivaVendedor       = $ivaLabels[$company->iva_condition ?? ''] ?? 'Responsable Inscripto';
     $recipientIvaLabel = $ivaLabels[$invoice->recipient_iva ?? ''] ?? 'Consumidor Final';
+    $isRecipientMonotributo = ($invoice->recipient_iva ?? '') === 'monotributista';
+
     // Nombre del receptor: primero el del invoice, si es genérico usar datos del pedido
     $recipientName = $invoice->recipient_name ?? '';
     if ((!$recipientName || $recipientName === 'Consumidor Final') && isset($order) && $order->exists) {
@@ -69,6 +75,9 @@ strong { font-weight: 700; }
 
     $recipDoc          = preg_replace('/\D/', '', $invoice->recipient_cuit ?? $order?->guest_cuit ?? $order?->guest_dni ?? '');
     $recipDocLabel     = strlen($recipDoc) === 11 ? 'CUIT' : (strlen($recipDoc) >= 7 ? 'DNI' : null);
+    $recipientAddress  = $invoice->recipient_address
+        ?? (isset($order) && $order->exists ? collect([$order->shipping_address, $order->shipping_city, $order->shipping_province])->filter()->join(', ') : null)
+        ?? (isset($order) && $order->customer ? $order->customer->address : null);
     $direccion         = collect([$company->address, $company->city, $company->province])->filter()->join(', ') ?: 'Argentina';
     $inicioAct         = $company->start_date ? \Carbon\Carbon::parse($company->start_date)->format('j/n/Y') : null;
 
@@ -76,8 +85,27 @@ strong { font-weight: 700; }
     $subtotal  = (float)($invoice->subtotal  ?? 0);
     $discount  = (float)($invoice->discount  ?? 0);
     $total     = (float)($invoice->total     ?? 0);
-    // Para Transparencia Fiscal (Ley 27.743): siempre mostrar IVA contenido.
-    // Si el comprobante no discrimina IVA (FC/monotributista), se retrocomputa del total al 21%.
+
+    // Desglose de IVA por alícuotas para Facturas A y cálculo de totales
+    $ivaBreakdown = [];
+    $netoGravado = 0;
+    $exento = 0;
+    foreach ($items as $it) {
+        $rate = (float)($it->tax_rate ?? 0);
+        if ($rate > 0 && $rate < 1) { $rate = round($rate * 100, 2); }
+        $tot = (float)($it->total ?? 0);
+        if ($rate > 0) {
+            $n = round($tot / (1 + $rate / 100), 2);
+            $i = round($tot - $n, 2);
+            $netoGravado += $n;
+            $k = number_format($rate, 2, ',', '.') . '%';
+            $ivaBreakdown[$k] = ($ivaBreakdown[$k] ?? 0) + $i;
+        } else {
+            $exento += $tot;
+        }
+    }
+
+    // Para Transparencia Fiscal (Ley 27.743): siempre mostrar IVA contenido en comprobantes B/C a Consumidor Final
     $ivaContenido = $totalIva > 0 ? $totalIva : round($total / 1.21 * 0.21, 2);
 
     $fmt     = fn($v) => number_format((float)($v ?? 0), 2, ',', '.');
@@ -141,6 +169,7 @@ strong { font-weight: 700; }
     // Logo principal: el de la empresa (tenant) si tiene uno cargado; si no,
     // sin imagen — el nombre de fantasía se muestra como texto en su lugar
     // (nunca el logo de ArtCode, esta factura sale a nombre del tenant).
+    $logoColorSrc = null;
     if (!empty($storedLogoUrl)) {
         // logo_url puede ser '/storage/logos/file.png' → public_path('storage/logos/file.png')
         $dbLogoPath  = public_path(ltrim($storedLogoUrl, '/'));
@@ -222,6 +251,9 @@ strong { font-weight: 700; }
             @if($recipDocLabel && $invoice->recipient_cuit)
                 <div><strong>{{ $recipDocLabel }}:</strong> {{ $invoice->recipient_cuit }}</div>
             @endif
+            @if($recipientAddress)
+                <div><strong>Domicilio:</strong> {{ $recipientAddress }}</div>
+            @endif
         </div>
         <div style="font-size: 8.5pt; line-height: 1.9; text-align: right;">
             <div><strong>Cond. IVA:</strong> {{ $recipientIvaLabel }}</div>
@@ -238,29 +270,51 @@ strong { font-weight: 700; }
     <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
         <thead>
             <tr style="background: #397B9C; color: #fff;">
-                <th style="padding: 5px 8px; text-align: left;   font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 14%;">Código</th>
-                <th style="padding: 5px 8px; text-align: left;   font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 36%; border-left: 1px solid rgba(255,255,255,0.15);">Descripción</th>
-                <th style="padding: 5px 8px; text-align: center; font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 10%; border-left: 1px solid rgba(255,255,255,0.15);">Cantidad</th>
-                <th style="padding: 5px 8px; text-align: center; font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 10%; border-left: 1px solid rgba(255,255,255,0.15);">U. Medida</th>
-                <th style="padding: 5px 8px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 13%; border-left: 1px solid rgba(255,255,255,0.15);">P. Unit.</th>
-                <th style="padding: 5px 8px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 8%;  border-left: 1px solid rgba(255,255,255,0.15);">%<br>Bonif.</th>
-                <th style="padding: 5px 8px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 9%;  border-left: 1px solid rgba(255,255,255,0.15);">Importe</th>
+                @if($isInvoiceA)
+                    <th style="padding: 5px 6px; text-align: left;   font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 12%;">Código</th>
+                    <th style="padding: 5px 6px; text-align: left;   font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 33%; border-left: 1px solid rgba(255,255,255,0.15);">Descripción</th>
+                    <th style="padding: 5px 6px; text-align: center; font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 8%;  border-left: 1px solid rgba(255,255,255,0.15);">Cant.</th>
+                    <th style="padding: 5px 6px; text-align: center; font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 8%;  border-left: 1px solid rgba(255,255,255,0.15);">U. Med.</th>
+                    <th style="padding: 5px 6px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 13%; border-left: 1px solid rgba(255,255,255,0.15);">P. Unit. Neto</th>
+                    <th style="padding: 5px 6px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 7%;  border-left: 1px solid rgba(255,255,255,0.15);">% Bonif.</th>
+                    <th style="padding: 5px 6px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 8%;  border-left: 1px solid rgba(255,255,255,0.15);">% IVA</th>
+                    <th style="padding: 5px 6px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 11%; border-left: 1px solid rgba(255,255,255,0.15);">Subt. Neto</th>
+                @else
+                    <th style="padding: 5px 8px; text-align: left;   font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 14%;">Código</th>
+                    <th style="padding: 5px 8px; text-align: left;   font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 36%; border-left: 1px solid rgba(255,255,255,0.15);">Descripción</th>
+                    <th style="padding: 5px 8px; text-align: center; font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 10%; border-left: 1px solid rgba(255,255,255,0.15);">Cantidad</th>
+                    <th style="padding: 5px 8px; text-align: center; font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 10%; border-left: 1px solid rgba(255,255,255,0.15);">U. Medida</th>
+                    <th style="padding: 5px 8px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 13%; border-left: 1px solid rgba(255,255,255,0.15);">P. Unit.</th>
+                    <th style="padding: 5px 8px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 8%;  border-left: 1px solid rgba(255,255,255,0.15);">%<br>Bonif.</th>
+                    <th style="padding: 5px 8px; text-align: right;  font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3px; width: 9%;  border-left: 1px solid rgba(255,255,255,0.15);">Importe</th>
+                @endif
             </tr>
         </thead>
         <tbody>
             @foreach($items as $i => $item)
+                @php
+                    $rate = (float)($item->tax_rate ?? 0);
+                    if ($rate > 0 && $rate < 1) { $rate = round($rate * 100, 2); }
+                    $itemNetoUnit = $isInvoiceA && $rate > 0 ? round((float)$item->unit_price / (1 + $rate / 100), 2) : (float)$item->unit_price;
+                    $itemNetoTot  = $isInvoiceA && $rate > 0 ? round((float)$item->total / (1 + $rate / 100), 2) : (float)$item->total;
+                @endphp
                 <tr style="background: {{ $i % 2 === 0 ? '#fff' : '#f5f9fc' }}; border-bottom: 1px solid #DAE6F0;">
                     <td style="padding: 6px 8px; color: #666; font-size: 8pt;">{{ $item->sku ?? '—' }}</td>
                     <td style="padding: 6px 8px; font-weight: 600; font-size: 9pt;">{{ $item->description }}</td>
                     <td style="padding: 6px 8px; text-align: center; font-size: 9pt;">{{ number_format((float)$item->quantity, 0) }}</td>
                     <td style="padding: 6px 8px; text-align: center; font-size: 8.5pt; color: #666;">Unid.</td>
-                    <td style="padding: 6px 8px; text-align: right; font-size: 9pt;">{{ $fmt($item->unit_price) }}</td>
+                    <td style="padding: 6px 8px; text-align: right; font-size: 9pt;">{{ $fmt($isInvoiceA ? $itemNetoUnit : $item->unit_price) }}</td>
                     <td style="padding: 6px 8px; text-align: right; font-size: 9pt; color: {{ (float)($item->discount ?? 0) > 0 ? '#c00' : '#999' }};">
                         {{ (float)($item->discount ?? 0) > 0
                             ? $fmt((float)$item->discount / (float)$item->unit_price * 100).'%'
                             : '0,00' }}
                     </td>
-                    <td style="padding: 6px 8px; text-align: right; font-weight: 700; font-size: 9pt; color: #397B9C;">{{ $fmt($item->total) }}</td>
+                    @if($isInvoiceA)
+                        <td style="padding: 6px 8px; text-align: right; font-size: 9pt; color: #555;">{{ $rate > 0 ? $fmt($rate).'%' : '0,00%' }}</td>
+                        <td style="padding: 6px 8px; text-align: right; font-weight: 700; font-size: 9pt; color: #397B9C;">{{ $fmt($itemNetoTot) }}</td>
+                    @else
+                        <td style="padding: 6px 8px; text-align: right; font-weight: 700; font-size: 9pt; color: #397B9C;">{{ $fmt($item->total) }}</td>
+                    @endif
                 </tr>
             @endforeach
             @if(isset($order) && (float)($order->shipping_cost ?? 0) > 0)
@@ -271,6 +325,9 @@ strong { font-weight: 700; }
                     <td style="padding: 6px 8px; text-align: center; color: #666;">—</td>
                     <td style="padding: 6px 8px; text-align: right;">{{ $fmt($order->shipping_cost) }}</td>
                     <td style="padding: 6px 8px; text-align: right; color: #999;">0,00</td>
+                    @if($isInvoiceA)
+                        <td style="padding: 6px 8px; text-align: right; font-size: 9pt; color: #555;">—</td>
+                    @endif
                     <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: #397B9C;">{{ $fmt($order->shipping_cost) }}</td>
                 </tr>
             @endif
@@ -287,7 +344,7 @@ strong { font-weight: 700; }
     {{-- Totales --}}
     <div style="padding: 0 15mm 5mm; border-top: 1px solid #DAE6F0;">
         <div style="display: flex; justify-content: flex-end; padding-top: 5mm;">
-            <div style="width: 72mm;">
+            <div style="width: 76mm;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt; border: 1px solid #DAE6F0; border-bottom: none;">
                     <thead>
                         <tr style="background: #f0f4f8;">
@@ -296,14 +353,29 @@ strong { font-weight: 700; }
                         </tr>
                     </thead>
                     <tbody>
-                        @if($totalIva > 0)
+                        @if($totalIva > 0 || $isInvoiceA)
                             <tr style="border-top: 1px solid #DAE6F0;">
                                 <td style="padding: 4px 8px; font-size: 8.5pt;">Importe Neto Gravado:</td>
-                                <td style="padding: 4px 8px; text-align: right; font-size: 8.5pt;">{{ $fmt($subtotal > 0 ? $subtotal : $total - $totalIva) }}</td>
+                                <td style="padding: 4px 8px; text-align: right; font-size: 8.5pt;">{{ $fmt($subtotal > 0 ? $subtotal : $netoGravado) }}</td>
                             </tr>
+                            @if(!empty($ivaBreakdown))
+                                @foreach($ivaBreakdown as $rateLabel => $ivaAmt)
+                                    <tr style="border-top: 1px solid #DAE6F0;">
+                                        <td style="padding: 4px 8px; font-size: 8.5pt;">IVA {{ $rateLabel }}:</td>
+                                        <td style="padding: 4px 8px; text-align: right; font-size: 8.5pt;">{{ $fmt($ivaAmt) }}</td>
+                                    </tr>
+                                @endforeach
+                            @else
+                                <tr style="border-top: 1px solid #DAE6F0;">
+                                    <td style="padding: 4px 8px; font-size: 8.5pt;">IVA 21,00 %:</td>
+                                    <td style="padding: 4px 8px; text-align: right; font-size: 8.5pt;">{{ $fmt($totalIva) }}</td>
+                                </tr>
+                            @endif
+                        @endif
+                        @if($exento > 0 && $isInvoiceA)
                             <tr style="border-top: 1px solid #DAE6F0;">
-                                <td style="padding: 4px 8px; font-size: 8.5pt;">IVA 21,00 %:</td>
-                                <td style="padding: 4px 8px; text-align: right; font-size: 8.5pt;">{{ $fmt($totalIva) }}</td>
+                                <td style="padding: 4px 8px; font-size: 8.5pt;">Importe Exento:</td>
+                                <td style="padding: 4px 8px; text-align: right; font-size: 8.5pt;">{{ $fmt($exento) }}</td>
                             </tr>
                         @endif
                         @if($discount > 0)
@@ -324,7 +396,15 @@ strong { font-weight: 700; }
             </div>
         </div>
 
-        {{-- Transparencia Fiscal --}}
+        {{-- Leyenda Obligatoria Ley 27.618 (Facturas A a Monotributistas) --}}
+        @if($isInvoiceA && $isRecipientMonotributo)
+        <div style="margin-top: 8px; padding: 6px 10px; background: #fffbe6; border: 1px solid #ffe58f; font-size: 7.5pt; color: #873800; border-radius: 3px; line-height: 1.4;">
+            <strong>Leyenda Ley Nº 27.618:</strong> El crédito fiscal discriminado en el presente comprobante, sólo podrá ser computado a efectos del Régimen de Sostenimiento e Inclusión Fiscal para Pequeños Contribuyentes de la Ley Nº 27.618.
+        </div>
+        @endif
+
+        {{-- Transparencia Fiscal (Ley 27.743 / RG 5614/2024): Solo en B o C a Consumidor Final --}}
+        @if(!$isInvoiceA && (($invoice->recipient_iva ?? 'consumidor_final') === 'consumidor_final' || empty($invoice->recipient_cuit)))
         <div style="margin-top: 8px; font-size: 7.5pt; line-height: 1.7; color: #444;">
             <div style="font-weight: 700;">Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)</div>
             <div style="display: flex; gap: 24px;">
@@ -332,6 +412,7 @@ strong { font-weight: 700; }
                 <span>Otros Impuestos Nacionales Indirectos: $ 0,00</span>
             </div>
         </div>
+        @endif
 
         {{-- Son / Recibido --}}
         <div style="margin-top: 6px; font-size: 8pt; color: #555;">

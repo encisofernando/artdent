@@ -48,7 +48,7 @@ function TicketBase({ sale, widthMM = 80 }) {
     // afipInvoice/company solo aplica si por algún motivo no llegara a estar seteado.
     const afipInvoice = sale.invoice;
     const [saleNumberPv, saleNumberNro] = sale.sale_number ? sale.sale_number.split('-') : [];
-    const pvStr  = saleNumberPv || String(afipInvoice?.point_sale ?? company.afip_point_sale ?? 1).padStart(4, '0');
+    const pvStr  = saleNumberPv ? saleNumberPv.padStart(5, '0') : String(afipInvoice?.point_sale ?? company.afip_point_sale ?? 1).padStart(5, '0');
     const nroStr = saleNumberNro || String(afipInvoice?.number ?? sale.id ?? 1).padStart(8, '0');
 
     // ── IVA desglosado ───────────────────────────────────────────────────────
@@ -359,8 +359,23 @@ function TicketBase({ sale, widthMM = 80 }) {
                 </div>
             </div>
 
-            {/* ── Régimen de Transparencia Fiscal (Ley 27.743) ────────────── */}
-            {receipt.isAfip && (() => {
+            {/* ── Leyenda Obligatoria Ley 27.618 para Monotributistas ─────── */}
+            {receipt.letter === 'A' && (afipInvoice?.recipient_iva || sale.customer?.iva_condition) === 'monotributista' && (
+                <div style={{
+                    border: `1px solid ${C.lineDark}`,
+                    borderRadius: 3,
+                    padding: '4px 6px',
+                    marginBottom: 5,
+                    background: C.bg,
+                    fontSize: F.xs - 0.5,
+                    lineHeight: 1.3,
+                }}>
+                    <strong>Ley 27.618:</strong> Crédito fiscal discriminado sólo computable a efectos del Régimen de Sostenimiento e Inclusión Fiscal Ley 27.618.
+                </div>
+            )}
+
+            {/* ── Régimen de Transparencia Fiscal (Ley 27.743): Solo B o C a Consumidor Final ── */}
+            {receipt.letter !== 'A' && receipt.isAfip && ((afipInvoice?.recipient_iva || sale.customer?.iva_condition || 'consumidor_final') === 'consumidor_final' || !(afipInvoice?.recipient_cuit || sale.customer?.cuit)) && (() => {
                 const ivaContenido = totalIVA > 0 ? totalIVA : Math.round(total / 1.21 * 0.21 * 100) / 100;
                 const otrosImp = 0;
                 const TFRow = ({ label, value }) => (
