@@ -174,29 +174,24 @@ class JobPhaseService
      */
     public function buildJobTicketSummary(Job $job): array
     {
-        $tickets = JobPhaseTicket::where('job_id', $job->id)
-            ->with('phaseProgress.tariffPhase')
-            ->get()
-            ->sortBy(fn (JobPhaseTicket $t) => $t->phaseProgress?->tariffPhase?->sort_order ?? 0)
-            ->values();
+        $job->loadMissing(['job_items.tariff', 'dentist']);
 
-        $items = $tickets->map(fn (JobPhaseTicket $t) => [
-            'description' => $t->phase_name,
-            'quantity' => 1.0,
-            'unit_price' => (float) $t->amount,
-            'total' => (float) $t->amount,
-        ])->all();
+        $items = [];
+        foreach ($job->job_items as $item) {
+            $items[] = [
+                'description' => $item->tariff?->name ?? 'Trabajo',
+                'quantity' => (float) ($item->quantity ?? 1),
+                'unit_price' => (float) ($item->unit_price ?? $item->subtotal),
+                'total' => (float) ($item->subtotal ?? $item->total),
+            ];
+        }
 
-        $remainderMove = LabAccountMove::where('reference_type', Job::class)
-            ->where('reference_id', $job->id)
-            ->first();
-
-        if ($remainderMove) {
+        if (empty($items)) {
             $items[] = [
                 'description' => $this->tariffNameForJob($job),
                 'quantity' => 1.0,
-                'unit_price' => (float) $remainderMove->amount,
-                'total' => (float) $remainderMove->amount,
+                'unit_price' => (float) $job->total,
+                'total' => (float) $job->total,
             ];
         }
 
@@ -306,6 +301,15 @@ class JobPhaseService
         });
     }
 
+    /**
+     * Facturación manual desactivada: las cuentas corrientes se gestionan a nivel Job.
+     * Mantenido como no-op para retrocompatibilidad.
+     */
+    public function billOutstandingForManualDelivery(Job $job): void
+    {
+        // No-op: los cargos se gestionan a nivel Job
+    }
+
     // ─── Private helpers ──────────────────────────────────────────────────────
 
     private function allPhasesCompleted(Job $job): bool
@@ -318,16 +322,14 @@ class JobPhaseService
 
     private function issuePhaseTicket(JobPhaseProgress $phase): JobPhaseTicket
     {
-        $phase->loadMissing(['job', 'tariffPhase', 'labAccountMove']);
+        $phase->loadMissing(['job', 'tariffPhase']);
 
         $job = $phase->job;
         $phaseName = $phase->tariffPhase?->name ?? 'Fase';
         $sortOrder = $phase->tariffPhase?->sort_order ?? 1;
 
-        // El monto es el precio real de la plantilla de fase (billPhaseIfNeeded,
-        // llamado antes que esto, cobra exactamente ese valor) — si la fase
-        // no llegó a facturar (precio $0), cae al precio de plantilla igual.
-        $amount = (float) ($phase->labAccountMove?->amount ?? $phase->tariffPhase?->price ?? 0);
+        // El monto para el ticket de comisión del colaborador proviene del precio de la fase del arancel.
+        $amount = (float) ($phase->tariffPhase?->price ?? 0);
 
         $ticketNumber = sprintf('%s-F%d', $job->job_number, $sortOrder);
 
@@ -345,131 +347,22 @@ class JobPhaseService
     }
 
     /**
-     * Bill a phase to the dentist's cuenta corriente exactly once — whichever transition
-     * hits first (sendToProof or completePhase). Idempotent via `lab_account_move_id`:
-     * a phase that was already billed when sent to proof is never billed again when it's
-     * later completed, no matter how many proof/return cycles it goes through.
-     *
-     * If this is the last unbilled phase of the job (including the "no tariff phases
-     * configured" fallback, which is always a single phase), the amount is reconciled
-     * against the job's total instead of the phase's own tariff price, so rounding or
-     * manual discounts on the job never leave a mismatched cuenta corriente.
+     * Facturación de fases a cuenta corriente desactivada:
+     * Las cuentas corrientes se gestionan exclusivamente a nivel Job (1 orden = 1 cargo completo).
+     * Las fases se preservan para control productivo del taller y tickets de comisión técnica.
      */
     private function billPhaseIfNeeded(JobPhaseProgress $phase): void
     {
-        if ($phase->lab_account_move_id) {
-            return;
-        }
-
-        $phase->loadMissing(['job', 'tariffPhase']);
-
-        $job = $phase->job;
-
-        // Una orden "received" (Pendiente) nunca debe generar deuda, ni
-        // siquiera si alguna fase quedó marcada completada mientras el
-        // estado no avanzó (ver initializePhasesForJob() en JobController,
-        // que hasta hace poco no sacaba la orden de "received" al crear las
-        // fases). Freno explícito acá además del fix en el origen, para no
-        // depender de que todos los caminos que crean/avanzan fases
-        // recuerden actualizar el estado correctamente.
-        if ($job->status === 'received') {
-            return;
-        }
-
-        if (! $job->dentist_id) {
-            return;
-        }
-
-        $account = LabAccount::firstOrCreate(['dentist_id' => $job->dentist_id]);
-        $userId = auth()->id() ?? 1;
-
-        // Cada fase cobra exactamente su precio configurado en la plantilla
-        // — nunca un ajuste contra el total del arancel, ni siquiera siendo
-        // la última fase configurada. Si una fase (ej. Encerado) vale $0 en
-        // el catálogo, no genera cargo. Para que la suma cierre contra
-        // job.total, el arancel tiene que tener todas sus fases reales
-        // configuradas con precio (incluida la del producto terminado) — es
-        // responsabilidad de quien arma el arancel, no algo que el sistema
-        // deba inferir.
-        $amount = (float) ($phase->tariffPhase?->price ?? 0);
-
-        if ($amount <= 0) {
-            return;
-        }
-
-        $move = LabAccountMove::create([
-            'lab_account_id' => $account->id,
-            'user_id' => $userId,
-            'type' => LabAccountMove::TYPE_CHARGE,
-            'amount' => $amount,
-            'balance_after' => $account->balance + $amount,
-            'description' => sprintf(
-                'Orden %s — %s',
-                $job->job_number,
-                $phase->tariffPhase?->name ?? 'Fase'
-            ),
-            'reference_type' => JobPhaseProgress::class,
-            'reference_id' => $phase->id,
-            'move_date' => Carbon::today(),
-        ]);
-
-        $account->applyMove($move);
-
-        $phase->update(['lab_account_move_id' => $move->id]);
+        // No-op: los cobros a odontólogos se realizan exclusivamente a nivel Job
     }
 
     /**
-     * Cuando la última fase de la orden se completa de verdad (no solo se
-     * manda a prueba), factura el resto del arancel que las fases
-     * individuales no cubrieron — así fase1 + fase2 + ... + remanente
-     * siempre cierra exactamente contra job.total, sin importar cómo estén
-     * configuradas las fases. Cargo adicional a la cuenta corriente (no una
-     * fase más), idempotente vía el propio LabAccountMove de referencia.
+     * Remanente desactivado:
+     * El monto total de la orden ya se encuentra imputado en la cuenta corriente a nivel Job.
      */
     private function settleArancelRemainder(Job $job): void
     {
-        if (! $job->dentist_id) {
-            return;
-        }
-
-        if ($job->status === 'received') {
-            return;
-        }
-
-        $alreadySettled = LabAccountMove::where('reference_type', Job::class)
-            ->where('reference_id', $job->id)
-            ->exists();
-
-        if ($alreadySettled) {
-            return;
-        }
-
-        $billedForPhases = (float) LabAccountMove::where('reference_type', JobPhaseProgress::class)
-            ->whereIn('reference_id', $job->phaseProgress()->pluck('id'))
-            ->sum('amount');
-
-        $remainder = round((float) $job->total - $billedForPhases, 2);
-
-        if ($remainder <= 0) {
-            return;
-        }
-
-        $account = LabAccount::firstOrCreate(['dentist_id' => $job->dentist_id]);
-        $userId = auth()->id() ?? 1;
-
-        $move = LabAccountMove::create([
-            'lab_account_id' => $account->id,
-            'user_id' => $userId,
-            'type' => LabAccountMove::TYPE_CHARGE,
-            'amount' => $remainder,
-            'balance_after' => $account->balance + $remainder,
-            'description' => sprintf('Orden %s — %s', $job->job_number, $this->tariffNameForJob($job)),
-            'reference_type' => Job::class,
-            'reference_id' => $job->id,
-            'move_date' => Carbon::today(),
-        ]);
-
-        $account->applyMove($move);
+        // No-op: los cobros a odontólogos se realizan exclusivamente a nivel Job
     }
 
     /**

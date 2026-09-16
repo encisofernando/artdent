@@ -317,16 +317,8 @@ class JobController extends Controller
             return;
         }
 
-        // Los trabajos con fases (Rodete → Enfilado → Producto terminado, etc.)
-        // se cobran progresivamente a medida que se completa cada fase — ver
-        // JobPhaseService::billPhaseIfNeeded(), que ya ajusta la última fase
-        // para que la suma cierre exacto con job.total. Si acá también se
-        // cargara el total completo al recibir la orden, quedaría cobrado dos
-        // veces (una vez entero al recibir + de nuevo por cada fase). Sólo
-        // cobrar de una acá los trabajos sin fases configuradas.
-        if ($job->phaseProgress()->exists()) {
-            return;
-        }
+        // Toda orden con monto se carga a la cuenta corriente del odontólogo.
+        // Las fases se reservan exclusivamente para control operativo y comisiones.
 
         $alreadyCharged = LabAccountMove::where('reference_type', Job::class)
             ->where('reference_id', $job->id)
@@ -547,14 +539,7 @@ class JobController extends Controller
             return;
         }
 
-        // Igual que en chargeAccountIfNeeded(): los trabajos con fases se
-        // cobran progresivamente por JobPhaseService::billPhaseIfNeeded(),
-        // que ya recalcula contra el job.total actual en la última fase — acá
-        // no hay ningún cargo Job::class que ajustar (nunca se creó uno para
-        // trabajos con fases) y crear uno nuevo duplicaría el cobro.
-        if ($job->phaseProgress()->exists()) {
-            return;
-        }
+        // El cargo del Job se ajusta siempre para reflejar el total real de la orden.
 
         $move = LabAccountMove::where('reference_type', Job::class)
             ->where('reference_id', $job->id)
