@@ -50,6 +50,13 @@ class LibroIvaDigitalTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    protected function tearDown(): void
+    {
+        $this->app->forgetInstance(TenantModuleResolver::class);
+
+        parent::tearDown();
+    }
+
     public function test_ventas_cbte_line_is_exactly_266_characters(): void
     {
         $invType = InvoiceType::firstOrCreate(['afip_code' => 1], ['name' => 'Factura A', 'is_active' => true]);

@@ -218,7 +218,7 @@ class PaymentController extends Controller
 
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($externalRef, $mpStatus, $dataId, $payment) {
-                $order = EcommerceOrder::query()
+                $order = EcommerceOrder::withoutGlobalScopes()
                     ->where('order_number', $externalRef)
                     ->lockForUpdate()
                     ->first();
