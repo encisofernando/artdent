@@ -282,6 +282,20 @@ export default function Index({ payments, filters, metrics, methods, tenants, pl
                                         </td>
 
                                         <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                                            {p.status === 'pending' && (
+                                                <Button
+                                                    size="sm"
+                                                    className="gap-1 text-xs py-1 bg-emerald-600 hover:bg-emerald-700 text-white mr-1.5"
+                                                    onClick={() => {
+                                                        if (confirm(`¿Aprobar pago #${p.id} de $${Number(p.amount).toLocaleString('es-AR')} para ${p.tenant?.name}? Esto extenderá el período del tenant.`)) {
+                                                            router.post(route('payments.approve', p.id));
+                                                        }
+                                                    }}
+                                                >
+                                                    <CheckCircle2 size={13} /> Aprobar
+                                                </Button>
+                                            )}
+
                                             {hasAuthorizedInvoice ? (
                                                 <Button
                                                     size="sm"

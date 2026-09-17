@@ -93,6 +93,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('payments', [TenantPaymentController::class, 'index'])->name('payments.index');
     Route::post('payments', [TenantPaymentController::class, 'store'])->name('payments.store');
+    Route::post('payments/{payment}/approve', [TenantPaymentController::class, 'approve'])->name('payments.approve');
     Route::post('payments/{payment}/invoice', [TenantPaymentController::class, 'generateInvoice'])->name('payments.invoice.generate');
     Route::get('invoices/{invoice}', [TenantPaymentController::class, 'showInvoice'])->name('invoices.show');
 

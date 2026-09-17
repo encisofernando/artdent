@@ -5,9 +5,10 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import {
     Infinity, Star, CreditCard, AlertCircle, CheckCircle2,
     Clock, XCircle, RefreshCcw, Zap, Shield, ChevronRight,
-    Layers, Receipt, Wallet, Lock,
+    Layers, Receipt, Wallet, Lock, DollarSign,
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import PaymentAdvanceModal from '@/Components/Subscription/PaymentAdvanceModal';
 
 const STATUS_LABELS = {
     trial:     { label: 'Período de prueba', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
@@ -29,7 +30,7 @@ function StatusBadge({ status }) {
     );
 }
 
-function PlanCard({ plan, current, onSelect, disabled }) {
+function PlanCard({ plan, current, hasMpSubscription, onSelect, disabled }) {
     const isCurrentPlan = current?.slug === plan.slug;
     const { isDark } = useTheme();
 
@@ -74,29 +75,40 @@ function PlanCard({ plan, current, onSelect, disabled }) {
                 </ul>
             )}
 
-            {!isCurrentPlan && (
+            {isCurrentPlan ? (
+                !hasMpSubscription ? (
+                    <Button
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1.5"
+                        disabled={disabled}
+                        onClick={() => onSelect(plan.id)}
+                    >
+                        <CreditCard size={14} /> Adherir tarjeta a este plan
+                    </Button>
+                ) : (
+                    <div className="text-center py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
+                        <CheckCircle2 size={14} /> Débito automático activo
+                    </div>
+                )
+            ) : (
                 <Button
                     size="sm"
                     className="w-full"
-                    disabled={disabled || !plan.mp_plan_id}
+                    disabled={disabled}
                     onClick={() => onSelect(plan.id)}
-                    title={!plan.mp_plan_id ? 'Próximamente disponible' : ''}
                 >
-                    {plan.mp_plan_id ? (
-                        <>Suscribirse <ChevronRight size={14} /></>
-                    ) : (
-                        'Próximamente'
-                    )}
+                    <CreditCard size={14} className="mr-1" /> Suscribirse con tarjeta <ChevronRight size={14} />
                 </Button>
             )}
         </div>
     );
 }
 
-export default function Subscription({ tenant, subscription, plans, modules = [], invoices = [], payments = [] }) {
+export default function Subscription({ tenant, subscription, plans, modules = [], invoices = [], payments = [], bank_details = {} }) {
     const { isDark } = useTheme();
     const { flash } = usePage().props;
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [showAdvanceModal, setShowAdvanceModal] = useState(false);
 
     const checkoutForm = useForm({ plan_id: '' });
     const cancelForm = useForm({});
@@ -166,9 +178,20 @@ export default function Subscription({ tenant, subscription, plans, modules = []
                 )}
 
                 {/* Header */}
-                <div>
-                    <h1 className={`text-2xl font-bold ${text}`}>Suscripción</h1>
-                    <p className={`text-sm mt-1 ${muted}`}>Administrá tu plan y método de pago</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className={`text-2xl font-bold ${text}`}>Suscripción</h1>
+                        <p className={`text-sm mt-1 ${muted}`}>Administrá tu plan y método de pago</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm"
+                            onClick={() => setShowAdvanceModal(true)}
+                        >
+                            <DollarSign size={15} /> Pagar cuota / Adelantar abono
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Estado actual */}
@@ -195,14 +218,14 @@ export default function Subscription({ tenant, subscription, plans, modules = []
                             {subscription?.next_payment_date && (
                                 <p className={`text-sm mt-2 ${muted}`}>
                                     <RefreshCcw size={13} className="inline mr-1" />
-                                    Próximo cobro: {new Date(subscription.next_payment_date).toLocaleDateString('es-AR')}
+                                    Próximo vencimiento / cobro: {new Date(subscription.next_payment_date).toLocaleDateString('es-AR')}
                                     &nbsp;·&nbsp;${Number(subscription.amount).toLocaleString('es-AR')} ARS
                                 </p>
                             )}
                         </div>
 
-                        {/* Acción de cancelar */}
-                        {subscription?.status === 'authorized' && !showCancelConfirm && (
+                        {/* Acción de cancelar (sólo si tiene suscripción automática MP) */}
+                        {subscription?.status === 'authorized' && subscription?.has_mp_subscription && !showCancelConfirm && (
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -213,6 +236,33 @@ export default function Subscription({ tenant, subscription, plans, modules = []
                             </Button>
                         )}
                     </div>
+
+                    {/* Aviso si no tiene débito automático registrado con tarjeta */}
+                    {!subscription?.has_mp_subscription && (
+                        <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50/60 dark:bg-blue-950/20 -mx-6 -mb-6 p-4 rounded-b-xl">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
+                                    <CreditCard size={20} />
+                                </div>
+                                <div>
+                                    <p className={`text-sm font-semibold ${text}`}>
+                                        Débito automático no configurado
+                                    </p>
+                                    <p className={`text-xs ${muted} mt-0.5`}>
+                                        Registrá tu tarjeta en MercadoPago para que tu plan se debite mensualmente de forma automática.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button
+                                size="sm"
+                                className="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5"
+                                disabled={checkoutForm.processing}
+                                onClick={() => handleSelectPlan(currentPlanObj?.id || plans[0]?.id)}
+                            >
+                                <CreditCard size={14} /> Registrar tarjeta con MercadoPago
+                            </Button>
+                        </div>
+                    )}
 
                     {/* Confirmación de cancelación */}
                     {showCancelConfirm && (
@@ -364,6 +414,7 @@ export default function Subscription({ tenant, subscription, plans, modules = []
                                 key={plan.id}
                                 plan={plan}
                                 current={currentPlanObj}
+                                hasMpSubscription={subscription?.has_mp_subscription}
                                 onSelect={handleSelectPlan}
                                 disabled={checkoutForm.processing}
                             />
@@ -378,9 +429,17 @@ export default function Subscription({ tenant, subscription, plans, modules = []
 
                 {/* Info adicional */}
                 <div className={`rounded-xl p-4 text-xs ${muted} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-                    <p>Los pagos se procesan de forma segura a través de MercadoPago. Podés cancelar en cualquier momento desde esta página. Al cancelar, mantenés el acceso hasta el fin del período ya abonado.</p>
+                    <p>Los pagos se procesan de forma segura a través de MercadoPago o Transferencia bancaria. Podés cancelar tu débito automático en cualquier momento desde esta página. Al cancelar, mantenés el acceso hasta el fin del período ya abonado.</p>
                 </div>
             </div>
+
+            {/* Modal de pago / adelanto */}
+            <PaymentAdvanceModal
+                show={showAdvanceModal}
+                onClose={() => setShowAdvanceModal(false)}
+                currentPlan={currentPlanObj || { name: tenant.plan, price: subscription?.amount || 15000, id: subscription?.plan?.id }}
+                bankDetails={bank_details}
+            />
         </AuthenticatedLayout>
     );
 }

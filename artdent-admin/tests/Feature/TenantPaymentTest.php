@@ -176,6 +176,25 @@ class TenantPaymentTest extends TestCase
         $this->assertStringStartsWith('https://www.arca.gob.ar/fe/qr/?p=', $qrUrl);
     }
 
+    public function test_can_approve_pending_payment(): void
+    {
+        $this->makeTenantRow('tenant-approve');
+
+        $payment = TenantPayment::create([
+            'tenant_id' => 'tenant-approve',
+            'amount' => 15000,
+            'payment_method' => 'transfer',
+            'reference' => 'TRF-123456',
+            'paid_at' => now(),
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($this->user)->post(route('payments.approve', $payment->id));
+
+        $response->assertRedirect();
+        $this->assertEquals('approved', $payment->fresh()->status);
+    }
+
     protected function makeTenantRow(string $slug): void
     {
         $row = [

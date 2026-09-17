@@ -11,9 +11,11 @@ use App\Models\TenantPayment;
 use App\Models\TenantSubscription;
 use App\Support\CrmMode;
 use App\Support\TenantModuleResolver;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -65,12 +67,15 @@ class SubscriptionController extends Controller
             'subscription' => $subscription ? [
                 'id' => $subscription->id,
                 'mp_preapproval_id' => $subscription->mp_preapproval_id,
+                'has_mp_subscription' => ! empty($subscription->mp_preapproval_id),
                 'status' => $subscription->status,
                 'next_payment_date' => $subscription->next_payment_date,
                 'amount' => $subscription->amount,
                 'plan' => $subscription->plan ? [
+                    'id' => $subscription->plan->id,
                     'name' => $subscription->plan->name,
                     'price' => $subscription->plan->price,
+                    'slug' => $subscription->plan->slug,
                 ] : null,
             ] : null,
             'plans' => $plans,
@@ -79,6 +84,13 @@ class SubscriptionController extends Controller
                 ->orderByDesc('id')
                 ->get(['id', 'receipt_type', 'point_sale', 'number', 'cae', 'total', 'status', 'description', 'issued_at']),
             'payments' => $this->fetchPaymentHistory($tenant->id),
+            'bank_details' => [
+                'bank_name' => config('services.billing.bank_name', 'Banco Santander'),
+                'account_holder' => config('services.billing.account_holder', 'ArtCode SRL'),
+                'cuit' => config('services.billing.cuit', '30-71829345-8'),
+                'cbu' => config('services.billing.cbu', '0720023420000001234567'),
+                'alias' => config('services.billing.alias', 'ARTCODE.PAGOS'),
+            ],
         ]);
     }
 
@@ -181,43 +193,152 @@ class SubscriptionController extends Controller
 
         $plan = Plan::findOrFail($request->plan_id);
 
-        if (! $plan->mp_plan_id) {
-            return back()->with('error', 'Este plan aún no está disponible para pago online. Contacte al soporte.');
+        if (empty($this->mpAccessToken)) {
+            return back()->with('error', 'El servicio de pago online no está configurado. Contacte al soporte.');
         }
 
         $tenant = Tenant::find(tenant('id'));
+        $user = auth()->user();
 
+        // 1. Intentar crear preapproval de suscripción con auto_recurring
         $response = Http::withToken($this->mpAccessToken)
             ->post('https://api.mercadopago.com/preapproval', [
-                'preapproval_plan_id' => $plan->mp_plan_id,
-                'reason' => "Plan {$plan->name} — ArtCode",
-                // external_reference = id del tenant a secas (no un string compuesto):
-                // es lo que usa artdent-admin para resolver el tenant en los webhooks
-                // de pago individual y así poder facturarle la suscripción (ver
-                // MercadoPagoService::processPaymentWebhook en artdent-admin).
+                'reason' => "Suscripción {$plan->name} — {$tenant->name}",
                 'external_reference' => $tenant->id,
-                'payer_email' => auth()->user()->email,
+                'payer_email' => $user?->email ?? $tenant->email,
+                'auto_recurring' => [
+                    'frequency' => 1,
+                    'frequency_type' => 'months',
+                    'transaction_amount' => (float) $plan->price,
+                    'currency_id' => 'ARS',
+                ],
                 'back_url' => route('subscription.index'),
                 'status' => 'pending',
             ]);
 
+        if ($response->successful()) {
+            $data = $response->json();
+
+            TenantSubscription::updateOrCreate(
+                ['tenant_id' => $tenant->id],
+                [
+                    'plan_id' => $plan->id,
+                    'mp_preapproval_id' => $data['id'],
+                    'status' => 'pending',
+                    'amount' => $plan->price,
+                    'mp_data' => $data,
+                ]
+            );
+
+            return redirect()->away($data['init_point']);
+        }
+
+        // 2. Fallback si el plan tiene mp_init_point generado
+        if (! empty($plan->mp_init_point)) {
+            return redirect()->away($plan->mp_init_point);
+        }
+
+        Log::error('MP checkout subscription failed', ['body' => $response->body()]);
+
+        return back()->with('error', 'Error al conectar con MercadoPago: '.($response->json('message') ?? 'Intente nuevamente.'));
+    }
+
+    /**
+     * Pago único o adelanto de cuotas con MercadoPago (1 a 24 meses).
+     */
+    public function advanceCheckout(Request $request): RedirectResponse
+    {
+        abort_unless(CrmMode::billingEnabled(), 404);
+
+        $request->validate([
+            'months' => ['required', 'integer', 'min:1', 'max:24'],
+            'plan_id' => ['nullable', 'integer'],
+        ]);
+
+        if (empty($this->mpAccessToken)) {
+            return back()->with('error', 'El servicio de pago online no está configurado. Contacte al soporte.');
+        }
+
+        $tenant = Tenant::find(tenant('id'));
+        $plan = $request->plan_id
+            ? Plan::find($request->plan_id)
+            : Plan::where('slug', $tenant->plan)->first();
+
+        if (! $plan) {
+            return back()->with('error', 'Plan no encontrado.');
+        }
+
+        $months = (int) $request->months;
+        $unitPrice = (float) $plan->price;
+        $totalAmount = $unitPrice * $months;
+
+        $response = Http::withToken($this->mpAccessToken)
+            ->post('https://api.mercadopago.com/checkout/preferences', [
+                'items' => [
+                    [
+                        'title' => "Abono {$plan->name} ({$months} ".($months === 1 ? 'mes' : 'meses').") — {$tenant->name}",
+                        'quantity' => 1,
+                        'unit_price' => $totalAmount,
+                        'currency_id' => 'ARS',
+                    ],
+                ],
+                'external_reference' => $tenant->id,
+                'payer' => [
+                    'email' => auth()->user()?->email ?? $tenant->email,
+                    'name' => $tenant->name,
+                ],
+                'back_urls' => [
+                    'success' => route('subscription.index'),
+                    'failure' => route('subscription.index'),
+                    'pending' => route('subscription.index'),
+                ],
+                'auto_return' => 'approved',
+                'statement_descriptor' => 'ArtCode',
+            ]);
+
         if (! $response->successful()) {
-            return back()->with('error', 'Error al conectar con MercadoPago. Intente nuevamente.');
+            Log::error('MP advance checkout failed', ['body' => $response->body()]);
+
+            return back()->with('error', 'Error al generar checkout: '.($response->json('message') ?? 'Intente nuevamente.'));
         }
 
         $data = $response->json();
 
-        TenantSubscription::create([
-            'tenant_id' => $tenant->id,
-            'plan_id' => $plan->id,
-            'mp_preapproval_id' => $data['id'],
-            'status' => 'pending',
-            'amount' => $plan->price,
-            'mp_data' => $data,
+        return redirect()->away($data['init_point']);
+    }
+
+    /**
+     * Notificación de pago manual por transferencia bancaria realizada por el tenant.
+     */
+    public function reportTransfer(Request $request): RedirectResponse
+    {
+        abort_unless(CrmMode::billingEnabled(), 404);
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1'],
+            'paid_at' => ['required', 'date'],
+            'reference' => ['required', 'string', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // Redirect user to MP checkout
-        return redirect()->away($data['init_point']);
+        $tenant = Tenant::find(tenant('id'));
+        $plan = Plan::where('slug', $tenant->plan)->first();
+
+        TenantPayment::create([
+            'tenant_id' => $tenant->id,
+            'tenant_subscription_id' => TenantSubscription::where('tenant_id', $tenant->id)->latest()->value('id'),
+            'plan_id' => $plan?->id,
+            'payment_method' => TenantPayment::METHOD_TRANSFER,
+            'amount' => (float) $validated['amount'],
+            'currency' => 'ARS',
+            'paid_at' => Carbon::parse($validated['paid_at']),
+            'reference' => $validated['reference'],
+            'notes' => ! empty($validated['notes']) ? 'Informado por tenant: '.$validated['notes'] : 'Informado desde el panel de suscripción',
+            'status' => 'pending',
+            'created_by_user_id' => null,
+        ]);
+
+        return back()->with('success', 'Transferencia informada correctamente. El pago figura como Pendiente y será verificado por administración a la brevedad.');
     }
 
     public function cancel(): RedirectResponse

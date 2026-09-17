@@ -42,6 +42,8 @@ Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs
 // Suscripción SaaS
 Route::get('subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
 Route::post('subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout')->middleware('permission:settings.edit');
+Route::post('subscription/advance-checkout', [SubscriptionController::class, 'advanceCheckout'])->name('subscription.advance-checkout')->middleware('permission:settings.edit');
+Route::post('subscription/report-transfer', [SubscriptionController::class, 'reportTransfer'])->name('subscription.report-transfer')->middleware('permission:settings.edit');
 Route::post('subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel')->middleware('permission:settings.edit');
 
 Route::get('settings', [CompanyController::class, 'edit'])->name('settings.edit');

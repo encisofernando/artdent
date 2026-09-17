@@ -346,6 +346,26 @@ class MercadoPagoService
             ]
         );
 
+        // Extender el período de la suscripción del tenant según los meses abonados
+        $baseDate = ($subscription->next_payment_date && $subscription->next_payment_date->isFuture())
+            ? $subscription->next_payment_date
+            : now();
+        $unitPrice = max((float) ($subscription->plan?->price ?? $subscription->amount), 1);
+        $monthsToExtend = max(1, (int) round($amount / $unitPrice));
+
+        $subscription->update([
+            'status' => 'authorized',
+            'next_payment_date' => $baseDate->copy()->addMonths($monthsToExtend),
+            'last_payment_date' => now(),
+        ]);
+
+        if ($tenant->status !== 'active') {
+            $tenant->update([
+                'status' => 'active',
+                'activated_at' => $tenant->activated_at ?? now(),
+            ]);
+        }
+
         $issuer = AfipIssuerSetting::current();
 
         if (! $issuer || ! $issuer->auto_invoice) {

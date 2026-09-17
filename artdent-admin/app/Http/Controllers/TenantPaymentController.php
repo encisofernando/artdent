@@ -317,4 +317,54 @@ class TenantPaymentController extends Controller
             'qr_url' => $qrUrl,
         ]);
     }
+
+    /**
+     * Aprueba un pago en estado pendiente (ej: transferencia informada por el tenant).
+     * Extiende la suscripción del tenant según los meses cubiertos por el monto.
+     */
+    public function approve(TenantPayment $payment): RedirectResponse
+    {
+        if ($payment->status === 'approved') {
+            return back()->with('info', 'Este pago ya se encuentra aprobado.');
+        }
+
+        $payment->update([
+            'status' => 'approved',
+        ]);
+
+        $tenant = $payment->tenant;
+        if ($tenant) {
+            $subscription = Subscription::where('tenant_id', $tenant->id)->latest()->first();
+            if ($subscription) {
+                $baseDate = ($subscription->next_payment_date && $subscription->next_payment_date->isFuture())
+                    ? $subscription->next_payment_date
+                    : now();
+
+                $unitPrice = max((float) ($subscription->plan?->price ?? $subscription->amount), 1);
+                $monthsToExtend = max(1, (int) round($payment->amount / $unitPrice));
+
+                $subscription->update([
+                    'status' => 'authorized',
+                    'next_payment_date' => $baseDate->copy()->addMonths($monthsToExtend),
+                    'last_payment_date' => now(),
+                ]);
+            }
+
+            if ($tenant->status !== 'active') {
+                $tenant->update([
+                    'status' => 'active',
+                    'activated_at' => $tenant->activated_at ?? now(),
+                ]);
+            }
+        }
+
+        SuperadminAudit::log('payment.approved', $tenant, [
+            'payment_id' => $payment->id,
+            'amount' => $payment->amount,
+            'payment_method' => $payment->payment_method,
+            'reference' => $payment->reference,
+        ]);
+
+        return back()->with('success', "Pago #{$payment->id} aprobado y período del tenant extendido exitosamente.");
+    }
 }
