@@ -39,6 +39,7 @@ Route::middleware('module:reportes')->group(function () {
 // porque son salidas contables (IVA, resultados), no reportes de negocio genéricos.
 Route::prefix('export')->name('export.')->middleware(['module:contabilidad', 'permission:reports.view|accounting.view'])->group(function () {
     Route::get('iva-ventas', [ReportExportController::class, 'ivaVentas'])->name('iva-ventas');
+    Route::get('iva-digital', [ReportExportController::class, 'ivaDigitalTxt'])->name('iva-digital');
     Route::get('iva-compras', [ReportExportController::class, 'ivaCompras'])->name('iva-compras');
     Route::get('income-statement', [ReportExportController::class, 'incomeStatement'])->name('income-statement');
 });

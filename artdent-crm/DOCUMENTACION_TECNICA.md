@@ -216,7 +216,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 - **ReviewController** — Reseñas de clientes. Métodos: index(), update(), destroy().
 - **ReportesController** — Panel de reportes generales. Métodos: index(), exportPdf().
 - **SalesReportController** — Reporte analítico de ventas por período (día, mes, año) con comparativa y Top 10 productos más vendidos. Métodos: index(), exportCsv().
-- **ReportExportController** — Exportación de reportes (CSV/streaming): sales(), customers(), quotes(), expenses(), ivaVentas(), ivaCompras(), incomeStatement(), exportJobs(), exportDentists(), exportTariffs().
+- **ReportExportController** — Exportación de reportes (CSV/streaming/ZIP): sales(), customers(), quotes(), expenses(), ivaVentas(), ivaDigitalTxt() (RG 4597 y RG 3685), ivaCompras(), incomeStatement(), exportJobs(), exportDentists(), exportTariffs().
 - **MercadoPagoReportController** — Conciliación de pagos MercadoPago. Métodos: index(), generate(), download().
 - **UsdExchangeRateController** — Cotización del dólar. Métodos: update() (recalcula costos en pesos).
 - **PadronController** — Consulta al padrón AFIP/ARCA por CUIT. Métodos: lookup(), invalidate().
@@ -371,6 +371,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 - **PadronService** (`app/Services/Afip/PadronService.php`) — Consulta el padrón de contribuyentes de ARCA por CUIT (cache 24hs). Métodos: getClienteByCuit(), invalidate().
 - **WsaaService** (`app/Services/Afip/WsaaService.php`) — Autenticación WSAA de ARCA/AFIP, firma TRA y cachea el Ticket de Acceso (12hs). Métodos: getAuth(), invalidate().
 - **WsfevService** (`app/Services/Afip/WsfevService.php`) — Cliente WSFEv1: CAE, último número autorizado, consulta de comprobantes. Métodos: getLastNumber(), requestCae(), queryInvoice().
+- **LibroIvaDigitalService** (`app/Services/Afip/LibroIvaDigitalService.php`) — Generador de archivos de texto plano y ZIP para Libro de IVA Digital (RG 4597 - 266 y 62 caracteres), CITI Ventas (RG 3685) y mapeo de filas CSV con desglose de tasas para software contable. Métodos: buildVentasCbte(), buildVentasAlicuotas(), buildAccountantCsvRows(), downloadZip().
 
 #### RRHH/Liquidación de Sueldos
 - **EmployeePayrollService** (`app/Services/EmployeePayrollService.php`) — Calcula liquidación de sueldos (básico, comisiones, conceptos por fórmula, SAC, aportes) y sincroniza recibos. Métodos: calculateTotals(), buildFormulaVariables(), calculateConceptLines(), syncReceipt(), generateForEmployee(), recordExpense(), removeExpense(), syncDrafts().

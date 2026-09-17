@@ -74,7 +74,9 @@ export default function ReportesIndex({ auth }) {
     const [salesFrom, setSalesFrom] = useState(firstOfMonth);
     const [salesTo, setSalesTo]   = useState(today);
 
-    const ivaUrl    = route("export.iva-ventas")  + `?from=${ivaFrom}&to=${ivaTo}`;
+    const ivaCsvUrl    = route("export.iva-ventas")  + `?from=${ivaFrom}&to=${ivaTo}`;
+    const ivaRg4597Url = route("export.iva-digital") + `?from=${ivaFrom}&to=${ivaTo}&format=rg4597`;
+    const ivaRg3685Url = route("export.iva-digital") + `?from=${ivaFrom}&to=${ivaTo}&format=rg3685`;
     const resUrl    = route("export.income-statement") + `?from=${resFrom}&to=${resTo}`;
     const salesUrl  = route("export.sales")       + `?from=${salesFrom}&to=${salesTo}`;
     const custUrl   = route("export.customers");
@@ -97,17 +99,32 @@ export default function ReportesIndex({ auth }) {
                     <div>
                         <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>Fiscal</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <ReportCard title="Libro IVA Ventas" description="Obligatorio AFIP · Comprobantes emitidos con CAE, CUIT, importes"
+                            <ReportCard title="Libro IVA Ventas" description="Exportación para ARCA y software contable (Tango, Holistor, Bejerman, SOS)"
                                 icon={BookOpen} color="#397B9C" isDark={isDark}>
                                 <div className="mb-2">
                                     <DateRangePicker from={ivaFrom} to={ivaTo} onFromChange={setIvaFrom} onToChange={setIvaTo} isDark={isDark} />
                                 </div>
-                                <a href={ivaUrl}
-                                    className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
-                                    style={{ background: "linear-gradient(90deg, #397B9C, #49949C)" }}>
-                                    <Download size={13} />
-                                    Descargar CSV
-                                </a>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <a href={ivaCsvUrl}
+                                        className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
+                                        style={{ background: "linear-gradient(90deg, #397B9C, #49949C)" }}
+                                        title="CSV universal con desglose de IVA por tasa para importar en sistemas contables">
+                                        <Download size={13} />
+                                        CSV Contadores
+                                    </a>
+                                    <a href={ivaRg4597Url}
+                                        className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-colors hover:opacity-90 w-fit ${isDark ? 'bg-slate-800 border-slate-700 text-cyan-300 hover:bg-slate-700' : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+                                        title="ZIP con archivos TXT de diseño de registro RG 4597 para Portal IVA ARCA">
+                                        <Download size={13} />
+                                        TXT RG 4597 (ARCA)
+                                    </a>
+                                    <a href={ivaRg3685Url}
+                                        className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-colors hover:opacity-90 w-fit ${isDark ? 'bg-slate-800 border-slate-700 text-amber-300 hover:bg-slate-700' : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+                                        title="ZIP con archivos TXT de diseño de registro CITI Ventas RG 3685 para SIAP y sistemas legados">
+                                        <Download size={13} />
+                                        TXT RG 3685 (CITI)
+                                    </a>
+                                </div>
                             </ReportCard>
 
                             <ReportCard title="Estado de Resultados" description="Ingresos vs Gastos por categoría · Ganancia o pérdida del período"

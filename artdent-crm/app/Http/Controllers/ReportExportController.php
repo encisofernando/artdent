@@ -10,6 +10,7 @@ use App\Models\Job;
 use App\Models\JobItem;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Services\Afip\LibroIvaDigitalService;
 use App\Support\CompanyContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -172,14 +173,14 @@ class ReportExportController extends Controller
         return $this->streamCsv("gastos_{$this->today()}.csv", $headers, $rows);
     }
 
-    /** GET /export/iva — Libro IVA Ventas */
-    public function ivaVentas(Request $request): StreamedResponse
+    /** GET /export/iva-ventas — Libro IVA Ventas (CSV Contadores) */
+    public function ivaVentas(Request $request, LibroIvaDigitalService $service): StreamedResponse
     {
         $companyId = CompanyContext::id();
         $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
         $to = $request->input('to', Carbon::now()->toDateString());
 
-        $invoices = Invoice::with('invoice_type')
+        $invoices = Invoice::with(['invoice_type', 'invoice_items'])
             ->where('company_id', $companyId)
             ->where(fn ($q) => $q->where('reference_type', '!=', 'quote')->orWhereNull('reference_type'))
             ->where(fn ($q) => $q
@@ -192,23 +193,54 @@ class ReportExportController extends Controller
             ->orderByRaw('COALESCE(issued_at, created_at) ASC')
             ->get();
 
-        $headers = ['Fecha', 'Tipo Comp.', 'Punto Venta', 'N° Comprobante', 'CAE', 'CUIT Cliente', 'Razón Social', 'Condición IVA', 'Neto Gravado', 'IVA', 'Total'];
+        $headers = [
+            'Fecha',
+            'PuntoVenta',
+            'Numero',
+            'TipoComprobante',
+            'CAE',
+            'VencimientoCAE',
+            'DocTipo',
+            'DocNro',
+            'ClienteRazonSocial',
+            'CondicionIVA',
+            'NetoGravado',
+            'NetoNoGravado',
+            'Exento',
+            'IVA_21',
+            'IVA_105',
+            'IVA_27',
+            'PercepcionIIBB',
+            'Total',
+        ];
 
-        $rows = $invoices->map(fn ($inv) => [
-            ($inv->issued_at ?? $inv->created_at)?->format('d/m/Y') ?? '',
-            $inv->invoice_type?->name ?? ($inv->invoice_type_id ?? ''),
-            str_pad((string) ($inv->point_sale ?? ''), 4, '0', STR_PAD_LEFT),
-            str_pad((string) ($inv->number ?? ''), 8, '0', STR_PAD_LEFT),
-            $inv->cae ?? '',
-            $inv->recipient_cuit ?? '',
-            $inv->recipient_name ?? '',
-            $inv->recipient_iva ?? '',
-            number_format((float) $inv->subtotal - (float) $inv->discount, 2, ',', '.'),
-            number_format((float) $inv->tax_amount, 2, ',', '.'),
-            number_format((float) $inv->total, 2, ',', '.'),
-        ]);
+        $rows = $service->buildAccountantCsvRows($invoices);
 
         return $this->streamCsv("libro_iva_ventas_{$from}_{$to}.csv", $headers, $rows);
+    }
+
+    /** GET /export/iva-digital — Descarga ZIP de Libro de IVA Digital (RG 4597 o RG 3685) */
+    public function ivaDigitalTxt(Request $request, LibroIvaDigitalService $service): StreamedResponse
+    {
+        $companyId = CompanyContext::id();
+        $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
+        $to = $request->input('to', Carbon::now()->toDateString());
+        $format = $request->input('format', 'rg4597');
+
+        $invoices = Invoice::with(['invoice_type', 'invoice_items'])
+            ->where('company_id', $companyId)
+            ->where(fn ($q) => $q->where('reference_type', '!=', 'quote')->orWhereNull('reference_type'))
+            ->where(fn ($q) => $q
+                ->whereBetween('issued_at', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()])
+                ->orWhere(fn ($q2) => $q2
+                    ->whereNull('issued_at')
+                    ->whereBetween('created_at', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()])
+                )
+            )
+            ->orderByRaw('COALESCE(issued_at, created_at) ASC')
+            ->get();
+
+        return $service->downloadZip($invoices, $from, $to, $format);
     }
 
     /** GET /export/iva-compras — Libro IVA Compras */
