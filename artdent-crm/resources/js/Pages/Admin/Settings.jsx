@@ -897,7 +897,16 @@ function InvoiceTypesManager({ isDark }) {
 
 export default function Settings({ company, accountingSettings }) {
     const { isDark } = useTheme();
-    const { flash } = usePage().props;
+    const { flash, enabled_modules } = usePage().props;
+    const enabledModules = enabled_modules || [];
+    const hasModule = (module) => {
+        if (!module) return true;
+        if (Array.isArray(module)) {
+            return module.some(m => enabledModules.includes(m));
+        }
+        return enabledModules.includes(module);
+    };
+
     const [activeTab, setActiveTab] = useState(() => {
         try {
             const t = new URLSearchParams(window.location.search).get('tab');
@@ -1176,7 +1185,7 @@ export default function Settings({ company, accountingSettings }) {
             description: 'Recomendamos PNG o WebP transparente de al menos 600 px. También se reutiliza en PDFs, emails y tickets si no hay uno específico.',
             badge: 'Insumos + Ecommerce',
         },
-        {
+        ...(hasModule('laboratorio') ? [{
             field: 'lab_logo',
             preview: labLogoPreview,
             setPreview: setLabLogoPreview,
@@ -1186,7 +1195,7 @@ export default function Settings({ company, accountingSettings }) {
             hint: 'Usado en órdenes, recibos, finanzas y presupuestos del laboratorio.',
             description: 'Si no lo cargás, el sistema usa automáticamente el logo general como respaldo.',
             badge: 'Laboratorio',
-        },
+        }] : []),
     ];
 
     const handleSubmit = (e) => {
@@ -1686,15 +1695,17 @@ export default function Settings({ company, accountingSettings }) {
                                 </div>
 
                                 {/* Comisiones de Laboratorio */}
-                                <div>
-                                    <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Comisiones de Laboratorio</h3>
-                                    <p className={`text-xs mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        Porcentaje del total de un trabajo que se reparte en partes iguales entre los colaboradores que completaron alguna fase. Se liquida automáticamente al finalizar cada trabajo.
-                                    </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {renderInput('collaborator_commission_pct', 'Comisión colaboradores por trabajo %', 'number', '10')}
+                                {hasModule('laboratorio') && (
+                                    <div>
+                                        <h3 className={`text-lg font-black tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Comisiones de Laboratorio</h3>
+                                        <p className={`text-xs mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            Porcentaje del total de un trabajo que se reparte en partes iguales entre los colaboradores que completaron alguna fase. Se liquida automáticamente al finalizar cada trabajo.
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {renderInput('collaborator_commission_pct', 'Comisión colaboradores por trabajo %', 'number', '10')}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Impresión de Tickets */}
                                 <div className={`rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-slate-50/60'}`}>

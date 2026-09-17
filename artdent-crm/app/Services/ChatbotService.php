@@ -88,7 +88,12 @@ class ChatbotService
 
     public function getWelcomeMessage(): string
     {
-        return '¡Hola! Soy **Artie**, tu asistente inteligente de **ArtCode CRM**. 👋 Estoy aquí para ayudarte con ventas, laboratorio, stock y navegación del sistema. ¿En qué te doy una mano?';
+        $hasLab = app(\App\Support\TenantModuleResolver::class)->has('laboratorio');
+        if ($hasLab) {
+            return '¡Hola! Soy **Artie**, tu asistente inteligente de **ArtCode CRM**. 👋 Estoy aquí para ayudarte con ventas, laboratorio, stock y navegación del sistema. ¿En qué te doy una mano?';
+        }
+
+        return '¡Hola! Soy **Artie**, tu asistente inteligente de **ArtCode CRM**. 👋 Estoy aquí para ayudarte con ventas, stock, clientes y navegación del sistema. ¿En qué te doy una mano?';
     }
 
     protected function resolveChatbotSettings(): array
@@ -100,8 +105,10 @@ class ChatbotService
             $model = (string) config('services.chatbot.anthropic_model', static::DEFAULT_MODEL);
         }
 
+        $hasChatIa = app(\App\Support\TenantModuleResolver::class)->has('chat_ia');
+
         return [
-            'enabled' => $company?->chatbot_enabled ?? true,
+            'enabled' => ($company?->chatbot_enabled ?? true) && $hasChatIa,
             'provider' => 'claude',
             'model' => $model,
             'api_key' => $this->resolveApiKey($company),

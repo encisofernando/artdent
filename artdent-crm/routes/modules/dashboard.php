@@ -25,7 +25,10 @@ Route::middleware('module:reportes')->group(function () {
         Route::get('customers', [ReportExportController::class, 'customers'])->name('customers');
         Route::get('quotes', [ReportExportController::class, 'quotes'])->name('quotes');
         Route::get('expenses', [ReportExportController::class, 'expenses'])->name('expenses');
-        // Lab exports
+    });
+
+    // Lab exports — restringidos al módulo de laboratorio
+    Route::prefix('export')->name('export.')->middleware(['module:laboratorio', 'permission:reports.view|accounting.view'])->group(function () {
         Route::get('jobs', [ReportExportController::class, 'exportJobs'])->name('jobs');
         Route::get('dentists', [ReportExportController::class, 'exportDentists'])->name('dentists');
         Route::get('tariffs', [ReportExportController::class, 'exportTariffs'])->name('tariffs');

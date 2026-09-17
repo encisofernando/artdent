@@ -1,5 +1,5 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { Download, FileText, BarChart2, ShoppingCart, Users, TrendingUp, BookOpen, ArrowRight, BarChart3, Package, Layers, ArrowUpDown } from "lucide-react";
 import { useState } from "react";
@@ -53,6 +53,17 @@ function DateRangePicker({ from, to, onFromChange, onToChange, isDark }) {
 
 export default function ReportesIndex({ auth }) {
     const { isDark } = useTheme();
+    const { props } = usePage();
+    const enabledModules = props.enabled_modules || [];
+
+    const hasModule = (module) => {
+        if (!module) return true;
+        if (Array.isArray(module)) {
+            return module.some(m => enabledModules.includes(m));
+        }
+        return enabledModules.includes(module);
+    };
+
     const text  = isDark ? "text-white" : "text-slate-900";
     const muted = isDark ? "text-slate-400" : "text-slate-500";
 
@@ -82,36 +93,38 @@ export default function ReportesIndex({ auth }) {
                 </div>
 
                 {/* Fiscal */}
-                <div>
-                    <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>Fiscal</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <ReportCard title="Libro IVA Ventas" description="Obligatorio AFIP · Comprobantes emitidos con CAE, CUIT, importes"
-                            icon={BookOpen} color="#397B9C" isDark={isDark}>
-                            <div className="mb-2">
-                                <DateRangePicker from={ivaFrom} to={ivaTo} onFromChange={setIvaFrom} onToChange={setIvaTo} isDark={isDark} />
-                            </div>
-                            <a href={ivaUrl}
-                                className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
-                                style={{ background: "linear-gradient(90deg, #397B9C, #49949C)" }}>
-                                <Download size={13} />
-                                Descargar CSV
-                            </a>
-                        </ReportCard>
+                {hasModule('contabilidad') && (
+                    <div>
+                        <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>Fiscal</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <ReportCard title="Libro IVA Ventas" description="Obligatorio AFIP · Comprobantes emitidos con CAE, CUIT, importes"
+                                icon={BookOpen} color="#397B9C" isDark={isDark}>
+                                <div className="mb-2">
+                                    <DateRangePicker from={ivaFrom} to={ivaTo} onFromChange={setIvaFrom} onToChange={setIvaTo} isDark={isDark} />
+                                </div>
+                                <a href={ivaUrl}
+                                    className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
+                                    style={{ background: "linear-gradient(90deg, #397B9C, #49949C)" }}>
+                                    <Download size={13} />
+                                    Descargar CSV
+                                </a>
+                            </ReportCard>
 
-                        <ReportCard title="Estado de Resultados" description="Ingresos vs Gastos por categoría · Ganancia o pérdida del período"
-                            icon={TrendingUp} color="#5AAD9C" isDark={isDark}>
-                            <div className="mb-2">
-                                <DateRangePicker from={resFrom} to={resTo} onFromChange={setResFrom} onToChange={setResTo} isDark={isDark} />
-                            </div>
-                            <a href={resUrl}
-                                className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
-                                style={{ background: "linear-gradient(90deg, #5AAD9C, #49949C)" }}>
-                                <Download size={13} />
-                                Descargar CSV
-                            </a>
-                        </ReportCard>
+                            <ReportCard title="Estado de Resultados" description="Ingresos vs Gastos por categoría · Ganancia o pérdida del período"
+                                icon={TrendingUp} color="#5AAD9C" isDark={isDark}>
+                                <div className="mb-2">
+                                    <DateRangePicker from={resFrom} to={resTo} onFromChange={setResFrom} onToChange={setResTo} isDark={isDark} />
+                                </div>
+                                <a href={resUrl}
+                                    className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
+                                    style={{ background: "linear-gradient(90deg, #5AAD9C, #49949C)" }}>
+                                    <Download size={13} />
+                                    Descargar CSV
+                                </a>
+                            </ReportCard>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Operaciones */}
                 <div>
@@ -146,8 +159,10 @@ export default function ReportesIndex({ auth }) {
                         <ReportCard title="Presupuestos" description="Todos los presupuestos emitidos con estado y totales"
                             icon={BarChart2} color="#49949C" href={quotesUrl} isDark={isDark} />
 
-                        <ReportCard title="Clientes" description="Base de clientes con saldo de cuenta corriente"
-                            icon={Users} color="#ACD6CE" href={custUrl} isDark={isDark} />
+                        {hasModule('clientes') && (
+                            <ReportCard title="Clientes" description="Base de clientes con saldo de cuenta corriente"
+                                icon={Users} color="#ACD6CE" href={custUrl} isDark={isDark} />
+                        )}
                     </div>
                 </div>
 
@@ -164,45 +179,50 @@ export default function ReportesIndex({ auth }) {
                 </div>
 
                 {/* Laboratorio */}
-                <div>
-                    <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>Laboratorio</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Analítica completa */}
-                        <div className={`rounded-2xl border p-5 shadow-sm relative overflow-hidden ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
-                            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #10b981, #10b98166)" }} />
-                            <div className="flex items-start gap-3 mb-3">
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#10b98118", color: "#10b981" }}>
-                                    <BarChart3 size={18} />
+                {hasModule('laboratorio') && (
+                    <div>
+                        <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>Laboratorio</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* Analítica completa */}
+                            <div className={`rounded-2xl border p-5 shadow-sm relative overflow-hidden ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
+                                <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #10b981, #10b98166)" }} />
+                                <div className="flex items-start gap-3 mb-3">
+                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#10b98118", color: "#10b981" }}>
+                                        <BarChart3 size={18} />
+                                    </div>
+                                    <div>
+                                        <h3 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Analítica de Laboratorio</h3>
+                                        <p className={`text-xs mt-0.5 ${muted}`}>KPIs, top odontólogos, aranceles, remakes y tendencias</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Analítica de Laboratorio</h3>
-                                    <p className={`text-xs mt-0.5 ${muted}`}>KPIs, top odontólogos, aranceles, remakes y tendencias</p>
-                                </div>
+                                <a href={route("analytics.lab")}
+                                    className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
+                                    style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}>
+                                    <ArrowRight size={13} />
+                                    Ver Analítica
+                                </a>
                             </div>
-                            <a href={route("analytics.lab")}
-                                className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
-                                style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}>
-                                <ArrowRight size={13} />
-                                Ver Analítica
-                            </a>
+
+                            <ReportCard title="Trabajos" description="Todos los trabajos con odontólogo, estado, totales y fechas"
+                                icon={FileText} color="#10b981" isDark={isDark} href={route("export.jobs")}>
+                            </ReportCard>
+
+                            <ReportCard title="Odontólogos" description="Ranking de odontólogos por volumen y revenue generado"
+                                icon={Users} color="#3b82f6" isDark={isDark} href={route("export.dentists")}>
+                            </ReportCard>
+
+                            <ReportCard title="Aranceles" description="Uso de aranceles: cantidad utilizada y revenue por trabajo"
+                                icon={BarChart2} color="#8b5cf6" isDark={isDark} href={route("export.tariffs")}>
+                            </ReportCard>
                         </div>
-
-                        <ReportCard title="Trabajos" description="Todos los trabajos con odontólogo, estado, totales y fechas"
-                            icon={FileText} color="#10b981" isDark={isDark} href={route("export.jobs")}>
-                        </ReportCard>
-
-                        <ReportCard title="Odontólogos" description="Ranking de odontólogos por volumen y revenue generado"
-                            icon={Users} color="#3b82f6" isDark={isDark} href={route("export.dentists")}>
-                        </ReportCard>
-
-                        <ReportCard title="Aranceles" description="Uso de aranceles: cantidad utilizada y revenue por trabajo"
-                            icon={BarChart2} color="#8b5cf6" isDark={isDark} href={route("export.tariffs")}>
-                        </ReportCard>
                     </div>
-                </div>
+                )}
+
                 {/* Inventario y Stock */}
                 <div>
-                    <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>Inventario y Stock</h2>
+                    <h2 className={`text-xs font-bold uppercase tracking-widest mb-3 ${muted}`}>
+                        {hasModule('insumos') ? "Inventario y Stock" : "Informes de Ventas"}
+                    </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
                         {/* Ventas por Período — página completa con gráficos */}
@@ -224,34 +244,38 @@ export default function ReportesIndex({ auth }) {
                             </Link>
                         </div>
 
-                        {/* Valorización de Inventario */}
-                        <div className={`rounded-2xl border p-5 shadow-sm relative overflow-hidden ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
-                            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #49949C, #49949C66)" }} />
-                            <div className="flex items-start gap-3 mb-3">
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#49949C18", color: "#49949C" }}>
-                                    <Layers size={18} />
+                        {hasModule('insumos') && (
+                            <>
+                                {/* Valorización de Inventario */}
+                                <div className={`rounded-2xl border p-5 shadow-sm relative overflow-hidden ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
+                                    <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #49949C, #49949C66)" }} />
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#49949C18", color: "#49949C" }}>
+                                            <Layers size={18} />
+                                        </div>
+                                        <div>
+                                            <h3 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Valorización de Inventario</h3>
+                                            <p className={`text-xs mt-0.5 ${muted}`}>Valor total del stock a costo, alertas de mínimos</p>
+                                        </div>
+                                    </div>
+                                    <Link href={route("stocks.valuation")}
+                                        className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
+                                        style={{ background: "linear-gradient(90deg, #49949C, #5AAD9C)" }}>
+                                        <ArrowRight size={13} /> Ver Inventario
+                                    </Link>
                                 </div>
-                                <div>
-                                    <h3 className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Valorización de Inventario</h3>
-                                    <p className={`text-xs mt-0.5 ${muted}`}>Valor total del stock a costo, alertas de mínimos</p>
-                                </div>
-                            </div>
-                            <Link href={route("stocks.valuation")}
-                                className="mt-2 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 w-fit"
-                                style={{ background: "linear-gradient(90deg, #49949C, #5AAD9C)" }}>
-                                <ArrowRight size={13} /> Ver Inventario
-                            </Link>
-                        </div>
 
-                        {/* CSV Stock Actual */}
-                        <ReportCard title="Exportar Stock Actual" description="Stock valorizado por producto y depósito, con precio de costo"
-                            icon={Package} color="#5AAD9C" isDark={isDark} href={route("stocks.export")}>
-                        </ReportCard>
+                                {/* CSV Stock Actual */}
+                                <ReportCard title="Exportar Stock Actual" description="Stock valorizado por producto y depósito, con precio de costo"
+                                    icon={Package} color="#5AAD9C" isDark={isDark} href={route("stocks.export")}>
+                                </ReportCard>
 
-                        {/* CSV Movimientos */}
-                        <ReportCard title="Exportar Movimientos" description="Historial completo de entradas, salidas, ajustes y transferencias"
-                            icon={ArrowUpDown} color="#7CA5C3" isDark={isDark} href={route("stock-movements.export")}>
-                        </ReportCard>
+                                {/* CSV Movimientos */}
+                                <ReportCard title="Exportar Movimientos" description="Historial completo de entradas, salidas, ajustes y transferencias"
+                                    icon={ArrowUpDown} color="#7CA5C3" isDark={isDark} href={route("stock-movements.export")}>
+                                </ReportCard>
+                            </>
+                        )}
 
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import {
     LifeBuoy, Search, ChevronDown, ArrowRight, Rocket, Banknote, Users, ClipboardList,
@@ -290,8 +290,30 @@ const FAQ = [
 
 export default function Index({ kbArticles = [] }) {
     const { isDark } = useTheme();
+    const { props } = usePage();
+    const enabledModules = props.enabled_modules || [];
+    const hasModule = (module) => {
+        if (!module) return true;
+        if (Array.isArray(module)) {
+            return module.some(m => enabledModules.includes(m));
+        }
+        return enabledModules.includes(module);
+    };
+
+    const visibleCategories = useMemo(() => {
+        const MODULE_MAP = {
+            'laboratorio': 'laboratorio',
+            'ecommerce': 'ecommerce',
+            'rrhh': 'rrhh',
+            'finanzas': 'finanzas',
+            'crm': 'laboratorio',
+            'kiosks': ['laboratorio', 'rrhh'],
+        };
+        return CATEGORIES.filter(c => hasModule(MODULE_MAP[c.key]));
+    }, [enabledModules]);
+
     const [query, setQuery] = useState('');
-    const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
+    const [activeCategory, setActiveCategory] = useState(() => visibleCategories[0]?.key || 'primeros-pasos');
     const [openArticle, setOpenArticle] = useState(null);
     const [openFaq, setOpenFaq] = useState(null);
     const [openKb, setOpenKb] = useState(null);
@@ -302,7 +324,7 @@ export default function Index({ kbArticles = [] }) {
         const q = query.trim().toLowerCase();
         if (!q) return null;
         const results = [];
-        CATEGORIES.forEach((cat) => {
+        visibleCategories.forEach((cat) => {
             cat.articles.forEach((art) => {
                 if (art.title.toLowerCase().includes(q) || art.body.toLowerCase().includes(q)) {
                     results.push({ ...art, category: cat.title, categoryKey: cat.key });
@@ -310,9 +332,9 @@ export default function Index({ kbArticles = [] }) {
             });
         });
         return results;
-    }, [query]);
+    }, [query, visibleCategories]);
 
-    const currentCategory = CATEGORIES.find((c) => c.key === activeCategory);
+    const currentCategory = visibleCategories.find((c) => c.key === activeCategory) || visibleCategories[0];
 
     return (
         <AuthenticatedLayout>
@@ -390,7 +412,7 @@ export default function Index({ kbArticles = [] }) {
                         {/* Category nav */}
                         <div className={`${card} p-2 lg:col-span-1 h-fit`}>
                             <ul className="space-y-1">
-                                {CATEGORIES.map((cat) => {
+                                {visibleCategories.map((cat) => {
                                     const active = cat.key === activeCategory;
                                     return (
                                         <li key={cat.key}>
