@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CashRegisterSettingsController;
@@ -156,6 +157,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('kiosk-access/device-tokens', [KioskAccessController::class, 'storeDeviceToken'])->name('kiosk-access.device-tokens.store');
         Route::patch('kiosk-access/device-tokens/{network}/toggle', [KioskAccessController::class, 'toggleDeviceToken'])->name('kiosk-access.device-tokens.toggle');
         Route::delete('kiosk-access/device-tokens/{network}', [KioskAccessController::class, 'destroyDeviceToken'])->name('kiosk-access.device-tokens.destroy');
+    });
+
+    // Gestión de Tokens de API
+    Route::middleware('permission:settings.edit')->group(function () {
+        Route::get('api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+        Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+        Route::delete('api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
     });
 
     // Crear symlink storage en producción — antes cualquier usuario

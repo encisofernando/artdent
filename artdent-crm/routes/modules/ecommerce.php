@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\NavePosPaymentController;
-use App\Http\Controllers\ClientesController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\CrmClientController;
 use App\Http\Controllers\CustomerAccountController;
@@ -37,7 +36,7 @@ Route::middleware('module:clientes')->group(function () {
     Route::post('customers/{customer}/account/send-statement', [CustomerAccountController::class, 'sendStatement'])->name('customers.account.send-statement')->middleware('permission:customers.view');
     Route::get('customers/{customer}/loyalty', [CustomerLoyaltyController::class, 'show'])->name('customers.loyalty')->middleware('permission:customers.view');
     Route::post('customers/{customer}/loyalty/adjustments', [CustomerLoyaltyController::class, 'storeAdjustment'])->name('customers.loyalty.adjustments')->middleware('permission:customers.edit');
-    Route::resource('clientes', ClientesController::class)->middleware('permission:customers.view');
+    Route::redirect('clientes', '/customers');
     Route::resource('crm-clients', CrmClientController::class)->middleware('permission:customers.view');
 });
 
@@ -53,11 +52,11 @@ Route::middleware('module:ecommerce')->group(function () {
     Route::post('ecommerce-orders/{ecommerce_order}/andreani/tracking', [EcommerceOrderController::class, 'refreshAndreaniTracking'])->name('ecommerce-orders.andreani.tracking')->middleware('permission:ecommerce.edit');
 
     // Cupones y Ofertas
-    Route::resource('coupons', CouponController::class)->middleware('permission:ecommerce.edit');
+    Route::resource('coupons', CouponController::class)->except(['show'])->middleware('permission:ecommerce.edit');
     Route::resource('offers', OfferController::class)->except(['show'])->middleware('permission:ecommerce.edit');
 
     // Marketing y Social
-    Route::resource('reviews', ReviewController::class)->middleware('permission:ecommerce.view');
+    Route::resource('reviews', ReviewController::class)->only(['index', 'update', 'destroy'])->middleware('permission:ecommerce.view');
     Route::resource('sidebar-banners', SidebarBannerController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('permission:ecommerce.edit');
     Route::resource('hero-slides', HeroSlideController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('permission:ecommerce.edit');
     Route::get('newsletter-subscribers', [NewsletterSubscriberController::class, 'index'])->name('newsletter-subscribers.index')->middleware('permission:ecommerce.view');

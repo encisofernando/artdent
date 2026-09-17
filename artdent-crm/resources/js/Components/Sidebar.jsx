@@ -102,11 +102,11 @@ export default function Sidebar({ className = "" }) {
                         { title: "Stock", path: "/stocks" },
                         { title: "Depósitos", path: "/warehouses" },
                         { title: "Movimientos", path: "/stock-movements" },
-                        { title: "Retiros de Insumos", path: "/lab-withdrawals", permission: 'inventory.manage' },
+                        { title: "Retiros de Insumos", path: "/lab-withdrawals", permission: 'inventory.manage', module: 'laboratorio' },
                         { title: "Categorías", path: "/categorys", permission: 'products.edit' },
                     ],
                 },
-                { title: "Ingresos y Egresos", icon: Wallet, path: "/insumos-finance", permission: 'inventory.view' },
+                { title: "Ingresos y Egresos", icon: Wallet, path: "/insumos-finance", permission: 'inventory.view', module: 'insumos' },
             ],
         },
         {
@@ -134,6 +134,7 @@ export default function Sidebar({ className = "" }) {
         },
         {
             label: "Laboratorio",
+            module: 'laboratorio',
             items: [
                 {
                     title: "Órdenes", icon: ClipboardList, key: "lab-ordenes",
@@ -162,7 +163,7 @@ export default function Sidebar({ className = "" }) {
                 { title: "Catálogo de Fases", icon: Layers, path: "/phase-templates", permission: 'products.view', module: 'laboratorio' },
                 {
                     title: "Colaboradores", icon: BadgeCheck, key: "colaboradores",
-                    permission: 'staff.view', module: 'rrhh',
+                    permission: 'staff.view', module: 'laboratorio',
                     children: [
                         { title: "Colaboradores", path: "/collaborators" },
                         { title: "Asistencias", path: "/collaborator-attendances" },
@@ -252,10 +253,10 @@ export default function Sidebar({ className = "" }) {
         {
             label: "Análisis",
             items: [
-                { title: "Estadísticas", icon: TrendingUp, path: "/estadisticas", permission: 'reports.view' },
+                { title: "Estadísticas", icon: BarChart3, path: "/reportes/ventas-por-periodo", permission: 'reports.view', module: 'reportes' },
                 { title: "Reportes", icon: Receipt, path: "/reportes", permission: 'reports.view', module: 'reportes' },
                 { title: "Costos y Ganancias", icon: DollarSign, path: "/reportes/costos-ganancias", permission: 'reports.view', module: 'reportes' },
-                { title: "Operaciones", icon: Search, path: "/operaciones", permission: 'reports.view' },
+                { title: "Operaciones", icon: Search, path: "/audit-logs", permission: 'reports.view' },
             ],
         },
         {
@@ -381,6 +382,8 @@ export default function Sidebar({ className = "" }) {
             <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-thin scrollbar-thumb-slate-700">
                 <nav className="space-y-6">
                     {NAV_SECTIONS.map((section, idx) => {
+                        if (section.module && !hasModule(section.module)) return null;
+
                         // Filter items based on permissions and contracted modules
                         const visibleItems = section.items.filter(isVisible);
                         

@@ -3,7 +3,6 @@
 use App\Http\Controllers\CashDrawerController;
 use App\Http\Controllers\CashMovementController;
 use App\Http\Controllers\CashSessionController;
-use App\Http\Controllers\ComprasController;
 use App\Http\Controllers\PurchaseController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,5 +35,5 @@ Route::middleware('module:finanzas')->group(function () {
 
     // Compras (Relacionado con Inventario/Reportes)
     Route::resource('purchases', PurchaseController::class)->middleware('permission:reports.view');
-    Route::resource('compras', ComprasController::class)->middleware('permission:reports.view');
+    Route::redirect('compras', '/purchases');
 });

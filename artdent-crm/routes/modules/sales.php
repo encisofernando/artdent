@@ -7,7 +7,6 @@ use App\Http\Controllers\LoyaltyRewardController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleReturnController;
-use App\Http\Controllers\VentasController;
 use Illuminate\Support\Facades\Route;
 
 // ── Presupuestos ──────────────────────────────────────────────────────────────
@@ -27,8 +26,6 @@ Route::get('sales', [SaleController::class, 'index'])->name('sales.index')->midd
 Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create')->middleware(['permission:sales.create', 'cash.session.current']);
 Route::post('sales', [SaleController::class, 'store'])->name('sales.store')->middleware(['permission:sales.create', 'cash.session.current']);
 Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->middleware('permission:sales.view');
-Route::get('sales/{sale}/edit', [SaleController::class, 'edit'])->name('sales.edit')->middleware('permission:sales.edit');
-Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update')->middleware('permission:sales.edit');
 Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy')->middleware('permission:sales.delete');
 // sales.pay: cobrar un saldo pendiente sobre una venta ya existente — a
 // propósito separado de sales.edit, para poder darle esto a un cajero sin
@@ -63,6 +60,7 @@ Route::get('nave-charge-intents/{intent}/status', [NavePosPaymentController::cla
 // Sistema → Administración, ver routes/modules/settings.php) ───────────────────
 Route::get('installments-simulator', [InstallmentsSimulatorController::class, 'index'])->name('installments-simulator.index')->middleware('permission:sales.view');
 
-// ── POS legado ────────────────────────────────────────────────────────────────
-Route::get('ventas/pos', [VentasController::class, 'pos'])->name('ventas.pos')->middleware('permission:sales.view');
-Route::resource('ventas', VentasController::class)->middleware('permission:sales.view');
+// ── Redirecciones de compatibilidad en español hacia rutas canónicas ──────────
+Route::redirect('ventas/pos', '/sales/create');
+Route::redirect('ventas/create', '/sales/create');
+Route::redirect('ventas', '/sales');

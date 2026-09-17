@@ -126,7 +126,7 @@ export default function ImportExportModal({ isOpen, onClose }) {
             return newItem;
         }).filter(item => item.name && item.price); // filter empty rows
 
-        axios.post(route('products.import.csv'), { products: mappedData })
+        axios.post(route('products.import-csv'), { products: mappedData })
             .then(res => {
                 setSuccess(`¡${res.data.imported} productos importados/actualizados correctamente!`);
                 setStep(4);
@@ -164,7 +164,7 @@ export default function ImportExportModal({ isOpen, onClose }) {
         const formData = new FormData();
         formData.append('sql_file', sqlFile);
 
-        axios.post(route('products.import.sql'), formData, {
+        axios.post(route('products.import-sql'), formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
             .then(res => {

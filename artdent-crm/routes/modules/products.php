@@ -21,6 +21,8 @@ Route::delete('products/{product}', [ProductController::class, 'destroy'])->name
 // Importaciones
 Route::post('products/import-csv', [ProductController::class, 'importCsv'])->name('products.import-csv')->middleware('permission:products.create');
 Route::post('products/import-sql', [ProductController::class, 'importSql'])->name('products.import-sql')->middleware('permission:products.create');
+Route::post('products/import/csv', [ProductController::class, 'importCsv'])->name('products.import.csv')->middleware('permission:products.create');
+Route::post('products/import/sql', [ProductController::class, 'importSql'])->name('products.import.sql')->middleware('permission:products.create');
 
 // Aumento masivo de precios
 Route::get('products/bulk-price', [ProductController::class, 'bulkPriceForm'])->name('products.bulk-price')->middleware('permission:products.edit');

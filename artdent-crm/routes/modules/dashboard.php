@@ -12,7 +12,9 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('permission:products.view|customers.view|orders.view|ecommerce.view|reports.view|settings.edit|staff.view');
 
 Route::middleware('module:reportes')->group(function () {
-    Route::resource('dashboards', DashboardController::class)->middleware('permission:reports.view');
+    Route::resource('dashboards', DashboardController::class)->only(['index'])->middleware('permission:reports.view');
+    Route::redirect('/estadisticas', '/reportes/ventas-por-periodo');
+    Route::redirect('/operaciones', '/audit-logs');
     Route::get('/reportes', [ReportesController::class, 'index'])->name('reportes.index')->middleware('permission:reports.view');
     Route::get('/reportes/export-pdf', [ReportesController::class, 'exportPdf'])->name('reportes.export-pdf')->middleware('permission:reports.view');
     Route::get('/reportes/costos-ganancias', [CostProfitReportController::class, 'index'])->name('reportes.costos-ganancias')->middleware('permission:reports.view');

@@ -3,17 +3,12 @@
 use App\Http\Controllers\LabAccountController;
 use App\Http\Controllers\LabAccountMoveController;
 use App\Http\Controllers\LabFinanceController;
-use App\Http\Controllers\LaboratorioController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('module:laboratorio')->group(function () {
-    // Órdenes de Laboratorio
-    Route::get('laboratorios', [LaboratorioController::class, 'index'])->name('laboratorios.index')->middleware('permission:orders.view');
-    Route::get('laboratorios/create', [LaboratorioController::class, 'create'])->name('laboratorios.create')->middleware('permission:orders.create');
-    Route::post('laboratorios', [LaboratorioController::class, 'store'])->name('laboratorios.store')->middleware('permission:orders.create');
-    Route::get('laboratorios/{laboratorio}/edit', [LaboratorioController::class, 'edit'])->name('laboratorios.edit')->middleware('permission:orders.edit');
-    Route::put('laboratorios/{laboratorio}', [LaboratorioController::class, 'update'])->name('laboratorios.update')->middleware('permission:orders.edit');
-    Route::delete('laboratorios/{laboratorio}', [LaboratorioController::class, 'destroy'])->name('laboratorios.destroy')->middleware('permission:orders.delete');
+    // Órdenes de Laboratorio (Legacy redirect hacia jobs)
+    Route::redirect('laboratorios', '/jobs');
+    Route::redirect('laboratorios/create', '/jobs/create');
 
     // Cuentas de Laboratorio
     Route::resource('lab-accounts', LabAccountController::class)->middleware('permission:orders.view');

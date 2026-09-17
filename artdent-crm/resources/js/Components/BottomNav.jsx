@@ -5,8 +5,27 @@ import { LayoutDashboard, Receipt, Plus, Users, Menu } from 'lucide-react';
 const B = { blue: '#397B9C', teal: '#49949C', active: '#5AAD9C' };
 
 export default function BottomNav({ onMenuOpen }) {
-    const { url } = usePage();
+    const { url, props } = usePage();
     const { isDark } = useTheme();
+    const auth = props.auth;
+    const enabledModules = props.enabled_modules || [];
+
+    const hasPermission = (permission) => {
+        if (!permission) return true;
+        if (auth?.user?.is_super_admin) return true;
+        if (Array.isArray(permission)) {
+            return permission.some(item => auth?.user?.permissions?.includes(item));
+        }
+        return auth?.user?.permissions?.includes(permission);
+    };
+
+    const hasModule = (module) => {
+        if (!module) return true;
+        if (Array.isArray(module)) {
+            return module.some(m => enabledModules.includes(m));
+        }
+        return enabledModules.includes(module);
+    };
 
     const isActive = (path) => {
         if (path === '/dashboard') return url === '/dashboard' || url === '/';
@@ -27,6 +46,10 @@ export default function BottomNav({ onMenuOpen }) {
         );
     };
 
+    const canViewSales = hasModule('ventas') && hasPermission('sales.view');
+    const canCreateSales = hasModule('ventas') && hasPermission('sales.create');
+    const canViewCustomers = hasModule('clientes') && hasPermission('customers.view');
+
     return (
         <nav
             className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden
@@ -40,24 +63,26 @@ export default function BottomNav({ onMenuOpen }) {
         >
             <div className="flex items-center h-[56px]">
                 <NavItem path="/dashboard" icon={LayoutDashboard} label="Panel" />
-                <NavItem path="/sales" icon={Receipt} label="Ventas" />
+                {canViewSales && <NavItem path="/sales" icon={Receipt} label="Ventas" />}
 
                 {/* FAB center */}
-                <div className="flex-1 flex justify-center items-center">
-                    <Link href="/sales/create" className="flex items-center justify-center">
-                        <div
-                            className="w-[52px] h-[52px] -mt-5 rounded-full flex items-center justify-center text-white shadow-xl"
-                            style={{
-                                background: `linear-gradient(135deg, ${B.blue}, ${B.teal})`,
-                                boxShadow: `0 4px 20px ${B.teal}55`,
-                            }}
-                        >
-                            <Plus size={26} strokeWidth={2.5} />
-                        </div>
-                    </Link>
-                </div>
+                {canCreateSales && (
+                    <div className="flex-1 flex justify-center items-center">
+                        <Link href="/sales/create" className="flex items-center justify-center">
+                            <div
+                                className="w-[52px] h-[52px] -mt-5 rounded-full flex items-center justify-center text-white shadow-xl"
+                                style={{
+                                    background: `linear-gradient(135deg, ${B.blue}, ${B.teal})`,
+                                    boxShadow: `0 4px 20px ${B.teal}55`,
+                                }}
+                            >
+                                <Plus size={26} strokeWidth={2.5} />
+                            </div>
+                        </Link>
+                    </div>
+                )}
 
-                <NavItem path="/customers" icon={Users} label="Clientes" />
+                {canViewCustomers && <NavItem path="/customers" icon={Users} label="Clientes" />}
 
                 {/* Menu button */}
                 <button
