@@ -300,14 +300,20 @@ export default function Subscription({ tenant, subscription, plans, modules = []
                                     <div key={p.id} className={`flex items-center justify-between py-2 border-b last:border-0 ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                                         <div>
                                             <p className={`text-sm font-medium ${text}`}>${Number(p.amount).toLocaleString('es-AR')}</p>
-                                            <p className={`text-xs ${muted}`}>{p.date ? new Date(p.date).toLocaleDateString('es-AR') : '—'}</p>
+                                            <p className={`text-xs ${muted}`}>
+                                                {p.date ? new Date(p.date).toLocaleDateString('es-AR') : '—'}
+                                                {p.payment_method ? ` · ${p.payment_method}` : ''}
+                                                {p.reference ? ` · Ref: ${p.reference}` : ''}
+                                            </p>
                                         </div>
                                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                                             p.status === 'approved'
                                                 ? (isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                                                : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500')
+                                                : p.status === 'pending'
+                                                    ? (isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-700')
+                                                    : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500')
                                         }`}>
-                                            {p.status}
+                                            {p.status === 'approved' ? 'Aprobado' : p.status === 'pending' ? 'Pendiente' : p.status}
                                         </span>
                                     </div>
                                 ))}

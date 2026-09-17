@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Models\SubscriptionInvoice;
 use App\Models\Tenant;
 use App\Models\TenantModule;
+use App\Models\TenantPayment;
 use App\Models\TenantSubscription;
 use App\Support\CrmMode;
 use App\Support\TenantModuleResolver;
@@ -77,7 +78,7 @@ class SubscriptionController extends Controller
             'invoices' => SubscriptionInvoice::where('tenant_id', $tenant->id)
                 ->orderByDesc('id')
                 ->get(['id', 'receipt_type', 'point_sale', 'number', 'cae', 'total', 'status', 'description', 'issued_at']),
-            'payments' => $subscription ? $this->fetchPaymentHistory($tenant->id) : [],
+            'payments' => $this->fetchPaymentHistory($tenant->id),
         ]);
     }
 
@@ -108,33 +109,60 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Historial de pagos consultado en vivo a MercadoPago (no se guarda
-     * localmente — ver decisión en memoria del proyecto, Fase de facturación
-     * de suscripciones). Si MP falla, se degrada a lista vacía sin romper la
-     * página.
+     * Historial unificado de pagos del tenant:
+     * 1. Pagos asentados en la tabla central tenant_payments (transferencias, QR, efectivo y webhooks MP).
+     * 2. Pagos consultados a la API de MercadoPago si estuviera configurado el token, evitando duplicados.
      */
     private function fetchPaymentHistory(string $tenantId): array
     {
-        $response = Http::withToken($this->mpAccessToken)
-            ->get('https://api.mercadopago.com/v1/payments/search', [
-                'external_reference' => $tenantId,
-                'sort' => 'date_created',
-                'criteria' => 'desc',
-                'limit' => 20,
-            ]);
+        $dbPayments = TenantPayment::where('tenant_id', $tenantId)
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id')
+            ->get();
 
-        if ($response->failed()) {
-            return [];
+        $recordedMpIds = $dbPayments->pluck('mp_payment_id')->filter()->map(fn ($id) => (string) $id)->all();
+
+        $mpPayments = collect();
+        if (! empty($this->mpAccessToken)) {
+            try {
+                $response = Http::withToken($this->mpAccessToken)
+                    ->timeout(4)
+                    ->get('https://api.mercadopago.com/v1/payments/search', [
+                        'external_reference' => $tenantId,
+                        'sort' => 'date_created',
+                        'criteria' => 'desc',
+                        'limit' => 20,
+                    ]);
+
+                if ($response->successful()) {
+                    $mpPayments = collect($response->json('results', []))
+                        ->reject(fn (array $p) => in_array((string) $p['id'], $recordedMpIds, true))
+                        ->map(fn (array $p) => [
+                            'id' => 'mp-'.$p['id'],
+                            'status' => $p['status'],
+                            'amount' => (float) $p['transaction_amount'],
+                            'date' => $p['date_approved'] ?? $p['date_created'],
+                            'payment_method' => 'MercadoPago'.(! empty($p['payment_method_id']) ? ' ('.$p['payment_method_id'].')' : ''),
+                            'reference' => (string) $p['id'],
+                        ]);
+                }
+            } catch (\Throwable $e) {
+                // Silently fallback if MP API is unreachable
+            }
         }
 
-        return collect($response->json('results', []))
-            ->map(fn (array $p) => [
-                'id' => $p['id'],
-                'status' => $p['status'],
-                'amount' => $p['transaction_amount'],
-                'date' => $p['date_approved'] ?? $p['date_created'],
-                'payment_method' => $p['payment_method_id'] ?? null,
-            ])
+        $formattedDbPayments = $dbPayments->map(fn (TenantPayment $p) => [
+            'id' => 'pay-'.$p->id,
+            'status' => $p->status,
+            'amount' => (float) $p->amount,
+            'date' => $p->paid_at?->toIso8601String() ?? $p->created_at?->toIso8601String(),
+            'payment_method' => $p->method_label,
+            'reference' => $p->reference,
+        ]);
+
+        return $formattedDbPayments
+            ->concat($mpPayments)
+            ->sortByDesc('date')
             ->values()
             ->all();
     }
