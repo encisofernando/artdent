@@ -162,9 +162,17 @@ class WsfevService
             ];
         }
 
-        // Para Factura A: fecha de vto de pago
+        // Para Factura A o Servicios: fecha de vto de pago
         if (! empty($data['due_date'])) {
             $detail['FchVtoPago'] = $data['due_date'];
+        }
+
+        // Período de servicio (obligatorio para AFIP cuando concepto es 2=Servicios o 3=Ambos)
+        if (! empty($data['fch_serv_desde'])) {
+            $detail['FchServDesde'] = $data['fch_serv_desde'];
+        }
+        if (! empty($data['fch_serv_hasta'])) {
+            $detail['FchServHasta'] = $data['fch_serv_hasta'];
         }
 
         return $detail;

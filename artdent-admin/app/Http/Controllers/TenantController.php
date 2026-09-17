@@ -101,6 +101,11 @@ class TenantController extends Controller
             'userMaps' => $tenant->userMaps()->orderBy('email')->get(['id', 'email']),
             'plans' => Plan::orderBy('price')->get(['id', 'slug', 'name']),
             'modules' => $this->modulesStateFor($tenant),
+            'payments' => $tenant->payments()
+                ->with(['plan:id,name', 'invoice:id,tenant_payment_id,receipt_type,point_sale,number,cae,status,total'])
+                ->orderByDesc('paid_at')
+                ->limit(10)
+                ->get(),
         ]);
     }
 

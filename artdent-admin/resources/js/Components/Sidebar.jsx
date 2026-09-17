@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Building2, CreditCard, Receipt, Users, ShieldCheck, FileText, LifeBuoy, BookOpen, Wallet, X } from 'lucide-react';
+import { LayoutDashboard, Building2, CreditCard, Receipt, CircleDollarSign, Users, ShieldCheck, FileText, LifeBuoy, BookOpen, Wallet, X } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import BrandLogo from '@/Components/ui/BrandLogo';
 
@@ -8,6 +8,7 @@ const NAV = [
     { label: 'Empresas', icon: Building2, path: '/tenants' },
     { label: 'Planes', icon: CreditCard, path: '/plans' },
     { label: 'Suscripciones', icon: Receipt, path: '/subscriptions' },
+    { label: 'Pagos', icon: CircleDollarSign, path: '/payments' },
     { label: 'Facturación AFIP', icon: FileText, path: '/afip-issuer' },
     { label: 'Credenciales de Pago', icon: Wallet, path: '/payment-credentials' },
     { label: 'Soporte', icon: LifeBuoy, path: '/tickets' },

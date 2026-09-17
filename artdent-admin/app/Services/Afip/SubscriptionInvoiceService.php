@@ -6,33 +6,29 @@ use App\Models\AfipIssuerSetting;
 use App\Models\Subscription;
 use App\Models\SubscriptionInvoice;
 use App\Models\Tenant;
+use App\Models\TenantPayment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
  * Emite el comprobante AFIP que ArtCode le envía a un tenant por su
- * suscripción SaaS. Estructuralmente calcado de artdent-crm's AfipService
- * (WSAA → último número → CAE), pero con una sola línea de "servicio" en vez
- * de desglosar sale_items, y usando la identidad de AfipIssuerSetting (fija,
- * una sola fila) en vez de la Company por-tenant.
+ * suscripción SaaS.
+ * Soporta emisión automática (MercadoPago) y manual (Transferencia, QR, Efectivo).
  */
 class SubscriptionInvoiceService
 {
-    private const CBTE_TIPO = [
+    public const CBTE_TIPO = [
         'FA' => 1, 'NCA' => 2, 'NDA' => 3,
         'FB' => 6, 'NCB' => 7, 'NDB' => 8,
         'FC' => 11, 'NCC' => 12, 'NDC' => 13,
     ];
 
     private const IVA_RATE = 21.0;
-
     private const IVA_CODE_21 = 5;
 
     private AfipIssuerSetting $issuer;
-
     private WsaaService $wsaa;
-
     private WsfevService $wsfev;
 
     public function __construct(?AfipIssuerSetting $issuer = null)
@@ -45,9 +41,34 @@ class SubscriptionInvoiceService
     }
 
     /**
-     * Genera un comprobante por un pago de suscripción ya aprobado en MercadoPago.
+     * Emite una factura para un TenantPayment registrado.
      *
-     * @param  float  $amount  Monto total cobrado (IVA incluido)
+     * @param array<string, mixed> $options
+     */
+    public function generateForTenantPayment(TenantPayment $payment, array $options = []): SubscriptionInvoice
+    {
+        $tenant = $payment->tenant ?: Tenant::findOrFail($payment->tenant_id);
+        $subscription = $payment->subscription;
+
+        $amount = (float) ($options['amount'] ?? $payment->amount);
+        $description = (string) ($options['description'] ?? $payment->notes ?? "Suscripción {$payment->plan?->name} — ".($payment->paid_at ? $payment->paid_at->translatedFormat('F Y') : now()->translatedFormat('F Y')));
+
+        $options['tenant_payment_id'] = $payment->id;
+
+        $invoice = $this->issueInvoice($tenant, $subscription, $amount, $description, $options);
+
+        $payment->update([
+            'subscription_invoice_id' => $invoice->id,
+        ]);
+
+        return $invoice;
+    }
+
+    /**
+     * Genera un comprobante por un pago de suscripción ya aprobado en MercadoPago o manual.
+     *
+     * @param float $amount Monto total cobrado (IVA incluido)
+     * @param array<string, mixed> $options
      */
     public function generateForPayment(
         Tenant $tenant,
@@ -55,23 +76,82 @@ class SubscriptionInvoiceService
         float $amount,
         string $description,
         ?string $mpPaymentId = null,
+        array $options = []
+    ): SubscriptionInvoice {
+        if ($mpPaymentId) {
+            $options['mp_payment_id'] = $mpPaymentId;
+        }
+
+        return $this->issueInvoice($tenant, $subscription, $amount, $description, $options);
+    }
+
+    /**
+     * Emite un comprobante directo para un tenant.
+     *
+     * @param array<string, mixed> $options
+     */
+    public function generateDirectInvoice(
+        Tenant $tenant,
+        float $amount,
+        string $description,
+        array $options = []
+    ): SubscriptionInvoice {
+        $subscription = $tenant->activeSubscription();
+
+        return $this->issueInvoice($tenant, $subscription, $amount, $description, $options);
+    }
+
+    /**
+     * Núcleo de emisión ante AFIP.
+     *
+     * @param array<string, mixed> $options
+     */
+    private function issueInvoice(
+        Tenant $tenant,
+        ?Subscription $subscription,
+        float $amount,
+        string $description,
+        array $options = []
     ): SubscriptionInvoice {
         $this->assertIssuerReady();
 
-        $receiptKey = $this->resolveReceiptType();
+        $recipientName = trim((string) ($options['recipient_name'] ?? $tenant->name));
+        $rawDoc = preg_replace('/\D/', '', (string) ($options['recipient_cuit'] ?? ''));
+        $recipientCuit = ! empty($rawDoc) ? $rawDoc : null;
+        $recipientIva = (string) ($options['recipient_iva'] ?? 'consumidor_final');
+
+        // Determinar tipo de comprobante
+        $receiptKey = $this->resolveReceiptKey($options['receipt_type'] ?? null, $recipientIva, $recipientCuit);
         $cbteTipo = self::CBTE_TIPO[$receiptKey];
-        $pointSale = $this->issuer->point_sale;
-        $cuit = preg_replace('/\D/', '', $this->issuer->cuit);
+        $pointSale = (int) ($options['point_sale'] ?? $this->issuer->point_sale);
+        $issuerCuit = preg_replace('/\D/', '', $this->issuer->cuit);
 
-        $auth = $this->wsaa->getAuth($cuit, $this->issuer->certPath(), $this->issuer->key_path);
-        $lastNumber = $this->wsfev->getLastNumber($auth, $cuit, $pointSale, $cbteTipo);
-        $nextNumber = $lastNumber + 1;
+        // Monotributista: Factura C sin discriminación de IVA.
+        // Responsable Inscripto: Factura A o B con IVA 21%.
+        $isMonotributo = ($this->issuer->iva_condition === 'monotributista' || in_array($receiptKey, ['FC', 'NCC', 'NDC']));
 
-        // Servicio gravado al 21% — el monto cobrado por MP incluye IVA.
-        $neto = round($amount / (1 + self::IVA_RATE / 100), 2);
-        $iva = round($amount - $neto, 2);
+        if ($isMonotributo) {
+            $neto = round($amount, 2);
+            $iva = 0.0;
+            $ivaItems = [];
+        } else {
+            $neto = round($amount / (1 + self::IVA_RATE / 100), 2);
+            $iva = round($amount - $neto, 2);
+            $ivaItems = [['Id' => self::IVA_CODE_21, 'BaseImp' => $neto, 'Importe' => $iva]];
+        }
+
+        // Resolución de documento del receptor
+        [$docTipo, $docNro] = $this->resolveDoc($recipientCuit);
+        $ivaReceptor = $this->resolveIvaReceptorCode($recipientIva);
 
         $date = now()->format('Ymd');
+        $serviceFrom = $options['service_from'] ?? now()->startOfMonth()->format('Ymd');
+        $serviceTo = $options['service_to'] ?? now()->format('Ymd');
+        $dueDate = $options['due_date'] ?? now()->format('Ymd');
+
+        $auth = $this->wsaa->getAuth($issuerCuit, $this->issuer->certPath(), $this->issuer->key_path);
+        $lastNumber = $this->wsfev->getLastNumber($auth, $issuerCuit, $pointSale, $cbteTipo);
+        $nextNumber = $lastNumber + 1;
 
         $invoiceData = [
             'point_sale' => $pointSale,
@@ -82,11 +162,14 @@ class SubscriptionInvoiceService
             'neto' => $neto,
             'op_ex' => 0,
             'iva_total' => $iva,
-            'iva_items' => [['Id' => self::IVA_CODE_21, 'BaseImp' => $neto, 'Importe' => $iva]],
-            'doc_tipo' => 99, // Consumidor final — no capturamos CUIT del tenant hoy
-            'doc_nro' => 0,
-            'iva_receptor' => 5, // Consumidor Final (RG 5616)
+            'iva_items' => $ivaItems,
+            'doc_tipo' => $docTipo,
+            'doc_nro' => $docNro,
+            'iva_receptor' => $ivaReceptor,
             'concepto' => 2, // Servicios
+            'fch_serv_desde' => $serviceFrom,
+            'fch_serv_hasta' => $serviceTo,
+            'due_date' => $dueDate,
         ];
 
         DB::beginTransaction();
@@ -96,12 +179,13 @@ class SubscriptionInvoiceService
             $invoice = SubscriptionInvoice::create([
                 'tenant_id' => $tenant->id,
                 'tenant_subscription_id' => $subscription?->id,
-                'mp_payment_id' => $mpPaymentId,
+                'tenant_payment_id' => $options['tenant_payment_id'] ?? null,
+                'mp_payment_id' => $options['mp_payment_id'] ?? null,
                 'receipt_type' => $receiptKey,
                 'point_sale' => $pointSale,
                 'number' => $nextNumber,
-                'recipient_name' => $tenant->name,
-                'recipient_cuit' => null,
+                'recipient_name' => $recipientName,
+                'recipient_cuit' => $recipientCuit,
                 'description' => $description,
                 'subtotal' => $neto,
                 'tax_amount' => $iva,
@@ -112,7 +196,7 @@ class SubscriptionInvoiceService
                 'issued_at' => now(),
             ]);
 
-            $caeData = $this->wsfev->requestCae($auth, $cuit, $invoiceData);
+            $caeData = $this->wsfev->requestCae($auth, $issuerCuit, $invoiceData);
 
             $invoice->update([
                 'number' => $caeData['number'],
@@ -125,9 +209,11 @@ class SubscriptionInvoiceService
 
             DB::commit();
 
-            Log::info('Factura AFIP de suscripción emitida', [
+            Log::info('Factura AFIP de suscripción emitida con éxito', [
                 'invoice_id' => $invoice->id,
                 'tenant_id' => $tenant->id,
+                'receipt_type' => $receiptKey,
+                'number' => $caeData['number'],
                 'cae' => $caeData['cae'],
             ]);
 
@@ -148,11 +234,53 @@ class SubscriptionInvoiceService
         }
     }
 
-    private function resolveReceiptType(): string
+    private function resolveReceiptKey(?string $requestedType, string $recipientIva, ?string $recipientCuit): string
     {
-        return match ($this->issuer->iva_condition) {
-            'monotributista' => 'FC',
-            default => 'FB',
+        if ($this->issuer->iva_condition === 'monotributista') {
+            return 'FC';
+        }
+
+        if ($requestedType && isset(self::CBTE_TIPO[strtoupper($requestedType)])) {
+            return strtoupper($requestedType);
+        }
+
+        // Si es Responsable Inscripto y el receptor tiene CUIT y es RI -> Factura A
+        if ($recipientIva === 'responsable_inscripto' && ! empty($recipientCuit) && strlen($recipientCuit) === 11) {
+            return 'FA';
+        }
+
+        // Caso general para RI -> Factura B
+        return 'FB';
+    }
+
+    /**
+     * @return array{0: int, 1: int|string}
+     */
+    private function resolveDoc(?string $cuit): array
+    {
+        if (empty($cuit)) {
+            return [99, 0]; // Consumidor Final sin documento
+        }
+
+        $digits = strlen($cuit);
+        if ($digits === 11) {
+            return [80, (int) $cuit]; // CUIT
+        }
+
+        if ($digits >= 7 && $digits <= 8) {
+            return [96, (int) $cuit]; // DNI
+        }
+
+        return [99, 0];
+    }
+
+    private function resolveIvaReceptorCode(string $ivaCondition): int
+    {
+        return match ($ivaCondition) {
+            'responsable_inscripto' => 1,
+            'exento' => 4,
+            'monotributista' => 6,
+            default => 5, // Consumidor Final (RG 5616)
         };
     }
 

@@ -6,12 +6,14 @@ import Badge from '@/Components/ui/Badge';
 import Toggle from '@/Components/ui/Toggle';
 import { Head, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { ShieldCheck, CheckCircle2, XCircle, UploadCloud, KeyRound, Download } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, UploadCloud, KeyRound, Download, Plus, FileCheck } from 'lucide-react';
+import InvoiceVoucherModal from '@/Components/Invoices/InvoiceVoucherModal';
+import ManualInvoiceModal from '@/Components/Invoices/ManualInvoiceModal';
 
 const STATUS_COLORS = { pending: 'warning', authorized: 'success', failed: 'danger' };
 const STATUS_LABELS = { pending: 'Pendiente', authorized: 'Autorizada', failed: 'Falló' };
 
-export default function Edit({ issuer, invoices }) {
+export default function Edit({ issuer, invoices, tenants = [] }) {
     const { isDark } = useTheme();
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState(null);
@@ -19,6 +21,9 @@ export default function Edit({ issuer, invoices }) {
     const [csrAlias, setCsrAlias] = useState('');
     const [csrGenerating, setCsrGenerating] = useState(false);
     const [csrResult, setCsrResult] = useState(null); // null | { success, csr, alias, message, error }
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+    const [isVoucherOpen, setIsVoucherOpen] = useState(false);
+    const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
 
     const cls = `w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition-colors focus:ring-2 focus:ring-brand-cyan/40 ${
         isDark ? 'bg-brand-navy border-white/15 focus:border-brand-cyan' : 'bg-white border-brand-aqua focus:border-brand-cyan'
@@ -207,7 +212,14 @@ export default function Edit({ issuer, invoices }) {
                         )}
                     </Card>
 
-                    <Card title="Facturas de suscripción emitidas">
+                    <Card
+                        title="Facturas de suscripción emitidas"
+                        actions={
+                            <Button size="sm" variant="outline" onClick={() => setIsManualInvoiceModalOpen(true)} className="gap-1.5">
+                                <Plus size={14} /> Emitir Factura Manual
+                            </Button>
+                        }
+                    >
                         <div className="overflow-x-auto -mx-6">
                             <table className="w-full text-sm">
                                 <thead>
@@ -217,20 +229,36 @@ export default function Edit({ issuer, invoices }) {
                                         <th className="px-6 py-2">Comprobante</th>
                                         <th className="px-6 py-2">Total</th>
                                         <th className="px-6 py-2">Estado</th>
+                                        <th className="px-6 py-2 text-right">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {invoices.map((inv) => (
                                         <tr key={inv.id} className={`border-t ${isDark ? 'border-white/10' : 'border-brand-aqua/30'}`}>
                                             <td className={`px-6 py-3 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{new Date(inv.created_at).toLocaleDateString('es-AR')}</td>
-                                            <td className="px-6 py-3 font-semibold">{inv.tenant_id}</td>
+                                            <td className="px-6 py-3 font-semibold">{inv.tenant?.name || inv.tenant_id}</td>
                                             <td className="px-6 py-3 font-mono text-xs">{inv.receipt_type} {String(inv.point_sale).padStart(5, '0')}-{String(inv.number ?? 0).padStart(8, '0')}</td>
-                                            <td className="px-6 py-3">${Number(inv.total).toLocaleString('es-AR')}</td>
+                                            <td className="px-6 py-3 font-mono">${Number(inv.total).toLocaleString('es-AR')}</td>
                                             <td className="px-6 py-3"><Badge color={STATUS_COLORS[inv.status]}>{STATUS_LABELS[inv.status]}</Badge></td>
+                                            <td className="px-6 py-3 text-right">
+                                                {inv.status === 'authorized' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setSelectedInvoiceId(inv.id);
+                                                            setIsVoucherOpen(true);
+                                                        }}
+                                                        className="gap-1 text-xs py-1"
+                                                    >
+                                                        <FileCheck size={13} className="text-emerald-500" /> Ver
+                                                    </Button>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     {invoices.length === 0 && (
-                                        <tr><td colSpan={5} className={`px-6 py-10 text-center ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Todavía no se emitió ninguna factura.</td></tr>
+                                        <tr><td colSpan={6} className={`px-6 py-10 text-center ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Todavía no se emitió ninguna factura.</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -296,6 +324,21 @@ export default function Edit({ issuer, invoices }) {
                     </Card>
                 </div>
             </div>
+
+            <InvoiceVoucherModal
+                invoiceId={selectedInvoiceId}
+                open={isVoucherOpen}
+                onClose={() => {
+                    setIsVoucherOpen(false);
+                    setSelectedInvoiceId(null);
+                }}
+            />
+
+            <ManualInvoiceModal
+                open={isManualInvoiceModalOpen}
+                onClose={() => setIsManualInvoiceModalOpen(false)}
+                tenants={tenants}
+            />
         </AdminLayout>
     );
 }

@@ -7,6 +7,7 @@ use App\Models\PaymentCredentialSetting;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Models\TenantPayment;
 use App\Services\Afip\SubscriptionInvoiceService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -326,6 +327,25 @@ class MercadoPagoService
             return;
         }
 
+        $amount = (float) ($payment['transaction_amount'] ?? $subscription->amount);
+        $description = "Suscripción {$subscription->plan?->name} — ".now()->translatedFormat('F Y');
+
+        $tenantPayment = TenantPayment::firstOrCreate(
+            ['mp_payment_id' => (string) $paymentId],
+            [
+                'tenant_id' => $tenant->id,
+                'tenant_subscription_id' => $subscription->id,
+                'plan_id' => $subscription->plan_id,
+                'payment_method' => TenantPayment::METHOD_MERCADOPAGO,
+                'amount' => $amount,
+                'currency' => 'ARS',
+                'paid_at' => now(),
+                'reference' => 'MP-'.$paymentId,
+                'status' => 'approved',
+                'notes' => $description,
+            ]
+        );
+
         $issuer = AfipIssuerSetting::current();
 
         if (! $issuer || ! $issuer->auto_invoice) {
@@ -337,15 +357,13 @@ class MercadoPagoService
         }
 
         try {
-            $amount = (float) ($payment['transaction_amount'] ?? $subscription->amount);
-            $description = "Suscripción {$subscription->plan?->name} — ".now()->translatedFormat('F Y');
-
-            app(SubscriptionInvoiceService::class)->generateForPayment(
-                $tenant,
-                $subscription,
-                $amount,
-                $description,
-                (string) $paymentId,
+            app(SubscriptionInvoiceService::class)->generateForTenantPayment(
+                $tenantPayment,
+                [
+                    'amount' => $amount,
+                    'description' => $description,
+                    'mp_payment_id' => (string) $paymentId,
+                ]
             );
         } catch (\Throwable $e) {
             Log::error('MP payment webhook: error al facturar suscripción', [

@@ -7,8 +7,10 @@ import Toggle from '@/Components/ui/Toggle';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
-import { ArrowLeft, Trash2, Database, Globe, CreditCard, Layers } from 'lucide-react';
+import { ArrowLeft, Trash2, Database, Globe, CreditCard, Layers, Plus, CircleDollarSign, FileCheck, ArrowLeftRight, QrCode, Banknote } from 'lucide-react';
 import { STATUS_LABELS, PLAN_LABELS } from '@/lib/tenantMeta';
+import ManualPaymentModal from '@/Components/Payments/ManualPaymentModal';
+import InvoiceVoucherModal from '@/Components/Invoices/InvoiceVoucherModal';
 
 function Field({ label, error, children }) {
     return (
@@ -25,9 +27,12 @@ function toLocalInput(value) {
     return value.slice(0, 16);
 }
 
-export default function Edit({ tenant, userMaps, plans, modules }) {
+export default function Edit({ tenant, userMaps, plans, modules, payments = [] }) {
     const { isDark } = useTheme();
     const confirmDialog = useConfirm();
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+    const [isVoucherOpen, setIsVoucherOpen] = useState(false);
     const cls = `w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition-colors focus:ring-2 focus:ring-brand-cyan/40 ${
         isDark ? 'bg-brand-navy border-white/15 focus:border-brand-cyan' : 'bg-white border-brand-aqua focus:border-brand-cyan'
     }`;
@@ -189,7 +194,14 @@ export default function Edit({ tenant, userMaps, plans, modules }) {
                         </dl>
                     </Card>
 
-                    <Card title="Suscripción">
+                    <Card
+                        title="Suscripción"
+                        actions={
+                            <Button size="sm" variant="outline" onClick={() => setIsPaymentModalOpen(true)} className="gap-1 text-xs">
+                                <Plus size={13} /> Registrar Pago
+                            </Button>
+                        }
+                    >
                         {tenant.active_subscription ? (
                             <dl className="space-y-3 text-sm">
                                 <div className="flex items-center gap-2.5">
@@ -212,8 +224,61 @@ export default function Edit({ tenant, userMaps, plans, modules }) {
                             </p>
                         )}
                     </Card>
+
+                    <Card title="Pagos Recientes" description="Últimos cobros registrados para esta empresa.">
+                        <ul className="space-y-2 text-xs">
+                            {payments.map((p) => (
+                                <li key={p.id} className={`p-2.5 rounded-lg border ${isDark ? 'bg-brand-navy border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="font-bold">${Number(p.amount).toLocaleString('es-AR')} ARS</span>
+                                        <span className="text-slate-500">{p.paid_at ? new Date(p.paid_at).toLocaleDateString('es-AR') : new Date(p.created_at).toLocaleDateString('es-AR')}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[11px]">
+                                        <span className="text-slate-500">{p.payment_method === 'transfer' ? 'Transferencia' : (p.payment_method === 'qr' ? 'QR' : (p.payment_method === 'cash' ? 'Efectivo' : p.payment_method))}</span>
+                                        {p.invoice && p.invoice.status === 'authorized' ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedInvoiceId(p.invoice.id);
+                                                    setIsVoucherOpen(true);
+                                                }}
+                                                className="text-brand-cyan hover:underline inline-flex items-center gap-1 font-semibold"
+                                            >
+                                                <FileCheck size={12} /> Factura {p.invoice.receipt_type} Nº {p.invoice.number}
+                                            </button>
+                                        ) : (
+                                            <span className="text-slate-400">Sin Factura</span>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                            {payments.length === 0 && (
+                                <li className={`text-center py-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    Sin pagos registrados todavía.
+                                </li>
+                            )}
+                        </ul>
+                    </Card>
                 </div>
             </div>
+
+            <ManualPaymentModal
+                open={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                tenants={[tenant]}
+                plans={plans}
+                preselectedTenantId={tenant.id}
+                issuerConfigured={true}
+            />
+
+            <InvoiceVoucherModal
+                invoiceId={selectedInvoiceId}
+                open={isVoucherOpen}
+                onClose={() => {
+                    setIsVoucherOpen(false);
+                    setSelectedInvoiceId(null);
+                }}
+            />
         </AdminLayout>
     );
 }

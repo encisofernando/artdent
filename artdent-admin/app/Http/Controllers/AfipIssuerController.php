@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AfipIssuerSetting;
 use App\Models\SubscriptionInvoice;
+use App\Models\Tenant;
+use App\Services\Afip\SubscriptionInvoiceService;
 use App\Services\Afip\WsaaService;
 use App\Services\Afip\WsfevService;
+use App\Support\SuperadminAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -24,8 +27,53 @@ class AfipIssuerController extends Controller
 
         return Inertia::render('AfipIssuer/Edit', [
             'issuer' => $issuer,
-            'invoices' => SubscriptionInvoice::orderByDesc('id')->limit(50)->get(),
+            'invoices' => SubscriptionInvoice::with('tenant:id,name')->orderByDesc('id')->limit(50)->get(),
+            'tenants' => Tenant::orderBy('name')->get(['id', 'name', 'plan']),
         ]);
+    }
+
+    public function createManualInvoice(Request $request)
+    {
+        $validated = $request->validate([
+            'tenant_id' => ['required', 'string', 'exists:tenants,id'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'description' => ['required', 'string', 'max:255'],
+            'receipt_type' => ['nullable', 'string', 'in:auto,FA,FB,FC'],
+            'recipient_name' => ['nullable', 'string', 'max:255'],
+            'recipient_cuit' => ['nullable', 'string', 'max:20'],
+            'recipient_iva' => ['nullable', 'string', 'in:responsable_inscripto,consumidor_final,monotributista,exento'],
+        ]);
+
+        $tenant = Tenant::findOrFail($validated['tenant_id']);
+
+        try {
+            $invoiceService = app(SubscriptionInvoiceService::class);
+            $options = [
+                'receipt_type' => ($validated['receipt_type'] ?? 'auto') === 'auto' ? null : $validated['receipt_type'],
+                'recipient_name' => $validated['recipient_name'] ?: $tenant->name,
+                'recipient_cuit' => $validated['recipient_cuit'] ?? null,
+                'recipient_iva' => $validated['recipient_iva'] ?? 'consumidor_final',
+            ];
+
+            $invoice = $invoiceService->generateDirectInvoice(
+                $tenant,
+                (float) $validated['amount'],
+                $validated['description'],
+                $options
+            );
+
+            SuperadminAudit::log('invoice.generated', $tenant, [
+                'invoice_id' => $invoice->id,
+                'cae' => $invoice->cae,
+                'number' => $invoice->number,
+                'receipt_type' => $invoice->receipt_type,
+                'amount' => $invoice->total,
+            ]);
+
+            return back()->with('success', "Factura AFIP emitida con éxito (Comprobante {$invoice->receipt_type} Nº {$invoice->number} — CAE: {$invoice->cae}).");
+        } catch (\Throwable $e) {
+            return back()->with('error', "Error al emitir factura AFIP: {$e->getMessage()}");
+        }
     }
 
     public function update(Request $request)

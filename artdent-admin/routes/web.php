@@ -10,6 +10,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\SignupController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TenantController;
+use App\Http\Controllers\TenantPaymentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebhookController;
@@ -90,10 +91,16 @@ Route::middleware('auth')->group(function () {
 
     Route::get('subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
 
+    Route::get('payments', [TenantPaymentController::class, 'index'])->name('payments.index');
+    Route::post('payments', [TenantPaymentController::class, 'store'])->name('payments.store');
+    Route::post('payments/{payment}/invoice', [TenantPaymentController::class, 'generateInvoice'])->name('payments.invoice.generate');
+    Route::get('invoices/{invoice}', [TenantPaymentController::class, 'showInvoice'])->name('invoices.show');
+
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
     Route::get('afip-issuer', [AfipIssuerController::class, 'edit'])->name('afip-issuer.edit');
     Route::put('afip-issuer', [AfipIssuerController::class, 'update'])->name('afip-issuer.update');
+    Route::post('afip-issuer/invoices', [AfipIssuerController::class, 'createManualInvoice'])->name('afip-issuer.invoices.store');
     Route::post('afip-issuer/upload', [AfipIssuerController::class, 'uploadCert'])->name('afip-issuer.upload');
     Route::post('afip-issuer/generate-csr', [AfipIssuerController::class, 'generateCsr'])->name('afip-issuer.generate-csr');
     Route::post('afip-issuer/test-connection', [AfipIssuerController::class, 'testConnection'])->name('afip-issuer.test-connection');

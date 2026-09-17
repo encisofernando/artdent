@@ -10,6 +10,7 @@ class SubscriptionInvoice extends Model
     protected $fillable = [
         'tenant_id',
         'tenant_subscription_id',
+        'tenant_payment_id',
         'mp_payment_id',
         'receipt_type',
         'point_sale',
@@ -49,5 +50,10 @@ class SubscriptionInvoice extends Model
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class, 'tenant_subscription_id');
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(TenantPayment::class, 'tenant_payment_id');
     }
 }
