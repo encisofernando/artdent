@@ -95,7 +95,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 
 #### Ventas y Facturación
 - **Sale** — Venta/comprobante interno de mostrador o de insumos a dentistas (POS). Relaciones: branch(), company(), user(), cash_session(), sale_items(), sale_payments(), sale_returns(), customer(), dentist(), invoice(). Campos clave: sale_number, status, total, sale_type, dentist_id.
-- **SaleItem** — Línea de producto vendido dentro de una venta. Relaciones: product(), sale(). Campos clave: sale_id, product_id, quantity, unit_price, total.
+- **SaleItem** — Línea de producto vendido dentro de una venta. Relaciones: product(), sale(). Campos clave: sale_id, product_id, quantity, unit_price, total, cost_price_snapshot.
 - **SalePayment** — Pago recibido (posiblemente multi-método) de una venta. Relaciones: sale(), paymentMethod(). Campos clave: sale_id, payment_method_id, amount, paid_at.
 - **SaleReturn** — Devolución total/parcial de una venta. Relaciones: sale(), user(), items(). Campos clave: sale_id, reason, refund_method, total_refund.
 - **SaleReturnItem** — Línea de producto devuelto dentro de una devolución. Relaciones: sale_return(), sale_item(). Campos clave: sale_return_id, sale_item_id, quantity, total.
@@ -118,7 +118,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 - **ProductBarcode** — Código de barras adicional asociado a un producto/variante. Relaciones: product(), variant(). Campos clave: product_id, variant_id, barcode.
 - **ProductImage** — Imagen del catálogo de un producto/variante. Relaciones: product(). Campos clave: product_id, url, sort_order, is_cover.
 - **Stock** — Existencia de un producto/variante en un depósito. Relaciones: product(), product_variant(), warehouse(). Campos clave: product_id, warehouse_id, quantity, min_quantity.
-- **StockMovement** — Movimiento de entrada/salida/ajuste de stock (auditoría). Relaciones: product(), warehouse(). Campos clave: product_id, type, quantity, stock_before, stock_after.
+- **StockMovement** — Movimiento de entrada/salida/ajuste de stock (auditoría). Relaciones: product(), productVariant(), warehouse(), user(). Campos clave: product_id, product_variant_id, warehouse_id, user_id, type, quantity, stock_before, stock_after.
 - **Warehouse** — Depósito/almacén físico de la empresa. Relaciones: company(), purchases(), stock_movements(), stocks(). Campos clave: company_id, branch_id, name, code.
 - **Purchase** — Orden de compra a un proveedor. Relaciones: company(), vendor(), warehouse(), purchase_items(), user(). Campos clave: vendor_id, warehouse_id, status, total, invoice_number.
 - **PurchaseItem** — Línea de producto dentro de una compra. Relaciones: product(), purchase(). Campos clave: purchase_id, product_id, quantity, unit_cost, received_qty.
@@ -215,6 +215,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 - **TaxController** — Impuestos/alícuotas. CRUD estándar (scaffold).
 - **ReviewController** — Reseñas de clientes. Métodos: index(), update(), destroy().
 - **ReportesController** — Panel de reportes generales. Métodos: index(), exportPdf().
+- **SalesReportController** — Reporte analítico de ventas por período (día, mes, año) con comparativa y Top 10 productos más vendidos. Métodos: index(), exportCsv().
 - **ReportExportController** — Exportación de reportes (CSV/streaming): sales(), customers(), quotes(), expenses(), ivaVentas(), ivaCompras(), incomeStatement(), exportJobs(), exportDentists(), exportTariffs().
 - **MercadoPagoReportController** — Conciliación de pagos MercadoPago. Métodos: index(), generate(), download().
 - **UsdExchangeRateController** — Cotización del dólar. Métodos: update() (recalcula costos en pesos).
@@ -240,8 +241,8 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 - **ProductImageController** — Imágenes de producto. Métodos: destroy().
 - **ProductBarcodeController** — Códigos de barra de producto. Métodos: store(), destroy().
 - **CategoryController** — Categorías de producto. CRUD estándar.
-- **StockController** — Stock por producto/almacén. Métodos: index(), adjust(), transfer().
-- **StockMovementController** — Historial de movimientos de stock. Métodos: index().
+- **StockController** — Stock por producto/almacén. Métodos: index(), adjust(), transfer(), valuation(), exportCsv().
+- **StockMovementController** — Historial de movimientos de stock. Métodos: index(), exportCsv().
 - **WarehouseController** — Almacenes/depósitos. Métodos: index(), store(), update(), destroy().
 
 #### E-commerce
@@ -329,7 +330,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 - **ExpenseController** — Gastos/egresos. CRUD estándar.
 - **ExpenseCategoryController** — Categorías de gasto. CRUD estándar.
 - **IncomeRecordController** — Ingresos manuales. CRUD estándar.
-- **CostProfitReportController** — Reporte de costos y rentabilidad. Métodos: index(), exportCsv().
+- **CostProfitReportController** — Reporte de costos y rentabilidad (utiliza cost_price_snapshot con fallback a costo actual). Métodos: index(), exportCsv().
 - **UsdExchangeRateController** — Cotización del dólar. CRUD estándar (ver también en Ventas).
 - **LabAccountController** — Cuenta corriente laboratorio-dentista. CRUD estándar.
 - **LabAccountMoveController** — Movimientos de cuenta de laboratorio. Métodos: index(), create(), store(), show().
@@ -457,7 +458,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 - **Product/** — Catálogo de productos/insumos. Páginas: Index.jsx, Create.jsx, Edit.jsx, BarcodeLabels.jsx, BarcodeLabelModal.jsx, BulkPrice.jsx, ImportExportModal.jsx.
 - **Productos/** — Stub alternativo no integrado. Páginas: Index.tsx, Create.tsx, Edit.tsx.
 - **Category/** — Categorías de productos. Páginas: Index.jsx, Create.jsx, Edit.jsx.
-- **Stock/** — Control de stock por depósito. Páginas: Index.jsx (versión real), Index.tsx (stub duplicado no integrado).
+- **Stock/** — Control de stock por depósito. Páginas: Index.jsx (versión real), Valuation.jsx (valorización de inventario a costo), Index.tsx (stub duplicado no integrado).
 - **StockMovement/** — Historial de movimientos de stock. Páginas: Index.jsx.
 - **Warehouse/** — Depósitos/almacenes. Páginas: Index.jsx.
 - **Purchase/** — Compras a proveedores. Páginas: Index.jsx, Create.jsx, Edit.jsx, Show.jsx.
@@ -490,7 +491,7 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 
 #### Contabilidad
 - **Accounting/** — Panel contable general. Páginas: Index.jsx.
-- **Reportes/** — Reportes gerenciales/operativos. Páginas: Index.jsx, CostosGanancias.jsx.
+- **Reportes/** — Reportes gerenciales/operativos. Páginas: Index.jsx (hub central condicionado dinámicamente por módulos del plan), VentasPorPeriodo.jsx (evolución temporal de ventas y comparativas), CostosGanancias.jsx.
 - **Analytics/** — Analítica avanzada del negocio. Páginas: Lab.jsx.
 
 #### CRM
@@ -559,6 +560,82 @@ Catálogo de referencia de todos los modelos, controladores, servicios, páginas
 ## 3. Rutas (`routes/modules/*.php`)
 
 El enrutado está modularizado por dominio: `accounting.php`, `admin.php`, `assign-panel.php`, `clinic.php`, `colaborador_portal.php`, `dashboard.php`, `dentist_portal.php`, `ecommerce.php`, `finance.php`, `hikvision.php`, `hr.php`, `inventory.php`, `laboratory.php`, `products.php`, `profile.php`, `sales.php`, `user.php`. Cada archivo agrupa las rutas de un módulo de negocio y sus middlewares de permisos (`permission:*`) correspondientes.
+
+---
+
+## 4. Procedimiento Canónico de Despliegue en Producción (Playbook de Deploy)
+
+El VPS de producción (`donweb`, `server.artdent.com.ar`) **no** utiliza `git pull` de forma directa para los despliegues. El ciclo canónico de despliegue se gestiona desde el monorepo local `/home/infranet/Documentos/Proyectos/artdent` (`artdent-crm/`) mediante sincronización diferencial con `rsync` (comparando sumas de verificación `--checksum`) y ejecución de comandos remotos vía SSH.
+
+### 4.1 Entornos en el Servidor Donweb
+
+1. **`pos.artdent.com.ar` (Monotenant — Uso Interno ArtDent)**:
+   - Directorio: `/home/fer/web/pos.artdent.com.ar/public_html/`
+   - Base de datos única: `fer_artdent` (usuario: `fer_artdent_fer`).
+   - Las migraciones se aplican con: `php artisan migrate --force`.
+
+2. **`pos.artcode.com.ar` (Multitenant SaaS)**:
+   - Directorio de aplicación backend Laravel: `/home/artcode/web/pos.artcode.com.ar/private/app/`
+   - Directorio de frontend público Vite: `/home/artcode/web/pos.artcode.com.ar/public_html/build/`
+   - Base de datos central: `artcode_pos` + bases de datos de cada inquilino (`artcode-pos`, `artdent`, `pato`, `sanjose`, `santacatalina`).
+   - **Regla Crítica 1 (Migraciones)**: Las migraciones para los inquilinos se deben ejecutar con: `php artisan tenants:migrate --force`.
+   - **Regla Crítica 2 (Assets Vite)**: No existe un enlace simbólico entre `private/app/public/build/` y `public_html/build/`. Cada vez que se compila el frontend con `npm run build`, los assets deben ser sincronizados obligatoriamente a `public_html/build/`.
+
+---
+
+### 4.2 Flujo Canónico Paso a Paso
+
+#### Paso 1: Pruebas Locales, Formato y Git Push
+```bash
+# 1. Asegurar formato de código PSR-12 / Laravel Pint
+vendor/bin/pint --dirty
+
+# 2. Confirmar cambios en el monorepo local
+git add -A
+git commit -m "tipo(alcance): descripción del cambio"
+
+# 3. Push a origin (ejecuta el pre-push hook con 81 tests automatizados)
+git push origin main
+```
+
+#### Paso 2: Despliegue en `pos.artdent.com.ar` (Monotenant)
+```bash
+# A. Backup de respaldo de variables de entorno
+ssh donweb "cp /home/fer/web/pos.artdent.com.ar/public_html/.env /home/fer/backups/env-artdent-\$(date +%Y%m%d).bak"
+
+# B. Sincronizar directorios fuente (excluyendo vendor, node_modules y .env)
+rsync -az --checksum artdent-crm/app/ donweb:/home/fer/web/pos.artdent.com.ar/public_html/app/
+rsync -az --checksum artdent-crm/routes/ donweb:/home/fer/web/pos.artdent.com.ar/public_html/routes/
+rsync -az --checksum artdent-crm/database/ donweb:/home/fer/web/pos.artdent.com.ar/public_html/database/
+rsync -az --checksum artdent-crm/resources/js/ donweb:/home/fer/web/pos.artdent.com.ar/public_html/resources/js/
+
+# C. Migraciones de base de datos
+ssh donweb "cd /home/fer/web/pos.artdent.com.ar/public_html && php artisan migrate --force"
+
+# D. Compilación de assets y purga de caché
+ssh donweb "cd /home/fer/web/pos.artdent.com.ar/public_html && npm run build && php artisan optimize:clear"
+```
+
+#### Paso 3: Despliegue en `pos.artcode.com.ar` (Multitenant)
+```bash
+# A. Sincronizar directorios fuente hacia el directorio privado
+rsync -az --checksum artdent-crm/app/ donweb:/home/artcode/web/pos.artcode.com.ar/private/app/app/
+rsync -az --checksum artdent-crm/routes/ donweb:/home/artcode/web/pos.artcode.com.ar/private/app/routes/
+rsync -az --checksum artdent-crm/database/ donweb:/home/artcode/web/pos.artcode.com.ar/private/app/database/
+rsync -az --checksum artdent-crm/resources/js/ donweb:/home/artcode/web/pos.artcode.com.ar/private/app/resources/js/
+
+# B. Migrar todas las bases de datos tenant
+ssh donweb "cd /home/artcode/web/pos.artcode.com.ar/private/app && php artisan tenants:migrate --force"
+
+# C. Compilación Vite, copia al directorio público y purga de caché
+ssh donweb "cd /home/artcode/web/pos.artcode.com.ar/private/app && npm run build && rsync -a --checksum /home/artcode/web/pos.artcode.com.ar/private/app/public/build/ /home/artcode/web/pos.artcode.com.ar/public_html/build/ && php artisan optimize:clear"
+```
+
+#### Paso 4: Health Check y Verificación de Estado
+```bash
+ssh donweb "curl -s -o /dev/null -w 'pos.artdent: %{http_code}\n' https://pos.artdent.com.ar/login && curl -s -o /dev/null -w 'pos.artcode: %{http_code}\n' https://pos.artcode.com.ar/login"
+# Ambos deben responder HTTP 200
+```
 
 ---
 
