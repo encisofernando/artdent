@@ -42,8 +42,3 @@ export async function updateWishlistItem(wishlistId: number, options: {
   const { data } = await http.put(`/wishlist/${wishlistId}`, options)
   return data
 }
-
-export async function checkWishlist(productId: number): Promise<{ in_wishlist: boolean; wishlist_id?: number }> {
-  const { data } = await http.get(`/wishlist/check/${productId}`)
-  return data
-}

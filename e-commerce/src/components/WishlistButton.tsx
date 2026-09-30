@@ -1,6 +1,6 @@
 import { Heart } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addToWishlist, removeFromWishlist, checkWishlist } from '../api/wishlist'
+import { addToWishlist, removeFromWishlist, getWishlist, type WishlistItem } from '../api/wishlist'
 import { useAuth } from '../store/auth'
 import { useState } from 'react'
 
@@ -15,17 +15,23 @@ export default function WishlistButton({ productId, className = '', showLabel = 
   const queryClient = useQueryClient()
   const [isHovered, setIsHovered] = useState(false)
 
-  const checkQuery = useQuery({
-    queryKey: ['wishlist-check', productId],
-    queryFn: () => checkWishlist(productId),
+  // Una sola consulta compartida (la misma del Header) en vez de un
+  // /wishlist/check/{id} por tarjeta: con el scroll infinito del catálogo
+  // eso eran decenas de requests por minuto y el rate limit devolvía 429.
+  // Sin refetch al montar: cada tarjeta nueva no vuelve a pedir la lista;
+  // las mutaciones de abajo la invalidan cuando cambia de verdad.
+  const wishlistQuery = useQuery<WishlistItem[]>({
+    queryKey: ['wishlist'],
+    queryFn: getWishlist,
     enabled: isAuthenticated,
+    staleTime: 60_000,
+    refetchOnMount: false,
   })
 
   const addMutation = useMutation({
     mutationFn: () => addToWishlist(productId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] })
-      queryClient.invalidateQueries({ queryKey: ['wishlist-check', productId] })
     },
   })
 
@@ -33,7 +39,6 @@ export default function WishlistButton({ productId, className = '', showLabel = 
     mutationFn: (wishlistId: number) => removeFromWishlist(wishlistId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] })
-      queryClient.invalidateQueries({ queryKey: ['wishlist-check', productId] })
     },
   })
 
@@ -41,8 +46,8 @@ export default function WishlistButton({ productId, className = '', showLabel = 
     return null
   }
 
-  const inWishlist = checkQuery.data?.in_wishlist || false
-  const wishlistId = checkQuery.data?.wishlist_id
+  const wishlistId = wishlistQuery.data?.find((item) => item.product_id === productId)?.id
+  const inWishlist = wishlistId !== undefined
 
   const handleClick = () => {
     if (inWishlist && wishlistId) {
