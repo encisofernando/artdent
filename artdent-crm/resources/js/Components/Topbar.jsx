@@ -53,7 +53,7 @@ function ToastItem({ toast, onDismiss, isDark }) {
 
     return (
         <div
-            className={`pointer-events-auto w-80 rounded-xl shadow-2xl border overflow-hidden
+            className={`pointer-events-auto w-full sm:w-80 rounded-xl shadow-2xl border overflow-hidden
                 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-artdent-border'}
             `}
             style={{ animation: 'toastSlideIn 0.3s ease' }}
@@ -64,7 +64,7 @@ function ToastItem({ toast, onDismiss, isDark }) {
                     <p className={`text-sm font-semibold leading-tight ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                         {toast.title}
                     </p>
-                    <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <p className={`text-xs mt-0.5 leading-snug break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                         {toast.body}
                     </p>
                     {toast.url && (
@@ -257,14 +257,16 @@ export default function Topbar({ user }) {
                         </button>
 
                         {dropdownOpen && (
-                            <div className={`absolute right-0 top-full mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl shadow-2xl border z-50 overflow-hidden
+                            // Mobile: anclado al viewport bajo el header (la campana no está
+                            // en el borde derecho, un absolute right-0 se sale de pantalla).
+                            <div className={`fixed inset-x-3 top-[4.5rem] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 rounded-xl shadow-2xl border z-50 overflow-hidden flex flex-col
                                 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-[#A8C8DC]'}
                             `}>
                                 {/* Header */}
-                                <div className={`flex items-center justify-between px-4 py-3 border-b
+                                <div className={`flex items-center justify-between gap-2 px-4 py-3 border-b shrink-0
                                     ${isDark ? 'border-slate-700' : 'border-[#A8C8DC]'}
                                 `}>
-                                    <span className={`font-semibold text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                    <span className={`font-semibold text-sm whitespace-nowrap ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                         Notificaciones
                                         {unread > 0 && (
                                             <span className="ml-2 text-xs bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full">
@@ -272,18 +274,18 @@ export default function Topbar({ user }) {
                                             </span>
                                         )}
                                     </span>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
                                         {unread > 0 && (
                                             <button
                                                 onClick={markAllRead}
-                                                className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                                                className="flex items-center gap-1 px-1.5 py-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors whitespace-nowrap"
                                                 title="Marcar todas como leídas"
                                             >
                                                 <CheckCheck size={13} /> Todo leído
                                             </button>
                                         )}
-                                        <button onClick={() => setDropdownOpen(false)}>
-                                            <X size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                                        <button onClick={() => setDropdownOpen(false)} className="p-1.5 -mr-1.5" title="Cerrar">
+                                            <X size={16} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
                                         </button>
                                     </div>
                                 </div>
@@ -295,7 +297,7 @@ export default function Topbar({ user }) {
                                         Sin notificaciones por el momento.
                                     </div>
                                 ) : (
-                                    <ul className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                                    <ul className="max-h-[min(420px,calc(100dvh-4.5rem-56px-env(safe-area-inset-bottom,0px)-5rem))] sm:max-h-[420px] overflow-y-auto overscroll-contain divide-y divide-slate-100 dark:divide-slate-800">
                                         {notifications.map((n) => {
                                             const Icon = TYPE_ICON[n.type] ?? Bell;
                                             const color = TYPE_COLOR[n.type] ?? 'text-slate-400';
@@ -315,7 +317,7 @@ export default function Topbar({ user }) {
                                                             <p className={`text-xs font-semibold leading-tight ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                                                 {n.title}
                                                             </p>
-                                                            <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                            <p className={`text-xs mt-0.5 leading-snug break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                                 {n.body}
                                                             </p>
                                                             <p className="text-[10px] mt-1 text-slate-400">
@@ -394,7 +396,7 @@ export default function Topbar({ user }) {
 
             {/* Toast stack — bottom right, newest at bottom */}
             {toasts.length > 0 && (
-                <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 items-end pointer-events-none">
+                <div className="fixed inset-x-3 bottom-[calc(56px+env(safe-area-inset-bottom,0px)+0.75rem)] sm:inset-x-auto sm:right-6 lg:bottom-6 z-[9999] flex flex-col gap-2.5 items-stretch sm:items-end pointer-events-none">
                     {toasts.map((t) => (
                         <ToastItem key={t.id} toast={t} onDismiss={dismissToast} isDark={isDark} />
                     ))}
