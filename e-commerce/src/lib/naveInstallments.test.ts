@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeInstallment, groupRates, cardLabel, BANK_LABELS } from './naveInstallments'
+import { computeInstallment, groupRates, cardLabel, BANK_LABELS, formatArs, sortRates } from './naveInstallments'
 import type { NaveInstallmentRate } from '../api/nave'
 
 describe('computeInstallment', () => {
@@ -69,5 +69,25 @@ describe('BANK_LABELS', () => {
       naranja: 'Naranja',
       otros_bancos: 'Otros Bancos',
     })
+  })
+})
+
+describe('formatArs', () => {
+  it('siempre muestra exactamente 2 decimales', () => {
+    expect(formatArs(212.1466)).toBe('$212,15')
+    expect(formatArs(1200)).toBe('$1.200,00')
+    expect(formatArs(151.0333)).toBe('$151,03')
+  })
+})
+
+describe('sortRates', () => {
+  it('ordena por cuotas y, a igual cantidad, el plan más barato primero', () => {
+    const sorted = sortRates([
+      rate({ installments: 6, rate_pct: 18 }),
+      rate({ installments: 3, rate_pct: 9.85 }),
+      rate({ installments: 3, rate_pct: 7.64, tier_label: 'Cuotas Nave' }),
+      rate({ installments: 1, rate_pct: 0 }),
+    ])
+    expect(sorted.map((r) => [r.installments, r.rate_pct])).toEqual([[1, 0], [3, 7.64], [3, 9.85], [6, 18]])
   })
 })
