@@ -64,6 +64,9 @@ createInertiaApp({
                 </ConfirmProvider>
             </ThemeProvider>
         );
+
+        // Splash de arranque definido en resources/views/app.blade.php.
+        window.hideAppSplash?.();
     },
 
     // Barra de progreso entre navegaciones (Inertia v2)

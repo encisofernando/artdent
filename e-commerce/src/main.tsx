@@ -62,3 +62,6 @@ if (rootEl.hasChildNodes()) {
 } else {
   ReactDOM.createRoot(rootEl).render(app)
 }
+
+// Splash de arranque definido inline en index.html.
+;(window as Window & { hideAppSplash?: () => void }).hideAppSplash?.()
