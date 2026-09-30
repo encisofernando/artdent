@@ -50,7 +50,7 @@
           setTimeout(remove, Math.max(0, MIN_VISIBLE_MS - (Date.now() - start)))
         }
         // Navegador automatizado (prerender): sin splash.
-        if (navigator.webdriver) { el.parentNode.removeChild(el); el = null }
+        if (el && navigator.webdriver) { el.parentNode.removeChild(el); el = null }
         // Red de seguridad: si la app no llega a montar, no dejar la pantalla tapada.
         setTimeout(remove, 10000)
       })()

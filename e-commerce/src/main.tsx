@@ -54,14 +54,13 @@ const app = (
   </React.StrictMode>
 )
 
-// Las rutas prerenderizadas (ver scripts/prerender.mjs) llegan al navegador
-// con #root ya lleno de HTML real — hay que hidratar ese contenido en vez
-// de descartarlo y re-renderizar de cero.
-if (rootEl.hasChildNodes()) {
-  ReactDOM.hydrateRoot(rootEl, app)
-} else {
-  ReactDOM.createRoot(rootEl).render(app)
-}
+// Las rutas prerenderizadas (ver scripts/prerender.mjs) llegan con #root ya
+// lleno de HTML real, que sirve para SEO y para el primer paint. No se
+// hidrata: ese HTML es una foto de un render de cliente (createRoot), no de
+// un SSR, así que nunca coincide con la hidratación (ids de useId, sesión,
+// carrito) — React tiraba #418/#423 en cada visita y lo descartaba igual.
+// createRoot mantiene ese contenido visible hasta su primer commit.
+ReactDOM.createRoot(rootEl).render(app)
 
 // Splash de arranque definido inline en index.html.
 ;(window as Window & { hideAppSplash?: () => void }).hideAppSplash?.()
