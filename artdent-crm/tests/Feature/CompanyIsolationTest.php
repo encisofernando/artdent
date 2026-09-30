@@ -107,6 +107,49 @@ class CompanyIsolationTest extends TestCase
     }
 
     /**
+     * En rutas auth:customer (panel "Mi cuenta" de la tienda) auth()->user()
+     * es un Customer: antes CompanyContext::id() llamaba a can(), el
+     * Gate::before llamaba a hasRole() (inexistente en Customer) y toda
+     * consulta sobre modelos con BelongsToCompany daba 500.
+     */
+    public function test_authenticated_customer_resolves_its_own_company(): void
+    {
+        $this->makeCompany(['id' => 1]);
+        $companyTwo = $this->makeCompany(['id' => 2]);
+
+        $customer = $this->makeCustomer($companyTwo, 'shop@example.com');
+        $this->makeCustomer($this->makeCompany(['id' => 3]), 'otro@example.com');
+
+        $this->actingAs($customer, 'customer');
+
+        $this->assertEquals(2, CompanyContext::id());
+        $this->assertEquals([$customer->id], Customer::query()->pluck('id')->all());
+    }
+
+    public function test_customer_can_check_abilities_without_staff_roles(): void
+    {
+        $customer = $this->makeCustomer($this->makeCompany(['id' => 1]), 'gate@example.com');
+
+        $this->actingAs($customer, 'customer');
+
+        $this->assertFalse($customer->can('companies.switch'));
+    }
+
+    public function test_log_context_processor_resolves_company_for_customer(): void
+    {
+        $customer = $this->makeCustomer($this->makeCompany(['id' => 2]), 'log@example.com');
+        $this->actingAs($customer, 'customer');
+
+        $record = new \Monolog\LogRecord(
+            new \DateTimeImmutable, 'test', \Monolog\Level::Error, 'mensaje'
+        );
+
+        $processed = (new \App\Logging\TenantContextProcessor)($record);
+
+        $this->assertSame(2, $processed->extra['company_id'] ?? null);
+    }
+
+    /**
      * id no es mass-assignable en Company, así que para fijar ids
      * deterministicos en los fixtures (company 1, 2, 3...) lo seteamos
      * directo en el modelo antes de guardar.

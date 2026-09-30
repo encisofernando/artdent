@@ -51,8 +51,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Implicitly grant "Super Admin" role all permissions
         // This works in the app by using gate-related functions like auth()->user->can() and @can()
+        // Sólo User tiene roles: en rutas auth:customer el usuario autenticado
+        // es un Customer y hasRole() no existe.
         Gate::before(function ($user, $ability) {
-            return $user->hasRole('Super Admin') ? true : null;
+            return $user instanceof User && $user->hasRole('Super Admin') ? true : null;
         });
 
         // routes/api.php (checkout, catálogo, webhooks de pago, panel de

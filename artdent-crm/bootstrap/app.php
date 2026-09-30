@@ -81,6 +81,12 @@ return Application::configure(basePath: dirname(__DIR__))
                     ->setStatusCode(403);
             }
 
+            // La API (e-commerce, kioscos, webhooks) la consumen clientes JSON:
+            // la página de error Inertia (HTML completo) les rompe el parseo.
+            if ($request->is('api/*')) {
+                return $response;
+            }
+
             if (! app()->environment('local') && in_array($response->getStatusCode(), [403, 404, 500, 503, 419])) {
                 return \Inertia\Inertia::render('Error', ['status' => $response->getStatusCode()])
                     ->toResponse($request)

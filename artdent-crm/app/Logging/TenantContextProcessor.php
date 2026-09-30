@@ -22,6 +22,18 @@ class TenantContextProcessor
 {
     public function __invoke(LogRecord $record): LogRecord
     {
+        // Un processor que lanza excepción se traga el log original (el
+        // handler falla al reportar y el error real nunca llega al archivo).
+        // Si resolver el contexto falla, se loguea el registro sin extras.
+        try {
+            return $this->withContext($record);
+        } catch (\Throwable) {
+            return $record;
+        }
+    }
+
+    private function withContext(LogRecord $record): LogRecord
+    {
         $tenantId = ! CrmMode::isOwner() && function_exists('tenant') && tenancy()->initialized
             ? tenant('id')
             : null;

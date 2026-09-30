@@ -18,6 +18,9 @@ class CompanyContext
      *   sesión, con default a la company id 1 si todavía no eligieron ninguna.
      * - Sin usuario autenticado (ej. alta pública de customers de e-commerce):
      *   también default a la company id 1.
+     * - Customer de e-commerce (rutas auth:customer, donde auth()->user() es
+     *   un Customer y no un User): la company del propio cliente. No pasa por
+     *   can() — un Customer no tiene roles/permisos de staff.
      */
     public static function id(): ?int
     {
@@ -25,6 +28,10 @@ class CompanyContext
 
         if (! $user) {
             return self::DEFAULT_COMPANY_ID;
+        }
+
+        if (! $user instanceof \App\Models\User) {
+            return $user->company_id ?? self::DEFAULT_COMPANY_ID;
         }
 
         if ($user->can('companies.switch')) {
