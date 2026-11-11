@@ -2,19 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\CashSessionClosedMail;
 use App\Models\CashDrawer;
 use App\Models\CashSession;
-use App\Models\User;
+use App\Services\CashSessionService;
 use App\Support\CompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CashSessionController extends Controller
 {
+    public function __construct(
+        protected CashSessionService $sessionService
+    ) {}
+
     /**
      * Rótulos de tipo de medio de pago para el informe de cierre — mismo
      * criterio que SaleController::POS_PAYMENT_METHOD_LABELS.
@@ -129,7 +131,7 @@ class CashSessionController extends Controller
         return Inertia::render('Caja/Show', [
             'session' => $cashSession,
             'can_view' => true,
-            'totals' => $this->buildReport($cashSession),
+            'totals' => $this->sessionService->buildReport($cashSession),
         ]);
     }
 
@@ -150,24 +152,14 @@ class CashSessionController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $report = $this->buildReport($cashSession);
-        $difference = round($validated['closing_amount'] - $report['expected_cash'], 2);
+        $result = $this->sessionService->closeSession(
+            $cashSession,
+            (float) $validated['closing_amount'],
+            $validated['notes'] ?? null,
+            isAutomatic: false
+        );
 
-        $notes = trim(($cashSession->notes ? $cashSession->notes."\n" : '').
-            'Cierre: contado '.number_format($validated['closing_amount'], 2, ',', '.').
-            ' / esperado '.number_format($report['expected_cash'], 2, ',', '.').
-            ' / diferencia '.number_format($difference, 2, ',', '.').
-            (($validated['notes'] ?? null) ? ' — '.$validated['notes'] : ''));
-
-        $cashSession->update([
-            'closed_at' => now(),
-            'closing_amount' => $validated['closing_amount'],
-            'status' => 'closed',
-            'notes' => $notes,
-        ]);
-
-        $this->sendClosedReportEmail($cashSession, $report, $validated['closing_amount'], $difference);
-
+        $difference = $result['difference'];
         $message = $difference === 0.0
             ? 'Caja cerrada sin diferencias.'
             : ($difference > 0
@@ -190,103 +182,14 @@ class CashSessionController extends Controller
         return redirect()->route('cash-sessions.index')->with('success', 'Sesión eliminada.');
     }
 
-    /**
-     * Informe de cierre completo: caja inicial, ingresos manuales (no
-     * originados por una venta), ventas desglosadas por medio de pago,
-     * ventas desglosadas por artículo, egresos, total esperado en efectivo
-     * y total por medios digitales.
-     *
-     * @return array{opening_amount: float, manual_income: float, sales_by_method: array<int, array{key: string, label: string, amount: float}>, items_sold: array<int, array{key: string, name: string, sku: string|null, quantity: float, total: float}>, sales_cash: float, sales_digital_total: float, expenses: float, expected_cash: float}
-     */
-    private function buildReport(CashSession $cashSession): array
+    public function buildReport(CashSession $cashSession): array
     {
-        $cashSession->loadMissing(['cash_movements', 'sales.sale_payments.paymentMethod', 'sales.sale_items']);
-
-        $manualIncome = round((float) $cashSession->cash_movements
-            ->where('type', 'in')
-            ->filter(fn ($movement) => $movement->reference_type !== 'sale')
-            ->sum('amount'), 2);
-
-        $expenses = round((float) $cashSession->cash_movements->where('type', 'out')->sum('amount'), 2);
-
-        $byMethod = [];
-        foreach ($cashSession->sales as $sale) {
-            foreach ($sale->sale_payments as $payment) {
-                $key = strtolower($payment->paymentMethod?->type ?? 'otro');
-                $byMethod[$key] = ($byMethod[$key] ?? 0.0) + (float) $payment->amount;
-            }
-        }
-
-        $salesCash = round($byMethod['cash'] ?? 0.0, 2);
-        $salesDigitalTotal = round(array_sum($byMethod) - $salesCash, 2);
-
-        $salesByMethod = collect($byMethod)
-            ->map(fn ($amount, $key) => [
-                'key' => $key,
-                'label' => self::PAYMENT_TYPE_LABELS[$key] ?? ucfirst($key),
-                'amount' => round($amount, 2),
-            ])
-            ->sortByDesc('amount')
-            ->values()
-            ->all();
-
-        $byProduct = [];
-        foreach ($cashSession->sales as $sale) {
-            foreach ($sale->sale_items as $item) {
-                $key = $item->product_id !== null ? 'id:'.$item->product_id : 'name:'.$item->product_name;
-
-                $byProduct[$key] ??= [
-                    'key' => $key,
-                    'name' => $item->product_name,
-                    'sku' => $item->sku,
-                    'quantity' => 0.0,
-                    'total' => 0.0,
-                ];
-                $byProduct[$key]['quantity'] += (float) $item->quantity;
-                $byProduct[$key]['total'] += (float) $item->total;
-            }
-        }
-
-        $itemsSold = collect($byProduct)
-            ->map(fn ($line) => [
-                ...$line,
-                'quantity' => round($line['quantity'], 2),
-                'total' => round($line['total'], 2),
-            ])
-            ->sortByDesc('quantity')
-            ->values()
-            ->all();
-
-        return [
-            'opening_amount' => (float) $cashSession->opening_amount,
-            'manual_income' => $manualIncome,
-            'sales_by_method' => $salesByMethod,
-            'items_sold' => $itemsSold,
-            'sales_cash' => $salesCash,
-            'sales_digital_total' => $salesDigitalTotal,
-            'expenses' => $expenses,
-            'expected_cash' => round($cashSession->opening_amount + $manualIncome + $salesCash - $expenses, 2),
-        ];
+        return $this->sessionService->buildReport($cashSession);
     }
 
-    private function sendClosedReportEmail(CashSession $cashSession, array $report, float $closingAmount, float $difference): void
+    public function sendClosedReportEmail(CashSession $cashSession, array $report, float $closingAmount, float $difference): void
     {
-        $cashSession->loadMissing(['cash_drawer', 'user']);
-
-        $recipients = User::query()
-            ->where('company_id', $cashSession->cash_drawer->company_id)
-            ->where('is_active', true)
-            ->get()
-            ->filter(fn (User $user) => $user->can('cash-register.view'))
-            ->pluck('email')
-            ->filter()
-            ->unique();
-
-        if ($recipients->isEmpty()) {
-            return;
-        }
-
-        Mail::to($recipients->all())->send(new CashSessionClosedMail($cashSession, $report, $closingAmount, $difference));
+        $this->sessionService->sendClosedReportEmail($cashSession, $report, $closingAmount, $difference);
     }
 
     private function authorizeSameCompany(Request $request, CashSession $cashSession): void

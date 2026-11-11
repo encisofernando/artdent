@@ -3,9 +3,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useConfirm } from '@/Contexts/ConfirmContext';
-import { useToast } from '@/Contexts/ToastContext';
 import { Button } from '@/Components/ui/button';
-import { Wallet, Save, CheckCircle, CreditCard, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Wallet, Save, CheckCircle, CreditCard, Plus, Edit, Trash2, Loader2, Clock } from 'lucide-react';
 import axios from 'axios';
 
 const B = { blue: '#397B9C', teal: '#49949C' };
@@ -254,8 +253,10 @@ export default function CashRegisterSettingsIndex({ auth, settings }) {
     const { isDark } = useTheme();
     const [saved, setSaved] = useState(false);
 
-    const { data, setData, put, processing } = useForm({
+    const { data, setData, put, processing, errors } = useForm({
         is_enabled: settings.is_enabled ?? false,
+        close_mode: settings.close_mode ?? 'auto',
+        close_time: settings.close_time ?? '00:00',
     });
 
     const submit = (e) => {
@@ -294,10 +295,10 @@ export default function CashRegisterSettingsIndex({ auth, settings }) {
                             </span>
                             {data.is_enabled && (
                                 <p className={`text-xs mt-1 max-w-md ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                    Con esto prendido, hace falta abrir caja para poder vender, y si a
-                                    alguien le queda una caja abierta de un día anterior el sistema lo
-                                    obliga a cerrarla antes de seguir. Sólo afecta a Ventas — no a
-                                    Laboratorio ni al e-commerce.
+                                    Con esto prendido, hace falta abrir caja para poder facturar en Ventas.
+                                    {data.close_mode === 'auto'
+                                        ? ` El sistema cerrará las sesiones abiertas automáticamente a las ${data.close_time || '00:00'} hs.`
+                                        : ' Las sesiones permanecerán abiertas hasta que el usuario realice el arqueo y cierre manual.'}
                                 </p>
                             )}
                         </div>
@@ -310,6 +311,109 @@ export default function CashRegisterSettingsIndex({ auth, settings }) {
                             </div>
                         </label>
                     </div>
+
+                    {data.is_enabled && (
+                        <div className={`p-6 border-b space-y-6 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                            <div>
+                                <h4 className={`text-sm font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                    Modalidad de Cierre de Caja
+                                </h4>
+                                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    Define cómo y cuándo finalizan los turnos de caja para los cajeros y puntos de venta.
+                                </p>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <label
+                                    className={`relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                        data.close_mode === 'manual'
+                                            ? (isDark ? 'border-teal-500 bg-teal-950/20' : 'border-teal-600 bg-teal-50/50')
+                                            : (isDark ? 'border-slate-800 bg-slate-900/40 hover:border-slate-700' : 'border-slate-200 bg-white hover:border-slate-300')
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                            Cierre Manual
+                                        </span>
+                                        <input
+                                            type="radio"
+                                            name="close_mode"
+                                            value="manual"
+                                            checked={data.close_mode === 'manual'}
+                                            onChange={() => setData('close_mode', 'manual')}
+                                            className="text-teal-600 focus:ring-teal-500"
+                                        />
+                                    </div>
+                                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        El cajero o administrador cierra la caja manualmente al finalizar su jornada. La caja permanece abierta a través de los días hasta que se realice el arqueo.
+                                    </p>
+                                </label>
+
+                                <label
+                                    className={`relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                        data.close_mode === 'auto'
+                                            ? (isDark ? 'border-teal-500 bg-teal-950/20' : 'border-teal-600 bg-teal-50/50')
+                                            : (isDark ? 'border-slate-800 bg-slate-900/40 hover:border-slate-700' : 'border-slate-200 bg-white hover:border-slate-300')
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                            Cierre Automático
+                                        </span>
+                                        <input
+                                            type="radio"
+                                            name="close_mode"
+                                            value="auto"
+                                            checked={data.close_mode === 'auto'}
+                                            onChange={() => setData('close_mode', 'auto')}
+                                            className="text-teal-600 focus:ring-teal-500"
+                                        />
+                                    </div>
+                                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        La caja se cierra automáticamente al cumplirse el horario especificado. El sistema calcula el arqueo según los movimientos y envía el informe por correo.
+                                    </p>
+                                </label>
+                            </div>
+
+                            {data.close_mode === 'auto' && (
+                                <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Clock size={16} className={isDark ? 'text-teal-400' : 'text-teal-600'} />
+                                                <label className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                                    Horario de Cierre Automático
+                                                </label>
+                                            </div>
+                                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Al llegar esta hora, cualquier caja que haya quedado abierta se cerrará automáticamente.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="time"
+                                                value={data.close_time}
+                                                onChange={(e) => setData('close_time', e.target.value)}
+                                                className={`rounded-xl border text-base font-bold px-3 py-2 text-center transition-colors focus:ring-0 ${
+                                                    isDark
+                                                        ? 'bg-slate-800 border-slate-700 text-white focus:border-teal-500'
+                                                        : 'bg-white border-slate-300 text-slate-800 focus:border-teal-500 shadow-sm'
+                                                }`}
+                                            />
+                                            <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>hs</span>
+                                        </div>
+                                    </div>
+
+                                    {errors.close_time && (
+                                        <p className="text-red-500 text-xs font-bold mt-2">
+                                            {errors.close_time}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="px-6 py-5 space-y-4">
                         {saved && (

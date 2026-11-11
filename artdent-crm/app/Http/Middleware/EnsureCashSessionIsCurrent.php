@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\CashRegisterSetting;
 use App\Models\CashSession;
+use App\Services\CashSessionService;
 use App\Support\CompanyContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -16,11 +17,16 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureCashSessionIsCurrent
 {
+    public function __construct(
+        protected CashSessionService $sessionService
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $companyId = CompanyContext::id();
+        $settings = CashRegisterSetting::forCompany($companyId);
 
-        if (! CashRegisterSetting::forCompany($companyId)->is_enabled) {
+        if (! $settings->is_enabled) {
             return $next($request);
         }
 
@@ -32,9 +38,11 @@ class EnsureCashSessionIsCurrent
             ->whereHas('cash_drawer', fn ($query) => $query->where('company_id', $companyId))
             ->first();
 
-        if ($openSession && ! $openSession->opened_at->isToday()) {
+        if ($openSession && $this->sessionService->isSessionExpired($openSession, $settings)) {
+            $timeLabel = $settings->close_time ?: '00:00';
+
             return redirect()->route('cash-sessions.show', $openSession)
-                ->with('error', 'Te quedó una caja abierta de un día anterior — cerrala antes de seguir.');
+                ->with('error', "La caja superó el horario de cierre automático ({$timeLabel} hs) — cerrala antes de seguir.");
         }
 
         if (! $openSession) {

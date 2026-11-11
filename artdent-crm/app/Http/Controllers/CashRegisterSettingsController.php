@@ -29,7 +29,13 @@ class CashRegisterSettingsController extends Controller
     {
         $validated = $request->validate([
             'is_enabled' => ['required', 'boolean'],
+            'close_mode' => ['required', 'string', 'in:manual,auto'],
+            'close_time' => ['nullable', 'required_if:close_mode,auto', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
         ]);
+
+        if (($validated['close_mode'] ?? 'auto') === 'manual') {
+            $validated['close_time'] = $validated['close_time'] ?: '00:00';
+        }
 
         CashRegisterSetting::forCompany(CompanyContext::id())->update($validated);
 

@@ -15,3 +15,6 @@ Schedule::command('ecommerce:send-unpaid-reminders')->everyFourHours();
 // afip_pending_receipt_type en sales) — reintenta cada 15 min sin que el
 // operador tenga que acordarse de volver a facturarlas a mano.
 Schedule::command('afip:retry-pending-invoices')->everyFifteenMinutes();
+
+// Cierre automático de caja según el horario configurado por cada empresa
+Schedule::command('cash:auto-close')->everyMinute();

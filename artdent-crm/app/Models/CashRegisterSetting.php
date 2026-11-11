@@ -13,11 +13,15 @@ class CashRegisterSetting extends Model
     protected $fillable = [
         'company_id',
         'is_enabled',
+        'close_mode',
+        'close_time',
     ];
 
     protected $casts = [
         'company_id' => 'int',
         'is_enabled' => 'boolean',
+        'close_mode' => 'string',
+        'close_time' => 'string',
     ];
 
     public function company(): BelongsTo
@@ -29,7 +33,11 @@ class CashRegisterSetting extends Model
     {
         return static::query()->firstOrCreate(
             ['company_id' => $companyId],
-            ['is_enabled' => false]
+            [
+                'is_enabled' => false,
+                'close_mode' => 'auto',
+                'close_time' => '00:00',
+            ]
         );
     }
 }
