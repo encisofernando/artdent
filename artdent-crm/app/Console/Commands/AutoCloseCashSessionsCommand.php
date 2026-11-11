@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 class AutoCloseCashSessionsCommand extends Command
 {
-    protected $signature = 'cash:auto-close';
+    protected $signature = 'cash:auto-close {--tenant= : ID del tenant específico a procesar}';
 
     protected $description = 'Cierra automáticamente las sesiones de caja que superaron el horario de cierre programado';
 
@@ -22,7 +22,12 @@ class AutoCloseCashSessionsCommand extends Command
             try {
                 $connection = (new Tenant)->getConnectionName() ?? config('tenancy.database.central_connection', 'central');
                 if (\Illuminate\Support\Facades\Schema::connection($connection)->hasTable('tenants')) {
-                    $tenants = Tenant::all();
+                    $tenantOption = $this->option('tenant');
+                    if ($tenantOption) {
+                        $tenants = Tenant::where('id', $tenantOption)->get();
+                    } else {
+                        $tenants = Tenant::all();
+                    }
                 }
             } catch (\Throwable) {
                 $tenants = collect();
@@ -31,9 +36,13 @@ class AutoCloseCashSessionsCommand extends Command
 
         if ($tenants->isNotEmpty()) {
             foreach ($tenants as $tenant) {
-                $tenant->run(function () use ($service) {
-                    $this->processAutoCloseForCurrentTenant($service);
-                });
+                try {
+                    $tenant->run(function () use ($service) {
+                        $this->processAutoCloseForCurrentTenant($service);
+                    });
+                } catch (\Throwable $e) {
+                    $this->warn("Tenant {$tenant->id} omitido: {$e->getMessage()}");
+                }
             }
         } else {
             $this->processAutoCloseForCurrentTenant($service);
